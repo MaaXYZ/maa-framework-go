@@ -15,8 +15,8 @@ type Instance struct {
 	handle C.MaaInstanceHandle
 }
 
-func New(callback func(msg, detailsJson string, callbackArg interface{}), callbackArg interface{}) *Instance {
-	agent := &callbackAgent{callback: callback, arg: callbackArg}
+func New(callback func(msg, detailsJson string)) *Instance {
+	agent := &callbackAgent{callback: callback}
 	handle := C.MaaCreate(
 		C.MaaAPICallback(C._MaaAPICallbackAgent),
 		C.MaaTransparentArg(unsafe.Pointer(agent)),

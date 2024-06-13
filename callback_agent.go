@@ -11,15 +11,14 @@ import (
 )
 
 type callbackAgent struct {
-	callback func(msg, detailsJson string, callbackArg interface{})
-	arg      interface{}
+	callback func(msg, detailsJson string)
 }
 
 //export _MaaAPICallbackAgent
 func _MaaAPICallbackAgent(msg, detailsJson string, callbackArg unsafe.Pointer) {
 	agent := (*callbackAgent)(callbackArg)
-	if agent.arg == nil {
+	if agent.callback == nil {
 		return
 	}
-	agent.callback(msg, detailsJson, agent.arg)
+	agent.callback(msg, detailsJson)
 }

@@ -31,10 +31,9 @@ const (
 func NewWin32Controller(
 	hWnd unsafe.Pointer,
 	win32CtrlType Win32ControllerType,
-	callback func(msg, detailsJson string, callbackArg interface{}),
-	callbackArg interface{},
+	callback func(msg, detailsJson string),
 ) Controller {
-	agent := &callbackAgent{callback, callbackArg}
+	agent := &callbackAgent{callback: callback}
 	handle := C.MaaWin32ControllerCreate(
 		C.MaaWin32Hwnd(C.MaaWin32Hwnd(hWnd)),
 		C.int32_t(win32CtrlType),

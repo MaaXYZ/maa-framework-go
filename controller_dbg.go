@@ -24,8 +24,7 @@ func NewDbgController(
 	readPath, writePath string,
 	dbgCtrlType DbgControllerType,
 	config string,
-	callback func(msg, detailsJson string, callbackArg interface{}),
-	callbackArg interface{},
+	callback func(msg, detailsJson string),
 ) Controller {
 	cReadPath := C.CString(readPath)
 	cWritePath := C.CString(writePath)
@@ -36,7 +35,7 @@ func NewDbgController(
 		C.free(unsafe.Pointer(cConfig))
 	}()
 
-	agent := &callbackAgent{callback, callbackArg}
+	agent := &callbackAgent{callback: callback}
 	handle := C.MaaDbgControllerCreate(
 		cReadPath,
 		cWritePath,

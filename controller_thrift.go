@@ -22,8 +22,7 @@ func NewThriftController(
 	host string,
 	port int32,
 	config string,
-	callback func(msg, detailsJson string, callbackArg interface{}),
-	callbackArg interface{},
+	callback func(msg, detailsJson string),
 ) Controller {
 	cHost := C.CString(host)
 	cConfig := C.CString(config)
@@ -33,7 +32,7 @@ func NewThriftController(
 
 	}()
 
-	agent := &callbackAgent{callback, callbackArg}
+	agent := &callbackAgent{callback: callback}
 	handle := C.MaaThriftControllerCreate(
 		C.int32_t(thriftCtrlType),
 		cHost,

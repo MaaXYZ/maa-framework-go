@@ -20,9 +20,8 @@ type Resource struct {
 // This function takes two arguments:
 //
 //   - callback: The callback function.
-//   - callbackArg: The callback argument.
-func NewResource(callback func(msg, detailsJson string, callbackArg interface{}), callbackArg interface{}) *Resource {
-	agent := &callbackAgent{callback, callbackArg}
+func NewResource(callback func(msg, detailsJson string)) *Resource {
+	agent := &callbackAgent{callback: callback}
 	handle := C.MaaResourceCreate(C.MaaAPICallback(C._MaaAPICallbackAgent), C.MaaTransparentArg(unsafe.Pointer(agent)))
 	return &Resource{
 		handle: handle,

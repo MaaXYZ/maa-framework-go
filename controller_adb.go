@@ -50,8 +50,7 @@ func NewAdbController(
 	adbPath, address string,
 	adbCtrlType AdbControllerType,
 	config, agentPath string,
-	callback func(msg, detailsJson string, callbackArg interface{}),
-	callbackArg interface{},
+	callback func(msg, detailsJson string),
 ) Controller {
 	cAdbPath := C.CString(adbPath)
 	cAddress := C.CString(address)
@@ -64,7 +63,7 @@ func NewAdbController(
 		C.free(unsafe.Pointer(cAgentPath))
 	}()
 
-	agent := &callbackAgent{callback, callbackArg}
+	agent := &callbackAgent{callback: callback}
 	handle := C.MaaAdbControllerCreateV2(
 		cAdbPath,
 		cAddress,
