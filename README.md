@@ -82,7 +82,7 @@ import (
 func main() {
 	toolkit.InitOption("./", "{}")
 
-	res := maa.NewResource(nil, nil)
+	res := maa.NewResource(nil)
 	defer res.Destroy()
 	resId := res.PostPath("sample/resource")
 	res.Wait(resId)
@@ -100,13 +100,13 @@ func main() {
 		device.ControllerType,
 		device.Config,
 		"sample/MaaAgentBinary",
-		nil, nil,
+		nil,
 	)
 	defer ctrl.Destroy()
 	ctrlId := ctrl.PostConnect()
 	ctrl.Wait(ctrlId)
 
-	inst := maa.New(nil, nil)
+	inst := maa.New(nil)
 	defer inst.Destroy()
 
 	inst.BindResource(res)
