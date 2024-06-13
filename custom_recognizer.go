@@ -17,7 +17,7 @@ import "C"
 import "unsafe"
 
 // CustomRecognizer defines an interface for custom recognizer.
-// Implementers of this interface must embed a pointer to a Recognizer struct
+// Implementers of this interface must embed a Recognizer struct
 // and provide an implementation for the Analyze method.
 type CustomRecognizer interface {
 	Analyze(syncCtx SyncContext, image ImageBuffer, taskName, RecognitionParam string) (AnalyzeResult, bool)

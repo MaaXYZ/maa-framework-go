@@ -21,7 +21,7 @@ import (
 )
 
 // CustomAction defines an interface for custom action.
-// Implementers of this interface must embed a pointer to an Action struct
+// Implementers of this interface must embed an Action struct
 // and provide implementations for the Run and Stop methods.
 type CustomAction interface {
 	Run(ctx SyncContext, taskName, ActionParam string, curBox RectBuffer, curRecDetail string) bool
