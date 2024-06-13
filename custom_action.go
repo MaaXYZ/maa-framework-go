@@ -21,7 +21,7 @@ import (
 )
 
 // CustomActionImpl defines an interface for custom action.
-// Implementers of this interface must embed an ActionHandler struct
+// Implementers of this interface must embed an CustomActionHandler struct
 // and provide implementations for the Run and Stop methods.
 type CustomActionImpl interface {
 	Run(ctx SyncContext, taskName, ActionParam string, curBox RectBuffer, curRecDetail string) bool
@@ -31,19 +31,19 @@ type CustomActionImpl interface {
 	Destroy()
 }
 
-type ActionHandler struct {
+type CustomActionHandler struct {
 	handle C.MaaCustomActionHandle
 }
 
-func NewActionHandler() ActionHandler {
-	return ActionHandler{handle: C.MaaCustomActionHandleCreate(C.RunCallback(C._RunAgent), C.StopCallback(C._StopAgent))}
+func NewCustomActionHandler() CustomActionHandler {
+	return CustomActionHandler{handle: C.MaaCustomActionHandleCreate(C.RunCallback(C._RunAgent), C.StopCallback(C._StopAgent))}
 }
 
-func (a ActionHandler) Handle() unsafe.Pointer {
+func (a CustomActionHandler) Handle() unsafe.Pointer {
 	return unsafe.Pointer(a.handle)
 }
 
-func (a ActionHandler) Destroy() {
+func (a CustomActionHandler) Destroy() {
 	C.MaaCustomActionHandleDestroy(a.handle)
 }
 

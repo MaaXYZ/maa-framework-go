@@ -17,7 +17,7 @@ import "C"
 import "unsafe"
 
 // CustomRecognizerImpl defines an interface for custom recognizer.
-// Implementers of this interface must embed a Recognizer struct
+// Implementers of this interface must embed a CustomRecognizerHandler struct
 // and provide an implementation for the Analyze method.
 type CustomRecognizerImpl interface {
 	Analyze(syncCtx SyncContext, image ImageBuffer, taskName, RecognitionParam string) (AnalyzeResult, bool)
@@ -31,19 +31,19 @@ type AnalyzeResult struct {
 	Detail string
 }
 
-type RecognizerHandler struct {
+type CustomRecognizerHandler struct {
 	handle C.MaaCustomRecognizerHandle
 }
 
-func NewRecognizerHandler() RecognizerHandler {
-	return RecognizerHandler{handle: C.MaaCustomRecognizerHandleCreate(C.AnalyzeCallback(C._AnalyzeAgent))}
+func NewCustomRecognizerHandler() CustomRecognizerHandler {
+	return CustomRecognizerHandler{handle: C.MaaCustomRecognizerHandleCreate(C.AnalyzeCallback(C._AnalyzeAgent))}
 }
 
-func (r RecognizerHandler) Handle() unsafe.Pointer {
+func (r CustomRecognizerHandler) Handle() unsafe.Pointer {
 	return unsafe.Pointer(r.handle)
 }
 
-func (r RecognizerHandler) Destroy() {
+func (r CustomRecognizerHandler) Destroy() {
 	C.MaaCustomRecognizerHandleDestroy(r.handle)
 }
 
