@@ -16,10 +16,10 @@ extern uint8_t _AnalyzeAgent(MaaSyncContextHandle sync_context,
 import "C"
 import "unsafe"
 
-// CustomRecognizer defines an interface for custom recognizer.
+// CustomRecognizerImpl defines an interface for custom recognizer.
 // Implementers of this interface must embed a Recognizer struct
 // and provide an implementation for the Analyze method.
-type CustomRecognizer interface {
+type CustomRecognizerImpl interface {
 	Analyze(syncCtx SyncContext, image ImageBuffer, taskName, RecognitionParam string) (AnalyzeResult, bool)
 
 	Handle() unsafe.Pointer
@@ -31,19 +31,19 @@ type AnalyzeResult struct {
 	Detail string
 }
 
-type Recognizer struct {
+type RecognizerHandler struct {
 	handle C.MaaCustomRecognizerHandle
 }
 
-func NewRecognizer() Recognizer {
-	return Recognizer{handle: C.MaaCustomRecognizerHandleCreate(C.AnalyzeCallback(C._AnalyzeAgent))}
+func NewRecognizerHandler() RecognizerHandler {
+	return RecognizerHandler{handle: C.MaaCustomRecognizerHandleCreate(C.AnalyzeCallback(C._AnalyzeAgent))}
 }
 
-func (r Recognizer) Handle() unsafe.Pointer {
+func (r RecognizerHandler) Handle() unsafe.Pointer {
 	return unsafe.Pointer(r.handle)
 }
 
-func (r Recognizer) Destroy() {
+func (r RecognizerHandler) Destroy() {
 	C.MaaCustomRecognizerHandleDestroy(r.handle)
 }
 
@@ -60,7 +60,7 @@ func _AnalyzeAgent(
 		return C.uint8_t(0)
 	}
 
-	rec := *(*CustomRecognizer)(recognizerArg)
+	rec := *(*CustomRecognizerImpl)(recognizerArg)
 
 	ret, ok := rec.Analyze(
 		SyncContext(syncCtx),

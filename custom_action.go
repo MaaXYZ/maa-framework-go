@@ -20,10 +20,10 @@ import (
 	"unsafe"
 )
 
-// CustomAction defines an interface for custom action.
-// Implementers of this interface must embed an Action struct
+// CustomActionImpl defines an interface for custom action.
+// Implementers of this interface must embed an ActionHandler struct
 // and provide implementations for the Run and Stop methods.
-type CustomAction interface {
+type CustomActionImpl interface {
 	Run(ctx SyncContext, taskName, ActionParam string, curBox RectBuffer, curRecDetail string) bool
 	Stop()
 
@@ -31,19 +31,19 @@ type CustomAction interface {
 	Destroy()
 }
 
-type Action struct {
+type ActionHandler struct {
 	handle C.MaaCustomActionHandle
 }
 
-func NewAction() Action {
-	return Action{handle: C.MaaCustomActionHandleCreate(C.RunCallback(C._RunAgent), C.StopCallback(C._StopAgent))}
+func NewActionHandler() ActionHandler {
+	return ActionHandler{handle: C.MaaCustomActionHandleCreate(C.RunCallback(C._RunAgent), C.StopCallback(C._StopAgent))}
 }
 
-func (a Action) Handle() unsafe.Pointer {
+func (a ActionHandler) Handle() unsafe.Pointer {
 	return unsafe.Pointer(a.handle)
 }
 
-func (a Action) Destroy() {
+func (a ActionHandler) Destroy() {
 	C.MaaCustomActionHandleDestroy(a.handle)
 }
 
@@ -59,7 +59,7 @@ func _RunAgent(
 		return C.uint8_t(0)
 	}
 
-	act := *(*CustomAction)(actionArg)
+	act := *(*CustomActionImpl)(actionArg)
 	ok := act.Run(
 		SyncContext(SyncCtx),
 		taskName,
@@ -79,6 +79,6 @@ func _StopAgent(actionArg unsafe.Pointer) {
 		return
 	}
 
-	act := *(*CustomAction)(actionArg)
+	act := *(*CustomActionImpl)(actionArg)
 	act.Stop()
 }

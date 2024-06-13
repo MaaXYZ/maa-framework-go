@@ -44,7 +44,7 @@ func (i *Instance) Inited() bool {
 	return C.MaaInited(i.handle) != 0
 }
 
-func (i *Instance) RegisterCustomRecognizer(name string, recognizer CustomRecognizer) bool {
+func (i *Instance) RegisterCustomRecognizer(name string, recognizer CustomRecognizerImpl) bool {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 	return C.MaaRegisterCustomRecognizer(
@@ -65,7 +65,7 @@ func (i *Instance) ClearCustomRecognizer() bool {
 	return C.MaaClearCustomRecognizer(i.handle) != 0
 }
 
-func (i *Instance) RegisterCustomAction(name string, action CustomAction) bool {
+func (i *Instance) RegisterCustomAction(name string, action CustomActionImpl) bool {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 	return C.MaaRegisterCustomAction(i.handle, cName, C.MaaCustomActionHandle(action.Handle()), C.MaaTransparentArg(unsafe.Pointer(&action))) != 0

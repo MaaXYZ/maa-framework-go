@@ -124,12 +124,12 @@ func main() {
 }
 
 type MyRec struct {
-	maa.Recognizer
+	maa.RecognizerHandler
 }
 
 func NewMyRec() MyRec {
 	return MyRec{
-		Recognizer: maa.NewRecognizer(),
+		RecognizerHandler: maa.NewRecognizerHandler(),
 	}
 }
 
@@ -148,12 +148,12 @@ func (MyRec) Analyze(
 }
 
 type MyAct struct {
-	maa.Action
+	maa.ActionHandler
 }
 
 func NewMyAct() MyAct {
 	return MyAct{
-		Action: maa.NewAction(),
+		ActionHandler: maa.NewActionHandler(),
 	}
 }
 
