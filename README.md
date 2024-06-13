@@ -112,10 +112,8 @@ func main() {
 	inst.BindResource(res)
 	inst.BindController(ctrl)
 
-	myRec := NewMyRec()
-	inst.RegisterCustomRecognizer("MyRec", myRec, nil)
-	myAct := NewMyAct()
-	inst.RegisterCustomAction("MyAct", myAct, nil)
+	inst.RegisterCustomRecognizer("MyRec", NewMyRec())
+	inst.RegisterCustomAction("MyAct", NewMyAct())
 
 	if !inst.Inited() {
 		panic("Failed to init Maa Instance.")
@@ -125,18 +123,21 @@ func main() {
 	inst.WaitTask(taskId)
 }
 
-func NewMyRec() *maa.CustomRecognizer {
-	rec := &maa.CustomRecognizer{}
-	rec.Set(MyRecAnalyze)
-	return rec
+type MyRec struct {
+	maa.Recognizer
 }
 
-func MyRecAnalyze(
+func NewMyRec() MyRec {
+	return MyRec{
+		Recognizer: maa.NewRecognizer(),
+	}
+}
+
+func (MyRec) Analyze(
 	syncCtx maa.SyncContext,
 	image maa.ImageBuffer,
 	taskName string,
 	customRecognitionParam string,
-	recognizerArg interface{},
 ) (maa.AnalyzeResult, bool) {
 	outBox := maa.NewRect()
 	outBox.Set(0, 0, 100, 100)
@@ -146,23 +147,28 @@ func MyRecAnalyze(
 	}, true
 }
 
-func NewMyAct() *maa.CustomAction {
-	act := &maa.CustomAction{}
-	act.Set(MyActRun, nil)
-	return act
+type MyAct struct {
+	maa.Action
 }
 
-func MyActRun(
+func NewMyAct() MyAct {
+	return MyAct{
+		Action: maa.NewAction(),
+	}
+}
+
+func (MyAct) Run(
 	ctx maa.SyncContext,
 	taskName string,
 	customActionParam string,
 	curBox maa.RectBuffer,
 	curRecDetail string,
-	actionArg interface{},
 ) bool {
 	return true
 }
 
+func (MyAct) Stop() {
+}
 ```
 
 ## Documentation
