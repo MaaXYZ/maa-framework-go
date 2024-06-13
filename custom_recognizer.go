@@ -16,45 +16,35 @@ extern uint8_t _AnalyzeAgent(MaaSyncContextHandle sync_context,
 import "C"
 import "unsafe"
 
+// CustomRecognizer defines an interface for custom recognizer.
+// Implementers of this interface must embed a pointer to a Recognizer struct
+// and provide an implementation for the Analyze method.
+type CustomRecognizer interface {
+	Analyze(syncCtx SyncContext, image ImageBuffer, taskName, RecognitionParam string) (AnalyzeResult, bool)
+
+	Handle() unsafe.Pointer
+	Destroy()
+}
+
 type AnalyzeResult struct {
 	Box    RectBuffer
 	Detail string
 }
 
-type CustomRecognizer struct {
+type Recognizer struct {
 	handle C.MaaCustomRecognizerHandle
-
-	analyze func(
-		syncCtx SyncContext,
-		image ImageBuffer,
-		taskName, customRecognitionParam string,
-		recognizerArg interface{},
-	) (AnalyzeResult, bool)
 }
 
-func (r *CustomRecognizer) Set(
-	analyze func(
-		syncCtx SyncContext,
-		image ImageBuffer,
-		taskName, customRecognitionParam string,
-		recognizerArg interface{},
-	) (AnalyzeResult, bool),
-) {
-	r.analyze = analyze
-	r.handle = C.MaaCustomRecognizerHandleCreate(C.AnalyzeCallback(C._AnalyzeAgent))
+func NewRecognizer() Recognizer {
+	return Recognizer{handle: C.MaaCustomRecognizerHandleCreate(C.AnalyzeCallback(C._AnalyzeAgent))}
 }
 
-func (r *CustomRecognizer) Handle() unsafe.Pointer {
+func (r Recognizer) Handle() unsafe.Pointer {
 	return unsafe.Pointer(r.handle)
 }
 
-func (r *CustomRecognizer) Destroy() {
+func (r Recognizer) Destroy() {
 	C.MaaCustomRecognizerHandleDestroy(r.handle)
-}
-
-type customRecognizerAgent struct {
-	rec *CustomRecognizer
-	arg interface{}
 }
 
 //export _AnalyzeAgent
@@ -66,16 +56,17 @@ func _AnalyzeAgent(
 	outBox C.MaaRectHandle,
 	outDetail C.MaaStringBufferHandle,
 ) C.uint8_t {
-	agent := (*customRecognizerAgent)(recognizerArg)
-	rec := agent.rec
-	arg := agent.arg
+	if recognizerArg == nil {
+		return C.uint8_t(0)
+	}
 
-	ret, ok := rec.analyze(
+	rec := *(*CustomRecognizer)(recognizerArg)
+
+	ret, ok := rec.Analyze(
 		SyncContext(syncCtx),
 		&imageBuffer{handle: image},
 		taskName,
 		customRecognitionParam,
-		arg,
 	)
 	if ok {
 		box := ret.Box

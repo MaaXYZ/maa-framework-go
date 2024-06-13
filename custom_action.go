@@ -20,43 +20,31 @@ import (
 	"unsafe"
 )
 
-type CustomAction struct {
+// CustomAction defines an interface for custom action.
+// Implementers of this interface must embed a pointer to an Action struct
+// and provide implementations for the Run and Stop methods.
+type CustomAction interface {
+	Run(ctx SyncContext, taskName, ActionParam string, curBox RectBuffer, curRecDetail string) bool
+	Stop()
+
+	Handle() unsafe.Pointer
+	Destroy()
+}
+
+type Action struct {
 	handle C.MaaCustomActionHandle
-
-	run func(ctx SyncContext,
-		taskName, customActionParam string,
-		curBox RectBuffer,
-		curRecDetail string,
-		actionArg interface{},
-	) bool
-	stop func(actionArg interface{})
 }
 
-func (a *CustomAction) Set(
-	run func(ctx SyncContext,
-		taskName, customActionParam string,
-		curBox RectBuffer,
-		curRecDetail string,
-		actionArg interface{},
-	) bool,
-	stop func(actionArg interface{}),
-) {
-	a.run = run
-	a.stop = stop
-	a.handle = C.MaaCustomActionHandleCreate(C.RunCallback(C._RunAgent), C.StopCallback(C._StopAgent))
+func NewAction() Action {
+	return Action{handle: C.MaaCustomActionHandleCreate(C.RunCallback(C._RunAgent), C.StopCallback(C._StopAgent))}
 }
 
-func (a *CustomAction) Handle() unsafe.Pointer {
+func (a Action) Handle() unsafe.Pointer {
 	return unsafe.Pointer(a.handle)
 }
 
-func (a *CustomAction) Destroy() {
+func (a Action) Destroy() {
 	C.MaaCustomActionHandleDestroy(a.handle)
-}
-
-type customActionAgent struct {
-	act *CustomAction
-	arg interface{}
 }
 
 //export _RunAgent
@@ -67,15 +55,17 @@ func _RunAgent(
 	curRecDetail string,
 	actionArg unsafe.Pointer,
 ) C.uint8_t {
-	agent := (*customActionAgent)(actionArg)
-	act := agent.act
-	ok := act.run(
+	if actionArg == nil {
+		return C.uint8_t(0)
+	}
+
+	act := *(*CustomAction)(actionArg)
+	ok := act.Run(
 		SyncContext(SyncCtx),
 		taskName,
 		customActionParam,
 		&rectBuffer{handle: curBox},
 		curRecDetail,
-		agent.arg,
 	)
 	if ok {
 		return C.uint8_t(1)
@@ -85,7 +75,10 @@ func _RunAgent(
 
 //export _StopAgent
 func _StopAgent(actionArg unsafe.Pointer) {
-	agent := (*customActionAgent)(actionArg)
-	act := agent.act
-	act.stop(agent.arg)
+	if actionArg == nil {
+		return
+	}
+
+	act := *(*CustomAction)(actionArg)
+	act.Stop()
 }

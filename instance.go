@@ -44,14 +44,15 @@ func (i *Instance) Inited() bool {
 	return C.MaaInited(i.handle) != 0
 }
 
-func (i *Instance) RegisterCustomRecognizer(name string, recognizer *CustomRecognizer, recognizerArg interface{}) bool {
+func (i *Instance) RegisterCustomRecognizer(name string, recognizer CustomRecognizer) bool {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	agent := &customRecognizerAgent{
-		rec: recognizer,
-		arg: recognizerArg,
-	}
-	return C.MaaRegisterCustomRecognizer(i.handle, cName, C.MaaCustomRecognizerHandle(recognizer.Handle()), C.MaaTransparentArg(unsafe.Pointer(agent))) != 0
+	return C.MaaRegisterCustomRecognizer(
+		i.handle,
+		cName,
+		C.MaaCustomRecognizerHandle(recognizer.Handle()),
+		C.MaaTransparentArg(unsafe.Pointer(&recognizer)),
+	) != 0
 }
 
 func (i *Instance) UnregisterCustomRecognizer(name string) bool {
@@ -64,14 +65,10 @@ func (i *Instance) ClearCustomRecognizer() bool {
 	return C.MaaClearCustomRecognizer(i.handle) != 0
 }
 
-func (i *Instance) RegisterCustomAction(name string, action *CustomAction, actionArg interface{}) bool {
+func (i *Instance) RegisterCustomAction(name string, action CustomAction) bool {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	agent := &customActionAgent{
-		act: action,
-		arg: actionArg,
-	}
-	return C.MaaRegisterCustomAction(i.handle, cName, C.MaaCustomActionHandle(action.Handle()), C.MaaTransparentArg(unsafe.Pointer(agent))) != 0
+	return C.MaaRegisterCustomAction(i.handle, cName, C.MaaCustomActionHandle(action.Handle()), C.MaaTransparentArg(unsafe.Pointer(&action))) != 0
 }
 
 func (i *Instance) UnregisterCustomAction(name string) bool {
