@@ -51,7 +51,7 @@ func (i *Instance) RegisterCustomRecognizer(name string, recognizer *CustomRecog
 		rec: recognizer,
 		arg: recognizerArg,
 	}
-	return C.MaaRegisterCustomRecognizer(i.handle, cName, recognizer.handle, C.MaaTransparentArg(unsafe.Pointer(agent))) != 0
+	return C.MaaRegisterCustomRecognizer(i.handle, cName, C.MaaCustomRecognizerHandle(recognizer.Handle()), C.MaaTransparentArg(unsafe.Pointer(agent))) != 0
 }
 
 func (i *Instance) UnregisterCustomRecognizer(name string) bool {
@@ -71,7 +71,7 @@ func (i *Instance) RegisterCustomAction(name string, action *CustomAction, actio
 		act: action,
 		arg: actionArg,
 	}
-	return C.MaaRegisterCustomAction(i.handle, cName, action.handle, C.MaaTransparentArg(unsafe.Pointer(agent))) != 0
+	return C.MaaRegisterCustomAction(i.handle, cName, C.MaaCustomActionHandle(action.Handle()), C.MaaTransparentArg(unsafe.Pointer(agent))) != 0
 }
 
 func (i *Instance) UnregisterCustomAction(name string) bool {
