@@ -199,7 +199,7 @@ func _ClickAgent(x, y C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
 func _SwipeAgent(x1, y1, x2, y2, duration C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
 	ctrl := *(*CustomControllerImpl)(handleArg)
 	if ctrl.Swipe == nil {
-		C.uint8_t(0)
+		return C.uint8_t(0)
 	}
 	ok := ctrl.Swipe(int32(x1), int32(y1), int32(x2), int32(y2), int32(duration))
 	if ok {
