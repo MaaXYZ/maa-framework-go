@@ -4,7 +4,7 @@ package maa
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
 
-extern void _MaaAPICallbackAgent(_GoString_ msg, _GoString_ detailsJson, MaaTransparentArg callbackArg);
+extern void _MaaAPICallbackAgent(MaaStringView msg, MaaStringView detailsJson, MaaTransparentArg callbackArg);
 */
 import "C"
 import "unsafe"

@@ -7,10 +7,10 @@ package maa
 
 extern uint8_t _RunAgent(
 	MaaSyncContextHandle SyncCtx,
-	_GoString_ taskName,
-	_GoString_ customActionParam,
+	MaaStringView taskName,
+	MaaStringView customActionParam,
 	MaaRectHandle curBox ,
-	_GoString_ curRecDetail,
+	MaaStringView curRecDetail,
 	MaaTransparentArg actionArg);
 
 extern void _StopAgent(MaaTransparentArg actionArg);
@@ -50,22 +50,18 @@ func (a CustomActionHandler) Destroy() {
 //export _RunAgent
 func _RunAgent(
 	SyncCtx C.MaaSyncContextHandle,
-	taskName, customActionParam string,
+	taskName, customActionParam C.MaaStringView,
 	curBox C.MaaRectHandle,
-	curRecDetail string,
-	actionArg unsafe.Pointer,
+	curRecDetail C.MaaStringView,
+	actionArg C.MaaTransparentArg,
 ) C.uint8_t {
-	if actionArg == nil {
-		return C.uint8_t(0)
-	}
-
-	act := *(*CustomActionImpl)(actionArg)
+	act := *(*CustomActionImpl)(unsafe.Pointer(actionArg))
 	ok := act.Run(
 		SyncContext(SyncCtx),
-		taskName,
-		customActionParam,
+		C.GoString(taskName),
+		C.GoString(customActionParam),
 		&rectBuffer{handle: curBox},
-		curRecDetail,
+		C.GoString(curRecDetail),
 	)
 	if ok {
 		return C.uint8_t(1)
@@ -74,11 +70,7 @@ func _RunAgent(
 }
 
 //export _StopAgent
-func _StopAgent(actionArg unsafe.Pointer) {
-	if actionArg == nil {
-		return
-	}
-
-	act := *(*CustomActionImpl)(actionArg)
+func _StopAgent(actionArg C.MaaTransparentArg) {
+	act := *(*CustomActionImpl)(unsafe.Pointer(actionArg))
 	act.Stop()
 }

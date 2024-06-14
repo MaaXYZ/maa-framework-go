@@ -5,10 +5,11 @@ package maa
 #include <MaaFramework/MaaAPI.h>
 #include "custom_recognizer.h"
 
-extern uint8_t _AnalyzeAgent(MaaSyncContextHandle sync_context,
+extern uint8_t _AnalyzeAgent(
+			MaaSyncContextHandle sync_context,
             const MaaImageBufferHandle image,
-            _GoString_ task_name,
-            _GoString_ custom_recognition_param,
+            MaaStringView task_name,
+            MaaStringView custom_recognition_param,
             MaaTransparentArg recognizer_arg,
            	MaaRectHandle out_box,
 			MaaStringBufferHandle out_detail);
@@ -51,22 +52,18 @@ func (r CustomRecognizerHandler) Destroy() {
 func _AnalyzeAgent(
 	syncCtx C.MaaSyncContextHandle,
 	image C.MaaImageBufferHandle,
-	taskName, customRecognitionParam string,
-	recognizerArg unsafe.Pointer,
+	taskName, customRecognitionParam C.MaaStringView,
+	recognizerArg C.MaaTransparentArg,
 	outBox C.MaaRectHandle,
 	outDetail C.MaaStringBufferHandle,
 ) C.uint8_t {
-	if recognizerArg == nil {
-		return C.uint8_t(0)
-	}
-
-	rec := *(*CustomRecognizerImpl)(recognizerArg)
+	rec := *(*CustomRecognizerImpl)(unsafe.Pointer(recognizerArg))
 
 	ret, ok := rec.Analyze(
 		SyncContext(syncCtx),
 		&imageBuffer{handle: image},
-		taskName,
-		customRecognitionParam,
+		C.GoString(taskName),
+		C.GoString(customRecognitionParam),
 	)
 	if ok {
 		box := ret.Box

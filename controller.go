@@ -3,8 +3,6 @@ package maa
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
-
-extern void _CgoMaaAPICallback(_GoString_ msg, _GoString_ detailsJson, MaaTransparentArg callbackArg);
 */
 import "C"
 import (

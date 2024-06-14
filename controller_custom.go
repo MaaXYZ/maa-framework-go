@@ -5,7 +5,7 @@ package maa
 #include <MaaFramework/MaaAPI.h>
 #include "controller_custom.h"
 
-extern void _MaaAPICallbackAgent(_GoString_ msg, _GoString_ detailsJson, MaaTransparentArg callbackArg);
+extern void _MaaAPICallbackAgent(MaaStringView msg, MaaStringView detailsJson, MaaTransparentArg callbackArg);
 
 extern uint8_t _ConnectAgent(MaaTransparentArg handleArg);
 extern uint8_t _RequestUUIDAgent(MaaTransparentArg handle_arg, MaaStringBufferHandle buffer);
@@ -35,7 +35,7 @@ extern uint8_t _TouchMoveAgent(
             MaaTransparentArg handle_arg);
 extern uint8_t _TouchUpAgent(int32_t contact, MaaTransparentArg handle_arg);
 extern uint8_t _PressKey(int32_t keycode, MaaTransparentArg handle_arg);
-extern uint8_t _InputText(_GoString_ text, MaaTransparentArg handle_arg);
+extern uint8_t _InputText(MaaStringView text, MaaTransparentArg handle_arg);
 */
 import "C"
 import (
@@ -98,8 +98,8 @@ func (c CustomControllerHandler) Destroy() {
 }
 
 //export _ConnectAgent
-func _ConnectAgent(handleArg unsafe.Pointer) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _ConnectAgent(handleArg C.MaaTransparentArg) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(C.MaaTransparentArg(handleArg))
 	ok := ctrl.Connect()
 	if ok {
 		return C.uint8_t(1)
@@ -108,8 +108,8 @@ func _ConnectAgent(handleArg unsafe.Pointer) C.uint8_t {
 }
 
 //export _RequestUUIDAgent
-func _RequestUUIDAgent(handleArg unsafe.Pointer, buffer C.MaaStringBufferHandle) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _RequestUUIDAgent(handleArg C.MaaTransparentArg, buffer C.MaaStringBufferHandle) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	uuid, ok := ctrl.RequestUUID()
 	if ok {
 		uuidStringBuffer := &stringBuffer{handle: buffer}
@@ -120,8 +120,8 @@ func _RequestUUIDAgent(handleArg unsafe.Pointer, buffer C.MaaStringBufferHandle)
 }
 
 //export _RequestResolutionAgent
-func _RequestResolutionAgent(handleArg unsafe.Pointer, width, height *C.int32_t) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _RequestResolutionAgent(handleArg C.MaaTransparentArg, width, height *C.int32_t) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	w, h, ok := ctrl.RequestResolution()
 	if ok {
 		*width = C.int32_t(w)
@@ -132,8 +132,8 @@ func _RequestResolutionAgent(handleArg unsafe.Pointer, width, height *C.int32_t)
 }
 
 //export _StartAppAgent
-func _StartAppAgent(intent string, handleArg unsafe.Pointer) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _StartAppAgent(intent string, handleArg C.MaaTransparentArg) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	ok := ctrl.StartApp(intent)
 	if ok {
 		return C.uint8_t(1)
@@ -142,8 +142,8 @@ func _StartAppAgent(intent string, handleArg unsafe.Pointer) C.uint8_t {
 }
 
 //export _StopAppAgent
-func _StopAppAgent(intent string, handleArg unsafe.Pointer) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _StopAppAgent(intent string, handleArg C.MaaTransparentArg) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	ok := ctrl.StopApp(intent)
 	if ok {
 		return C.uint8_t(1)
@@ -152,8 +152,8 @@ func _StopAppAgent(intent string, handleArg unsafe.Pointer) C.uint8_t {
 }
 
 //export _ScreencapAgent
-func _ScreencapAgent(handleArg unsafe.Pointer, buffer C.MaaImageBufferHandle) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _ScreencapAgent(handleArg C.MaaTransparentArg, buffer C.MaaImageBufferHandle) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	img, ok := ctrl.Screencap()
 	defer img.Destroy()
 	if ok {
@@ -165,8 +165,8 @@ func _ScreencapAgent(handleArg unsafe.Pointer, buffer C.MaaImageBufferHandle) C.
 }
 
 //export _ClickAgent
-func _ClickAgent(x, y C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _ClickAgent(x, y C.int32_t, handleArg C.MaaTransparentArg) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	ok := ctrl.Click(int32(x), int32(y))
 	if ok {
 		return C.uint8_t(1)
@@ -175,8 +175,8 @@ func _ClickAgent(x, y C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
 }
 
 //export _SwipeAgent
-func _SwipeAgent(x1, y1, x2, y2, duration C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _SwipeAgent(x1, y1, x2, y2, duration C.int32_t, handleArg C.MaaTransparentArg) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	ok := ctrl.Swipe(int32(x1), int32(y1), int32(x2), int32(y2), int32(duration))
 	if ok {
 		return C.uint8_t(1)
@@ -185,8 +185,8 @@ func _SwipeAgent(x1, y1, x2, y2, duration C.int32_t, handleArg unsafe.Pointer) C
 }
 
 //export _TouchDownAgent
-func _TouchDownAgent(contact, x, y, pressure C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _TouchDownAgent(contact, x, y, pressure C.int32_t, handleArg C.MaaTransparentArg) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	ok := ctrl.TouchDown(int32(contact), int32(x), int32(y), int32(pressure))
 	if ok {
 		return C.uint8_t(1)
@@ -195,8 +195,8 @@ func _TouchDownAgent(contact, x, y, pressure C.int32_t, handleArg unsafe.Pointer
 }
 
 //export _TouchMoveAgent
-func _TouchMoveAgent(contact, x, y, pressure C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _TouchMoveAgent(contact, x, y, pressure C.int32_t, handleArg C.MaaTransparentArg) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	ok := ctrl.TouchMove(int32(contact), int32(x), int32(y), int32(pressure))
 	if ok {
 		return C.uint8_t(1)
@@ -205,8 +205,8 @@ func _TouchMoveAgent(contact, x, y, pressure C.int32_t, handleArg unsafe.Pointer
 }
 
 //export _TouchUpAgent
-func _TouchUpAgent(contact C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _TouchUpAgent(contact C.int32_t, handleArg C.MaaTransparentArg) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	ok := ctrl.TouchUp(int32(contact))
 	if ok {
 		return C.uint8_t(1)
@@ -215,8 +215,8 @@ func _TouchUpAgent(contact C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
 }
 
 //export _PressKey
-func _PressKey(key C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
+func _PressKey(key C.int32_t, handleArg C.MaaTransparentArg) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	ok := ctrl.PressKey(int32(key))
 	if ok {
 		return C.uint8_t(1)
@@ -225,9 +225,9 @@ func _PressKey(key C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
 }
 
 //export _InputText
-func _InputText(text string, handleArg unsafe.Pointer) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(handleArg)
-	ok := ctrl.InputText(text)
+func _InputText(text C.MaaStringView, handleArg C.MaaTransparentArg) C.uint8_t {
+	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
+	ok := ctrl.InputText(C.GoString(text))
 	if ok {
 		return C.uint8_t(1)
 	}
