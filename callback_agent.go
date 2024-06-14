@@ -16,7 +16,7 @@ type callbackAgent struct {
 
 //export _MaaAPICallbackAgent
 func _MaaAPICallbackAgent(msg, detailsJson string, callbackArg unsafe.Pointer) {
-	agent := (*callbackAgent)(callbackArg)
+	agent := *(*callbackAgent)(callbackArg)
 	if agent.callback == nil {
 		return
 	}
