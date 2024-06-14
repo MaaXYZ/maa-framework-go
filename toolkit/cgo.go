@@ -1,3 +1,5 @@
+//go:build !customenv
+
 package toolkit
 
 /*
