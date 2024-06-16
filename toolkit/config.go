@@ -7,6 +7,7 @@ package toolkit
 import "C"
 import "unsafe"
 
+// InitOption inits the toolkit option config.
 func InitOption(userPath, defaultJson string) bool {
 	cUserPath := C.CString(userPath)
 	cDefaultJson := C.CString(defaultJson)
