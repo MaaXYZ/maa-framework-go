@@ -16,10 +16,6 @@ type Resource struct {
 }
 
 // NewResource creates a new resource.
-//
-// This function takes two arguments:
-//
-//   - callback: The callback function.
 func NewResource(callback func(msg, detailsJson string)) *Resource {
 	agent := &callbackAgent{callback: callback}
 	handle := C.MaaResourceCreate(C.MaaAPICallback(C._MaaAPICallbackAgent), C.MaaTransparentArg(unsafe.Pointer(agent)))
@@ -42,12 +38,11 @@ func (r *Resource) PostPath(path string) int64 {
 }
 
 // Clear clears the resource loading paths.
-// If the call is successful, it returns true. Otherwise, it returns false.
 func (r *Resource) Clear() bool {
 	return C.MaaResourceClear(r.handle) != 0
 }
 
-// Status gets the loading status of a resource identified by id.
+// Status returns the loading status of a resource identified by id.
 func (r *Resource) Status(resId int64) Status {
 	return Status(C.MaaResourceStatus(r.handle, C.int64_t(resId)))
 }
@@ -62,7 +57,7 @@ func (r *Resource) Loaded() bool {
 	return C.MaaResourceLoaded(r.handle) != 0
 }
 
-// GetHash gets the hash of the resource.
+// GetHash returns the hash of the resource.
 func (r *Resource) GetHash() (string, bool) {
 	hash := NewString()
 	defer hash.Destroy()
@@ -74,7 +69,7 @@ func (r *Resource) GetHash() (string, bool) {
 	return hash.Get(), true
 }
 
-// GetTaskList gets the task list of the resource.
+// GetTaskList returns the task list of the resource.
 func (r *Resource) GetTaskList() (string, bool) {
 	taskList := NewString()
 	defer taskList.Destroy()
