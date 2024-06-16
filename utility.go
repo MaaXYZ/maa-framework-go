@@ -7,6 +7,7 @@ package maa
 import "C"
 import "unsafe"
 
+// FrameworkVersion returns the version of the framework.
 func FrameworkVersion() string {
 	return C.GoString(C.MaaVersion())
 }
@@ -50,12 +51,14 @@ const (
 	GlobalOptionDebugMessage
 )
 
+// SetLogDir sets the log directory.
 func SetLogDir(path string) bool {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 	return C.MaaSetGlobalOption(C.int32_t(GlobalOptionLogDir), C.MaaOptionValue(cPath), C.uint64_t(len(path))) != 0
 }
 
+// SetSaveDraw sets whether to save draw.
 func SetSaveDraw(enabled bool) bool {
 	var cEnabled uint8
 	if enabled {
@@ -64,6 +67,7 @@ func SetSaveDraw(enabled bool) bool {
 	return C.MaaSetGlobalOption(C.int32_t(GlobalOptionSaveDraw), C.MaaOptionValue(unsafe.Pointer(&cEnabled)), C.uint64_t(unsafe.Sizeof(cEnabled))) != 0
 }
 
+// SetRecording sets whether to dump all screenshots and actions.
 func SetRecording(enabled bool) bool {
 	var cEnabled uint8
 	if enabled {
@@ -86,10 +90,12 @@ const (
 	LoggingLevelAll
 )
 
+// SetStdoutLevel sets the level of log output to stdout.
 func SetStdoutLevel(level LoggingLevel) bool {
 	return C.MaaSetGlobalOption(C.int32_t(GlobalOptionStdoutLevel), C.MaaOptionValue(unsafe.Pointer(&level)), C.uint64_t(unsafe.Sizeof(level))) != 0
 }
 
+// SetShowHitDraw sets whether to show hit draw.
 func SetShowHitDraw(enabled bool) bool {
 	var cEnabled uint8
 	if enabled {
@@ -98,6 +104,7 @@ func SetShowHitDraw(enabled bool) bool {
 	return C.MaaSetGlobalOption(C.int32_t(GlobalOptionShowHitDraw), C.MaaOptionValue(unsafe.Pointer(&cEnabled)), C.uint64_t(unsafe.Sizeof(cEnabled))) != 0
 }
 
+// SetDebugMessage sets whether to callback debug message.
 func SetDebugMessage(enabled bool) bool {
 	var cEnabled uint8
 	if enabled {
@@ -114,6 +121,7 @@ type RecognitionDetail struct {
 	Draws      ImageListBuffer
 }
 
+// QueryRecognitionDetail queries recognition detail.
 func QueryRecognitionDetail(recId int64) (RecognitionDetail, bool) {
 	name := NewString()
 	var hit uint8
@@ -149,6 +157,7 @@ type NodeDetail struct {
 	RunCompleted bool
 }
 
+// QueryNodeDetail queries running detail.
 func QueryNodeDetail(nodeId int64) (*NodeDetail, bool) {
 	name := NewString()
 	defer name.Destroy()
@@ -172,6 +181,7 @@ type TaskDetail struct {
 	NodeIdList []int64
 }
 
+// QueryTaskDetail queries task detail.
 func QueryTaskDetail(taskId int64) (*TaskDetail, bool) {
 	entry := NewString()
 	defer entry.Destroy()
