@@ -23,7 +23,7 @@ On Windows, the default location for MaaFramework is `C:\maa`. Ensure that MaaFr
 
 ### Linux and macOS
 
-On Linux and macOS, you will need to create a `pkg-config` file named `maa.pc`. This file should correctly point to the locations of the MaaFramework headers and libraries. Place this file in a directory where `pkg-config` can find it (e.g., `/usr/local/lib/pkgconfig`).
+On Linux and macOS, you will need to create a `pkg-config` file named `maa.pc`. This file should correctly point to the locations of the MaaFramework headers and libraries. Place this file in a directory where `pkg-config` can find it (e.g., `/usr/lib/pkgconfig`).
 
 A sample `maa.pc` file might look like this:
 
