@@ -87,13 +87,13 @@ func (ctx SyncContext) TouchUp(contact int32) bool {
 }
 
 func (ctx SyncContext) Screencap() (ImageBuffer, bool) {
-	outImage := NewImage()
+	outImage := NewImageBuffer()
 	ret := C.MaaSyncContextScreencap(ctx.handle, C.MaaImageBufferHandle(outImage.Handle()))
 	return outImage, ret != 0
 }
 
 func (ctx SyncContext) CacheImage() (ImageBuffer, bool) {
-	outImage := NewImage()
+	outImage := NewImageBuffer()
 	ret := C.MaaSyncContextCachedImage(ctx.handle, C.MaaImageBufferHandle(outImage.Handle()))
 	return outImage, ret != 0
 }

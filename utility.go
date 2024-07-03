@@ -123,12 +123,12 @@ type RecognitionDetail struct {
 
 // QueryRecognitionDetail queries recognition detail.
 func QueryRecognitionDetail(recId int64) (RecognitionDetail, bool) {
-	name := NewString()
+	name := NewStringBuffer()
 	var hit uint8
-	hitBox := NewRect()
-	detailJson := NewString()
-	raw := NewImage()
-	draws := NewImageList()
+	hitBox := NewRectBuffer()
+	detailJson := NewStringBuffer()
+	raw := NewImageBuffer()
+	draws := NewImageListBuffer()
 	defer func() {
 		name.Destroy()
 		detailJson.Destroy()
@@ -159,7 +159,7 @@ type NodeDetail struct {
 
 // QueryNodeDetail queries running detail.
 func QueryNodeDetail(nodeId int64) (*NodeDetail, bool) {
-	name := NewString()
+	name := NewStringBuffer()
 	defer name.Destroy()
 	var recId int64
 	var runCompleted uint8
@@ -183,7 +183,7 @@ type TaskDetail struct {
 
 // QueryTaskDetail queries task detail.
 func QueryTaskDetail(taskId int64) (*TaskDetail, bool) {
-	entry := NewString()
+	entry := NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
 	got := C.MaaQueryTaskDetail(C.int64_t(taskId), nil, nil, (*C.uint64_t)(unsafe.Pointer(&size))) != 0

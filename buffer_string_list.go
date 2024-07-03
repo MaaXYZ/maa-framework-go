@@ -20,7 +20,7 @@ type stringList struct {
 	handle C.MaaStringListBufferHandle
 }
 
-func NewStringList() StringListBuffer {
+func NewStringListBuffer() StringListBuffer {
 	handle := C.MaaCreateStringListBuffer()
 	return &stringList{handle: handle}
 }

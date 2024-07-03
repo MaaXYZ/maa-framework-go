@@ -26,7 +26,7 @@ type imageBuffer struct {
 	handle C.MaaImageBufferHandle
 }
 
-func NewImage() ImageBuffer {
+func NewImageBuffer() ImageBuffer {
 	handle := C.MaaCreateImageBuffer()
 	return &imageBuffer{handle: handle}
 }

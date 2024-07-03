@@ -22,7 +22,7 @@ type imageListBuffer struct {
 	handle C.MaaImageListBufferHandle
 }
 
-func NewImageList() ImageListBuffer {
+func NewImageListBuffer() ImageListBuffer {
 	handle := C.MaaCreateImageListBuffer()
 	return &imageListBuffer{handle: handle}
 }

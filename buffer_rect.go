@@ -25,7 +25,7 @@ type rectBuffer struct {
 	handle C.MaaRectHandle
 }
 
-func NewRect() RectBuffer {
+func NewRectBuffer() RectBuffer {
 	handle := C.MaaCreateRectBuffer()
 	return &rectBuffer{handle: handle}
 }

@@ -22,7 +22,7 @@ type stringBuffer struct {
 	handle C.MaaStringBufferHandle
 }
 
-func NewString() StringBuffer {
+func NewStringBuffer() StringBuffer {
 	handle := C.MaaCreateStringBuffer()
 	return &stringBuffer{handle: handle}
 }
