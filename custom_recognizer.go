@@ -28,7 +28,7 @@ type CustomRecognizerImpl interface {
 }
 
 type AnalyzeResult struct {
-	Box    RectBuffer
+	Box    Rect
 	Detail string
 }
 
@@ -68,7 +68,7 @@ func _AnalyzeAgent(
 	if ok {
 		box := ret.Box
 		outBoxRect := &rectBuffer{handle: outBox}
-		outBoxRect.Set(box.GetX(), box.GetY(), box.GetW(), box.GetH())
+		outBoxRect.Set(box)
 		outDetailString := &stringBuffer{handle: outDetail}
 		outDetailString.Set(ret.Detail)
 		return C.uint8_t(1)
