@@ -23,7 +23,12 @@ func (ctx SyncContext) RunTask(taskName, param string) bool {
 	return C.MaaSyncContextRunTask(ctx.handle, cTaskName, cParam) != 0
 }
 
-func (ctx SyncContext) RunRecognition(image ImageBuffer, taskName, taskParam string) (RectBuffer, StringBuffer, bool) {
+type RecognitionResult struct {
+	Box    Rect
+	Detail string
+}
+
+func (ctx SyncContext) RunRecognition(image ImageBuffer, taskName, taskParam string) (RecognitionResult, bool) {
 	cTaskName := C.CString(taskName)
 	cTaskParam := C.CString(taskParam)
 	defer func() {
@@ -31,8 +36,12 @@ func (ctx SyncContext) RunRecognition(image ImageBuffer, taskName, taskParam str
 		C.free(unsafe.Pointer(cTaskParam))
 	}()
 
-	outBox := NewRect()
-	outDetail := NewString()
+	outBox := NewRectBuffer()
+	outDetail := NewStringBuffer()
+	defer func() {
+		outBox.Destroy()
+		outDetail.Destroy()
+	}()
 	ret := C.MaaSyncContextRunRecognition(
 		ctx.handle,
 		C.MaaImageBufferHandle(image.Handle()),
@@ -41,7 +50,10 @@ func (ctx SyncContext) RunRecognition(image ImageBuffer, taskName, taskParam str
 		C.MaaRectHandle(outBox.Handle()),
 		C.MaaStringBufferHandle(outDetail.Handle()),
 	)
-	return outBox, outDetail, ret != 0
+	return RecognitionResult{
+		Box:    outBox.Get(),
+		Detail: outDetail.Get(),
+	}, ret != 0
 }
 
 func (ctx SyncContext) RunAction(taskName, taskParam string, curBox Rect, curRecDetail string) bool {
