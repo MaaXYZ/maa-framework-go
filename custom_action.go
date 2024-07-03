@@ -49,7 +49,7 @@ func (a CustomActionHandler) Destroy() {
 
 //export _RunAgent
 func _RunAgent(
-	SyncCtx C.MaaSyncContextHandle,
+	ctx C.MaaSyncContextHandle,
 	taskName, customActionParam C.MaaStringView,
 	curBox C.MaaRectHandle,
 	curRecDetail C.MaaStringView,
@@ -57,7 +57,7 @@ func _RunAgent(
 ) C.uint8_t {
 	act := *(*CustomActionImpl)(unsafe.Pointer(actionArg))
 	ok := act.Run(
-		SyncContext(SyncCtx),
+		SyncContext{handle: ctx},
 		C.GoString(taskName),
 		C.GoString(customActionParam),
 		&rectBuffer{handle: curBox},

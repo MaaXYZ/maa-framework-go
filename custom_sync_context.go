@@ -9,19 +9,21 @@ import (
 	"unsafe"
 )
 
-type SyncContext C.MaaSyncContextHandle
+type SyncContext struct {
+	handle C.MaaSyncContextHandle
+}
 
-func RunTask(syncCtx SyncContext, taskName, param string) bool {
+func (ctx SyncContext) RunTask(taskName, param string) bool {
 	cTaskName := C.CString(taskName)
 	cParam := C.CString(param)
 	defer func() {
 		C.free(unsafe.Pointer(cTaskName))
 		C.free(unsafe.Pointer(cParam))
 	}()
-	return C.MaaSyncContextRunTask(syncCtx, cTaskName, cParam) != 0
+	return C.MaaSyncContextRunTask(ctx.handle, cTaskName, cParam) != 0
 }
 
-func RunRecognition(syncCtx SyncContext, image ImageBuffer, taskName, taskParam string) (RectBuffer, StringBuffer, bool) {
+func (ctx SyncContext) RunRecognition(image ImageBuffer, taskName, taskParam string) (RectBuffer, StringBuffer, bool) {
 	cTaskName := C.CString(taskName)
 	cTaskParam := C.CString(taskParam)
 	defer func() {
@@ -32,7 +34,7 @@ func RunRecognition(syncCtx SyncContext, image ImageBuffer, taskName, taskParam 
 	outBox := NewRect()
 	outDetail := NewString()
 	ret := C.MaaSyncContextRunRecognition(
-		syncCtx,
+		ctx.handle,
 		C.MaaImageBufferHandle(image.Handle()),
 		cTaskName,
 		cTaskParam,
@@ -42,7 +44,7 @@ func RunRecognition(syncCtx SyncContext, image ImageBuffer, taskName, taskParam 
 	return outBox, outDetail, ret != 0
 }
 
-func RunAction(syncCtx SyncContext, taskName, taskParam string, curBox RectBuffer, curRecDetail string) bool {
+func (ctx SyncContext) RunAction(taskName, taskParam string, curBox RectBuffer, curRecDetail string) bool {
 	cTaskName := C.CString(taskName)
 	cTaskParam := C.CString(taskParam)
 	cCurRecDetail := C.CString(curRecDetail)
@@ -51,47 +53,47 @@ func RunAction(syncCtx SyncContext, taskName, taskParam string, curBox RectBuffe
 		C.free(unsafe.Pointer(cTaskParam))
 		C.free(unsafe.Pointer(cCurRecDetail))
 	}()
-	return C.MaaSyncContextRunAction(syncCtx, cTaskName, cTaskParam, C.MaaRectHandle(curBox.Handle()), cCurRecDetail) != 0
+	return C.MaaSyncContextRunAction(ctx.handle, cTaskName, cTaskParam, C.MaaRectHandle(curBox.Handle()), cCurRecDetail) != 0
 }
 
-func Click(syncCtx SyncContext, x, y int32) bool {
-	return C.MaaSyncContextClick(syncCtx, C.int32_t(x), C.int32_t(y)) != 0
+func (ctx SyncContext) Click(x, y int32) bool {
+	return C.MaaSyncContextClick(ctx.handle, C.int32_t(x), C.int32_t(y)) != 0
 }
 
-func Swipe(syncCtx SyncContext, x1, y1, x2, y2, duration int32) bool {
-	return C.MaaSyncContextSwipe(syncCtx, C.int32_t(x1), C.int32_t(y1), C.int32_t(x2), C.int32_t(y2), C.int32_t(duration)) != 0
+func (ctx SyncContext) Swipe(x1, y1, x2, y2, duration int32) bool {
+	return C.MaaSyncContextSwipe(ctx.handle, C.int32_t(x1), C.int32_t(y1), C.int32_t(x2), C.int32_t(y2), C.int32_t(duration)) != 0
 }
 
-func PressKey(syncCtx SyncContext, keycode int32) bool {
-	return C.MaaSyncContextPressKey(syncCtx, C.int32_t(keycode)) != 0
+func (ctx SyncContext) PressKey(keycode int32) bool {
+	return C.MaaSyncContextPressKey(ctx.handle, C.int32_t(keycode)) != 0
 }
 
-func InputText(syncCtx SyncContext, text string) bool {
+func (ctx SyncContext) InputText(text string) bool {
 	cText := C.CString(text)
 	defer C.free(unsafe.Pointer(cText))
-	return C.MaaSyncContextInputText(syncCtx, cText) != 0
+	return C.MaaSyncContextInputText(ctx.handle, cText) != 0
 }
 
-func TouchDown(syncCtx SyncContext, contact, x, y, pressure int32) bool {
-	return C.MaaSyncContextTouchDown(syncCtx, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)) != 0
+func (ctx SyncContext) TouchDown(contact, x, y, pressure int32) bool {
+	return C.MaaSyncContextTouchDown(ctx.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)) != 0
 }
 
-func TouchMove(syncCtx SyncContext, contact, x, y, pressure int32) bool {
-	return C.MaaSyncContextTouchMove(syncCtx, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)) != 0
+func (ctx SyncContext) TouchMove(contact, x, y, pressure int32) bool {
+	return C.MaaSyncContextTouchMove(ctx.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)) != 0
 }
 
-func TouchUp(syncCtx SyncContext, contact int32) bool {
-	return C.MaaSyncContextTouchUp(syncCtx, C.int32_t(contact)) != 0
+func (ctx SyncContext) TouchUp(contact int32) bool {
+	return C.MaaSyncContextTouchUp(ctx.handle, C.int32_t(contact)) != 0
 }
 
-func Screencap(syncCtx SyncContext) (ImageBuffer, bool) {
+func (ctx SyncContext) Screencap() (ImageBuffer, bool) {
 	outImage := NewImage()
-	ret := C.MaaSyncContextScreencap(syncCtx, C.MaaImageBufferHandle(outImage.Handle()))
+	ret := C.MaaSyncContextScreencap(ctx.handle, C.MaaImageBufferHandle(outImage.Handle()))
 	return outImage, ret != 0
 }
 
-func CacheImage(syncCtx SyncContext) (ImageBuffer, bool) {
+func (ctx SyncContext) CacheImage() (ImageBuffer, bool) {
 	outImage := NewImage()
-	ret := C.MaaSyncContextCachedImage(syncCtx, C.MaaImageBufferHandle(outImage.Handle()))
+	ret := C.MaaSyncContextCachedImage(ctx.handle, C.MaaImageBufferHandle(outImage.Handle()))
 	return outImage, ret != 0
 }

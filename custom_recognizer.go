@@ -50,7 +50,7 @@ func (r CustomRecognizerHandler) Destroy() {
 
 //export _AnalyzeAgent
 func _AnalyzeAgent(
-	syncCtx C.MaaSyncContextHandle,
+	ctx C.MaaSyncContextHandle,
 	image C.MaaImageBufferHandle,
 	taskName, customRecognitionParam C.MaaStringView,
 	recognizerArg C.MaaTransparentArg,
@@ -60,7 +60,7 @@ func _AnalyzeAgent(
 	rec := *(*CustomRecognizerImpl)(unsafe.Pointer(recognizerArg))
 
 	ret, ok := rec.Analyze(
-		SyncContext(syncCtx),
+		SyncContext{handle: ctx},
 		&imageBuffer{handle: image},
 		C.GoString(taskName),
 		C.GoString(customRecognitionParam),
