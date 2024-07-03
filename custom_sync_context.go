@@ -44,7 +44,7 @@ func (ctx SyncContext) RunRecognition(image ImageBuffer, taskName, taskParam str
 	return outBox, outDetail, ret != 0
 }
 
-func (ctx SyncContext) RunAction(taskName, taskParam string, curBox RectBuffer, curRecDetail string) bool {
+func (ctx SyncContext) RunAction(taskName, taskParam string, curBox Rect, curRecDetail string) bool {
 	cTaskName := C.CString(taskName)
 	cTaskParam := C.CString(taskParam)
 	cCurRecDetail := C.CString(curRecDetail)
@@ -53,7 +53,11 @@ func (ctx SyncContext) RunAction(taskName, taskParam string, curBox RectBuffer, 
 		C.free(unsafe.Pointer(cTaskParam))
 		C.free(unsafe.Pointer(cCurRecDetail))
 	}()
-	return C.MaaSyncContextRunAction(ctx.handle, cTaskName, cTaskParam, C.MaaRectHandle(curBox.Handle()), cCurRecDetail) != 0
+
+	curBoxRectBuffer := NewRectBuffer()
+	curBoxRectBuffer.Set(curBox)
+	defer curBoxRectBuffer.Destroy()
+	return C.MaaSyncContextRunAction(ctx.handle, cTaskName, cTaskParam, C.MaaRectHandle(curBoxRectBuffer.Handle()), cCurRecDetail) != 0
 }
 
 func (ctx SyncContext) Click(x, y int32) bool {
