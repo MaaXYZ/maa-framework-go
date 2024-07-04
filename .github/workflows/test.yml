@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        arch: [ x86_64, aarch64 ]
+        arch: [ x86_64 ]
       fail-fast: false
 
     steps:
@@ -65,7 +65,7 @@ jobs:
     container: archlinux:base-devel
     strategy:
       matrix:
-        arch: [ x86_64, aarch64 ]
+        arch: [ x86_64 ]
       fail-fast: false
 
     steps:
@@ -77,12 +77,6 @@ jobs:
         run: |
           pacman -Sy
           pacman -S --noconfirm git
-
-      - name: Install cross compile toolchains
-        if: ${{ matrix.arch != 'x86_64' }}
-        run: |
-          pacman -Sy
-          pacman -S --noconfirm aarch64-linux-gnu-gcc
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -105,8 +99,6 @@ jobs:
 
       - name: Test
         env:
-          CC: ${{ matrix.arch == 'x86_64' && 'gcc' || 'aarch64-linux-gnu-gcc' }}
-          CXX: ${{ matrix.arch == 'x86_64' && 'g++' || 'aarch64-linux-gnu-g++' }}
           CGO_CFLAGS: -I/__w/maa-framework-go/maa-framework-go/deps/include
           CGO_LDFLAGS: -L/__w/maa-framework-go/maa-framework-go/deps/bin -lMaaFramework -lMaaToolkit
           LD_LIBRARY_PATH: /__w/maa-framework-go/maa-framework-go/deps/bin:$LD_LIBRARY_PATH
