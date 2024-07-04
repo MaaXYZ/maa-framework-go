@@ -1,0 +1,3 @@
+[submodule "TestingDataSet"]
+	path = TestingDataSet
+	url = https://github.com/MaaXYZ/MaaFrameworkTesting.git

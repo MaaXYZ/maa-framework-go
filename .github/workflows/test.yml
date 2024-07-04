@@ -1,0 +1,173 @@
+name: test
+
+on:
+  push:
+    branches:
+      - "**"
+
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  windows:
+    needs: meta
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [ x86_64, aarch64 ]
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Download MaaFramework
+        uses: robinraju/release-downloader@v1.10
+        with:
+          repository: MaaXYZ/MaaFramework
+          latest: true
+          fileName: "MAA-win-${{ matrix.arch }}*"
+          out-file-path: "${{ github.workspace }}/deps"
+          extract: true
+
+      - name: Test
+        env:
+          CGO_CFLAGS: "-I${{ github.workspace }}/deps/include"
+          CGO_LDFLAGS: "-L${{ github.workspace }}/deps/bin -lMaaFramework -lMaaToolkit"
+          PATH: "${{ github.workspace }}/deps/bin;%PATH%"
+        run: |
+          mkdir -p TestingDataSet/PipelineSmoking/resource/model/ocr
+          cp -r TestingDataSet/MaaCommonAssets/OCR/ppocr_v4/zh_cn TestingDataSet/PipelineSmoking/resource/model/ocr
+          go test -v
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MAA-win-${{ matrix.arch }}-text_log
+          path: "debug/*.log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MAA-win-${{ matrix.arch }}-full_log
+          path: "debug"
+
+  ubuntu:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    strategy:
+      matrix:
+        arch: [ x86_64, aarch64 ]
+      fail-fast: false
+
+    steps:
+      - name: Update system
+        run: |
+          pacman -Syu --noconfirm
+
+      - name: Install dep
+        run: |
+          pacman -Sy
+          pacman -S --noconfirm git
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Download MaaFramework
+        uses: robinraju/release-downloader@v1.10
+        with:
+          repository: MaaXYZ/MaaFramework
+          latest: true
+          fileName: "MAA-linux-${{ matrix.arch }}*"
+          out-file-path: "deps"
+          extract: true
+
+      - name: Test
+        env:
+          CGO_CFLAGS: "-I${{ github.workspace }}/deps/include"
+          CGO_LDFLAGS: "-L${{ github.workspace }}/deps/bin -lMaaFramework -lMaaToolkit"
+          LD_LIBRARY_PATH: "${{ github.workspace }}/deps/bin:$LD_LIBRARY_PATH"
+        run: |
+          mkdir -p TestingDataSet/PipelineSmoking/resource/model/ocr
+          cp -r TestingDataSet/MaaCommonAssets/OCR/ppocr_v4/zh_cn TestingDataSet/PipelineSmoking/resource/model/ocr
+          go test -v
+          
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MAA-linux-${{ matrix.arch }}-text_log
+          path: "debug/*.log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MAA-linux-${{ matrix.arch }}-full_log
+          path: "debug"
+
+  macos:
+    strategy:
+      matrix:
+        include:
+          - os: macos-13
+            arch: x86_64
+          - os: macos-14
+            arch: aarch64
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Download MaaFramework
+        uses: robinraju/release-downloader@v1.10
+        with:
+          repository: MaaXYZ/MaaFramework
+          latest: true
+          fileName: "MAA-macos-${{ matrix.arch }}*"
+          out-file-path: "deps"
+          extract: true
+
+      - name: Test
+        env:
+          CGO_CFLAGS: "-I${{ github.workspace }}/deps/include"
+          CGO_LDFLAGS: "-L${{ github.workspace }}/deps/bin -lMaaFramework -lMaaToolkit"
+          DYLD_LIBRARY_PATH: "${{ github.workspace }}/deps/bin:$DYLD_LIBRARY_PATH"
+        run: |
+          mkdir -p TestingDataSet/PipelineSmoking/resource/model/ocr
+          cp -r TestingDataSet/MaaCommonAssets/OCR/ppocr_v4/zh_cn TestingDataSet/PipelineSmoking/resource/model/ocr
+          go test -v
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MAA-macos-${{ matrix.arch }}-text_log
+          path: "debug/*.log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MAA-macos-${{ matrix.arch }}-full_log
+          path: "debug"
