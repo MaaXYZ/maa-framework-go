@@ -10,7 +10,7 @@ type MyAct struct {
 	CustomActionHandler
 }
 
-func (act MyAct) Run(ctx SyncContext, taskName, ActionParam string, curBox RectBuffer, curRecDetail string) bool {
+func (act MyAct) Run(ctx SyncContext, taskName, ActionParam string, curBox Rect, curRecDetail string) bool {
 	image, ok := ctx.Screencap()
 	defer image.Destroy()
 	if !ok {
