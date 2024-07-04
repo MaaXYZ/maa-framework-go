@@ -43,7 +43,7 @@ jobs:
           CGO_CFLAGS: -I${{ github.workspace }}/deps/include
           CGO_LDFLAGS: -L${{ github.workspace }}/deps/bin -lMaaFramework -lMaaToolkit
         run: |
-          $env:Path+=";${{ github.workspace }}/deps/bin"
+          $env:Path += ";${{ github.workspace }}/deps/bin"
           mkdir -p TestingDataSet/PipelineSmoking/resource/model/ocr
           cp -r TestingDataSet/MaaCommonAssets/OCR/ppocr_v4/zh_cn TestingDataSet/PipelineSmoking/resource/model/ocr
           go test -v -tags customenv
@@ -152,9 +152,9 @@ jobs:
 
       - name: Test
         env:
-          CGO_CFLAGS: "-I${{ github.workspace }}/deps/include"
-          CGO_LDFLAGS: "-L${{ github.workspace }}/deps/bin -lMaaFramework -lMaaToolkit"
-          DYLD_LIBRARY_PATH: "${{ github.workspace }}/deps/bin:$DYLD_LIBRARY_PATH"
+          CGO_CFLAGS: -I${{ github.workspace }}/deps/include
+          CGO_LDFLAGS: -L${{ github.workspace }}/deps/bin -lMaaFramework -lMaaToolkit
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/deps/bin:$DYLD_LIBRARY_PATH
         run: |
           mkdir -p TestingDataSet/PipelineSmoking/resource/model/ocr
           cp -r TestingDataSet/MaaCommonAssets/OCR/ppocr_v4/zh_cn TestingDataSet/PipelineSmoking/resource/model/ocr
