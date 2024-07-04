@@ -37,16 +37,12 @@ jobs:
           out-file-path: "${{ github.workspace }}/deps"
           extract: true
 
-      - name: GCC Version
-        run: |
-          gcc -v
-
       - name: Test
         env:
           CGO_ENABLED: 1
           CGO_CFLAGS: -I${{ github.workspace }}/deps/include
           CGO_LDFLAGS: -L${{ github.workspace }}/deps/bin -lMaaFramework -lMaaToolkit
-          PATH: ${{ github.workspace }}/deps/bin;%PATH%
+          PATH: ${{ github.workspace }}/deps/bin;$PATH
         run: |
           mkdir -p TestingDataSet/PipelineSmoking/resource/model/ocr
           cp -r TestingDataSet/MaaCommonAssets/OCR/ppocr_v4/zh_cn TestingDataSet/PipelineSmoking/resource/model/ocr
