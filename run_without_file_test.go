@@ -64,7 +64,9 @@ func TestRunWithoutFile(t *testing.T) {
 	inst.BindResource(res)
 	inst.BindController(ctrl)
 
-	inst.RegisterCustomAction("MyAct", NewMyAct())
+	myAct := NewMyAct()
+	defer myAct.Destroy()
+	inst.RegisterCustomAction("MyAct", myAct)
 
 	taskParam := map[string]interface{}{
 		"MyTask": map[string]interface{}{
