@@ -42,9 +42,8 @@ jobs:
           CGO_ENABLED: 1
           CGO_CFLAGS: -I${{ github.workspace }}/deps/include
           CGO_LDFLAGS: -L${{ github.workspace }}/deps/bin -lMaaFramework -lMaaToolkit
-          PATH: ${{ github.workspace }}/deps/bin;$env:PATH
         run: |
-          echo $env:PATH
+          $env:Path+="${{ github.workspace }}/deps/bin;"
           mkdir -p TestingDataSet/PipelineSmoking/resource/model/ocr
           cp -r TestingDataSet/MaaCommonAssets/OCR/ppocr_v4/zh_cn TestingDataSet/PipelineSmoking/resource/model/ocr
           go test -v -tags customenv
