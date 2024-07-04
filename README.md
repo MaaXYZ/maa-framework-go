@@ -111,9 +111,15 @@ func main() {
 
 	inst.BindResource(res)
 	inst.BindController(ctrl)
-
-	inst.RegisterCustomRecognizer("MyRec", NewMyRec())
-	inst.RegisterCustomAction("MyAct", NewMyAct())
+    
+	myRec := NewMyRec()
+	myAct := NewMyAct()
+	defer func() {
+		myRec.Destroy()
+		myAct.Destroy()
+	}()
+	inst.RegisterCustomRecognizer("MyRec", myRec)
+	inst.RegisterCustomAction("MyAct", myAct)
 
 	if !inst.Inited() {
 		panic("Failed to init Maa Instance.")
@@ -134,13 +140,12 @@ func NewMyRec() MyRec {
 }
 
 func (MyRec) Analyze(
-	syncCtx maa.SyncContext,
+	ctx maa.SyncContext,
 	image maa.ImageBuffer,
 	taskName string,
 	customRecognitionParam string,
 ) (maa.AnalyzeResult, bool) {
-	outBox := maa.NewRect()
-	outBox.Set(0, 0, 100, 100)
+	outBox := maa.Rect{0, 0, 100, 100}
 	return maa.AnalyzeResult{
 		Box:    outBox,
 		Detail: "Hello world.",
@@ -161,7 +166,7 @@ func (MyAct) Run(
 	ctx maa.SyncContext,
 	taskName string,
 	customActionParam string,
-	curBox maa.RectBuffer,
+	curBox maa.Rect,
 	curRecDetail string,
 ) bool {
 	return true
