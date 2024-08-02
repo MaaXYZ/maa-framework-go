@@ -3,7 +3,6 @@
 MaaCustomControllerHandle MaaCustomControllerHandleCreate(
     ConnectCallback connect,
     RequestUUIDCallback request_uuid,
-    RequestResolutionCallback request_resolution,
     StartAppCallback start_app,
     StopAppCallback stop_app,
     ScreencapCallback screencap,
@@ -22,7 +21,6 @@ MaaCustomControllerHandle MaaCustomControllerHandleCreate(
 
     handle->connect = connect;
     handle->request_uuid = request_uuid;
-    handle->request_resolution = request_resolution;
     handle->start_app = start_app;
     handle->stop_app = stop_app;
     handle->screencap = screencap;

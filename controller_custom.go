@@ -44,7 +44,7 @@ import (
 // CustomControllerImpl defines an interface for custom controller.
 // Implementers of this interface must embed a CustomControllerHandler struct
 // and provide implementations for the following methods:
-// Connect, RequestUUID, RequestResolution, StartApp, StopApp,
+// Connect, RequestUUID, StartApp, StopApp,
 // Screencap, Click, Swipe, TouchDown, TouchMove, TouchUp,
 // PressKey and InputText.
 type CustomControllerImpl interface {

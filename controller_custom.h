@@ -43,7 +43,6 @@ typedef MaaBool (*InputTextCallback)(MaaStringView text, MaaTransparentArg handl
 extern MaaCustomControllerHandle MaaCustomControllerHandleCreate(
     ConnectCallback connect,
     RequestUUIDCallback request_uuid,
-    RequestResolutionCallback request_resolution,
     StartAppCallback start_app,
     StopAppCallback stop_app,
     ScreencapCallback screencap,
