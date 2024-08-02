@@ -30,5 +30,6 @@ func TestPipelineSmoking(t *testing.T) {
 
 	taskId := inst.PostTask("Wilderness", "{}")
 	status := inst.WaitTask(taskId)
-	require.Equal(t, status, Success)
+	got := status.Success()
+	require.True(t, got)
 }

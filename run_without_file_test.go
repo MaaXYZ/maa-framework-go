@@ -80,6 +80,6 @@ func TestRunWithoutFile(t *testing.T) {
 
 	taskId := inst.PostTask("MyTask", string(taskParamStr))
 	status := inst.WaitTask(taskId)
-
-	require.Equal(t, status, Success)
+	got := status.Success()
+	require.True(t, got)
 }
