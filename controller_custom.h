@@ -9,12 +9,6 @@ typedef MaaBool (*ConnectCallback)(MaaTransparentArg handle_arg);
 typedef MaaBool (
             *RequestUUIDCallback)(MaaTransparentArg handle_arg, /* out */ MaaStringBufferHandle buffer);
 
-        /// Write result to width and height.
-typedef MaaBool (*RequestResolutionCallback)(
-            MaaTransparentArg handle_arg,
-            /* out */ int32_t* width,
-            /* out */ int32_t* height);
-
 typedef MaaBool (*StartAppCallback)(MaaStringView intent, MaaTransparentArg handle_arg);
 typedef MaaBool (*StopAppCallback)(MaaStringView intent, MaaTransparentArg handle_arg);
 

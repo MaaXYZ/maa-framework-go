@@ -9,7 +9,6 @@ extern void _MaaAPICallbackAgent(MaaStringView msg, MaaStringView detailsJson, M
 
 extern uint8_t _ConnectAgent(MaaTransparentArg handleArg);
 extern uint8_t _RequestUUIDAgent(MaaTransparentArg handle_arg, MaaStringBufferHandle buffer);
-extern uint8_t _RequestResolutionAgent(MaaTransparentArg handle_arg, int32_t* width, int32_t* height);
 extern uint8_t _StartAppAgent(_GoString_ intent, MaaTransparentArg handle_arg);
 extern uint8_t _StopAppAgent(_GoString_ intent, MaaTransparentArg handle_arg);
 extern uint8_t _ScreencapAgent(MaaTransparentArg handle_arg, MaaImageBufferHandle buffer);
@@ -51,7 +50,6 @@ import (
 type CustomControllerImpl interface {
 	Connect() bool
 	RequestUUID() (string, bool)
-	RequestResolution() (width, height int32, ok bool)
 	StartApp(intent string) bool
 	StopApp(intent string) bool
 	Screencap() (ImageBuffer, bool)
@@ -75,7 +73,6 @@ func NewCustomControllerHandler() CustomControllerHandler {
 	return CustomControllerHandler{handle: C.MaaCustomControllerHandleCreate(
 		C.ConnectCallback(C._ConnectAgent),
 		C.RequestUUIDCallback(C._RequestUUIDAgent),
-		C.RequestResolutionCallback(C._RequestResolutionAgent),
 		C.StartAppCallback(C._StartAppAgent),
 		C.StopAppCallback(C._StopAppAgent),
 		C.ScreencapCallback(C._ScreencapAgent),
@@ -114,18 +111,6 @@ func _RequestUUIDAgent(handleArg C.MaaTransparentArg, buffer C.MaaStringBufferHa
 	if ok {
 		uuidStringBuffer := &stringBuffer{handle: buffer}
 		uuidStringBuffer.Set(uuid)
-		return C.uint8_t(1)
-	}
-	return C.uint8_t(0)
-}
-
-//export _RequestResolutionAgent
-func _RequestResolutionAgent(handleArg C.MaaTransparentArg, width, height *C.int32_t) C.uint8_t {
-	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
-	w, h, ok := ctrl.RequestResolution()
-	if ok {
-		*width = C.int32_t(w)
-		*height = C.int32_t(h)
 		return C.uint8_t(1)
 	}
 	return C.uint8_t(0)
