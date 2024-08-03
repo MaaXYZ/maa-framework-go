@@ -7,7 +7,7 @@ const (
 	StatusPending Status = 1000
 	StatusRunning Status = 2000
 	StatusSuccess Status = 3000
-	StatusFailed  Status = 4000
+	StatusFailure Status = 4000
 )
 
 func (status Status) Invalid() bool {
@@ -26,10 +26,10 @@ func (status Status) Success() bool {
 	return status == StatusSuccess
 }
 
-func (status Status) Failed() bool {
-	return status == StatusFailed
+func (status Status) Failure() bool {
+	return status == StatusFailure
 }
 
 func (status Status) Done() bool {
-	return status.Success() || status.Failed()
+	return status.Success() || status.Failure()
 }
