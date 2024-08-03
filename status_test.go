@@ -33,7 +33,7 @@ func TestStatus_Invalid(t *testing.T) {
 		},
 		{
 			name:   "IsStatusFailed",
-			status: StatusFailed,
+			status: StatusFailure,
 			expect: false,
 		},
 	}
@@ -74,7 +74,7 @@ func TestStatus_Pending(t *testing.T) {
 		},
 		{
 			name:   "IsStatusFailed",
-			status: StatusFailed,
+			status: StatusFailure,
 			expect: false,
 		},
 	}
@@ -115,7 +115,7 @@ func TestStatus_Running(t *testing.T) {
 		},
 		{
 			name:   "IsStatusFailed",
-			status: StatusFailed,
+			status: StatusFailure,
 			expect: false,
 		},
 	}
@@ -156,7 +156,7 @@ func TestStatus_Success(t *testing.T) {
 		},
 		{
 			name:   "IsStatusFailed",
-			status: StatusFailed,
+			status: StatusFailure,
 			expect: false,
 		},
 	}
@@ -197,14 +197,14 @@ func TestStatus_Failed(t *testing.T) {
 		},
 		{
 			name:   "IsStatusFailed",
-			status: StatusFailed,
+			status: StatusFailure,
 			expect: true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := tc.status.Failed()
+			got := tc.status.Failure()
 			require.Equal(t, tc.expect, got)
 		})
 	}
@@ -238,7 +238,7 @@ func TestStatus_Done(t *testing.T) {
 		},
 		{
 			name:   "IsStatusFailed",
-			status: StatusFailed,
+			status: StatusFailure,
 			expect: true,
 		},
 	}
