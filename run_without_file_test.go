@@ -53,8 +53,8 @@ func TestRunWithoutFile(t *testing.T) {
 
 	ctrl := NewDbgController(testingPath, resultPath, DbgControllerTypeCarouselImage, "{}", nil)
 	defer ctrl.Destroy()
-	ctrlId := ctrl.PostConnect()
-	ctrl.Wait(ctrlId)
+	ctrlJob := ctrl.PostConnect()
+	ctrlJob.Wait()
 
 	res := NewResource(nil)
 	defer res.Destroy()
@@ -78,8 +78,7 @@ func TestRunWithoutFile(t *testing.T) {
 	taskParamStr, err := json.Marshal(taskParam)
 	require.NoError(t, err)
 
-	taskId := inst.PostTask("MyTask", string(taskParamStr))
-	status := inst.WaitTask(taskId)
-	got := status.Success()
+	taskJob := inst.PostTask("MyTask", string(taskParamStr))
+	got := taskJob.Wait()
 	require.True(t, got)
 }

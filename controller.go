@@ -50,19 +50,19 @@ type Controller interface {
 	Destroy()
 	Handle() unsafe.Pointer
 	SetOption(key CtrlOption, value unsafe.Pointer, valSize uint64) bool
-	PostConnect() int64
-	PostClick(x, y int32) int64
-	PostSwipe(x1, y1, x2, y2, duration int32) int64
-	PostPressKey(keycode int32) int64
-	PostInputText(text string) int64
-	PostStartApp(intent string) int64
-	PostStopApp(intent string) int64
-	PostTouchDown(contact, x, y, pressure int32) int64
-	PostTouchMove(contact, x, y, pressure int32) int64
-	PostTouchUp(contact int32) int64
-	PostScreencap() int64
-	Status(id int64) Status
-	Wait(id int64) Status
+	PostConnect() Job
+	PostClick(x, y int32) Job
+	PostSwipe(x1, y1, x2, y2, duration int32) Job
+	PostPressKey(keycode int32) Job
+	PostInputText(text string) Job
+	PostStartApp(intent string) Job
+	PostStopApp(intent string) Job
+	PostTouchDown(contact, x, y, pressure int32) Job
+	PostTouchMove(contact, x, y, pressure int32) Job
+	PostTouchUp(contact int32) Job
+	PostScreencap() Job
+	//Status(id int64) Status
+	//Wait(id int64) Status
 	Connected() bool
 	GetImage() (ImageBuffer, bool)
 	GetUUID() (string, bool)
@@ -84,62 +84,69 @@ func (c *controller) SetOption(key CtrlOption, value unsafe.Pointer, valSize uin
 	return C.MaaControllerSetOption(c.handle, C.int32_t(key), C.MaaOptionValue(value), C.uint64_t(valSize)) != 0
 }
 
-func (c *controller) PostConnect() int64 {
-	return int64(C.MaaControllerPostConnection(c.handle))
+func (c *controller) PostConnect() Job {
+	id := int64(C.MaaControllerPostConnection(c.handle))
+	return NewJob(id, c.status)
 }
 
-func (c *controller) PostClick(x, y int32) int64 {
-	return int64(C.MaaControllerPostClick(c.handle, C.int32_t(x), C.int32_t(y)))
+func (c *controller) PostClick(x, y int32) Job {
+	id := int64(C.MaaControllerPostClick(c.handle, C.int32_t(x), C.int32_t(y)))
+	return NewJob(id, c.status)
 }
 
-func (c *controller) PostSwipe(x1, y1, x2, y2, duration int32) int64 {
-	return int64(C.MaaControllerPostSwipe(c.handle, C.int32_t(x1), C.int32_t(y1), C.int32_t(x2), C.int32_t(y2), C.int32_t(duration)))
+func (c *controller) PostSwipe(x1, y1, x2, y2, duration int32) Job {
+	id := int64(C.MaaControllerPostSwipe(c.handle, C.int32_t(x1), C.int32_t(y1), C.int32_t(x2), C.int32_t(y2), C.int32_t(duration)))
+	return NewJob(id, c.status)
 }
 
-func (c *controller) PostPressKey(keycode int32) int64 {
-	return int64(C.MaaControllerPostPressKey(c.handle, C.int32_t(keycode)))
+func (c *controller) PostPressKey(keycode int32) Job {
+	id := int64(C.MaaControllerPostPressKey(c.handle, C.int32_t(keycode)))
+	return NewJob(id, c.status)
 }
 
-func (c *controller) PostInputText(text string) int64 {
+func (c *controller) PostInputText(text string) Job {
 	cText := C.CString(text)
 	defer C.free(unsafe.Pointer(cText))
-	return int64(C.MaaControllerPostInputText(c.handle, cText))
+	id := int64(C.MaaControllerPostInputText(c.handle, cText))
+	return NewJob(id, c.status)
 }
 
-func (c *controller) PostStartApp(intent string) int64 {
+func (c *controller) PostStartApp(intent string) Job {
 	cIntent := C.CString(intent)
 	defer C.free(unsafe.Pointer(cIntent))
-	return int64(C.MaaControllerPostStartApp(c.handle, cIntent))
+	id := int64(C.MaaControllerPostStartApp(c.handle, cIntent))
+	return NewJob(id, c.status)
 }
 
-func (c *controller) PostStopApp(intent string) int64 {
+func (c *controller) PostStopApp(intent string) Job {
 	cIntent := C.CString(intent)
 	defer C.free(unsafe.Pointer(cIntent))
-	return int64(C.MaaControllerPostStopApp(c.handle, cIntent))
+	id := int64(C.MaaControllerPostStopApp(c.handle, cIntent))
+	return NewJob(id, c.status)
 }
 
-func (c *controller) PostTouchDown(contact, x, y, pressure int32) int64 {
-	return int64(C.MaaControllerPostTouchDown(c.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)))
+func (c *controller) PostTouchDown(contact, x, y, pressure int32) Job {
+	id := int64(C.MaaControllerPostTouchDown(c.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)))
+	return NewJob(id, c.status)
 }
 
-func (c *controller) PostTouchMove(contact, x, y, pressure int32) int64 {
-	return int64(C.MaaControllerPostTouchMove(c.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)))
+func (c *controller) PostTouchMove(contact, x, y, pressure int32) Job {
+	id := int64(C.MaaControllerPostTouchMove(c.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)))
+	return NewJob(id, c.status)
 }
 
-func (c *controller) PostTouchUp(contact int32) int64 {
-	return int64(C.MaaControllerPostTouchUp(c.handle, C.int32_t(contact)))
+func (c *controller) PostTouchUp(contact int32) Job {
+	id := int64(C.MaaControllerPostTouchUp(c.handle, C.int32_t(contact)))
+	return NewJob(id, c.status)
 }
 
-func (c *controller) PostScreencap() int64 {
-	return int64(C.MaaControllerPostScreencap(c.handle))
+func (c *controller) PostScreencap() Job {
+	id := int64(C.MaaControllerPostScreencap(c.handle))
+	return NewJob(id, c.status)
 }
 
-func (c *controller) Status(id int64) Status {
+func (c *controller) status(id int64) Status {
 	return Status(C.MaaControllerStatus(c.handle, C.int64_t(id)))
-}
-
-func (c *controller) Wait(id int64) Status {
-	return Status(C.MaaControllerWait(c.handle, C.int64_t(id)))
 }
 
 func (c *controller) Connected() bool {

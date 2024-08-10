@@ -84,8 +84,8 @@ func main() {
 
 	res := maa.NewResource(nil)
 	defer res.Destroy()
-	resId := res.PostPath("sample/resource")
-	res.Wait(resId)
+	resJob := res.PostPath("sample/resource")
+	resJob.Wait()
 
 	devices := toolkit.AdbDevices()
 	if len(devices) == 0 {
@@ -103,8 +103,8 @@ func main() {
 		nil,
 	)
 	defer ctrl.Destroy()
-	ctrlId := ctrl.PostConnect()
-	ctrl.Wait(ctrlId)
+	ctrlJob := ctrl.PostConnect()
+	ctrlJob.Wait()
 
 	inst := maa.New(nil)
 	defer inst.Destroy()
@@ -125,8 +125,8 @@ func main() {
 		panic("Failed to init Maa Instance.")
 	}
 
-	taskId := inst.PostTask("TaskA", "{}")
-	inst.WaitTask(taskId)
+	taskJob := inst.PostTask("TaskA", "{}")
+	taskJob.Wait()
 }
 
 type MyRec struct {

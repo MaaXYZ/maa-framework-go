@@ -31,10 +31,11 @@ func (r *Resource) Destroy() {
 
 // PostPath adds a path to the resource loading paths.
 // Return id of the resource.
-func (r *Resource) PostPath(path string) int64 {
+func (r *Resource) PostPath(path string) Job {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
-	return int64(C.MaaResourcePostPath(r.handle, cPath))
+	id := int64(C.MaaResourcePostPath(r.handle, cPath))
+	return NewJob(id, r.status)
 }
 
 // Clear clears the resource loading paths.
@@ -42,14 +43,9 @@ func (r *Resource) Clear() bool {
 	return C.MaaResourceClear(r.handle) != 0
 }
 
-// Status returns the loading status of a resource identified by id.
-func (r *Resource) Status(resId int64) Status {
+// status returns the loading status of a resource identified by id.
+func (r *Resource) status(resId int64) Status {
 	return Status(C.MaaResourceStatus(r.handle, C.int64_t(resId)))
-}
-
-// Wait waits for a resource to be loaded.
-func (r *Resource) Wait(resId int64) Status {
-	return Status(C.MaaResourceWait(r.handle, C.int64_t(resId)))
 }
 
 // Loaded checks if resources are loaded.

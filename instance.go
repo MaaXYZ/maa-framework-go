@@ -8,6 +8,7 @@ extern void _MaaAPICallbackAgent(_GoString_ msg, _GoString_ detailsJson, MaaTran
 */
 import "C"
 import (
+	"time"
 	"unsafe"
 )
 
@@ -94,53 +95,58 @@ func (i *Instance) ClearCustomAction() bool {
 }
 
 // PostTask posts a task to the instance.
-func (i *Instance) PostTask(entry, param string) int64 {
+func (i *Instance) PostTask(entry, param string) TaskJob {
 	cEntry := C.CString(entry)
 	cParam := C.CString(param)
 	defer func() {
 		C.free(unsafe.Pointer(cEntry))
 		C.free(unsafe.Pointer(cParam))
 	}()
-	return int64(C.MaaPostTask(i.handle, cEntry, cParam))
+	id := int64(C.MaaPostTask(i.handle, cEntry, cParam))
+	return NewTaskJob(id, i.taskStatus, i.setTaskParam)
 }
 
 // PostRecognition posts a recognition to the instance.
-func (i *Instance) PostRecognition(entry, param string) int64 {
+func (i *Instance) PostRecognition(entry, param string) TaskJob {
 	cEntry := C.CString(entry)
 	cParam := C.CString(param)
 	defer func() {
 		C.free(unsafe.Pointer(cEntry))
 		C.free(unsafe.Pointer(cParam))
 	}()
-	return int64(C.MaaPostRecognition(i.handle, cEntry, cParam))
+	id := int64(C.MaaPostRecognition(i.handle, cEntry, cParam))
+	return NewTaskJob(id, i.taskStatus, i.setTaskParam)
 }
 
 // PostAction posts an action to the instance.
-func (i *Instance) PostAction(entry, param string) int64 {
+func (i *Instance) PostAction(entry, param string) TaskJob {
 	cEntry := C.CString(entry)
 	cParam := C.CString(param)
 	defer func() {
 		C.free(unsafe.Pointer(cEntry))
 		C.free(unsafe.Pointer(cParam))
 	}()
-	return int64(C.MaaPostAction(i.handle, cEntry, cParam))
+	id := int64(C.MaaPostAction(i.handle, cEntry, cParam))
+	return NewTaskJob(id, i.taskStatus, i.setTaskParam)
 }
 
-// SetTaskParam sets the parameter of a task.
-func (i *Instance) SetTaskParam(id int64, param string) bool {
+// setTaskParam sets the parameter of a task.
+func (i *Instance) setTaskParam(id int64, param string) bool {
 	cParam := C.CString(param)
 	defer C.free(unsafe.Pointer(cParam))
 	return C.MaaSetTaskParam(i.handle, C.int64_t(id), cParam) != 0
 }
 
-// TaskStatus returns the status of a task identified by the id.
-func (i *Instance) TaskStatus(id int64) Status {
+// taskStatus returns the status of a task identified by the id.
+func (i *Instance) taskStatus(id int64) Status {
 	return Status(C.MaaTaskStatus(i.handle, C.int64_t(id)))
 }
 
-// WaitTask waits for a task to finish.
-func (i *Instance) WaitTask(id int64) Status {
-	return Status(C.MaaWaitTask(i.handle, C.int64_t(id)))
+// WaitAll waits for all tasks to complete.
+func (i *Instance) WaitAll() {
+	for i.Running() {
+		time.Sleep(time.Millisecond * 10)
+	}
 }
 
 // Running checks if the instance running.
