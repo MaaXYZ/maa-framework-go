@@ -8,6 +8,7 @@ extern void _MaaAPICallbackAgent(MaaStringView msg, MaaStringView detailsJson, M
 */
 import "C"
 import (
+	"strings"
 	"unsafe"
 )
 
@@ -66,13 +67,18 @@ func (r *Resource) GetHash() (string, bool) {
 }
 
 // GetTaskList returns the task list of the resource.
-func (r *Resource) GetTaskList() (string, bool) {
+func (r *Resource) GetTaskList() ([]string, bool) {
 	taskList := NewStringBuffer()
 	defer taskList.Destroy()
 
 	got := C.MaaResourceGetTaskList(r.handle, C.MaaStringBufferHandle(taskList.Handle())) != 0
 	if !got {
-		return "", false
+		return []string{}, false
 	}
-	return taskList.Get(), true
+	taskListStr := taskList.Get()
+	taskListStr = strings.TrimPrefix(taskListStr, "[")
+	taskListStr = strings.TrimSuffix(taskListStr, "]")
+	taskListArr := strings.Split(taskListStr, ",")
+
+	return taskListArr, true
 }
