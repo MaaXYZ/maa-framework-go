@@ -17,39 +17,35 @@ const (
 
 	// CtrlOptionScreenshotTargetLongSide Only one of long and short side can be set, and the other is automatically scaled according
 	// to the aspect ratio.
-	//
-	// value: int, eg: 1920; val_size: sizeof(int)
 	CtrlOptionScreenshotTargetLongSide
 
 	// CtrlOptionScreenshotTargetShortSide Only one of long and short side can be set, and the other is automatically scaled according
 	// to the aspect ratio.
-	//
-	// value: int, eg: 1080; val_size: sizeof(int)
 	CtrlOptionScreenshotTargetShortSide
 
 	// CtrlOptionDefaultAppPackageEntry For StartApp
-	//
-	// value: string, eg: "com.hypergryph.arknights/com.u8.sdk.U8UnityContext"; val_size: string length
 	CtrlOptionDefaultAppPackageEntry
 
 	// CtrlOptionDefaultAppPackage For StopApp
-	//
-	// value: string, eg: "com.hypergryph.arknights"; val_size: string length
 	CtrlOptionDefaultAppPackage
 
 	// CtrlOptionRecording Dump all screenshots and actions
 	//
 	// Recording will evaluate to true if any of this or
 	// MaaGlobalOptionEnum::MaaGlobalOption_Recording is true.
-	//
-	// value: bool, eg: true; val_size: sizeof(bool)
 	CtrlOptionRecording
 )
 
 type Controller interface {
 	Destroy()
 	Handle() unsafe.Pointer
-	SetOption(key CtrlOption, value unsafe.Pointer, valSize uint64) bool
+
+	SetScreenshotTargetLongSide(targetLongSide int) bool
+	SetScreenshotTargetShortSide(targetShortSide int) bool
+	SetDefaultAppPackageEntry(appPackage string) bool
+	SetDefaultAppPackage(appPackage string) bool
+	SetRecording(recording bool) bool
+
 	PostConnect() Job
 	PostClick(x, y int32) Job
 	PostSwipe(x1, y1, x2, y2, duration int32) Job
@@ -61,8 +57,7 @@ type Controller interface {
 	PostTouchMove(contact, x, y, pressure int32) Job
 	PostTouchUp(contact int32) Job
 	PostScreencap() Job
-	//Status(id int64) Status
-	//Wait(id int64) Status
+
 	Connected() bool
 	GetImage() (ImageBuffer, bool)
 	GetUUID() (string, bool)
@@ -80,8 +75,76 @@ func (c *controller) Handle() unsafe.Pointer {
 	return unsafe.Pointer(c.handle)
 }
 
-func (c *controller) SetOption(key CtrlOption, value unsafe.Pointer, valSize uint64) bool {
+func (c *controller) setOption(key CtrlOption, value unsafe.Pointer, valSize uintptr) bool {
 	return C.MaaControllerSetOption(c.handle, C.int32_t(key), C.MaaOptionValue(value), C.uint64_t(valSize)) != 0
+}
+
+// SetScreenshotTargetLongSide sets screenshot target long side.
+// Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
+//
+// eg: 1920
+func (c *controller) SetScreenshotTargetLongSide(targetLongSide int) bool {
+	targetLongSide32 := int32(targetLongSide)
+	return c.setOption(
+		CtrlOptionScreenshotTargetLongSide,
+		unsafe.Pointer(&targetLongSide32),
+		unsafe.Sizeof(targetLongSide32),
+	)
+}
+
+// SetScreenshotTargetShortSide sets screenshot target short side.
+// Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
+//
+// eg: 1080
+func (c *controller) SetScreenshotTargetShortSide(targetShortSide int) bool {
+	targetShortSide32 := int32(targetShortSide)
+	return c.setOption(
+		CtrlOptionScreenshotTargetShortSide,
+		unsafe.Pointer(&targetShortSide32),
+		unsafe.Sizeof(targetShortSide32),
+	)
+}
+
+// SetDefaultAppPackageEntry sets app package for StartApp action.
+//
+// eg: "com.hypergryph.arknights/com.u8.sdk.U8UnityContext"
+func (c *controller) SetDefaultAppPackageEntry(appPackage string) bool {
+	cAppPackage := C.CString(appPackage)
+	defer C.free(unsafe.Pointer(cAppPackage))
+
+	return c.setOption(
+		CtrlOptionDefaultAppPackageEntry,
+		unsafe.Pointer(cAppPackage),
+		uintptr(len(appPackage)),
+	)
+}
+
+// SetDefaultAppPackage sets app package for StopApp action.
+//
+// eg: "com.hypergryph.arknights"
+func (c *controller) SetDefaultAppPackage(appPackage string) bool {
+	cAppPackage := C.CString(appPackage)
+	defer C.free(unsafe.Pointer(cAppPackage))
+
+	return c.setOption(
+		CtrlOptionDefaultAppPackage,
+		unsafe.Pointer(cAppPackage),
+		uintptr(len(appPackage)),
+	)
+}
+
+// SetRecording enables or disables the recording of all screenshots and actions.
+func (c *controller) SetRecording(enabled bool) bool {
+	var cEnabled uint8
+	if enabled {
+		cEnabled = 1
+	}
+
+	return c.setOption(
+		CtrlOptionRecording,
+		unsafe.Pointer(&cEnabled),
+		unsafe.Sizeof(cEnabled),
+	)
 }
 
 func (c *controller) PostConnect() Job {
