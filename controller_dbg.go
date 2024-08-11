@@ -20,6 +20,7 @@ const (
 	DbgControllerTypeReplayRecording
 )
 
+// NewDbgController creates a DBG controller instance.
 func NewDbgController(
 	readPath, writePath string,
 	dbgCtrlType DbgControllerType,

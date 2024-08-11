@@ -46,6 +46,7 @@ const (
 	AdbControllerTypeScreencapFastestWay           AdbControllerType = 0xFF0000 - (1 << 16)
 )
 
+// NewAdbController creates an ADB controller instance.
 func NewAdbController(
 	adbPath, address string,
 	adbCtrlType AdbControllerType,

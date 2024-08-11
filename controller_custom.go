@@ -219,6 +219,7 @@ func _InputText(text C.MaaStringView, handleArg C.MaaTransparentArg) C.uint8_t {
 	return C.uint8_t(0)
 }
 
+// NewCustomController creates a custom controller instance.
 func NewCustomController(
 	customCtrl CustomControllerImpl,
 	callback func(msg, detailsJson string),

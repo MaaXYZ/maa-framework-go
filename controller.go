@@ -36,6 +36,7 @@ const (
 	CtrlOptionRecording
 )
 
+// Controller is an interface that defines various methods for MAA controller.
 type Controller interface {
 	Destroy()
 	Handle() unsafe.Pointer
@@ -63,18 +64,22 @@ type Controller interface {
 	GetUUID() (string, bool)
 }
 
+// controller is a concrete implementation of the Controller interface.
 type controller struct {
 	handle C.MaaControllerHandle
 }
 
+// Destroy frees the controller instance.
 func (c *controller) Destroy() {
 	C.MaaControllerDestroy(c.handle)
 }
 
+// Handle returns controller handle.
 func (c *controller) Handle() unsafe.Pointer {
 	return unsafe.Pointer(c.handle)
 }
 
+// setOption sets options for controller instance.
 func (c *controller) setOption(key CtrlOption, value unsafe.Pointer, valSize uintptr) bool {
 	return C.MaaControllerSetOption(c.handle, C.int32_t(key), C.MaaOptionValue(value), C.uint64_t(valSize)) != 0
 }
@@ -133,7 +138,7 @@ func (c *controller) SetDefaultAppPackage(appPackage string) bool {
 	)
 }
 
-// SetRecording enables or disables the recording of all screenshots and actions.
+// SetRecording sets whether to dump all screenshots and actions.
 func (c *controller) SetRecording(enabled bool) bool {
 	var cEnabled uint8
 	if enabled {
@@ -147,26 +152,31 @@ func (c *controller) SetRecording(enabled bool) bool {
 	)
 }
 
+// PostConnect posts a connection.
 func (c *controller) PostConnect() Job {
 	id := int64(C.MaaControllerPostConnection(c.handle))
 	return NewJob(id, c.status)
 }
 
+// PostClick posts a click.
 func (c *controller) PostClick(x, y int32) Job {
 	id := int64(C.MaaControllerPostClick(c.handle, C.int32_t(x), C.int32_t(y)))
 	return NewJob(id, c.status)
 }
 
+// PostSwipe posts a swipe.
 func (c *controller) PostSwipe(x1, y1, x2, y2, duration int32) Job {
 	id := int64(C.MaaControllerPostSwipe(c.handle, C.int32_t(x1), C.int32_t(y1), C.int32_t(x2), C.int32_t(y2), C.int32_t(duration)))
 	return NewJob(id, c.status)
 }
 
+// PostPressKey posts a press key.
 func (c *controller) PostPressKey(keycode int32) Job {
 	id := int64(C.MaaControllerPostPressKey(c.handle, C.int32_t(keycode)))
 	return NewJob(id, c.status)
 }
 
+// PostInputText posts an input text.
 func (c *controller) PostInputText(text string) Job {
 	cText := C.CString(text)
 	defer C.free(unsafe.Pointer(cText))
@@ -174,6 +184,7 @@ func (c *controller) PostInputText(text string) Job {
 	return NewJob(id, c.status)
 }
 
+// PostStartApp posts a start app.
 func (c *controller) PostStartApp(intent string) Job {
 	cIntent := C.CString(intent)
 	defer C.free(unsafe.Pointer(cIntent))
@@ -181,6 +192,7 @@ func (c *controller) PostStartApp(intent string) Job {
 	return NewJob(id, c.status)
 }
 
+// PostStopApp posts a stop app.
 func (c *controller) PostStopApp(intent string) Job {
 	cIntent := C.CString(intent)
 	defer C.free(unsafe.Pointer(cIntent))
@@ -188,40 +200,48 @@ func (c *controller) PostStopApp(intent string) Job {
 	return NewJob(id, c.status)
 }
 
+// PostTouchDown posts a touch-down.
 func (c *controller) PostTouchDown(contact, x, y, pressure int32) Job {
 	id := int64(C.MaaControllerPostTouchDown(c.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)))
 	return NewJob(id, c.status)
 }
 
+// PostTouchMove posts a touch-move.
 func (c *controller) PostTouchMove(contact, x, y, pressure int32) Job {
 	id := int64(C.MaaControllerPostTouchMove(c.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)))
 	return NewJob(id, c.status)
 }
 
+// PostTouchUp posts a touch-up.
 func (c *controller) PostTouchUp(contact int32) Job {
 	id := int64(C.MaaControllerPostTouchUp(c.handle, C.int32_t(contact)))
 	return NewJob(id, c.status)
 }
 
+// PostScreencap posts a screencap.
 func (c *controller) PostScreencap() Job {
 	id := int64(C.MaaControllerPostScreencap(c.handle))
 	return NewJob(id, c.status)
 }
 
+// status gets the status of a request identified by the given id.
 func (c *controller) status(id int64) Status {
 	return Status(C.MaaControllerStatus(c.handle, C.int64_t(id)))
 }
 
+// Connected checks if the controller is connected.
 func (c *controller) Connected() bool {
 	return C.MaaControllerConnected(c.handle) != 0
 }
 
+// GetImage gets the image buffer of the last screencap request.
 func (c *controller) GetImage() (ImageBuffer, bool) {
 	image := NewImageBuffer()
 	got := C.MaaControllerGetImage(c.handle, C.MaaImageBufferHandle(image.Handle()))
 	return image, got != 0
 }
 
+// GetUUID gets the UUID of the controller.
 func (c *controller) GetUUID() (string, bool) {
 	uuid := NewStringBuffer()
 	defer uuid.Destroy()

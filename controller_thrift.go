@@ -17,6 +17,7 @@ const (
 	ThriftControllerTypeUnixDomainSocket
 )
 
+// NewThriftController creates a thrift controller instance.
 func NewThriftController(
 	thriftCtrlType ThriftControllerType,
 	host string,

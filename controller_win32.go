@@ -28,6 +28,7 @@ const (
 	Win32ControllerTypeScreencapDXGIFramePool  Win32ControllerType = 4 << 16
 )
 
+// NewWin32Controller creates a win32 controller instance.
 func NewWin32Controller(
 	hWnd unsafe.Pointer,
 	win32CtrlType Win32ControllerType,
