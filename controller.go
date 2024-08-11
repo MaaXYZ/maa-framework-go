@@ -218,14 +218,14 @@ func (c *controller) Connected() bool {
 
 func (c *controller) GetImage() (ImageBuffer, bool) {
 	image := NewImageBuffer()
-	got := C.MaaControllerGetImage(c.handle, C.MaaImageBufferHandle(unsafe.Pointer(image.Handle())))
+	got := C.MaaControllerGetImage(c.handle, C.MaaImageBufferHandle(image.Handle()))
 	return image, got != 0
 }
 
 func (c *controller) GetUUID() (string, bool) {
 	uuid := NewStringBuffer()
 	defer uuid.Destroy()
-	got := C.MaaControllerGetUUID(c.handle, C.MaaStringBufferHandle(unsafe.Pointer(uuid.Handle())))
+	got := C.MaaControllerGetUUID(c.handle, C.MaaStringBufferHandle(uuid.Handle()))
 	if got == 0 {
 		return "", false
 	}
