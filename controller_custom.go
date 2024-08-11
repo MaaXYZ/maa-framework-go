@@ -38,6 +38,7 @@ extern uint8_t _InputText(MaaStringView text, MaaTransparentArg handle_arg);
 */
 import "C"
 import (
+	"image"
 	"unsafe"
 )
 
@@ -52,7 +53,7 @@ type CustomControllerImpl interface {
 	RequestUUID() (string, bool)
 	StartApp(intent string) bool
 	StopApp(intent string) bool
-	Screencap() (ImageBuffer, bool)
+	Screencap() (image.Image, bool)
 	Click(x, y int32) bool
 	Swipe(x1, y1, x2, y2, duration int32) bool
 	TouchDown(contact, x, y, pressure int32) bool
@@ -140,10 +141,12 @@ func _StopAppAgent(intent string, handleArg C.MaaTransparentArg) C.uint8_t {
 func _ScreencapAgent(handleArg C.MaaTransparentArg, buffer C.MaaImageBufferHandle) C.uint8_t {
 	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	img, ok := ctrl.Screencap()
-	defer img.Destroy()
 	if ok {
 		imgBuffer := &imageBuffer{handle: buffer}
-		imgBuffer.SetRawData(img.GetRawData(), img.GetWidth(), img.GetHeight(), img.GetType())
+		err := imgBuffer.SetRawData(img)
+		if err != nil {
+			return C.uint8_t(0)
+		}
 		return C.uint8_t(1)
 	}
 	return C.uint8_t(0)

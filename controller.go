@@ -6,6 +6,7 @@ package maa
 */
 import "C"
 import (
+	"image"
 	"unsafe"
 )
 
@@ -60,7 +61,7 @@ type Controller interface {
 	PostScreencap() Job
 
 	Connected() bool
-	GetImage() (ImageBuffer, bool)
+	GetImage() (image.Image, bool)
 	GetUUID() (string, bool)
 }
 
@@ -235,10 +236,17 @@ func (c *controller) Connected() bool {
 }
 
 // GetImage gets the image buffer of the last screencap request.
-func (c *controller) GetImage() (ImageBuffer, bool) {
-	image := NewImageBuffer()
-	got := C.MaaControllerGetImage(c.handle, C.MaaImageBufferHandle(image.Handle()))
-	return image, got != 0
+func (c *controller) GetImage() (image.Image, bool) {
+	imgBuffer := NewImageBuffer()
+	defer imgBuffer.Destroy()
+	got := C.MaaControllerGetImage(c.handle, C.MaaImageBufferHandle(imgBuffer.Handle()))
+	img, err := imgBuffer.GetByRawData()
+
+	if err != nil {
+		return nil, false
+	}
+
+	return img, got != 0
 }
 
 // GetUUID gets the UUID of the controller.
