@@ -2,7 +2,6 @@ package maa
 
 /*
 #include <stdlib.h>
-#include <string.h>
 #include <MaaFramework/MaaAPI.h>
 */
 import "C"
@@ -52,38 +51,6 @@ func (i *imageBuffer) IsEmpty() bool {
 
 func (i *imageBuffer) Clear() bool {
 	return C.MaaClearImage(i.handle) != 0
-}
-
-// getRawData retrieves the raw image data from the buffer.
-// It returns a pointer to the raw image data.
-func (i *imageBuffer) getRawData() unsafe.Pointer {
-	return unsafe.Pointer(C.MaaGetImageRawData(i.handle))
-}
-
-// getWidth retrieves the width of the image stored in the buffer.
-// It returns the width as an int32.
-func (i *imageBuffer) getWidth() int32 {
-	return int32(C.MaaGetImageWidth(i.handle))
-}
-
-// getHeight retrieves the height of the image stored in the buffer.
-// It returns the height as an int32.
-func (i *imageBuffer) getHeight() int32 {
-	return int32(C.MaaGetImageHeight(i.handle))
-}
-
-// getType retrieves the type of the image stored in the buffer.
-// This corresponds to the cv::Mat.type() in OpenCV.
-// It returns the type as an int32.
-func (i *imageBuffer) getType() int32 {
-	return int32(C.MaaGetImageType(i.handle))
-}
-
-// setRawData sets the raw image data in the buffer.
-// It takes a pointer to the raw image data, the width, height, and type of the image.
-// It returns true if the operation was successful, otherwise false.
-func (i *imageBuffer) setRawData(data unsafe.Pointer, width, height, imageType int32) bool {
-	return C.MaaSetImageRawData(i.handle, C.MaaImageRawData(data), C.int32_t(width), C.int32_t(height), C.int32_t(imageType)) != 0
 }
 
 // GetByRawData retrieves the image from raw data stored in the buffer.
@@ -164,23 +131,36 @@ func (i *imageBuffer) SetRawData(img image.Image) error {
 	return nil
 }
 
-// getEncoded retrieves the encoded image data from the buffer.
-// It returns a pointer to the encoded image data.
-func (i *imageBuffer) getEncoded() unsafe.Pointer {
-	return unsafe.Pointer(C.MaaGetImageEncoded(i.handle))
+// getRawData retrieves the raw image data from the buffer.
+// It returns a pointer to the raw image data.
+func (i *imageBuffer) getRawData() unsafe.Pointer {
+	return unsafe.Pointer(C.MaaGetImageRawData(i.handle))
 }
 
-// getEncodedSize retrieves the size of the encoded image data in the buffer.
-// It returns the size of the encoded image data as an integer.
-func (i *imageBuffer) getEncodedSize() int32 {
-	return int32(C.MaaGetImageEncodedSize(i.handle))
+// getWidth retrieves the width of the image stored in the buffer.
+// It returns the width as an int32.
+func (i *imageBuffer) getWidth() int32 {
+	return int32(C.MaaGetImageWidth(i.handle))
 }
 
-// setEncoded sets the encoded image data in the buffer.
-// It takes a pointer to the encoded image data and the size of the data.
+// getHeight retrieves the height of the image stored in the buffer.
+// It returns the height as an int32.
+func (i *imageBuffer) getHeight() int32 {
+	return int32(C.MaaGetImageHeight(i.handle))
+}
+
+// getType retrieves the type of the image stored in the buffer.
+// This corresponds to the cv::Mat.type() in OpenCV.
+// It returns the type as an int32.
+func (i *imageBuffer) getType() int32 {
+	return int32(C.MaaGetImageType(i.handle))
+}
+
+// setRawData sets the raw image data in the buffer.
+// It takes a pointer to the raw image data, the width, height, and type of the image.
 // It returns true if the operation was successful, otherwise false.
-func (i *imageBuffer) setEncoded(data unsafe.Pointer, size uint64) bool {
-	return C.MaaSetImageEncoded(i.handle, C.MaaImageEncodedData(data), C.uint64_t(size)) != 0
+func (i *imageBuffer) setRawData(data unsafe.Pointer, width, height, imageType int32) bool {
+	return C.MaaSetImageRawData(i.handle, C.MaaImageRawData(data), C.int32_t(width), C.int32_t(height), C.int32_t(imageType)) != 0
 }
 
 // GetByEncoded retrieves the decoded image from the buffer.
@@ -219,4 +199,23 @@ func (i *imageBuffer) SetEncoded(img image.Image) error {
 		return errors.New("failed to set encoded image data")
 	}
 	return nil
+}
+
+// getEncoded retrieves the encoded image data from the buffer.
+// It returns a pointer to the encoded image data.
+func (i *imageBuffer) getEncoded() unsafe.Pointer {
+	return unsafe.Pointer(C.MaaGetImageEncoded(i.handle))
+}
+
+// getEncodedSize retrieves the size of the encoded image data in the buffer.
+// It returns the size of the encoded image data as an integer.
+func (i *imageBuffer) getEncodedSize() int32 {
+	return int32(C.MaaGetImageEncodedSize(i.handle))
+}
+
+// setEncoded sets the encoded image data in the buffer.
+// It takes a pointer to the encoded image data and the size of the data.
+// It returns true if the operation was successful, otherwise false.
+func (i *imageBuffer) setEncoded(data unsafe.Pointer, size uint64) bool {
+	return C.MaaSetImageEncoded(i.handle, C.MaaImageEncodedData(data), C.uint64_t(size)) != 0
 }
