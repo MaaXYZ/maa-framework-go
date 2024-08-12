@@ -6,6 +6,8 @@ package maa
 */
 import "C"
 import (
+	"errors"
+	"image"
 	"unsafe"
 )
 
@@ -102,14 +104,27 @@ func (ctx SyncContext) TouchUp(contact int32) bool {
 	return C.MaaSyncContextTouchUp(ctx.handle, C.int32_t(contact)) != 0
 }
 
-func (ctx SyncContext) Screencap() (ImageBuffer, bool) {
-	outImage := NewImageBuffer()
-	ret := C.MaaSyncContextScreencap(ctx.handle, C.MaaImageBufferHandle(outImage.Handle()))
-	return outImage, ret != 0
+func (ctx SyncContext) Screencap() (image.Image, error) {
+	return ctx.getImage(C.MaaSyncContextScreencap)
 }
 
-func (ctx SyncContext) CacheImage() (ImageBuffer, bool) {
+func (ctx SyncContext) CacheImage() (image.Image, error) {
+	return ctx.getImage(C.MaaSyncContextCachedImage)
+}
+
+func (ctx SyncContext) getImage(captureFunc func(C.MaaSyncContextHandle, C.MaaImageBufferHandle) C.int) (image.Image, error) {
 	outImage := NewImageBuffer()
-	ret := C.MaaSyncContextCachedImage(ctx.handle, C.MaaImageBufferHandle(outImage.Handle()))
-	return outImage, ret != 0
+	defer outImage.Destroy()
+
+	ret := captureFunc(ctx.handle, C.MaaImageBufferHandle(outImage.Handle()))
+	if ret == 0 {
+		return nil, errors.New("failed to capture image")
+	}
+
+	img, err := outImage.GetByRawData()
+	if err != nil {
+		return nil, err
+	}
+
+	return img, nil
 }
