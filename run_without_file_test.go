@@ -11,10 +11,9 @@ type MyAct struct {
 }
 
 func (act MyAct) Run(ctx SyncContext, taskName, ActionParam string, curBox Rect, curRecDetail string) bool {
-	image, ok := ctx.Screencap()
-	defer image.Destroy()
-	if !ok {
-		panic("failed to screencap")
+	image, err := ctx.Screencap()
+	if err != nil {
+		panic("failed to screencap:" + err.Error())
 	}
 
 	taskParam := map[string]interface{}{
@@ -26,12 +25,12 @@ func (act MyAct) Run(ctx SyncContext, taskName, ActionParam string, curBox Rect,
 	}
 	taskParamStr, err := json.Marshal(taskParam)
 	if err != nil {
-		panic(err)
+		panic("failed to marshal task param:" + err.Error())
 	}
 
-	_, ok = ctx.RunRecognition(image, "MyColorMatching", string(taskParamStr))
-	if !ok {
-		panic("failed to run recognition")
+	_, err = ctx.RunRecognition(image, "MyColorMatching", string(taskParamStr))
+	if err != nil {
+		panic("failed to run recognition:" + err.Error())
 	}
 
 	return true
