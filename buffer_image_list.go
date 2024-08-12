@@ -5,7 +5,10 @@ package maa
 #include <MaaFramework/MaaAPI.h>
 */
 import "C"
-import "unsafe"
+import (
+	"image"
+	"unsafe"
+)
 
 type ImageListBuffer interface {
 	Destroy()
@@ -13,7 +16,7 @@ type ImageListBuffer interface {
 	IsEmpty() bool
 	Clear() bool
 	Size() uint64
-	Get(index uint64) ImageBuffer
+	Get(index uint64) (image.Image, error)
 	Append(value ImageBuffer) bool
 	Remove(index uint64) bool
 }
@@ -47,9 +50,10 @@ func (il *imageListBuffer) Size() uint64 {
 	return uint64(C.MaaGetImageListSize(il.handle))
 }
 
-func (il *imageListBuffer) Get(index uint64) ImageBuffer {
+func (il *imageListBuffer) Get(index uint64) (image.Image, error) {
 	handle := C.MaaGetImageListAt(il.handle, C.uint64_t(index))
-	return &imageBuffer{handle: handle}
+	img := &imageBuffer{handle: handle}
+	return img.GetByRawData()
 }
 
 func (il *imageListBuffer) Append(value ImageBuffer) bool {
