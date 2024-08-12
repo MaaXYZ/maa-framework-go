@@ -117,15 +117,17 @@ func (ctx SyncContext) TouchUp(contact int32) bool {
 	return C.MaaSyncContextTouchUp(ctx.handle, C.int32_t(contact)) != 0
 }
 
+type captureFuncType func(C.MaaSyncContextHandle, C.MaaImageBufferHandle) C.uint8_t
+
 func (ctx SyncContext) Screencap() (image.Image, error) {
-	return ctx.getImage(C.MaaSyncContextScreencap)
+	return ctx.getImage(maaSyncContextScreencap)
 }
 
 func (ctx SyncContext) CacheImage() (image.Image, error) {
-	return ctx.getImage(C.MaaSyncContextCachedImage)
+	return ctx.getImage(maaSyncContextCachedImage)
 }
 
-func (ctx SyncContext) getImage(captureFunc func(C.MaaSyncContextHandle, C.MaaImageBufferHandle) C.int) (image.Image, error) {
+func (ctx SyncContext) getImage(captureFunc captureFuncType) (image.Image, error) {
 	outImage := NewImageBuffer()
 	defer outImage.Destroy()
 
@@ -140,4 +142,12 @@ func (ctx SyncContext) getImage(captureFunc func(C.MaaSyncContextHandle, C.MaaIm
 	}
 
 	return img, nil
+}
+
+func maaSyncContextScreencap(handle C.MaaSyncContextHandle, imageBufferHandle C.MaaImageBufferHandle) C.uint8_t {
+	return C.MaaSyncContextScreencap(handle, imageBufferHandle)
+}
+
+func maaSyncContextCachedImage(handle C.MaaSyncContextHandle, imageBufferHandle C.MaaImageBufferHandle) C.uint8_t {
+	return C.MaaSyncContextCachedImage(handle, imageBufferHandle)
 }
