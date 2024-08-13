@@ -242,8 +242,11 @@ func (c *controller) GetImage() (image.Image, error) {
 	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 
-	got := C.MaaControllerGetImage(c.handle, C.MaaImageBufferHandle(imgBuffer.Handle()))
-	if !got {
+	got := C.MaaControllerGetImage(
+		c.handle,
+		C.MaaImageBufferHandle(imgBuffer.Handle()),
+	) != 0
+	if got {
 		return nil, errors.New("failed to get image")
 	}
 
