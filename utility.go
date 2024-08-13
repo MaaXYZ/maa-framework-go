@@ -5,7 +5,11 @@ package maa
 #include <MaaFramework/MaaAPI.h>
 */
 import "C"
-import "unsafe"
+import (
+	"errors"
+	"image"
+	"unsafe"
+)
 
 // FrameworkVersion returns the version of the framework.
 func FrameworkVersion() string {
@@ -118,11 +122,11 @@ type RecognitionDetail struct {
 	Hit        bool
 	DetailJson string
 	Raw        ImageBuffer
-	Draws      ImageListBuffer
+	Draws      []image.Image
 }
 
 // QueryRecognitionDetail queries recognition detail.
-func QueryRecognitionDetail(recId int64) (RecognitionDetail, bool) {
+func QueryRecognitionDetail(recId int64) (RecognitionDetail, error) {
 	name := NewStringBuffer()
 	var hit uint8
 	hitBox := NewRectBuffer()
@@ -142,13 +146,23 @@ func QueryRecognitionDetail(recId int64) (RecognitionDetail, bool) {
 		C.MaaImageBufferHandle(raw.Handle()),
 		C.MaaImageListBufferHandle(draws.Handle()),
 	) != 0
+
+	if !got {
+		return RecognitionDetail{}, errors.New("failed to query recognition detail")
+	}
+
+	images, err := draws.GetAll()
+	if err != nil {
+		return RecognitionDetail{}, err
+	}
+
 	return RecognitionDetail{
 		Name:       name.Get(),
 		Hit:        hit != 0,
 		DetailJson: detailJson.Get(),
 		Raw:        raw,
-		Draws:      draws,
-	}, got
+		Draws:      images,
+	}, nil
 }
 
 type NodeDetail struct {

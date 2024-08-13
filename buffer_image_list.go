@@ -17,6 +17,7 @@ type ImageListBuffer interface {
 	Clear() bool
 	Size() uint64
 	Get(index uint64) (image.Image, error)
+	GetAll() ([]image.Image, error)
 	Append(value ImageBuffer) bool
 	Remove(index uint64) bool
 }
@@ -54,6 +55,19 @@ func (il *imageListBuffer) Get(index uint64) (image.Image, error) {
 	handle := C.MaaGetImageListAt(il.handle, C.uint64_t(index))
 	img := &imageBuffer{handle: handle}
 	return img.GetByRawData()
+}
+
+func (il *imageListBuffer) GetAll() ([]image.Image, error) {
+	size := il.Size()
+	images := make([]image.Image, size)
+	for i := uint64(0); i < size; i++ {
+		img, err := il.Get(i)
+		if err != nil {
+			return nil, err
+		}
+		images[i] = img
+	}
+	return images, nil
 }
 
 func (il *imageListBuffer) Append(value ImageBuffer) bool {
