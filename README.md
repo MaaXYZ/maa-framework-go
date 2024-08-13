@@ -77,6 +77,7 @@ import (
 	"fmt"
 	"github.com/MaaXYZ/maa-framework-go"
 	"github.com/MaaXYZ/maa-framework-go/toolkit"
+	"github.com/MaaXYZ/maa-framework-go/buffer"
 )
 
 func main() {
@@ -141,11 +142,11 @@ func NewMyRec() MyRec {
 
 func (MyRec) Analyze(
 	ctx maa.SyncContext,
-	image maa.ImageBuffer,
+	image buffer.ImageBuffer,
 	taskName string,
 	customRecognitionParam string,
 ) (maa.AnalyzeResult, bool) {
-	outBox := maa.Rect{0, 0, 100, 100}
+	outBox := buffer.Rect{0, 0, 100, 100}
 	return maa.AnalyzeResult{
 		Box:    outBox,
 		Detail: "Hello world.",
@@ -166,7 +167,7 @@ func (MyAct) Run(
 	ctx maa.SyncContext,
 	taskName string,
 	customActionParam string,
-	curBox maa.Rect,
+	curBox buffer.Rect,
 	curRecDetail string,
 ) bool {
 	return true
