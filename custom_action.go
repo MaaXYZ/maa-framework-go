@@ -17,6 +17,7 @@ extern void _StopAgent(MaaTransparentArg actionArg);
 */
 import "C"
 import (
+	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"unsafe"
 )
 
@@ -24,7 +25,7 @@ import (
 // Implementers of this interface must embed an CustomActionHandler struct
 // and provide implementations for the Run and Stop methods.
 type CustomActionImpl interface {
-	Run(ctx SyncContext, taskName, ActionParam string, curBox Rect, curRecDetail string) bool
+	Run(ctx SyncContext, taskName, ActionParam string, curBox buffer.Rect, curRecDetail string) bool
 	Stop()
 
 	Handle() unsafe.Pointer
@@ -56,7 +57,7 @@ func _RunAgent(
 	actionArg C.MaaTransparentArg,
 ) C.uint8_t {
 	act := *(*CustomActionImpl)(unsafe.Pointer(actionArg))
-	curBoxRectBuffer := rectBuffer{handle: curBox}
+	curBoxRectBuffer := buffer.NewRectBufferByHandle(unsafe.Pointer(curBox))
 	ok := act.Run(
 		SyncContext{handle: ctx},
 		C.GoString(taskName),

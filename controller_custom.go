@@ -38,6 +38,7 @@ extern uint8_t _InputText(MaaStringView text, MaaTransparentArg handle_arg);
 */
 import "C"
 import (
+	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"image"
 	"unsafe"
 )
@@ -106,12 +107,12 @@ func _ConnectAgent(handleArg C.MaaTransparentArg) C.uint8_t {
 }
 
 //export _RequestUUIDAgent
-func _RequestUUIDAgent(handleArg C.MaaTransparentArg, buffer C.MaaStringBufferHandle) C.uint8_t {
+func _RequestUUIDAgent(handleArg C.MaaTransparentArg, uuidBuffer C.MaaStringBufferHandle) C.uint8_t {
 	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	uuid, ok := ctrl.RequestUUID()
 	if ok {
-		uuidStringBuffer := &stringBuffer{handle: buffer}
-		uuidStringBuffer.Set(uuid)
+		uuidStrBuffer := buffer.NewStringBufferByHandle(unsafe.Pointer(uuidBuffer))
+		uuidStrBuffer.Set(uuid)
 		return C.uint8_t(1)
 	}
 	return C.uint8_t(0)
@@ -138,12 +139,12 @@ func _StopAppAgent(intent string, handleArg C.MaaTransparentArg) C.uint8_t {
 }
 
 //export _ScreencapAgent
-func _ScreencapAgent(handleArg C.MaaTransparentArg, buffer C.MaaImageBufferHandle) C.uint8_t {
+func _ScreencapAgent(handleArg C.MaaTransparentArg, imgBuffer C.MaaImageBufferHandle) C.uint8_t {
 	ctrl := *(*CustomControllerImpl)(unsafe.Pointer(handleArg))
 	img, ok := ctrl.Screencap()
 	if ok {
-		imgBuffer := &imageBuffer{handle: buffer}
-		err := imgBuffer.SetRawData(img)
+		imgImgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(imgBuffer))
+		err := imgImgBuffer.SetRawData(img)
 		if err != nil {
 			return C.uint8_t(0)
 		}

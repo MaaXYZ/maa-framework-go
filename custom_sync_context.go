@@ -7,6 +7,7 @@ package maa
 import "C"
 import (
 	"errors"
+	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"image"
 	"unsafe"
 )
@@ -26,7 +27,7 @@ func (ctx SyncContext) RunTask(taskName, param string) bool {
 }
 
 type RecognitionResult struct {
-	Box    Rect
+	Box    buffer.Rect
 	Detail string
 }
 
@@ -38,13 +39,13 @@ func (ctx SyncContext) RunRecognition(img image.Image, taskName, taskParam strin
 		C.free(unsafe.Pointer(cTaskParam))
 	}()
 
-	outBox := NewRectBuffer()
+	outBox := buffer.NewRectBuffer()
 	defer outBox.Destroy()
 
-	outDetail := NewStringBuffer()
+	outDetail := buffer.NewStringBuffer()
 	defer outDetail.Destroy()
 
-	imgBuffer := NewImageBuffer()
+	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 
 	err := imgBuffer.SetRawData(img)
@@ -71,7 +72,7 @@ func (ctx SyncContext) RunRecognition(img image.Image, taskName, taskParam strin
 	}, nil
 }
 
-func (ctx SyncContext) RunAction(taskName, taskParam string, curBox Rect, curRecDetail string) bool {
+func (ctx SyncContext) RunAction(taskName, taskParam string, curBox buffer.Rect, curRecDetail string) bool {
 	cTaskName := C.CString(taskName)
 	cTaskParam := C.CString(taskParam)
 	cCurRecDetail := C.CString(curRecDetail)
@@ -81,7 +82,7 @@ func (ctx SyncContext) RunAction(taskName, taskParam string, curBox Rect, curRec
 		C.free(unsafe.Pointer(cCurRecDetail))
 	}()
 
-	curBoxRectBuffer := NewRectBuffer()
+	curBoxRectBuffer := buffer.NewRectBuffer()
 	curBoxRectBuffer.Set(curBox)
 	defer curBoxRectBuffer.Destroy()
 	return C.MaaSyncContextRunAction(ctx.handle, cTaskName, cTaskParam, C.MaaRectHandle(curBoxRectBuffer.Handle()), cCurRecDetail) != 0
@@ -128,7 +129,7 @@ func (ctx SyncContext) CacheImage() (image.Image, error) {
 }
 
 func (ctx SyncContext) getImage(captureFunc captureFuncType) (image.Image, error) {
-	outImage := NewImageBuffer()
+	outImage := buffer.NewImageBuffer()
 	defer outImage.Destroy()
 
 	ret := captureFunc(ctx.handle, C.MaaImageBufferHandle(outImage.Handle()))

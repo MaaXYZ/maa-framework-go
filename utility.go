@@ -7,6 +7,7 @@ package maa
 import "C"
 import (
 	"errors"
+	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"image"
 	"unsafe"
 )
@@ -121,18 +122,18 @@ type RecognitionDetail struct {
 	Name       string
 	Hit        bool
 	DetailJson string
-	Raw        ImageBuffer
+	Raw        image.Image
 	Draws      []image.Image
 }
 
 // QueryRecognitionDetail queries recognition detail.
 func QueryRecognitionDetail(recId int64) (RecognitionDetail, error) {
-	name := NewStringBuffer()
+	name := buffer.NewStringBuffer()
 	var hit uint8
-	hitBox := NewRectBuffer()
-	detailJson := NewStringBuffer()
-	raw := NewImageBuffer()
-	draws := NewImageListBuffer()
+	hitBox := buffer.NewRectBuffer()
+	detailJson := buffer.NewStringBuffer()
+	raw := buffer.NewImageBuffer()
+	draws := buffer.NewImageListBuffer()
 	defer func() {
 		name.Destroy()
 		detailJson.Destroy()
@@ -151,7 +152,12 @@ func QueryRecognitionDetail(recId int64) (RecognitionDetail, error) {
 		return RecognitionDetail{}, errors.New("failed to query recognition detail")
 	}
 
-	images, err := draws.GetAll()
+	rawImg, err := raw.GetByRawData()
+	if err != nil {
+		return RecognitionDetail{}, err
+	}
+
+	DrawImages, err := draws.GetAll()
 	if err != nil {
 		return RecognitionDetail{}, err
 	}
@@ -160,8 +166,8 @@ func QueryRecognitionDetail(recId int64) (RecognitionDetail, error) {
 		Name:       name.Get(),
 		Hit:        hit != 0,
 		DetailJson: detailJson.Get(),
-		Raw:        raw,
-		Draws:      images,
+		Raw:        rawImg,
+		Draws:      DrawImages,
 	}, nil
 }
 
@@ -173,7 +179,7 @@ type NodeDetail struct {
 
 // QueryNodeDetail queries running detail.
 func QueryNodeDetail(nodeId int64) (*NodeDetail, bool) {
-	name := NewStringBuffer()
+	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId int64
 	var runCompleted uint8
@@ -197,7 +203,7 @@ type TaskDetail struct {
 
 // QueryTaskDetail queries task detail.
 func QueryTaskDetail(taskId int64) (*TaskDetail, bool) {
-	entry := NewStringBuffer()
+	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
 	got := C.MaaQueryTaskDetail(C.int64_t(taskId), nil, nil, (*C.uint64_t)(unsafe.Pointer(&size))) != 0

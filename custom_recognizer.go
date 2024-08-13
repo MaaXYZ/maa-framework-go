@@ -15,20 +15,23 @@ extern uint8_t _AnalyzeAgent(
 			MaaStringBufferHandle out_detail);
 */
 import "C"
-import "unsafe"
+import (
+	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"unsafe"
+)
 
 // CustomRecognizerImpl defines an interface for custom recognizer.
 // Implementers of this interface must embed a CustomRecognizerHandler struct
 // and provide an implementation for the Analyze method.
 type CustomRecognizerImpl interface {
-	Analyze(syncCtx SyncContext, image ImageBuffer, taskName, RecognitionParam string) (AnalyzeResult, bool)
+	Analyze(syncCtx SyncContext, image *buffer.ImageBuffer, taskName, RecognitionParam string) (AnalyzeResult, bool)
 
 	Handle() unsafe.Pointer
 	Destroy()
 }
 
 type AnalyzeResult struct {
-	Box    Rect
+	Box    buffer.Rect
 	Detail string
 }
 
@@ -37,7 +40,9 @@ type CustomRecognizerHandler struct {
 }
 
 func NewCustomRecognizerHandler() CustomRecognizerHandler {
-	return CustomRecognizerHandler{handle: C.MaaCustomRecognizerHandleCreate(C.AnalyzeCallback(C._AnalyzeAgent))}
+	return CustomRecognizerHandler{
+		handle: C.MaaCustomRecognizerHandleCreate(C.AnalyzeCallback(C._AnalyzeAgent)),
+	}
 }
 
 func (r CustomRecognizerHandler) Handle() unsafe.Pointer {
@@ -61,15 +66,15 @@ func _AnalyzeAgent(
 
 	ret, ok := rec.Analyze(
 		SyncContext{handle: ctx},
-		&imageBuffer{handle: image},
+		buffer.NewImageBufferByHandle(unsafe.Pointer(image)),
 		C.GoString(taskName),
 		C.GoString(customRecognitionParam),
 	)
 	if ok {
 		box := ret.Box
-		outBoxRect := &rectBuffer{handle: outBox}
+		outBoxRect := buffer.NewRectBufferByHandle(unsafe.Pointer(outBox))
 		outBoxRect.Set(box)
-		outDetailString := &stringBuffer{handle: outDetail}
+		outDetailString := buffer.NewStringBufferByHandle(unsafe.Pointer(outDetail))
 		outDetailString.Set(ret.Detail)
 		return C.uint8_t(1)
 	}

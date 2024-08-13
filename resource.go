@@ -8,6 +8,7 @@ extern void _MaaAPICallbackAgent(MaaStringView msg, MaaStringView detailsJson, M
 */
 import "C"
 import (
+	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"strings"
 	"unsafe"
 )
@@ -61,7 +62,7 @@ func (r *Resource) Loaded() bool {
 
 // GetHash returns the hash of the resource.
 func (r *Resource) GetHash() (string, bool) {
-	hash := NewStringBuffer()
+	hash := buffer.NewStringBuffer()
 	defer hash.Destroy()
 
 	got := C.MaaResourceGetHash(r.handle, C.MaaStringBufferHandle(hash.Handle())) != 0
@@ -73,7 +74,7 @@ func (r *Resource) GetHash() (string, bool) {
 
 // GetTaskList returns the task list of the resource.
 func (r *Resource) GetTaskList() ([]string, bool) {
-	taskList := NewStringBuffer()
+	taskList := buffer.NewStringBuffer()
 	defer taskList.Destroy()
 
 	got := C.MaaResourceGetTaskList(r.handle, C.MaaStringBufferHandle(taskList.Handle())) != 0

@@ -2,6 +2,7 @@ package maa
 
 import (
 	"encoding/json"
+	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -10,7 +11,7 @@ type MyAct struct {
 	CustomActionHandler
 }
 
-func (act MyAct) Run(ctx SyncContext, taskName, ActionParam string, curBox Rect, curRecDetail string) bool {
+func (act MyAct) Run(ctx SyncContext, taskName, ActionParam string, curBox buffer.Rect, curRecDetail string) bool {
 	image, err := ctx.Screencap()
 	if err != nil {
 		panic("failed to screencap:" + err.Error())

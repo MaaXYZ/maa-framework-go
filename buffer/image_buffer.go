@@ -1,4 +1,4 @@
-package maa
+package buffer
 
 /*
 #include <stdlib.h>
@@ -15,46 +15,41 @@ import (
 	"unsafe"
 )
 
-type ImageBuffer interface {
-	Destroy()
-	Handle() unsafe.Pointer
-	IsEmpty() bool
-	Clear() bool
-
-	GetByRawData() (image.Image, error)
-	SetRawData(img image.Image) error
-
-	GetByEncoded() (image.Image, error)
-	SetEncoded(img image.Image) error
-}
-
-type imageBuffer struct {
+type ImageBuffer struct {
 	handle C.MaaImageBufferHandle
 }
 
-func NewImageBuffer() ImageBuffer {
+func NewImageBuffer() *ImageBuffer {
 	handle := C.MaaCreateImageBuffer()
-	return &imageBuffer{handle: handle}
+	return &ImageBuffer{
+		handle: handle,
+	}
 }
 
-func (i *imageBuffer) Destroy() {
+func NewImageBufferByHandle(handle unsafe.Pointer) *ImageBuffer {
+	return &ImageBuffer{
+		handle: C.MaaImageBufferHandle(handle),
+	}
+}
+
+func (i *ImageBuffer) Destroy() {
 	C.MaaDestroyImageBuffer(i.handle)
 }
 
-func (i *imageBuffer) Handle() unsafe.Pointer {
+func (i *ImageBuffer) Handle() unsafe.Pointer {
 	return unsafe.Pointer(i.handle)
 }
 
-func (i *imageBuffer) IsEmpty() bool {
+func (i *ImageBuffer) IsEmpty() bool {
 	return C.MaaIsImageEmpty(i.handle) != 0
 }
 
-func (i *imageBuffer) Clear() bool {
+func (i *ImageBuffer) Clear() bool {
 	return C.MaaClearImage(i.handle) != 0
 }
 
 // GetByRawData retrieves the image from raw data stored in the buffer.
-func (i *imageBuffer) GetByRawData() (image.Image, error) {
+func (i *ImageBuffer) GetByRawData() (image.Image, error) {
 	rawData := i.getRawData()
 	if rawData == nil {
 		return nil, errors.New("failed to get raw image data")
@@ -91,7 +86,7 @@ func (i *imageBuffer) GetByRawData() (image.Image, error) {
 }
 
 // SetRawData converts an image.Image to raw data and sets it in the buffer.
-func (i *imageBuffer) SetRawData(img image.Image) error {
+func (i *ImageBuffer) SetRawData(img image.Image) error {
 	width := img.Bounds().Dx()
 	height := img.Bounds().Dy()
 	imageType := int32(16) // CV_8UC3
@@ -133,39 +128,45 @@ func (i *imageBuffer) SetRawData(img image.Image) error {
 
 // getRawData retrieves the raw image data from the buffer.
 // It returns a pointer to the raw image data.
-func (i *imageBuffer) getRawData() unsafe.Pointer {
+func (i *ImageBuffer) getRawData() unsafe.Pointer {
 	return unsafe.Pointer(C.MaaGetImageRawData(i.handle))
 }
 
 // getWidth retrieves the width of the image stored in the buffer.
 // It returns the width as an int32.
-func (i *imageBuffer) getWidth() int32 {
+func (i *ImageBuffer) getWidth() int32 {
 	return int32(C.MaaGetImageWidth(i.handle))
 }
 
 // getHeight retrieves the height of the image stored in the buffer.
 // It returns the height as an int32.
-func (i *imageBuffer) getHeight() int32 {
+func (i *ImageBuffer) getHeight() int32 {
 	return int32(C.MaaGetImageHeight(i.handle))
 }
 
 // getType retrieves the type of the image stored in the buffer.
 // This corresponds to the cv::Mat.type() in OpenCV.
 // It returns the type as an int32.
-func (i *imageBuffer) getType() int32 {
+func (i *ImageBuffer) getType() int32 {
 	return int32(C.MaaGetImageType(i.handle))
 }
 
 // setRawData sets the raw image data in the buffer.
 // It takes a pointer to the raw image data, the width, height, and type of the image.
 // It returns true if the operation was successful, otherwise false.
-func (i *imageBuffer) setRawData(data unsafe.Pointer, width, height, imageType int32) bool {
-	return C.MaaSetImageRawData(i.handle, C.MaaImageRawData(data), C.int32_t(width), C.int32_t(height), C.int32_t(imageType)) != 0
+func (i *ImageBuffer) setRawData(data unsafe.Pointer, width, height, imageType int32) bool {
+	return C.MaaSetImageRawData(
+		i.handle,
+		C.MaaImageRawData(data),
+		C.int32_t(width),
+		C.int32_t(height),
+		C.int32_t(imageType),
+	) != 0
 }
 
 // GetByEncoded retrieves the decoded image from the buffer.
 // It returns the decoded image and an error if the operation was unsuccessful.
-func (i *imageBuffer) GetByEncoded() (image.Image, error) {
+func (i *ImageBuffer) GetByEncoded() (image.Image, error) {
 	encodedData := i.getEncoded()
 	if encodedData == nil {
 		return nil, errors.New("failed to get encoded image data")
@@ -185,7 +186,7 @@ func (i *imageBuffer) GetByEncoded() (image.Image, error) {
 
 // SetEncoded encodes the given image and sets it in the buffer.
 // It takes an image.Image as input and returns an error if the operation was unsuccessful.
-func (i *imageBuffer) SetEncoded(img image.Image) error {
+func (i *ImageBuffer) SetEncoded(img image.Image) error {
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
 		return err
@@ -203,19 +204,23 @@ func (i *imageBuffer) SetEncoded(img image.Image) error {
 
 // getEncoded retrieves the encoded image data from the buffer.
 // It returns a pointer to the encoded image data.
-func (i *imageBuffer) getEncoded() unsafe.Pointer {
+func (i *ImageBuffer) getEncoded() unsafe.Pointer {
 	return unsafe.Pointer(C.MaaGetImageEncoded(i.handle))
 }
 
 // getEncodedSize retrieves the size of the encoded image data in the buffer.
 // It returns the size of the encoded image data as an integer.
-func (i *imageBuffer) getEncodedSize() int32 {
+func (i *ImageBuffer) getEncodedSize() int32 {
 	return int32(C.MaaGetImageEncodedSize(i.handle))
 }
 
 // setEncoded sets the encoded image data in the buffer.
 // It takes a pointer to the encoded image data and the size of the data.
 // It returns true if the operation was successful, otherwise false.
-func (i *imageBuffer) setEncoded(data unsafe.Pointer, size uint64) bool {
-	return C.MaaSetImageEncoded(i.handle, C.MaaImageEncodedData(data), C.uint64_t(size)) != 0
+func (i *ImageBuffer) setEncoded(data unsafe.Pointer, size uint64) bool {
+	return C.MaaSetImageEncoded(
+		i.handle,
+		C.MaaImageEncodedData(data),
+		C.uint64_t(size),
+	) != 0
 }

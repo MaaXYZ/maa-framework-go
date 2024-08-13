@@ -6,6 +6,7 @@ package maa
 */
 import "C"
 import (
+	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"image"
 	"unsafe"
 )
@@ -237,7 +238,7 @@ func (c *controller) Connected() bool {
 
 // GetImage gets the image buffer of the last screencap request.
 func (c *controller) GetImage() (image.Image, bool) {
-	imgBuffer := NewImageBuffer()
+	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 	got := C.MaaControllerGetImage(c.handle, C.MaaImageBufferHandle(imgBuffer.Handle()))
 	img, err := imgBuffer.GetByRawData()
@@ -251,7 +252,7 @@ func (c *controller) GetImage() (image.Image, bool) {
 
 // GetUUID gets the UUID of the controller.
 func (c *controller) GetUUID() (string, bool) {
-	uuid := NewStringBuffer()
+	uuid := buffer.NewStringBuffer()
 	defer uuid.Destroy()
 	got := C.MaaControllerGetUUID(c.handle, C.MaaStringBufferHandle(uuid.Handle()))
 	if got == 0 {
