@@ -227,12 +227,14 @@ func NewCustomController(
 	customCtrl CustomControllerImpl,
 	callback func(msg, detailsJson string),
 ) Controller {
-	cbAgent := &callbackAgent{callback: callback}
+	id := registerCallback(callback)
 	handle := C.MaaCustomControllerCreate(
 		C.MaaCustomControllerHandle(customCtrl.Handle()),
 		C.MaaTransparentArg(unsafe.Pointer(&customCtrl)),
 		C.MaaAPICallback(C._MaaAPICallbackAgent),
-		C.MaaTransparentArg(unsafe.Pointer(cbAgent)),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
 	)
 	return &controller{handle: handle}
 }

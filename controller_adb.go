@@ -64,7 +64,7 @@ func NewAdbController(
 		C.free(unsafe.Pointer(cAgentPath))
 	}()
 
-	agent := &callbackAgent{callback: callback}
+	id := registerCallback(callback)
 	handle := C.MaaAdbControllerCreateV2(
 		cAdbPath,
 		cAddress,
@@ -72,7 +72,9 @@ func NewAdbController(
 		cConfig,
 		cAgentPath,
 		C.MaaAPICallback(C._MaaAPICallbackAgent),
-		C.MaaTransparentArg(unsafe.Pointer(agent)),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
 	)
 	return &controller{handle: handle}
 }

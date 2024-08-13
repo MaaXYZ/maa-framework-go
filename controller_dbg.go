@@ -36,14 +36,16 @@ func NewDbgController(
 		C.free(unsafe.Pointer(cConfig))
 	}()
 
-	agent := &callbackAgent{callback: callback}
+	id := registerCallback(callback)
 	handle := C.MaaDbgControllerCreate(
 		cReadPath,
 		cWritePath,
 		C.int32_t(dbgCtrlType),
 		cConfig,
 		C.MaaAPICallback(C._MaaAPICallbackAgent),
-		C.MaaTransparentArg(unsafe.Pointer(agent)),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
 	)
 	return &controller{handle: handle}
 }

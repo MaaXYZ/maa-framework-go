@@ -18,10 +18,12 @@ type Instance struct {
 
 // New creates an instance.
 func New(callback func(msg, detailsJson string)) *Instance {
-	agent := &callbackAgent{callback: callback}
+	id := registerCallback(callback)
 	handle := C.MaaCreate(
 		C.MaaAPICallback(C._MaaAPICallbackAgent),
-		C.MaaTransparentArg(unsafe.Pointer(agent)),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
 	)
 	return &Instance{handle: handle}
 }

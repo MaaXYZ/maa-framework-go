@@ -18,8 +18,13 @@ type Resource struct {
 
 // NewResource creates a new resource.
 func NewResource(callback func(msg, detailsJson string)) *Resource {
-	agent := &callbackAgent{callback: callback}
-	handle := C.MaaResourceCreate(C.MaaAPICallback(C._MaaAPICallbackAgent), C.MaaTransparentArg(unsafe.Pointer(agent)))
+	id := registerCallback(callback)
+	handle := C.MaaResourceCreate(
+		C.MaaAPICallback(C._MaaAPICallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
+	)
 	return &Resource{
 		handle: handle,
 	}

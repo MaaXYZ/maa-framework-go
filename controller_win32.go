@@ -34,12 +34,14 @@ func NewWin32Controller(
 	win32CtrlType Win32ControllerType,
 	callback func(msg, detailsJson string),
 ) Controller {
-	agent := &callbackAgent{callback: callback}
+	id := registerCallback(callback)
 	handle := C.MaaWin32ControllerCreate(
 		C.MaaWin32Hwnd(C.MaaWin32Hwnd(hWnd)),
 		C.int32_t(win32CtrlType),
 		C.MaaAPICallback(C._MaaAPICallbackAgent),
-		C.MaaTransparentArg(unsafe.Pointer(agent)),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
 	)
 	return &controller{handle: handle}
 }
