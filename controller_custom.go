@@ -145,10 +145,9 @@ func _ScreencapAgent(handleArg C.MaaTransparentArg, imgBuffer C.MaaImageBufferHa
 	if ok {
 		imgImgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(imgBuffer))
 		err := imgImgBuffer.SetRawData(img)
-		if err != nil {
-			return C.uint8_t(0)
+		if err == nil {
+			return C.uint8_t(1)
 		}
-		return C.uint8_t(1)
 	}
 	return C.uint8_t(0)
 }
