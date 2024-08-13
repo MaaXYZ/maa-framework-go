@@ -11,8 +11,8 @@ import (
 	"unsafe"
 )
 
-// FrameworkVersion returns the version of the framework.
-func FrameworkVersion() string {
+// Version returns the version of the maa framework.
+func Version() string {
 	return C.GoString(C.MaaVersion())
 }
 
