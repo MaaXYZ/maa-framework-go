@@ -6,7 +6,7 @@ package toolkit
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go"
+	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"unsafe"
 )
 
@@ -69,7 +69,7 @@ func GetForegroundWindow() unsafe.Pointer {
 
 // GetWindowClassName returns the window class name by window handle.
 func GetWindowClassName(hwnd unsafe.Pointer) (string, bool) {
-	buffer := maa.NewStringBuffer()
+	buffer := buffer.NewStringBuffer()
 	defer buffer.Destroy()
 	got := C.MaaToolkitGetWindowClassName(C.MaaWin32Hwnd(hwnd), C.MaaStringBufferHandle(buffer.Handle()))
 	return buffer.Get(), got != 0
@@ -77,7 +77,7 @@ func GetWindowClassName(hwnd unsafe.Pointer) (string, bool) {
 
 // GetWindowWindowName returns the window window name by window handle.
 func GetWindowWindowName(hwnd unsafe.Pointer) (string, bool) {
-	buffer := maa.NewStringBuffer()
+	buffer := buffer.NewStringBuffer()
 	defer buffer.Destroy()
 	got := C.MaaToolkitGetWindowWindowName(C.MaaWin32Hwnd(hwnd), C.MaaStringBufferHandle(buffer.Handle()))
 	return buffer.Get(), got != 0
