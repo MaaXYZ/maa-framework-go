@@ -17,6 +17,7 @@ extern uint8_t _AnalyzeAgent(
 import "C"
 import (
 	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"image"
 	"sync/atomic"
 	"unsafe"
 )
@@ -53,7 +54,7 @@ func clearCustomRecognizer() {
 // Implementers of this interface must embed a CustomRecognizerHandler struct
 // and provide an implementation for the Analyze method.
 type CustomRecognizer interface {
-	Analyze(syncCtx SyncContext, image *buffer.ImageBuffer, taskName, RecognitionParam string) (AnalyzeResult, bool)
+	Analyze(syncCtx SyncContext, img image.Image, taskName, RecognitionParam string) (AnalyzeResult, bool)
 
 	Handle() unsafe.Pointer
 	Destroy()
@@ -85,7 +86,7 @@ func (r CustomRecognizerHandler) Destroy() {
 //export _AnalyzeAgent
 func _AnalyzeAgent(
 	ctx C.MaaSyncContextHandle,
-	image C.MaaImageBufferHandle,
+	img C.MaaImageBufferHandle,
 	taskName, customRecognitionParam C.MaaStringView,
 	recognizerArg C.MaaTransparentArg,
 	outBox C.MaaRectHandle,
@@ -95,10 +96,15 @@ func _AnalyzeAgent(
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(unsafe.Pointer(recognizerArg)))
 	rec := customRecognizerAgents[id]
+	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(img))
+	imgImg, err := imgBuffer.GetByRawData()
+	if err != nil {
+		return C.uint8_t(0)
+	}
 
 	ret, ok := rec.Analyze(
 		SyncContext{handle: ctx},
-		buffer.NewImageBufferByHandle(unsafe.Pointer(image)),
+		imgImg,
 		C.GoString(taskName),
 		C.GoString(customRecognitionParam),
 	)
