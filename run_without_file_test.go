@@ -11,7 +11,7 @@ type MyAct struct {
 	CustomActionHandler
 }
 
-func (act MyAct) Run(ctx SyncContext, taskName, ActionParam string, curBox buffer.Rect, curRecDetail string) bool {
+func (act *MyAct) Run(ctx SyncContext, taskName, ActionParam string, curBox buffer.Rect, curRecDetail string) bool {
 	image, err := ctx.Screencap()
 	if err != nil {
 		panic("failed to screencap:" + err.Error())
@@ -37,12 +37,12 @@ func (act MyAct) Run(ctx SyncContext, taskName, ActionParam string, curBox buffe
 	return true
 }
 
-func (act MyAct) Stop() {
+func (act *MyAct) Stop() {
 	// do nothing
 }
 
-func NewMyAct() MyAct {
-	return MyAct{
+func NewMyAct() CustomAction {
+	return &MyAct{
 		CustomActionHandler: NewCustomActionHandler(),
 	}
 }

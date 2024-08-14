@@ -18,13 +18,42 @@ extern void _StopAgent(MaaTransparentArg actionArg);
 import "C"
 import (
 	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"sync/atomic"
 	"unsafe"
 )
 
-// CustomActionImpl defines an interface for custom action.
+var (
+	customActionID       uint64
+	customActionNameToID = make(map[string]uint64)
+	customActionAgents   = make(map[uint64]CustomAction)
+)
+
+func registerCustomAction(name string, action CustomAction) uint64 {
+	id := atomic.AddUint64(&customActionID, 1)
+	customActionNameToID[name] = id
+	customActionAgents[id] = action
+	return id
+}
+
+func unregisterCustomAction(name string) bool {
+	id, ok := customActionNameToID[name]
+	if !ok {
+		return false
+	}
+	delete(customActionNameToID, name)
+	delete(customActionAgents, id)
+	return ok
+}
+
+func clearCustomAction() {
+	customActionNameToID = make(map[string]uint64)
+	customActionAgents = make(map[uint64]CustomAction)
+}
+
+// CustomAction defines an interface for custom action.
 // Implementers of this interface must embed an CustomActionHandler struct
 // and provide implementations for the Run and Stop methods.
-type CustomActionImpl interface {
+type CustomAction interface {
 	Run(ctx SyncContext, taskName, ActionParam string, curBox buffer.Rect, curRecDetail string) bool
 	Stop()
 
@@ -56,8 +85,12 @@ func _RunAgent(
 	curRecDetail C.MaaStringView,
 	actionArg C.MaaTransparentArg,
 ) C.uint8_t {
-	act := *(*CustomActionImpl)(unsafe.Pointer(actionArg))
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(uintptr(unsafe.Pointer(actionArg)))
+	act := customActionAgents[id]
 	curBoxRectBuffer := buffer.NewRectBufferByHandle(unsafe.Pointer(curBox))
+
 	ok := act.Run(
 		SyncContext{handle: ctx},
 		C.GoString(taskName),
@@ -73,6 +106,9 @@ func _RunAgent(
 
 //export _StopAgent
 func _StopAgent(actionArg C.MaaTransparentArg) {
-	act := *(*CustomActionImpl)(unsafe.Pointer(actionArg))
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(uintptr(unsafe.Pointer(actionArg)))
+	act := customActionAgents[id]
 	act.Stop()
 }

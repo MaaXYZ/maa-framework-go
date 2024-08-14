@@ -17,13 +17,42 @@ extern uint8_t _AnalyzeAgent(
 import "C"
 import (
 	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"sync/atomic"
 	"unsafe"
 )
 
-// CustomRecognizerImpl defines an interface for custom recognizer.
+var (
+	customRecognizerID       uint64
+	customRecognizerNameToID = make(map[string]uint64)
+	customRecognizerAgents   = make(map[uint64]CustomRecognizer)
+)
+
+func registerCustomRecognizer(name string, recognizer CustomRecognizer) uint64 {
+	id := atomic.AddUint64(&customRecognizerID, 1)
+	customRecognizerNameToID[name] = id
+	customRecognizerAgents[id] = recognizer
+	return id
+}
+
+func unregisterCustomRecognizer(name string) bool {
+	id, ok := customRecognizerNameToID[name]
+	if !ok {
+		return false
+	}
+	delete(customRecognizerNameToID, name)
+	delete(customRecognizerAgents, id)
+	return ok
+}
+
+func clearCustomRecognizer() {
+	customRecognizerNameToID = make(map[string]uint64)
+	customRecognizerAgents = make(map[uint64]CustomRecognizer)
+}
+
+// CustomRecognizer defines an interface for custom recognizer.
 // Implementers of this interface must embed a CustomRecognizerHandler struct
 // and provide an implementation for the Analyze method.
-type CustomRecognizerImpl interface {
+type CustomRecognizer interface {
 	Analyze(syncCtx SyncContext, image *buffer.ImageBuffer, taskName, RecognitionParam string) (AnalyzeResult, bool)
 
 	Handle() unsafe.Pointer
@@ -62,7 +91,10 @@ func _AnalyzeAgent(
 	outBox C.MaaRectHandle,
 	outDetail C.MaaStringBufferHandle,
 ) C.uint8_t {
-	rec := *(*CustomRecognizerImpl)(unsafe.Pointer(recognizerArg))
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(uintptr(unsafe.Pointer(recognizerArg)))
+	rec := customRecognizerAgents[id]
 
 	ret, ok := rec.Analyze(
 		SyncContext{handle: ctx},

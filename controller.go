@@ -256,17 +256,20 @@ func NewThriftController(
 
 // NewCustomController creates a custom controller instance.
 func NewCustomController(
-	customCtrl CustomControllerImpl,
+	ctrl CustomController,
 	callback func(msg, detailsJson string),
 ) Controller {
-	id := registerCallback(callback)
+	ctrlID := registerCustomController(ctrl)
+	cbID := registerCallback(callback)
 	handle := C.MaaCustomControllerCreate(
-		C.MaaCustomControllerHandle(customCtrl.Handle()),
-		C.MaaTransparentArg(unsafe.Pointer(&customCtrl)),
+		C.MaaCustomControllerHandle(ctrl.Handle()),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(ctrlID))),
 		C.MaaAPICallback(C._MaaAPICallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(cbID))),
 	)
 	return &controller{handle: handle}
 }

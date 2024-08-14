@@ -54,19 +54,26 @@ func (i *Instance) Inited() bool {
 }
 
 // RegisterCustomRecognizer registers a custom recognizer to the instance.
-func (i *Instance) RegisterCustomRecognizer(name string, recognizer CustomRecognizerImpl) bool {
+func (i *Instance) RegisterCustomRecognizer(name string, recognizer CustomRecognizer) bool {
+	id := registerCustomRecognizer(name, recognizer)
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 	return C.MaaRegisterCustomRecognizer(
 		i.handle,
 		cName,
 		C.MaaCustomRecognizerHandle(recognizer.Handle()),
-		C.MaaTransparentArg(unsafe.Pointer(&recognizer)),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
 	) != 0
 }
 
 // UnregisterCustomRecognizer unregisters a custom recognizer from the instance.
 func (i *Instance) UnregisterCustomRecognizer(name string) bool {
+	ok := unregisterCustomRecognizer(name)
+	if !ok {
+		return false
+	}
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 	return C.MaaUnregisterCustomRecognizer(i.handle, cName) != 0
@@ -74,18 +81,31 @@ func (i *Instance) UnregisterCustomRecognizer(name string) bool {
 
 // ClearCustomRecognizer clears all custom recognizers registered to the instance.
 func (i *Instance) ClearCustomRecognizer() bool {
+	clearCustomRecognizer()
 	return C.MaaClearCustomRecognizer(i.handle) != 0
 }
 
 // RegisterCustomAction registers a custom action to the instance.
-func (i *Instance) RegisterCustomAction(name string, action CustomActionImpl) bool {
+func (i *Instance) RegisterCustomAction(name string, action CustomAction) bool {
+	id := registerCustomAction(name, action)
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	return C.MaaRegisterCustomAction(i.handle, cName, C.MaaCustomActionHandle(action.Handle()), C.MaaTransparentArg(unsafe.Pointer(&action))) != 0
+	return C.MaaRegisterCustomAction(
+		i.handle,
+		cName,
+		C.MaaCustomActionHandle(action.Handle()),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
+	) != 0
 }
 
 // UnregisterCustomAction unregisters a custom action from the instance.
 func (i *Instance) UnregisterCustomAction(name string) bool {
+	ok := unregisterCustomAction(name)
+	if !ok {
+		return false
+	}
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 	return C.MaaUnregisterCustomAction(i.handle, cName) != 0
@@ -93,6 +113,7 @@ func (i *Instance) UnregisterCustomAction(name string) bool {
 
 // ClearCustomAction clears all custom actions registered to the instance.
 func (i *Instance) ClearCustomAction() bool {
+	clearCustomAction()
 	return C.MaaClearCustomAction(i.handle) != 0
 }
 
