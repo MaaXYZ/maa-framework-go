@@ -464,8 +464,11 @@ func (c *controller) GetImage() (image.Image, error) {
 func (c *controller) GetUUID() (string, bool) {
 	uuid := buffer.NewStringBuffer()
 	defer uuid.Destroy()
-	got := C.MaaControllerGetUUID(c.handle, C.MaaStringBufferHandle(uuid.Handle()))
-	if got == 0 {
+	got := C.MaaControllerGetUUID(
+		c.handle,
+		C.MaaStringBufferHandle(uuid.Handle()),
+	) != 0
+	if !got {
 		return "", false
 	}
 	return uuid.Get(), true
