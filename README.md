@@ -78,6 +78,7 @@ import (
 	"github.com/MaaXYZ/maa-framework-go"
 	"github.com/MaaXYZ/maa-framework-go/toolkit"
 	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"image"
 )
 
 func main() {
@@ -112,13 +113,12 @@ func main() {
 
 	inst.BindResource(res)
 	inst.BindController(ctrl)
-    
+
 	myRec := NewMyRec()
+	defer myRec.Destroy()
 	myAct := NewMyAct()
-	defer func() {
-		myRec.Destroy()
-		myAct.Destroy()
-	}()
+	defer myAct.Destroy()
+
 	inst.RegisterCustomRecognizer("MyRec", myRec)
 	inst.RegisterCustomAction("MyAct", myAct)
 
@@ -134,15 +134,15 @@ type MyRec struct {
 	maa.CustomRecognizerHandler
 }
 
-func NewMyRec() MyRec {
-	return MyRec{
+func NewMyRec() maa.CustomRecognizer {
+	return &MyRec{
 		CustomRecognizerHandler: maa.NewCustomRecognizerHandler(),
 	}
 }
 
-func (MyRec) Analyze(
+func (*MyRec) Analyze(
 	ctx maa.SyncContext,
-	image buffer.ImageBuffer,
+	image image.Image,
 	taskName string,
 	customRecognitionParam string,
 ) (maa.AnalyzeResult, bool) {
@@ -157,13 +157,13 @@ type MyAct struct {
 	maa.CustomActionHandler
 }
 
-func NewMyAct() MyAct {
-	return MyAct{
+func NewMyAct() maa.CustomAction {
+	return &MyAct{
 		CustomActionHandler: maa.NewCustomActionHandler(),
 	}
 }
 
-func (MyAct) Run(
+func (*MyAct) Run(
 	ctx maa.SyncContext,
 	taskName string,
 	customActionParam string,
@@ -173,7 +173,7 @@ func (MyAct) Run(
 	return true
 }
 
-func (MyAct) Stop() {
+func (*MyAct) Stop() {
 }
 ```
 
