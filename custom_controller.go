@@ -3,7 +3,7 @@ package maa
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
-#include "controller_custom.h"
+#include "custom_controller.h"
 
 extern void _MaaAPICallbackAgent(MaaStringView msg, MaaStringView detailsJson, MaaTransparentArg callbackArg);
 
@@ -220,21 +220,4 @@ func _InputText(text C.MaaStringView, handleArg C.MaaTransparentArg) C.uint8_t {
 		return C.uint8_t(1)
 	}
 	return C.uint8_t(0)
-}
-
-// NewCustomController creates a custom controller instance.
-func NewCustomController(
-	customCtrl CustomControllerImpl,
-	callback func(msg, detailsJson string),
-) Controller {
-	id := registerCallback(callback)
-	handle := C.MaaCustomControllerCreate(
-		C.MaaCustomControllerHandle(customCtrl.Handle()),
-		C.MaaTransparentArg(unsafe.Pointer(&customCtrl)),
-		C.MaaAPICallback(C._MaaAPICallbackAgent),
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
-	)
-	return &controller{handle: handle}
 }

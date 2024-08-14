@@ -1,4 +1,4 @@
-#include "controller_custom.h"
+#include "custom_controller.h"
 
 MaaCustomControllerHandle MaaCustomControllerHandleCreate(
     ConnectCallback connect,

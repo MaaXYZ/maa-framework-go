@@ -3,6 +3,8 @@ package maa
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
+
+extern void _MaaAPICallbackAgent(MaaStringView msg, MaaStringView detailsJson, MaaTransparentArg callbackArg);
 */
 import "C"
 import (
@@ -70,6 +72,203 @@ type Controller interface {
 // controller is a concrete implementation of the Controller interface.
 type controller struct {
 	handle C.MaaControllerHandle
+}
+
+type AdbControllerType int32
+
+// AdbControllerType
+const (
+	AdbControllerTypeInvalid AdbControllerType = iota
+
+	AdbControllerTypeTouchAdb
+	AdbControllerTypeTouchMiniTouch
+	AdbControllerTypeTouchMaaTouch
+	AdbControllerTypeTouchEmulatorExtras
+	AdbControllerTypeTouchAutoDetect AdbControllerType = 0xFF - 1
+
+	AdbControllerTypeKeyAdb            AdbControllerType = 1 << 8
+	AdbControllerTypeKeyMaaTouch       AdbControllerType = 2 << 8
+	AdbControllerTypeKeyEmulatorExtras AdbControllerType = 3 << 8
+	AdbControllerTypeKeyAutoDetect     AdbControllerType = 0xFF00 - (1 << 8)
+
+	AdbControllerTypeInputPresetAdb            = AdbControllerTypeTouchAdb | AdbControllerTypeKeyAdb
+	AdbControllerTypeInputPresetMiniTouch      = AdbControllerTypeTouchMiniTouch | AdbControllerTypeKeyAdb
+	AdbControllerTypeInputPresetMaaTouch       = AdbControllerTypeTouchMaaTouch | AdbControllerTypeKeyMaaTouch
+	AdbControllerTypeInputPresetEmulatorExtras = AdbControllerTypeTouchEmulatorExtras | AdbControllerTypeKeyEmulatorExtras
+	AdbControllerTypeInputPresetAutoDetect     = AdbControllerTypeTouchAutoDetect | AdbControllerTypeKeyAutoDetect
+
+	AdbControllerTypeScreencapFastestWayCompatible AdbControllerType = 1 << 16
+	AdbControllerTypeScreencapRawByNetcat          AdbControllerType = 2 << 16
+	AdbControllerTypeScreencapRawWithGzip          AdbControllerType = 3 << 16
+	AdbControllerTypeScreencapEncode               AdbControllerType = 4 << 16
+	AdbControllerTypeScreencapEncodeToFile         AdbControllerType = 5 << 16
+	AdbControllerTypeScreencapMinicapDirect        AdbControllerType = 6 << 16
+	AdbControllerTypeScreencapMinicapStream        AdbControllerType = 7 << 16
+	AdbControllerTypeScreencapEmulatorExtras       AdbControllerType = 8 << 16
+	AdbControllerTypeScreencapFastestLosslessWay   AdbControllerType = 0xFF0000 - (2 << 16)
+	AdbControllerTypeScreencapFastestWay           AdbControllerType = 0xFF0000 - (1 << 16)
+)
+
+// NewAdbController creates an ADB controller instance.
+func NewAdbController(
+	adbPath, address string,
+	adbCtrlType AdbControllerType,
+	config, agentPath string,
+	callback func(msg, detailsJson string),
+) Controller {
+	cAdbPath := C.CString(adbPath)
+	cAddress := C.CString(address)
+	cConfig := C.CString(config)
+	cAgentPath := C.CString(agentPath)
+	defer func() {
+		C.free(unsafe.Pointer(cAdbPath))
+		C.free(unsafe.Pointer(cAddress))
+		C.free(unsafe.Pointer(cConfig))
+		C.free(unsafe.Pointer(cAgentPath))
+	}()
+
+	id := registerCallback(callback)
+	handle := C.MaaAdbControllerCreateV2(
+		cAdbPath,
+		cAddress,
+		C.int32_t(adbCtrlType),
+		cConfig,
+		cAgentPath,
+		C.MaaAPICallback(C._MaaAPICallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
+	)
+	return &controller{handle: handle}
+}
+
+type Win32ControllerType int32
+
+// Win32ControllerType
+const (
+	Win32ControllerTypeInvalid Win32ControllerType = iota
+
+	Win32ControllerTypeTouchSendMessage
+	Win32ControllerTypeTouchSeize
+
+	Win32ControllerTypeKeySendMessage Win32ControllerType = 1 << 8
+	Win32ControllerTypeKeySeize       Win32ControllerType = 2 << 8
+
+	Win32ControllerTypeScreencapGDI            Win32ControllerType = 1 << 16
+	Win32ControllerTypeScreencapDXGIDesktopDup Win32ControllerType = 2 << 16
+	Win32ControllerTypeScreencapDXGIFramePool  Win32ControllerType = 4 << 16
+)
+
+// NewWin32Controller creates a win32 controller instance.
+func NewWin32Controller(
+	hWnd unsafe.Pointer,
+	win32CtrlType Win32ControllerType,
+	callback func(msg, detailsJson string),
+) Controller {
+	id := registerCallback(callback)
+	handle := C.MaaWin32ControllerCreate(
+		C.MaaWin32Hwnd(C.MaaWin32Hwnd(hWnd)),
+		C.int32_t(win32CtrlType),
+		C.MaaAPICallback(C._MaaAPICallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
+	)
+	return &controller{handle: handle}
+}
+
+type DbgControllerType int32
+
+// DbgControllerType
+const (
+	DbgControllerTypeInvalid DbgControllerType = iota
+	DbgControllerTypeCarouselImage
+	DbgControllerTypeReplayRecording
+)
+
+// NewDbgController creates a DBG controller instance.
+func NewDbgController(
+	readPath, writePath string,
+	dbgCtrlType DbgControllerType,
+	config string,
+	callback func(msg, detailsJson string),
+) Controller {
+	cReadPath := C.CString(readPath)
+	cWritePath := C.CString(writePath)
+	cConfig := C.CString(config)
+	defer func() {
+		C.free(unsafe.Pointer(cReadPath))
+		C.free(unsafe.Pointer(cWritePath))
+		C.free(unsafe.Pointer(cConfig))
+	}()
+
+	id := registerCallback(callback)
+	handle := C.MaaDbgControllerCreate(
+		cReadPath,
+		cWritePath,
+		C.int32_t(dbgCtrlType),
+		cConfig,
+		C.MaaAPICallback(C._MaaAPICallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
+	)
+	return &controller{handle: handle}
+}
+
+type ThriftControllerType int32
+
+const (
+	ThriftControllerInvalid ThriftControllerType = iota
+	ThriftControllerTypeSocket
+	ThriftControllerTypeUnixDomainSocket
+)
+
+// NewThriftController creates a thrift controller instance.
+func NewThriftController(
+	thriftCtrlType ThriftControllerType,
+	host string,
+	port int32,
+	config string,
+	callback func(msg, detailsJson string),
+) Controller {
+	cHost := C.CString(host)
+	cConfig := C.CString(config)
+	defer func() {
+		C.free(unsafe.Pointer(cHost))
+		C.free(unsafe.Pointer(cConfig))
+
+	}()
+
+	id := registerCallback(callback)
+	handle := C.MaaThriftControllerCreate(
+		C.int32_t(thriftCtrlType),
+		cHost,
+		C.int32_t(port),
+		cConfig,
+		C.MaaAPICallback(C._MaaAPICallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
+	)
+	return &controller{handle: handle}
+}
+
+// NewCustomController creates a custom controller instance.
+func NewCustomController(
+	customCtrl CustomControllerImpl,
+	callback func(msg, detailsJson string),
+) Controller {
+	id := registerCallback(callback)
+	handle := C.MaaCustomControllerCreate(
+		C.MaaCustomControllerHandle(customCtrl.Handle()),
+		C.MaaTransparentArg(unsafe.Pointer(&customCtrl)),
+		C.MaaAPICallback(C._MaaAPICallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
+	)
+	return &controller{handle: handle}
 }
 
 // Destroy frees the controller instance.
