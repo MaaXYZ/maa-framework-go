@@ -448,7 +448,7 @@ func (c *controller) GetImage() (image.Image, error) {
 		c.handle,
 		C.MaaImageBufferHandle(imgBuffer.Handle()),
 	) != 0
-	if got {
+	if !got {
 		return nil, errors.New("failed to get image")
 	}
 
