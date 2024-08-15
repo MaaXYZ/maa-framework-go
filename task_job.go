@@ -49,6 +49,6 @@ func (job TaskJob) SetParam(param string) bool {
 	return job.setParamFunc(job.job.id, param)
 }
 
-func (job TaskJob) GetDetail() (*TaskDetail, bool) {
+func (job TaskJob) GetDetail() (TaskDetail, bool) {
 	return QueryTaskDetail(job.job.id)
 }

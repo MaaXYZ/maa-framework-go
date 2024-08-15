@@ -119,6 +119,7 @@ func SetDebugMessage(enabled bool) bool {
 }
 
 type RecognitionDetail struct {
+	ID         int64
 	Name       string
 	Hit        bool
 	DetailJson string
@@ -163,6 +164,7 @@ func QueryRecognitionDetail(recId int64) (RecognitionDetail, error) {
 	}
 
 	return RecognitionDetail{
+		ID:         recId,
 		Name:       name.Get(),
 		Hit:        hit != 0,
 		DetailJson: detailJson.Get(),
@@ -172,13 +174,14 @@ func QueryRecognitionDetail(recId int64) (RecognitionDetail, error) {
 }
 
 type NodeDetail struct {
+	ID           int64
 	Name         string
-	RecId        int64
+	Recognition  RecognitionDetail
 	RunCompleted bool
 }
 
 // QueryNodeDetail queries running detail.
-func QueryNodeDetail(nodeId int64) (*NodeDetail, bool) {
+func QueryNodeDetail(nodeId int64) (NodeDetail, bool) {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId int64
@@ -189,26 +192,34 @@ func QueryNodeDetail(nodeId int64) (*NodeDetail, bool) {
 		(*C.int64_t)(unsafe.Pointer(&recId)),
 		(*C.uint8_t)(unsafe.Pointer(&runCompleted)),
 	) != 0
-	return &NodeDetail{
+
+	recognitionDetail, err := QueryRecognitionDetail(recId)
+	if err != nil {
+
+	}
+
+	return NodeDetail{
+		ID:           nodeId,
 		Name:         name.Get(),
-		RecId:        recId,
+		Recognition:  recognitionDetail,
 		RunCompleted: runCompleted != 0,
 	}, got
 }
 
 type TaskDetail struct {
-	Entry      string
-	NodeIdList []int64
+	ID          int64
+	Entry       string
+	NodeDetails []NodeDetail
 }
 
 // QueryTaskDetail queries task detail.
-func QueryTaskDetail(taskId int64) (*TaskDetail, bool) {
+func QueryTaskDetail(taskId int64) (TaskDetail, bool) {
 	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
 	got := C.MaaQueryTaskDetail(C.int64_t(taskId), nil, nil, (*C.uint64_t)(unsafe.Pointer(&size))) != 0
 	if !got {
-		return nil, got
+		return TaskDetail{}, got
 	}
 	nodeIdList := make([]int64, size)
 	got = C.MaaQueryTaskDetail(
@@ -217,8 +228,19 @@ func QueryTaskDetail(taskId int64) (*TaskDetail, bool) {
 		(*C.int64_t)(unsafe.Pointer(&nodeIdList[0])),
 		(*C.uint64_t)(unsafe.Pointer(&size)),
 	) != 0
-	return &TaskDetail{
-		Entry:      entry.Get(),
-		NodeIdList: nodeIdList,
+
+	nodeDetails := make([]NodeDetail, size)
+	for i, nodeId := range nodeIdList {
+		nodeDetail, ok := QueryNodeDetail(nodeId)
+		if !ok {
+
+		}
+		nodeDetails[i] = nodeDetail
+	}
+
+	return TaskDetail{
+		ID:          taskId,
+		Entry:       entry.Get(),
+		NodeDetails: nodeDetails,
 	}, got
 }
