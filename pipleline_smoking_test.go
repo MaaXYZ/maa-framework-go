@@ -15,7 +15,7 @@ func TestPipelineSmoking(t *testing.T) {
 
 	res := NewResource(nil)
 	defer res.Destroy()
-	resDir := "./TestingDataSet/PipelineSmoking/resource"
+	resDir := "./test/data_set/PipelineSmoking/resource"
 	resJob := res.PostPath(resDir)
 
 	ctrlJob.Wait()
