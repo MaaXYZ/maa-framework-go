@@ -45,7 +45,7 @@ jobs:
         run: |
           $env:Path += ";${{ github.workspace }}/deps/bin"
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
-          cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* TestingDataSet/PipelineSmoking/resource/model/ocr
+          cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
           go test -v -tags customenv
 
       - uses: actions/upload-artifact@v4
@@ -104,7 +104,7 @@ jobs:
           LD_LIBRARY_PATH: /__w/maa-framework-go/maa-framework-go/deps/bin:$LD_LIBRARY_PATH
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
-          cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* TestingDataSet/PipelineSmoking/resource/model/ocr
+          cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
           go test -v -tags customenv
           
       - uses: actions/upload-artifact@v4
@@ -157,7 +157,7 @@ jobs:
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/deps/bin:$DYLD_LIBRARY_PATH
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
-          cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* TestingDataSet/PipelineSmoking/resource/model/ocr
+          cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
           go test -v -tags customenv
 
       - uses: actions/upload-artifact@v4
