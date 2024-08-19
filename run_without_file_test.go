@@ -48,8 +48,8 @@ func NewMyAct() CustomAction {
 }
 
 func TestRunWithoutFile(t *testing.T) {
-	testingPath := "./TestingDataSet/PipelineSmoking/Screenshot"
-	resultPath := "./TestingDataSet/debug"
+	testingPath := "./test/data_set/PipelineSmoking/Screenshot"
+	resultPath := "./test/data_set/debug"
 
 	ctrl := NewDbgController(testingPath, resultPath, DbgControllerTypeCarouselImage, "{}", nil)
 	defer ctrl.Destroy()

@@ -6,8 +6,8 @@ import (
 )
 
 func TestPipelineSmoking(t *testing.T) {
-	testingPath := "./TestingDataSet/PipelineSmoking/MaaRecording.txt"
-	resultPath := "./TestingDataSet/debug"
+	testingPath := "./test/data_set/PipelineSmoking/MaaRecording.txt"
+	resultPath := "./test/data_set/debug"
 
 	ctrl := NewDbgController(testingPath, resultPath, DbgControllerTypeReplayRecording, "{}", nil)
 	defer ctrl.Destroy()

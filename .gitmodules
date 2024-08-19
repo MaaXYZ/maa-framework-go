@@ -1,3 +1,3 @@
-[submodule "TestingDataSet"]
-	path = TestingDataSet
+[submodule "test/data_set"]
+	path = test/data_set
 	url = https://github.com/MaaXYZ/MaaFrameworkTesting.git
