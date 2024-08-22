@@ -85,6 +85,10 @@ func main() {
 	toolkit.InitOption("./", "{}")
 
 	res := maa.NewResource(nil)
+	if res == nil {
+		fmt.Println("Failed to create a new Resource.")
+        return
+    }
 	defer res.Destroy()
 	resJob := res.PostPath("sample/resource")
 	resJob.Wait()
@@ -104,11 +108,19 @@ func main() {
 		"sample/MaaAgentBinary",
 		nil,
 	)
+	if ctrl == nil {
+		fmt.Println("Failed to create a new ADB Controller.")
+        return
+    }
 	defer ctrl.Destroy()
 	ctrlJob := ctrl.PostConnect()
 	ctrlJob.Wait()
 
 	inst := maa.New(nil)
+	if inst == nil {
+		fmt.Println("Failed to create a new Instance.")
+        return
+    }
 	defer inst.Destroy()
 
 	inst.BindResource(res)
