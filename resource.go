@@ -26,6 +26,9 @@ func NewResource(callback func(msg, detailsJson string)) *Resource {
 		// and will not actually dereference this pointer.
 		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
 	)
+	if handle == nil {
+		return nil
+	}
 	return &Resource{
 		handle: handle,
 	}

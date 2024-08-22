@@ -139,6 +139,9 @@ func NewAdbController(
 		// and will not actually dereference this pointer.
 		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
 	)
+	if handle == nil {
+		return nil
+	}
 	return &controller{handle: handle}
 }
 
@@ -174,6 +177,9 @@ func NewWin32Controller(
 		// and will not actually dereference this pointer.
 		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
 	)
+	if handle == nil {
+		return nil
+	}
 	return &controller{handle: handle}
 }
 
@@ -213,6 +219,9 @@ func NewDbgController(
 		// and will not actually dereference this pointer.
 		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
 	)
+	if handle == nil {
+		return nil
+	}
 	return &controller{handle: handle}
 }
 
@@ -251,6 +260,9 @@ func NewThriftController(
 		// and will not actually dereference this pointer.
 		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
 	)
+	if handle == nil {
+		return nil
+	}
 	return &controller{handle: handle}
 }
 
@@ -271,6 +283,9 @@ func NewCustomController(
 		// and will not actually dereference this pointer.
 		C.MaaTransparentArg(unsafe.Pointer(uintptr(cbID))),
 	)
+	if handle == nil {
+		return nil
+	}
 	return &controller{handle: handle}
 }
 
