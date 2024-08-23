@@ -68,6 +68,10 @@ Then, you can use the functionalities provided by MaaFramework. For detailed usa
 
 ## Examples
 
+### Quirk start
+
+See [quirk-start](examples/quick-start) for details.
+
 Here is a basic example to get you started:
 
 ```go
@@ -77,69 +81,93 @@ import (
 	"fmt"
 	"github.com/MaaXYZ/maa-framework-go"
 	"github.com/MaaXYZ/maa-framework-go/toolkit"
-	"github.com/MaaXYZ/maa-framework-go/buffer"
-	"image"
+	"os"
 )
 
 func main() {
 	toolkit.InitOption("./", "{}")
-
-	res := maa.NewResource(nil)
-	if res == nil {
-		fmt.Println("Failed to create a new Resource.")
-        return
-    }
-	defer res.Destroy()
-	resJob := res.PostPath("sample/resource")
-	resJob.Wait()
+	inst := maa.New(nil)
+	defer inst.Destroy()
 
 	devices := toolkit.AdbDevices()
-	if len(devices) == 0 {
-		fmt.Println("No Adb device found.")
-		return
-	}
-
 	device := devices[0]
 	ctrl := maa.NewAdbController(
 		device.AdbPath,
 		device.Address,
 		device.ControllerType,
 		device.Config,
-		"sample/MaaAgentBinary",
+		"path/to/MaaAgentBinary",
 		nil,
 	)
-	if ctrl == nil {
-		fmt.Println("Failed to create a new ADB Controller.")
-        return
-    }
 	defer ctrl.Destroy()
-	ctrlJob := ctrl.PostConnect()
-	ctrlJob.Wait()
+	ctrl.PostConnect().Wait()
+	inst.BindController(ctrl)
 
+	res := maa.NewResource(nil)
+	defer res.Destroy()
+	res.PostPath("./resource").Wait()
+	inst.BindResource(res)
+	if inst.Inited() {
+		fmt.Println("Failed to init MAA.")
+		os.Exit(1)
+	}
+
+	inst.PostTask("Startup", "{}")
+}
+
+```
+
+### Custom Recognizer
+
+See [custom-recognizer](examples/custom-recognizer) for details.
+
+Here is a basic example to implement your custom recognizer:
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/MaaXYZ/maa-framework-go"
+	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"github.com/MaaXYZ/maa-framework-go/toolkit"
+	"image"
+	"os"
+)
+
+func main() {
+	toolkit.InitOption("./", "{}")
 	inst := maa.New(nil)
-	if inst == nil {
-		fmt.Println("Failed to create a new Instance.")
-        return
-    }
 	defer inst.Destroy()
 
-	inst.BindResource(res)
+	devices := toolkit.AdbDevices()
+	device := devices[0]
+	ctrl := maa.NewAdbController(
+		device.AdbPath,
+		device.Address,
+		device.ControllerType,
+		device.Config,
+		"path/to/MaaAgentBinary",
+		nil,
+	)
+	defer ctrl.Destroy()
+	ctrl.PostConnect().Wait()
 	inst.BindController(ctrl)
+
+	res := maa.NewResource(nil)
+	defer res.Destroy()
+	res.PostPath("./resource").Wait()
+	inst.BindResource(res)
+	if inst.Inited() {
+		fmt.Println("Failed to init MAA.")
+		os.Exit(1)
+	}
 
 	myRec := NewMyRec()
 	defer myRec.Destroy()
-	myAct := NewMyAct()
-	defer myAct.Destroy()
-
 	inst.RegisterCustomRecognizer("MyRec", myRec)
-	inst.RegisterCustomAction("MyAct", myAct)
 
-	if !inst.Inited() {
-		panic("Failed to init Maa Instance.")
-	}
-
-	taskJob := inst.PostTask("TaskA", "{}")
-	taskJob.Wait()
+	inst.PostTask("Startup", "{}")
 }
 
 type MyRec struct {
@@ -152,41 +180,84 @@ func NewMyRec() maa.CustomRecognizer {
 	}
 }
 
-func (*MyRec) Analyze(
-	ctx maa.SyncContext,
-	image image.Image,
-	taskName string,
-	customRecognitionParam string,
-) (maa.AnalyzeResult, bool) {
-	outBox := buffer.Rect{0, 0, 100, 100}
+func (m MyRec) Analyze(syncCtx maa.SyncContext, img image.Image, taskName, RecognitionParam string) (maa.AnalyzeResult, bool) {
 	return maa.AnalyzeResult{
-		Box:    outBox,
-		Detail: "Hello world.",
+		Box:    buffer.Rect{0, 0, 100, 100},
+		Detail: "Hello World!",
 	}, true
+}
+
+```
+
+### Custom Action
+
+See [custom-action](examples/custom-action) for details.
+
+Here is a basic example to implement your custom action:
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/MaaXYZ/maa-framework-go"
+	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"github.com/MaaXYZ/maa-framework-go/toolkit"
+	"os"
+)
+
+func main() {
+	toolkit.InitOption("./", "{}")
+	inst := maa.New(nil)
+	defer inst.Destroy()
+
+	devices := toolkit.AdbDevices()
+	device := devices[0]
+	ctrl := maa.NewAdbController(
+		device.AdbPath,
+		device.Address,
+		device.ControllerType,
+		device.Config,
+		"path/to/MaaAgentBinary",
+		nil,
+	)
+	defer ctrl.Destroy()
+	ctrl.PostConnect().Wait()
+	inst.BindController(ctrl)
+
+	res := maa.NewResource(nil)
+	defer res.Destroy()
+	res.PostPath("./resource").Wait()
+	inst.BindResource(res)
+	if inst.Inited() {
+		fmt.Println("Failed to init MAA.")
+		os.Exit(1)
+	}
+
+	myAct := NewAct()
+	defer myAct.Destroy()
+	inst.RegisterCustomAction("MyAct", myAct)
+
+	inst.PostTask("Startup", "{}")
 }
 
 type MyAct struct {
 	maa.CustomActionHandler
 }
 
-func NewMyAct() maa.CustomAction {
+func NewAct() maa.CustomAction {
 	return &MyAct{
 		CustomActionHandler: maa.NewCustomActionHandler(),
 	}
 }
 
-func (*MyAct) Run(
-	ctx maa.SyncContext,
-	taskName string,
-	customActionParam string,
-	curBox buffer.Rect,
-	curRecDetail string,
-) bool {
+func (*MyAct) Run(ctx maa.SyncContext, taskName, ActionParam string, curBox buffer.Rect, curRecDetail string) bool {
 	return true
 }
 
 func (*MyAct) Stop() {
 }
+
 ```
 
 ## Documentation

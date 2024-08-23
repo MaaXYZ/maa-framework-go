@@ -1,0 +1,6 @@
+{
+    "Startup": {
+        "recognition": "Custom",
+        "custom_recognition": "MyRec"
+    }
+}

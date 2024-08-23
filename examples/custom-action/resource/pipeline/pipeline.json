@@ -1,0 +1,6 @@
+{
+    "Startup": {
+        "action": "Custom",
+        "custom_action": "MyAct"
+    }
+}
