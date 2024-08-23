@@ -6,6 +6,18 @@
 # MaaFramework Golang Binding
 
 This is the Go binding for MaaFramework, providing Go developers with a simple and effective way to use MaaFramework's features within their Go applications. Currently, the Go binding is quite rudimentary and closely mirrors the C interface. Future updates will include significant revisions to improve usability and functionality.
+<p>
+	<a href="https://github.com/MaaXYZ/maa-framework-go/blob/main/LICENSE.md">
+		<img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
+	</a>
+	<a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go">
+		<img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
+	</a>
+</p>
+
+
+
+This is the Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), providing Go developers with a simple and effective way to use MaaFramework's features within their Go applications.
 
 ## Installation
 
@@ -15,11 +27,32 @@ To install the MaaFramework Go binding, run the following command in your termin
 go get github.com/MaaXYZ/maa-framework-go
 ```
 
+## Usage
+
+To use MaaFramework in your Go project, import the package as you would with any other Go package:
+
+```go
+import "github.com/MaaXYZ/maa-framework-go"
+```
+
+Then, you can use the functionalities provided by MaaFramework. For detailed usage, refer to the examples and documentation provided in the repository.
+
+## Documentation
+
+Currently, there is not much detailed documentation available. Please refer to the source code and compare it with the interfaces in the original MaaFramework project to understand how to use the bindings. We are actively working on adding more comments and documentation to the source code.
+
+Here are some documents from the maa framework that might help you:
+
+- [QuickStarted](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/1.1-QuickStarted.md)
+- [PipelineProtocol](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md)
+
 ## Platform-Specific Notes
 
 ### Windows
 
 On Windows, the default location for MaaFramework is `C:\maa`. Ensure that MaaFramework is installed in this directory for the binding to work out of the box.
+
+If you need to specify a custom installation path, refer to the [Custom Environment](#custom-environment) section.
 
 ### Linux and macOS
 
@@ -40,7 +73,10 @@ Libs: -L${libdir} -lMaaFramework -lMaaToolkit
 Cflags: -I${includedir}
 ```
 
-## Custom Installation Path
+If you need to specify a custom environment, refer to the [Custom Environment](#custom-environment) section.
+
+## Custom Environment
+
 If you need to specify a custom installation path for MaaFramework, you can disable the default location using the `-tags customenv` build tag. Then, set the necessary environment variables `CGO_CFLAGS` and `CGO_LDFLAGS`.
 
 ```shell
@@ -54,17 +90,6 @@ export CGO_CFLAGS="-I[path to maafw include directory]"
 export CGO_LDFLAGS="-L[path to maafw lib directory] -lMaaFramework -lMaaToolkit"
 ```
 Replace `[path to maafw include directory]` with the actual path to the MaaFramework include directory and `[path to maafw lib directory]` with the actual path to the MaaFramework library directory.
-
-## Usage
-
-To use MaaFramework in your Go project, import the package as you would with any other Go package:
-
-```go
-import "github.com/MaaXYZ/maa-framework-go"
-```
-
-Then, you can use the functionalities provided by MaaFramework. For detailed usage, refer to the examples and documentation provided in the repository.
-
 
 ## Examples
 
@@ -259,10 +284,6 @@ func (*MyAct) Stop() {
 }
 
 ```
-
-## Documentation
-
-Currently, there is no detailed documentation available. Please refer to the source code and compare it with the interfaces in the original MaaFramework project to understand how to use the bindings. We are actively working on adding more comments and documentation to the source code.
 
 ## Contributing
 
