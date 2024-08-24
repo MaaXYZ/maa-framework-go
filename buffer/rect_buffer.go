@@ -7,38 +7,8 @@ package buffer
 import "C"
 import "unsafe"
 
-type Rect [4]int32
-
-func (r *Rect) GetX() int32 {
-	return r[0]
-}
-
-func (r *Rect) GetY() int32 {
-	return r[1]
-}
-
-func (r *Rect) GetW() int32 {
-	return r[2]
-}
-
-func (r *Rect) GetH() int32 {
-	return r[3]
-}
-
-func (r *Rect) SetX(value int32) {
-	r[0] = value
-}
-
-func (r *Rect) SetY(value int32) {
-	r[1] = value
-}
-
-func (r *Rect) SetW(value int32) {
-	r[2] = value
-}
-
-func (r *Rect) SetH(value int32) {
-	r[3] = value
+type Rect struct {
+	X, Y, W, H int32
 }
 
 type RectBuffer struct {
@@ -89,10 +59,10 @@ func (r *RectBuffer) GetH() int32 {
 func (r *RectBuffer) Set(rect Rect) bool {
 	return C.MaaSetRect(
 		r.handle,
-		C.int32_t(rect.GetX()),
-		C.int32_t(rect.GetY()),
-		C.int32_t(rect.GetW()),
-		C.int32_t(rect.GetH()),
+		C.int32_t(rect.X),
+		C.int32_t(rect.Y),
+		C.int32_t(rect.W),
+		C.int32_t(rect.H),
 	) != 0
 }
 
