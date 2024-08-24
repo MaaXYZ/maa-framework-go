@@ -206,7 +206,7 @@ func NewMyRec() maa.CustomRecognizer {
 
 func (m MyRec) Analyze(syncCtx maa.SyncContext, img image.Image, taskName, RecognitionParam string) (maa.AnalyzeResult, bool) {
 	return maa.AnalyzeResult{
-		Box:    buffer.Rect{0, 0, 100, 100},
+		Box:    maa.Rect{0, 0, 100, 100},
 		Detail: "Hello World!",
 	}, true
 }
