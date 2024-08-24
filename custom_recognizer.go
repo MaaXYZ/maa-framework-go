@@ -61,7 +61,7 @@ type CustomRecognizer interface {
 }
 
 type AnalyzeResult struct {
-	Box    buffer.Rect
+	Box    Rect
 	Detail string
 }
 
@@ -111,7 +111,7 @@ func _AnalyzeAgent(
 	if ok {
 		box := ret.Box
 		outBoxRect := buffer.NewRectBufferByHandle(unsafe.Pointer(outBox))
-		outBoxRect.Set(box)
+		outBoxRect.Set(toBufferRect(box))
 		outDetailString := buffer.NewStringBufferByHandle(unsafe.Pointer(outDetail))
 		outDetailString.Set(ret.Detail)
 		return C.uint8_t(1)
