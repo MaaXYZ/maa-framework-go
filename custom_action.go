@@ -54,7 +54,7 @@ func clearCustomAction() {
 // Implementers of this interface must embed an CustomActionHandler struct
 // and provide implementations for the Run and Stop methods.
 type CustomAction interface {
-	Run(ctx SyncContext, taskName, ActionParam string, curBox buffer.Rect, curRecDetail string) bool
+	Run(ctx SyncContext, taskName, ActionParam string, curBox Rect, curRecDetail string) bool
 	Stop()
 
 	Handle() unsafe.Pointer
@@ -95,7 +95,7 @@ func _RunAgent(
 		SyncContext{handle: ctx},
 		C.GoString(taskName),
 		C.GoString(customActionParam),
-		curBoxRectBuffer.Get(),
+		toMaaRect(curBoxRectBuffer.Get()),
 		C.GoString(curRecDetail),
 	)
 	if ok {

@@ -27,7 +27,7 @@ func (ctx SyncContext) RunTask(taskName, param string) bool {
 }
 
 type RecognitionResult struct {
-	Box    buffer.Rect
+	Box    Rect
 	Detail string
 }
 
@@ -67,12 +67,12 @@ func (ctx SyncContext) RunRecognition(img image.Image, taskName, taskParam strin
 	}
 
 	return RecognitionResult{
-		Box:    outBox.Get(),
+		Box:    toMaaRect(outBox.Get()),
 		Detail: outDetail.Get(),
 	}, nil
 }
 
-func (ctx SyncContext) RunAction(taskName, taskParam string, curBox buffer.Rect, curRecDetail string) bool {
+func (ctx SyncContext) RunAction(taskName, taskParam string, curBox Rect, curRecDetail string) bool {
 	cTaskName := C.CString(taskName)
 	cTaskParam := C.CString(taskParam)
 	cCurRecDetail := C.CString(curRecDetail)
@@ -83,7 +83,7 @@ func (ctx SyncContext) RunAction(taskName, taskParam string, curBox buffer.Rect,
 	}()
 
 	curBoxRectBuffer := buffer.NewRectBuffer()
-	curBoxRectBuffer.Set(curBox)
+	curBoxRectBuffer.Set(toBufferRect(curBox))
 	defer curBoxRectBuffer.Destroy()
 	return C.MaaSyncContextRunAction(ctx.handle, cTaskName, cTaskParam, C.MaaRectHandle(curBoxRectBuffer.Handle()), cCurRecDetail) != 0
 }

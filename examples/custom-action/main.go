@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/MaaXYZ/maa-framework-go"
-	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"github.com/MaaXYZ/maa-framework-go/toolkit"
 	"os"
 )
@@ -53,7 +52,7 @@ func NewAct() maa.CustomAction {
 	}
 }
 
-func (*MyAct) Run(ctx maa.SyncContext, taskName, ActionParam string, curBox buffer.Rect, curRecDetail string) bool {
+func (*MyAct) Run(ctx maa.SyncContext, taskName, ActionParam string, curBox maa.Rect, curRecDetail string) bool {
 	return true
 }
 

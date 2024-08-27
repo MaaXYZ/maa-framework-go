@@ -14,3 +14,12 @@ func toBufferRect(rect Rect) buffer.Rect {
 		H: rect.H,
 	}
 }
+
+func toMaaRect(rect buffer.Rect) Rect {
+	return Rect{
+		X: rect.X,
+		Y: rect.Y,
+		W: rect.W,
+		H: rect.H,
+	}
+}
