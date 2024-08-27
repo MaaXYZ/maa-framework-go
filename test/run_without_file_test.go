@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/MaaXYZ/maa-framework-go"
 	"github.com/stretchr/testify/require"
+	"log"
 	"testing"
 )
 
@@ -54,7 +55,8 @@ func NewMyAct() maa.CustomAction {
 func (act *MyAct) Run(ctx maa.SyncContext, _, _ string, _ maa.Rect, _ string) bool {
 	image, err := ctx.Screencap()
 	if err != nil {
-		panic("failed to screencap:" + err.Error())
+		log.Println("failed to screencap:" + err.Error())
+		return false
 	}
 
 	taskParam := map[string]interface{}{
@@ -66,12 +68,14 @@ func (act *MyAct) Run(ctx maa.SyncContext, _, _ string, _ maa.Rect, _ string) bo
 	}
 	taskParamStr, err := json.Marshal(taskParam)
 	if err != nil {
-		panic("failed to marshal task param:" + err.Error())
+		log.Println("failed to marshal task param:" + err.Error())
+		return false
 	}
 
 	_, err = ctx.RunRecognition(image, "MyColorMatching", string(taskParamStr))
 	if err != nil {
-		panic("failed to run recognition:" + err.Error())
+		log.Println("failed to run recognition:" + err.Error())
+		return false
 	}
 
 	return true
