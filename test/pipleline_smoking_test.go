@@ -1,27 +1,28 @@
-package maa
+package test
 
 import (
+	"github.com/MaaXYZ/maa-framework-go"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestPipelineSmoking(t *testing.T) {
-	testingPath := "./test/data_set/PipelineSmoking/MaaRecording.txt"
-	resultPath := "./test/data_set/debug"
+	testingPath := "./data_set/PipelineSmoking/MaaRecording.txt"
+	resultPath := "./data_set/debug"
 
-	ctrl := NewDbgController(testingPath, resultPath, DbgControllerTypeReplayRecording, "{}", nil)
+	ctrl := maa.NewDbgController(testingPath, resultPath, maa.DbgControllerTypeReplayRecording, "{}", nil)
 	defer ctrl.Destroy()
 	ctrlJob := ctrl.PostConnect()
 
-	res := NewResource(nil)
+	res := maa.NewResource(nil)
 	defer res.Destroy()
-	resDir := "./test/data_set/PipelineSmoking/resource"
+	resDir := "./data_set/PipelineSmoking/resource"
 	resJob := res.PostPath(resDir)
 
 	ctrlJob.Wait()
 	resJob.Wait()
 
-	inst := New(nil)
+	inst := maa.New(nil)
 	defer inst.Destroy()
 	inst.BindResource(res)
 	inst.BindController(ctrl)

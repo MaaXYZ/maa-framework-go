@@ -1,17 +1,18 @@
-package maa
+package test
 
 import (
 	"encoding/json"
+	"github.com/MaaXYZ/maa-framework-go"
 	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 type MyAct struct {
-	CustomActionHandler
+	maa.CustomActionHandler
 }
 
-func (act *MyAct) Run(ctx SyncContext, taskName, ActionParam string, curBox buffer.Rect, curRecDetail string) bool {
+func (act *MyAct) Run(ctx maa.SyncContext, taskName, ActionParam string, curBox buffer.Rect, curRecDetail string) bool {
 	image, err := ctx.Screencap()
 	if err != nil {
 		panic("failed to screencap:" + err.Error())
@@ -41,25 +42,25 @@ func (act *MyAct) Stop() {
 	// do nothing
 }
 
-func NewMyAct() CustomAction {
+func NewMyAct() maa.CustomAction {
 	return &MyAct{
-		CustomActionHandler: NewCustomActionHandler(),
+		CustomActionHandler: maa.NewCustomActionHandler(),
 	}
 }
 
 func TestRunWithoutFile(t *testing.T) {
-	testingPath := "./test/data_set/PipelineSmoking/Screenshot"
-	resultPath := "./test/data_set/debug"
+	testingPath := "./data_set/PipelineSmoking/Screenshot"
+	resultPath := "./data_set/debug"
 
-	ctrl := NewDbgController(testingPath, resultPath, DbgControllerTypeCarouselImage, "{}", nil)
+	ctrl := maa.NewDbgController(testingPath, resultPath, maa.DbgControllerTypeCarouselImage, "{}", nil)
 	defer ctrl.Destroy()
 	ctrlJob := ctrl.PostConnect()
 	ctrlJob.Wait()
 
-	res := NewResource(nil)
+	res := maa.NewResource(nil)
 	defer res.Destroy()
 
-	inst := New(nil)
+	inst := maa.New(nil)
 	defer inst.Destroy()
 	inst.BindResource(res)
 	inst.BindController(ctrl)
