@@ -1,13 +1,12 @@
 package maa
 
-import "time"
-
 type Job struct {
 	id         int64
 	statusFunc func(id int64) Status
+	waitFunc   func(id int64) Status
 }
 
-func NewJob(id int64, statusFunc func(id int64) Status) Job {
+func NewJob(id int64, statusFunc func(id int64) Status, waitFunc func(id int64) Status) Job {
 	return Job{
 		id:         id,
 		statusFunc: statusFunc,
@@ -43,29 +42,34 @@ func (job Job) Done() bool {
 }
 
 func (job Job) Wait() bool {
-	for !job.Done() {
-		time.Sleep(time.Millisecond * 10)
-	}
-	return job.Success()
+	return job.waitFunc(job.id).Success()
 }
 
 type TaskJob struct {
 	Job
-	setParamFunc func(id int64, param string) bool
+	overridePipelineFunc func(id int64, param string) bool
+	getTaskDetailFunc    func(id int64) (TaskDetail, bool)
 }
 
-func NewTaskJob(id int64, statusFunc func(id int64) Status, setParamFunc func(id int64, param string) bool) TaskJob {
-	job := NewJob(id, statusFunc)
+func NewTaskJob(
+	id int64,
+	statusFunc func(id int64) Status,
+	waitFunc func(id int64) Status,
+	overridePipelineFunc func(id int64, param string) bool,
+	getTaskDetailFunc func(id int64) (TaskDetail, bool),
+) TaskJob {
+	job := NewJob(id, statusFunc, waitFunc)
 	return TaskJob{
-		Job:          job,
-		setParamFunc: setParamFunc,
+		Job:                  job,
+		overridePipelineFunc: overridePipelineFunc,
+		getTaskDetailFunc:    getTaskDetailFunc,
 	}
 }
 
 func (job TaskJob) SetParam(param string) bool {
-	return job.setParamFunc(job.id, param)
+	return job.overridePipelineFunc(job.id, param)
 }
 
 func (job TaskJob) GetDetail() (TaskDetail, bool) {
-	return QueryTaskDetail(job.id)
+	return job.getTaskDetailFunc(job.id)
 }
