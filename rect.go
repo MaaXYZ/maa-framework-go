@@ -1,25 +1,71 @@
 package maa
 
-import "github.com/MaaXYZ/maa-framework-go/buffer"
+/*
+#include <stdlib.h>
+#include <MaaFramework/MaaAPI.h>
+
+typedef struct MaaRect* MaaRectHandle;
+*/
+import "C"
+import (
+	"unsafe"
+)
 
 type Rect struct {
 	X, Y, W, H int32
 }
 
-func toBufferRect(rect Rect) buffer.Rect {
-	return buffer.Rect{
-		X: rect.X,
-		Y: rect.Y,
-		W: rect.W,
-		H: rect.H,
+type rectBuffer struct {
+	handle C.MaaRectHandle
+}
+
+func newRectBuffer() *rectBuffer {
+	handle := C.MaaRectCreate()
+	return &rectBuffer{
+		handle: handle,
 	}
 }
 
-func toMaaRect(rect buffer.Rect) Rect {
-	return Rect{
-		X: rect.X,
-		Y: rect.Y,
-		W: rect.W,
-		H: rect.H,
+func newRectBufferByHandle(handle unsafe.Pointer) *rectBuffer {
+	return &rectBuffer{
+		handle: C.MaaRectHandle(handle),
 	}
+}
+
+func (r *rectBuffer) Destroy() {
+	C.MaaRectDestroy(r.handle)
+}
+
+func (r *rectBuffer) Handle() unsafe.Pointer {
+	return unsafe.Pointer(r.handle)
+}
+
+func (r *rectBuffer) Get() Rect {
+	return Rect{r.GetX(), r.GetY(), r.GetW(), r.GetH()}
+}
+
+func (r *rectBuffer) GetX() int32 {
+	return int32(C.MaaRectGetX(r.handle))
+}
+
+func (r *rectBuffer) GetY() int32 {
+	return int32(C.MaaRectGetY(r.handle))
+}
+
+func (r *rectBuffer) GetW() int32 {
+	return int32(C.MaaRectGetW(r.handle))
+}
+
+func (r *rectBuffer) GetH() int32 {
+	return int32(C.MaaRectGetH(r.handle))
+}
+
+func (r *rectBuffer) Set(rect Rect) bool {
+	return C.MaaRectSet(
+		r.handle,
+		C.int32_t(rect.X),
+		C.int32_t(rect.Y),
+		C.int32_t(rect.W),
+		C.int32_t(rect.H),
+	) != 0
 }
