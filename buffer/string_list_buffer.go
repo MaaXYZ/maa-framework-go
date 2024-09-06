@@ -3,6 +3,8 @@ package buffer
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
+
+typedef struct MaaCreateStringList* MaaCreateStringListBuffer;
 */
 import "C"
 import "unsafe"
@@ -12,7 +14,7 @@ type StringListBuffer struct {
 }
 
 func NewStringListBuffer() *StringListBuffer {
-	handle := C.MaaCreateStringListBuffer()
+	handle := C.MaaStringListBufferCreate()
 	return &StringListBuffer{
 		handle: handle,
 	}
@@ -25,23 +27,23 @@ func NewStringListBufferByHandle(handle unsafe.Pointer) *StringListBuffer {
 }
 
 func (sl *StringListBuffer) Destroy() {
-	C.MaaDestroyStringListBuffer(sl.handle)
+	C.MaaStringListBufferDestroy(sl.handle)
 }
 
 func (sl *StringListBuffer) IsEmpty() bool {
-	return C.MaaIsStringListEmpty(sl.handle) != 0
+	return C.MaaStringListBufferIsEmpty(sl.handle) != 0
 }
 
 func (sl *StringListBuffer) Clear() bool {
-	return C.MaaClearStringList(sl.handle) != 0
+	return C.MaaStringListBufferClear(sl.handle) != 0
 }
 
 func (sl *StringListBuffer) Size() uint64 {
-	return uint64(C.MaaGetStringListSize(sl.handle))
+	return uint64(C.MaaStringListBufferSize(sl.handle))
 }
 
 func (sl *StringListBuffer) Get(index uint64) string {
-	handle := C.MaaGetStringListAt(sl.handle, C.uint64_t(index))
+	handle := C.MaaStringListBufferAt(sl.handle, C.uint64_t(index))
 	str := &StringBuffer{
 		handle: handle,
 	}
@@ -58,14 +60,14 @@ func (sl *StringListBuffer) GetAll() []string {
 }
 
 func (sl *StringListBuffer) Append(value StringBuffer) bool {
-	return C.MaaStringListAppend(
+	return C.MaaStringListBufferAppend(
 		sl.handle,
 		C.MaaStringBufferHandle(value.Handle()),
 	) != 0
 }
 
 func (sl *StringListBuffer) Remove(index uint64) bool {
-	return C.MaaStringListRemove(
+	return C.MaaStringListBufferRemove(
 		sl.handle,
 		C.uint64_t(index),
 	) != 0
