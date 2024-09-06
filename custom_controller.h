@@ -3,42 +3,44 @@
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
 
-typedef MaaBool (*ConnectCallback)(MaaTransparentArg handle_arg);
+typedef struct MaaCustomControllerCallbacks* MaaCustomControllerCallbacksHandle;
+
+typedef MaaBool (*ConnectCallback)(void* handle_arg);
 
         /// Write result to buffer.
 typedef MaaBool (
-            *RequestUUIDCallback)(MaaTransparentArg handle_arg, /* out */ MaaStringBufferHandle buffer);
+            *RequestUUIDCallback)(void*  handle_arg, /* out */ const char* buffer);
 
-typedef MaaBool (*StartAppCallback)(MaaStringView intent, MaaTransparentArg handle_arg);
-typedef MaaBool (*StopAppCallback)(MaaStringView intent, MaaTransparentArg handle_arg);
+typedef MaaBool (*StartAppCallback)(const char* intent, void*  handle_arg);
+typedef MaaBool (*StopAppCallback)(const char* intent, void*  handle_arg);
 
         /// Write result to buffer.
-typedef MaaBool (*ScreencapCallback)(MaaTransparentArg handle_arg, /* out */ MaaImageBufferHandle buffer);
+typedef MaaBool (*ScreencapCallback)(void* handle_arg, /* out */ MaaImageBufferHandle buffer);
 
-typedef MaaBool (*ClickCallback)(int32_t x, int32_t y, MaaTransparentArg handle_arg);
+typedef MaaBool (*ClickCallback)(int32_t x, int32_t y, void*  handle_arg);
 typedef MaaBool (*SwipeCallback)(
             int32_t x1,
             int32_t y1,
             int32_t x2,
             int32_t y2,
             int32_t duration,
-            MaaTransparentArg handle_arg);
+            void*  handle_arg);
 typedef MaaBool (*TouchDownCallback)(
             int32_t contact,
             int32_t x,
             int32_t y,
             int32_t pressure,
-            MaaTransparentArg handle_arg);
+            void*  handle_arg);
 typedef MaaBool (*TouchMoveCallback)(
             int32_t contact,
             int32_t x,
             int32_t y,
             int32_t pressure,
-            MaaTransparentArg handle_arg);
-typedef MaaBool (*TouchUpCallback)(int32_t contact, MaaTransparentArg handle_arg);
+            void*  handle_arg);
+typedef MaaBool (*TouchUpCallback)(int32_t contact, void*  handle_arg);
 
-typedef MaaBool (*PressKeyCallback)(int32_t keycode, MaaTransparentArg handle_arg);
-typedef MaaBool (*InputTextCallback)(MaaStringView text, MaaTransparentArg handle_arg);
+typedef MaaBool (*PressKeyCallback)(int32_t keycode, void*  handle_arg);
+typedef MaaBool (*InputTextCallback)(const char* text, void*  handle_arg);
 
 extern MaaCustomControllerHandle MaaCustomControllerHandleCreate(
     ConnectCallback connect,

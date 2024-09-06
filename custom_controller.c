@@ -1,6 +1,6 @@
 #include "custom_controller.h"
 
-MaaCustomControllerHandle MaaCustomControllerHandleCreate(
+MaaCustomControllerCallbacksHandle MaaCustomControllerHandleCreate(
     ConnectCallback connect,
     RequestUUIDCallback request_uuid,
     StartAppCallback start_app,
@@ -14,7 +14,7 @@ MaaCustomControllerHandle MaaCustomControllerHandleCreate(
     PressKeyCallback press_key,
     InputTextCallback input_text
 ) {
-    MaaCustomControllerHandle handle = malloc(sizeof(struct MaaCustomControllerAPI));
+    MaaCustomControllerCallbacksHandle handle = malloc(sizeof(struct MaaCustomControllerAPI));
     if (handle == NULL) {
         return NULL;
     }
@@ -34,7 +34,7 @@ MaaCustomControllerHandle MaaCustomControllerHandleCreate(
     return handle;
 }
 
-void MaaCustomControllerHandleDestroy(MaaCustomControllerHandle handle) {
+void MaaCustomControllerHandleDestroy(MaaCustomControllerCallbacksHandle handle) {
     if (handle != NULL) {
         free(handle);
     }
