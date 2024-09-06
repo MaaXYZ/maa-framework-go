@@ -4,7 +4,9 @@ package maa
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
 
-extern void _MaaAPICallbackAgent(MaaStringView msg, MaaStringView detailsJson, MaaTransparentArg callbackArg);
+typedef struct MaaCustomControllerCallbacks* MaaCustomControllerCallbacksHandle;
+
+extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
 */
 import "C"
 import (
@@ -13,6 +15,243 @@ import (
 	"image"
 	"unsafe"
 )
+
+// Controller is an interface that defines various methods for MAA controller.
+type Controller interface {
+	Destroy()
+	Handle() unsafe.Pointer
+
+	SetScreenshotTargetLongSide(targetLongSide int) bool
+	SetScreenshotTargetShortSide(targetShortSide int) bool
+	SetDefaultAppPackageEntry(appPackage string) bool
+	SetDefaultAppPackage(appPackage string) bool
+	SetRecording(recording bool) bool
+
+	PostConnect() Job
+	PostClick(x, y int32) Job
+	PostSwipe(x1, y1, x2, y2, duration int32) Job
+	PostPressKey(keycode int32) Job
+	PostInputText(text string) Job
+	PostStartApp(intent string) Job
+	PostStopApp(intent string) Job
+	PostTouchDown(contact, x, y, pressure int32) Job
+	PostTouchMove(contact, x, y, pressure int32) Job
+	PostTouchUp(contact int32) Job
+	PostScreencap() Job
+
+	Connected() bool
+	CacheImage() (image.Image, error)
+	GetUUID() (string, bool)
+}
+
+// controller is a concrete implementation of the Controller interface.
+type controller struct {
+	handle C.MaaControllerHandle
+}
+
+// AdbScreencapMethod
+//
+// Use bitwise OR to set the method you need,
+// MaaFramework will test their speed and use the fastest one.
+type AdbScreencapMethod uint64
+
+// AdbScreencapMethod
+const (
+	AdbScreencapMethodNone                AdbScreencapMethod = 0
+	AdbScreencapMethodEncodeToFileAndPull AdbScreencapMethod = 1
+	AdbScreencapMethodEncode              AdbScreencapMethod = 1 << 1
+	AdbScreencapMethodRawWithGzip         AdbScreencapMethod = 1 << 2
+	AdbScreencapMethodRawByNetcat         AdbScreencapMethod = 1 << 3
+	AdbScreencapMethodMinicapDirect       AdbScreencapMethod = 1 << 4
+	AdbScreencapMethodMinicapStream       AdbScreencapMethod = 1 << 5
+	AdbScreencapMethodEmulatorExtras      AdbScreencapMethod = 1 << 6
+
+	AdbScreencapMethodAll     = ^AdbScreencapMethodNone
+	AdbScreencapMethodDefault = AdbScreencapMethodAll & (^AdbScreencapMethodMinicapDirect) & (^AdbScreencapMethodMinicapStream)
+)
+
+// AdbInputMethod
+//
+// Use bitwise OR to set the method you need,
+// MaaFramework will select the available ones according to priority.
+// The priority is: EmulatorExtras > Maatouch > MinitouchAndAdbKey > AdbShell
+type AdbInputMethod uint64
+
+// AdbInputMethod
+const (
+	AdbInputMethodNone               AdbInputMethod = 0
+	AdbInputMethodAdbShell           AdbInputMethod = 1
+	AdbInputMethodMinitouchAndAdbKey AdbInputMethod = 1 << 1
+	AdbInputMethodMaatouch           AdbInputMethod = 1 << 2
+	AdbInputMethodEmulatorExtras     AdbInputMethod = 1 << 3
+
+	AdbInputMethodAll     = ^AdbInputMethodNone
+	AdbInputMethodDefault = AdbInputMethodAll & (^AdbInputMethodEmulatorExtras)
+)
+
+// NewAdbController creates an ADB controller instance.
+func NewAdbController(
+	adbPath, address string,
+	screencapMethod AdbScreencapMethod,
+	inputMethod AdbInputMethod,
+	config, agentPath string,
+	callback func(msg, detailsJson string),
+) Controller {
+	cAdbPath := C.CString(adbPath)
+	cAddress := C.CString(address)
+	cConfig := C.CString(config)
+	cAgentPath := C.CString(agentPath)
+	defer func() {
+		C.free(unsafe.Pointer(cAdbPath))
+		C.free(unsafe.Pointer(cAddress))
+		C.free(unsafe.Pointer(cConfig))
+		C.free(unsafe.Pointer(cAgentPath))
+	}()
+
+	id := registerNotificationCallback(callback)
+	handle := C.MaaAdbControllerCreate(
+		cAdbPath,
+		cAddress,
+		C.int64_t(screencapMethod),
+		C.int64_t(inputMethod),
+		cConfig,
+		cAgentPath,
+		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		unsafe.Pointer(uintptr(id)),
+	)
+	if handle == nil {
+		return nil
+	}
+	return &controller{handle: handle}
+}
+
+// Win32ScreencapMethod
+//
+// No bitwise OR, just set it.
+type Win32ScreencapMethod uint64
+
+// Win32ScreencapMethod
+const (
+	Win32ScreencapMethodNone           Win32ScreencapMethod = 0
+	Win32ScreencapMethodGDI            Win32ScreencapMethod = 1
+	Win32ScreencapMethodFramePool      Win32ScreencapMethod = 1 << 1
+	Win32ScreencapMethodDXGIDesktopDup Win32ScreencapMethod = 1 << 2
+)
+
+// Win32InputMethod
+//
+// No bitwise OR, just set it.
+type Win32InputMethod uint64
+
+// Win32InputMethod
+const (
+	Win32InputMethodNone        Win32InputMethod = 0
+	Win32InputMethodSeize       Win32InputMethod = 1
+	Win32InputMethodSendMessage Win32InputMethod = 1 << 1
+)
+
+// NewWin32Controller creates a win32 controller instance.
+func NewWin32Controller(
+	hWnd unsafe.Pointer,
+	screencapMethod Win32ScreencapMethod,
+	inputMethod Win32InputMethod,
+	callback func(msg, detailsJson string),
+) Controller {
+	id := registerNotificationCallback(callback)
+	handle := C.MaaWin32ControllerCreate(
+		C.MaaWin32Hwnd(C.MaaWin32Hwnd(hWnd)),
+		C.int64_t(screencapMethod),
+		C.int64_t(inputMethod),
+		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		unsafe.Pointer(uintptr(id)),
+	)
+	if handle == nil {
+		return nil
+	}
+	return &controller{handle: handle}
+}
+
+// DbgControllerType
+//
+// No bitwise OR, just set it.
+type DbgControllerType int64
+
+// DbgControllerType
+const (
+	DbgControllerTypeNone            DbgControllerType = 0
+	DbgControllerTypeCarouselImage   DbgControllerType = 1
+	DbgControllerTypeReplayRecording DbgControllerType = 1 << 1
+)
+
+// NewDbgController creates a DBG controller instance.
+func NewDbgController(
+	readPath, writePath string,
+	dbgCtrlType DbgControllerType,
+	config string,
+	callback func(msg, detailsJson string),
+) Controller {
+	cReadPath := C.CString(readPath)
+	cWritePath := C.CString(writePath)
+	cConfig := C.CString(config)
+	defer func() {
+		C.free(unsafe.Pointer(cReadPath))
+		C.free(unsafe.Pointer(cWritePath))
+		C.free(unsafe.Pointer(cConfig))
+	}()
+
+	id := registerNotificationCallback(callback)
+	handle := C.MaaDbgControllerCreate(
+		cReadPath,
+		cWritePath,
+		C.int64_t(dbgCtrlType),
+		cConfig,
+		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		unsafe.Pointer(uintptr(id)),
+	)
+	if handle == nil {
+		return nil
+	}
+	return &controller{handle: handle}
+}
+
+// NewCustomController creates a custom controller instance.
+func NewCustomController(
+	ctrl CustomController,
+	callback func(msg, detailsJson string),
+) Controller {
+	ctrlID := registerCustomControllerCallbacks(ctrl)
+	cbID := registerNotificationCallback(callback)
+	handle := C.MaaCustomControllerCreate(
+		C.MaaCustomControllerCallbacksHandle(ctrl.Handle()),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		unsafe.Pointer(uintptr(ctrlID)),
+		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		unsafe.Pointer(uintptr(cbID)),
+	)
+	if handle == nil {
+		return nil
+	}
+	return &controller{handle: handle}
+}
+
+// Destroy frees the controller instance.
+func (c *controller) Destroy() {
+	C.MaaControllerDestroy(c.handle)
+}
+
+// Handle returns controller handle.
+func (c *controller) Handle() unsafe.Pointer {
+	return unsafe.Pointer(c.handle)
+}
 
 type CtrlOption int32
 
@@ -40,264 +279,6 @@ const (
 	// MaaGlobalOptionEnum::MaaGlobalOption_Recording is true.
 	CtrlOptionRecording
 )
-
-// Controller is an interface that defines various methods for MAA controller.
-type Controller interface {
-	Destroy()
-	Handle() unsafe.Pointer
-
-	SetScreenshotTargetLongSide(targetLongSide int) bool
-	SetScreenshotTargetShortSide(targetShortSide int) bool
-	SetDefaultAppPackageEntry(appPackage string) bool
-	SetDefaultAppPackage(appPackage string) bool
-	SetRecording(recording bool) bool
-
-	PostConnect() Job
-	PostClick(x, y int32) Job
-	PostSwipe(x1, y1, x2, y2, duration int32) Job
-	PostPressKey(keycode int32) Job
-	PostInputText(text string) Job
-	PostStartApp(intent string) Job
-	PostStopApp(intent string) Job
-	PostTouchDown(contact, x, y, pressure int32) Job
-	PostTouchMove(contact, x, y, pressure int32) Job
-	PostTouchUp(contact int32) Job
-	PostScreencap() Job
-
-	Connected() bool
-	GetImage() (image.Image, error)
-	GetUUID() (string, bool)
-}
-
-// controller is a concrete implementation of the Controller interface.
-type controller struct {
-	handle C.MaaControllerHandle
-}
-
-type AdbControllerType int32
-
-// AdbControllerType
-const (
-	AdbControllerTypeInvalid AdbControllerType = iota
-
-	AdbControllerTypeTouchAdb
-	AdbControllerTypeTouchMiniTouch
-	AdbControllerTypeTouchMaaTouch
-	AdbControllerTypeTouchEmulatorExtras
-	AdbControllerTypeTouchAutoDetect AdbControllerType = 0xFF - 1
-
-	AdbControllerTypeKeyAdb            AdbControllerType = 1 << 8
-	AdbControllerTypeKeyMaaTouch       AdbControllerType = 2 << 8
-	AdbControllerTypeKeyEmulatorExtras AdbControllerType = 3 << 8
-	AdbControllerTypeKeyAutoDetect     AdbControllerType = 0xFF00 - (1 << 8)
-
-	AdbControllerTypeInputPresetAdb            = AdbControllerTypeTouchAdb | AdbControllerTypeKeyAdb
-	AdbControllerTypeInputPresetMiniTouch      = AdbControllerTypeTouchMiniTouch | AdbControllerTypeKeyAdb
-	AdbControllerTypeInputPresetMaaTouch       = AdbControllerTypeTouchMaaTouch | AdbControllerTypeKeyMaaTouch
-	AdbControllerTypeInputPresetEmulatorExtras = AdbControllerTypeTouchEmulatorExtras | AdbControllerTypeKeyEmulatorExtras
-	AdbControllerTypeInputPresetAutoDetect     = AdbControllerTypeTouchAutoDetect | AdbControllerTypeKeyAutoDetect
-
-	AdbControllerTypeScreencapFastestWayCompatible AdbControllerType = 1 << 16
-	AdbControllerTypeScreencapRawByNetcat          AdbControllerType = 2 << 16
-	AdbControllerTypeScreencapRawWithGzip          AdbControllerType = 3 << 16
-	AdbControllerTypeScreencapEncode               AdbControllerType = 4 << 16
-	AdbControllerTypeScreencapEncodeToFile         AdbControllerType = 5 << 16
-	AdbControllerTypeScreencapMinicapDirect        AdbControllerType = 6 << 16
-	AdbControllerTypeScreencapMinicapStream        AdbControllerType = 7 << 16
-	AdbControllerTypeScreencapEmulatorExtras       AdbControllerType = 8 << 16
-	AdbControllerTypeScreencapFastestLosslessWay   AdbControllerType = 0xFF0000 - (2 << 16)
-	AdbControllerTypeScreencapFastestWay           AdbControllerType = 0xFF0000 - (1 << 16)
-)
-
-// NewAdbController creates an ADB controller instance.
-func NewAdbController(
-	adbPath, address string,
-	adbCtrlType AdbControllerType,
-	config, agentPath string,
-	callback func(msg, detailsJson string),
-) Controller {
-	cAdbPath := C.CString(adbPath)
-	cAddress := C.CString(address)
-	cConfig := C.CString(config)
-	cAgentPath := C.CString(agentPath)
-	defer func() {
-		C.free(unsafe.Pointer(cAdbPath))
-		C.free(unsafe.Pointer(cAddress))
-		C.free(unsafe.Pointer(cConfig))
-		C.free(unsafe.Pointer(cAgentPath))
-	}()
-
-	id := registerCallback(callback)
-	handle := C.MaaAdbControllerCreateV2(
-		cAdbPath,
-		cAddress,
-		C.int32_t(adbCtrlType),
-		cConfig,
-		cAgentPath,
-		C.MaaAPICallback(C._MaaAPICallbackAgent),
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
-	)
-	if handle == nil {
-		return nil
-	}
-	return &controller{handle: handle}
-}
-
-type Win32ControllerType int32
-
-// Win32ControllerType
-const (
-	Win32ControllerTypeInvalid Win32ControllerType = iota
-
-	Win32ControllerTypeTouchSendMessage
-	Win32ControllerTypeTouchSeize
-
-	Win32ControllerTypeKeySendMessage Win32ControllerType = 1 << 8
-	Win32ControllerTypeKeySeize       Win32ControllerType = 2 << 8
-
-	Win32ControllerTypeScreencapGDI            Win32ControllerType = 1 << 16
-	Win32ControllerTypeScreencapDXGIDesktopDup Win32ControllerType = 2 << 16
-	Win32ControllerTypeScreencapDXGIFramePool  Win32ControllerType = 4 << 16
-)
-
-// NewWin32Controller creates a win32 controller instance.
-func NewWin32Controller(
-	hWnd unsafe.Pointer,
-	win32CtrlType Win32ControllerType,
-	callback func(msg, detailsJson string),
-) Controller {
-	id := registerCallback(callback)
-	handle := C.MaaWin32ControllerCreate(
-		C.MaaWin32Hwnd(C.MaaWin32Hwnd(hWnd)),
-		C.int32_t(win32CtrlType),
-		C.MaaAPICallback(C._MaaAPICallbackAgent),
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
-	)
-	if handle == nil {
-		return nil
-	}
-	return &controller{handle: handle}
-}
-
-type DbgControllerType int32
-
-// DbgControllerType
-const (
-	DbgControllerTypeInvalid DbgControllerType = iota
-	DbgControllerTypeCarouselImage
-	DbgControllerTypeReplayRecording
-)
-
-// NewDbgController creates a DBG controller instance.
-func NewDbgController(
-	readPath, writePath string,
-	dbgCtrlType DbgControllerType,
-	config string,
-	callback func(msg, detailsJson string),
-) Controller {
-	cReadPath := C.CString(readPath)
-	cWritePath := C.CString(writePath)
-	cConfig := C.CString(config)
-	defer func() {
-		C.free(unsafe.Pointer(cReadPath))
-		C.free(unsafe.Pointer(cWritePath))
-		C.free(unsafe.Pointer(cConfig))
-	}()
-
-	id := registerCallback(callback)
-	handle := C.MaaDbgControllerCreate(
-		cReadPath,
-		cWritePath,
-		C.int32_t(dbgCtrlType),
-		cConfig,
-		C.MaaAPICallback(C._MaaAPICallbackAgent),
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
-	)
-	if handle == nil {
-		return nil
-	}
-	return &controller{handle: handle}
-}
-
-type ThriftControllerType int32
-
-const (
-	ThriftControllerInvalid ThriftControllerType = iota
-	ThriftControllerTypeSocket
-	ThriftControllerTypeUnixDomainSocket
-)
-
-// NewThriftController creates a thrift controller instance.
-func NewThriftController(
-	thriftCtrlType ThriftControllerType,
-	host string,
-	port int32,
-	config string,
-	callback func(msg, detailsJson string),
-) Controller {
-	cHost := C.CString(host)
-	cConfig := C.CString(config)
-	defer func() {
-		C.free(unsafe.Pointer(cHost))
-		C.free(unsafe.Pointer(cConfig))
-
-	}()
-
-	id := registerCallback(callback)
-	handle := C.MaaThriftControllerCreate(
-		C.int32_t(thriftCtrlType),
-		cHost,
-		C.int32_t(port),
-		cConfig,
-		C.MaaAPICallback(C._MaaAPICallbackAgent),
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
-	)
-	if handle == nil {
-		return nil
-	}
-	return &controller{handle: handle}
-}
-
-// NewCustomController creates a custom controller instance.
-func NewCustomController(
-	ctrl CustomController,
-	callback func(msg, detailsJson string),
-) Controller {
-	ctrlID := registerCustomController(ctrl)
-	cbID := registerCallback(callback)
-	handle := C.MaaCustomControllerCreate(
-		C.MaaCustomControllerHandle(ctrl.Handle()),
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		C.MaaTransparentArg(unsafe.Pointer(uintptr(ctrlID))),
-		C.MaaAPICallback(C._MaaAPICallbackAgent),
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		C.MaaTransparentArg(unsafe.Pointer(uintptr(cbID))),
-	)
-	if handle == nil {
-		return nil
-	}
-	return &controller{handle: handle}
-}
-
-// Destroy frees the controller instance.
-func (c *controller) Destroy() {
-	C.MaaControllerDestroy(c.handle)
-}
-
-// Handle returns controller handle.
-func (c *controller) Handle() unsafe.Pointer {
-	return unsafe.Pointer(c.handle)
-}
 
 // setOption sets options for controller instance.
 func (c *controller) setOption(key CtrlOption, value unsafe.Pointer, valSize uintptr) bool {
@@ -375,25 +356,25 @@ func (c *controller) SetRecording(enabled bool) bool {
 // PostConnect posts a connection.
 func (c *controller) PostConnect() Job {
 	id := int64(C.MaaControllerPostConnection(c.handle))
-	return NewJob(id, c.status)
+	return NewJob(id, c.status, c.wait)
 }
 
 // PostClick posts a click.
 func (c *controller) PostClick(x, y int32) Job {
 	id := int64(C.MaaControllerPostClick(c.handle, C.int32_t(x), C.int32_t(y)))
-	return NewJob(id, c.status)
+	return NewJob(id, c.status, c.wait)
 }
 
 // PostSwipe posts a swipe.
 func (c *controller) PostSwipe(x1, y1, x2, y2, duration int32) Job {
 	id := int64(C.MaaControllerPostSwipe(c.handle, C.int32_t(x1), C.int32_t(y1), C.int32_t(x2), C.int32_t(y2), C.int32_t(duration)))
-	return NewJob(id, c.status)
+	return NewJob(id, c.status, c.wait)
 }
 
 // PostPressKey posts a press key.
 func (c *controller) PostPressKey(keycode int32) Job {
 	id := int64(C.MaaControllerPostPressKey(c.handle, C.int32_t(keycode)))
-	return NewJob(id, c.status)
+	return NewJob(id, c.status, c.wait)
 }
 
 // PostInputText posts an input text.
@@ -401,7 +382,7 @@ func (c *controller) PostInputText(text string) Job {
 	cText := C.CString(text)
 	defer C.free(unsafe.Pointer(cText))
 	id := int64(C.MaaControllerPostInputText(c.handle, cText))
-	return NewJob(id, c.status)
+	return NewJob(id, c.status, c.wait)
 }
 
 // PostStartApp posts a start app.
@@ -409,7 +390,7 @@ func (c *controller) PostStartApp(intent string) Job {
 	cIntent := C.CString(intent)
 	defer C.free(unsafe.Pointer(cIntent))
 	id := int64(C.MaaControllerPostStartApp(c.handle, cIntent))
-	return NewJob(id, c.status)
+	return NewJob(id, c.status, c.wait)
 }
 
 // PostStopApp posts a stop app.
@@ -417,31 +398,31 @@ func (c *controller) PostStopApp(intent string) Job {
 	cIntent := C.CString(intent)
 	defer C.free(unsafe.Pointer(cIntent))
 	id := int64(C.MaaControllerPostStopApp(c.handle, cIntent))
-	return NewJob(id, c.status)
+	return NewJob(id, c.status, c.wait)
 }
 
 // PostTouchDown posts a touch-down.
 func (c *controller) PostTouchDown(contact, x, y, pressure int32) Job {
 	id := int64(C.MaaControllerPostTouchDown(c.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)))
-	return NewJob(id, c.status)
+	return NewJob(id, c.status, c.wait)
 }
 
 // PostTouchMove posts a touch-move.
 func (c *controller) PostTouchMove(contact, x, y, pressure int32) Job {
 	id := int64(C.MaaControllerPostTouchMove(c.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)))
-	return NewJob(id, c.status)
+	return NewJob(id, c.status, c.wait)
 }
 
 // PostTouchUp posts a touch-up.
 func (c *controller) PostTouchUp(contact int32) Job {
 	id := int64(C.MaaControllerPostTouchUp(c.handle, C.int32_t(contact)))
-	return NewJob(id, c.status)
+	return NewJob(id, c.status, c.wait)
 }
 
 // PostScreencap posts a screencap.
 func (c *controller) PostScreencap() Job {
 	id := int64(C.MaaControllerPostScreencap(c.handle))
-	return NewJob(id, c.status)
+	return NewJob(id, c.status, c.wait)
 }
 
 // status gets the status of a request identified by the given id.
@@ -449,17 +430,21 @@ func (c *controller) status(id int64) Status {
 	return Status(C.MaaControllerStatus(c.handle, C.int64_t(id)))
 }
 
+func (c *controller) wait(id int64) Status {
+	return Status(C.MaaControllerWait(c.handle, C.int64_t(id)))
+}
+
 // Connected checks if the controller is connected.
 func (c *controller) Connected() bool {
 	return C.MaaControllerConnected(c.handle) != 0
 }
 
-// GetImage gets the image buffer of the last screencap request.
-func (c *controller) GetImage() (image.Image, error) {
+// CacheImage gets the image buffer of the last screencap request.
+func (c *controller) CacheImage() (image.Image, error) {
 	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 
-	got := C.MaaControllerGetImage(
+	got := C.MaaControllerCachedImage(
 		c.handle,
 		C.MaaImageBufferHandle(imgBuffer.Handle()),
 	) != 0
@@ -479,7 +464,7 @@ func (c *controller) GetImage() (image.Image, error) {
 func (c *controller) GetUUID() (string, bool) {
 	uuid := buffer.NewStringBuffer()
 	defer uuid.Destroy()
-	got := C.MaaControllerGetUUID(
+	got := C.MaaControllerGetUuid(
 		c.handle,
 		C.MaaStringBufferHandle(uuid.Handle()),
 	) != 0
