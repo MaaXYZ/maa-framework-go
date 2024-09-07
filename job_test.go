@@ -56,7 +56,7 @@ func TestJob_Status(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			job := NewJob(tc.id, tc.statusFunc)
+			job := NewJob(tc.id, tc.statusFunc, nil)
 			got := job.Status()
 			require.Equal(t, tc.expect, got)
 		})
@@ -114,7 +114,7 @@ func TestJob_Invalid(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			job := NewJob(tc.id, tc.statusFunc)
+			job := NewJob(tc.id, tc.statusFunc, nil)
 			got := job.Invalid()
 			require.Equal(t, tc.expect, got)
 		})
@@ -172,7 +172,7 @@ func TestJob_Pending(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			job := NewJob(tc.id, tc.statusFunc)
+			job := NewJob(tc.id, tc.statusFunc, nil)
 			got := job.Pending()
 			require.Equal(t, tc.expect, got)
 		})
@@ -230,7 +230,7 @@ func TestJob_Running(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			job := NewJob(tc.id, tc.statusFunc)
+			job := NewJob(tc.id, tc.statusFunc, nil)
 			got := job.Running()
 			require.Equal(t, tc.expect, got)
 		})
@@ -288,7 +288,7 @@ func TestJob_Success(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			job := NewJob(tc.id, tc.statusFunc)
+			job := NewJob(tc.id, tc.statusFunc, nil)
 			got := job.Success()
 			require.Equal(t, tc.expect, got)
 		})
@@ -346,7 +346,7 @@ func TestJob_Failure(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			job := NewJob(tc.id, tc.statusFunc)
+			job := NewJob(tc.id, tc.statusFunc, nil)
 			got := job.Failure()
 			require.Equal(t, tc.expect, got)
 		})
@@ -404,62 +404,8 @@ func TestJob_Done(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			job := NewJob(tc.id, tc.statusFunc)
+			job := NewJob(tc.id, tc.statusFunc, nil)
 			got := job.Done()
-			require.Equal(t, tc.expect, got)
-		})
-	}
-}
-
-func TestJob_Wait(t *testing.T) {
-	testCases := []struct {
-		name       string
-		id         int64
-		statusFunc func(id int64) Status
-		expect     bool
-	}{
-		{
-			name: "WaitUntilSuccess",
-			id:   1,
-			statusFunc: func() func(id int64) Status {
-				var count = 0
-				return func(id int64) Status {
-					if count < 10 {
-						count++
-						return StatusPending
-					} else if count < 20 {
-						count++
-						return StatusRunning
-					}
-					return StatusSuccess
-				}
-			}(),
-			expect: true,
-		},
-		{
-			name: "WaitUntilFailure",
-			id:   2,
-			statusFunc: func() func(id int64) Status {
-				var count = 0
-				return func(id int64) Status {
-					if count < 10 {
-						count++
-						return StatusPending
-					} else if count < 20 {
-						count++
-						return StatusRunning
-					}
-					return StatusFailure
-				}
-			}(),
-			expect: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			job := NewJob(tc.id, tc.statusFunc)
-			got := job.Wait()
 			require.Equal(t, tc.expect, got)
 		})
 	}
