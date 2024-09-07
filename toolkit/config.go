@@ -7,13 +7,12 @@ package toolkit
 import "C"
 import "unsafe"
 
-// InitOption inits the toolkit option config.
-func InitOption(userPath, defaultJson string) bool {
+// ConfigInitOption inits the toolkit config option.
+func ConfigInitOption(userPath, defaultJson string) bool {
 	cUserPath := C.CString(userPath)
+	defer C.free(unsafe.Pointer(cUserPath))
 	cDefaultJson := C.CString(defaultJson)
-	defer func() {
-		C.free(unsafe.Pointer(cUserPath))
-		C.free(unsafe.Pointer(cDefaultJson))
-	}()
-	return C.MaaToolkitInitOptionConfig(cUserPath, cDefaultJson) != 0
+	defer C.free(unsafe.Pointer(cDefaultJson))
+
+	return C.MaaToolkitConfigInitOption(cUserPath, cDefaultJson) != 0
 }
