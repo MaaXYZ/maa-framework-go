@@ -4,8 +4,6 @@ package maa
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
 
-typedef struct MaaTasker* MaaTaskerHandle;
-
 extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
 */
 import "C"
@@ -18,7 +16,7 @@ import (
 )
 
 type Tasker struct {
-	handle C.MaaTaskerHandle
+	handle *C.MaaTasker
 }
 
 // New creates an instance.
@@ -53,7 +51,7 @@ func (t *Tasker) BindResource(res *Resource) bool {
 
 // BindController binds the instance to an initialized controller.
 func (t *Tasker) BindController(ctrl Controller) bool {
-	return C.MaaTaskerBindController(t.handle, C.MaaControllerHandle(ctrl.Handle())) != 0
+	return C.MaaTaskerBindController(t.handle, (*C.MaaController)(ctrl.Handle())) != 0
 }
 
 // Inited checks if the instance is initialized.
@@ -167,13 +165,14 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (RecognitionDetail, error) {
 		detailJson.Destroy()
 	}()
 	got := C.MaaTaskerGetRecognitionDetail(
+		t.handle,
 		C.int64_t(recId),
-		C.MaaStringBufferHandle(name.Handle()),
+		(*C.MaaStringBuffer)(name.Handle()),
 		(*C.uint8_t)(unsafe.Pointer(&hit)),
-		C.MaaRectHandle(hitBox.Handle()),
-		C.MaaStringBufferHandle(detailJson.Handle()),
-		C.MaaImageBufferHandle(raw.Handle()),
-		C.MaaImageListBufferHandle(draws.Handle()),
+		(*C.MaaRect)(hitBox.Handle()),
+		(*C.MaaStringBuffer)(detailJson.Handle()),
+		(*C.MaaImageBuffer)(raw.Handle()),
+		(*C.MaaImageListBuffer)(draws.Handle()),
 	) != 0
 
 	if !got {
@@ -204,6 +203,7 @@ type NodeDetail struct {
 	ID           int64
 	Name         string
 	Recognition  RecognitionDetail
+	Times        uint64
 	RunCompleted bool
 }
 
@@ -212,13 +212,16 @@ func (t *Tasker) GetNodeDetail(nodeId int64) (NodeDetail, bool) {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId int64
+	var times uint64
 	var runCompleted uint8
 	got := C.MaaTaskerGetNodeDetail(
+		t.handle,
 		C.int64_t(nodeId),
-		C.MaaStringBufferHandle(name.Handle()),
+		(*C.MaaStringBuffer)(name.Handle()),
 		(*C.int64_t)(unsafe.Pointer(&recId)),
+		(*C.uint64_t)(unsafe.Pointer(&times)),
 		(*C.uint8_t)(unsafe.Pointer(&runCompleted)),
-	) != 0
+	)
 
 	recognitionDetail, err := t.GetRecognitionDetail(recId)
 	if err != nil {
@@ -230,8 +233,9 @@ func (t *Tasker) GetNodeDetail(nodeId int64) (NodeDetail, bool) {
 		ID:           nodeId,
 		Name:         name.Get(),
 		Recognition:  recognitionDetail,
+		Times:        times,
 		RunCompleted: runCompleted != 0,
-	}, got
+	}, got != 0
 }
 
 type TaskDetail struct {
@@ -245,17 +249,18 @@ func (t *Tasker) GetTaskDetail(taskId int64) (TaskDetail, bool) {
 	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
-	got := C.MaaTaskerGetTaskDetail(C.int64_t(taskId), nil, nil, (*C.uint64_t)(unsafe.Pointer(&size))) != 0
-	if !got {
-		return TaskDetail{}, got
+	got := C.MaaTaskerGetTaskDetail(t.handle, C.int64_t(taskId), nil, nil, (*C.uint64_t)(unsafe.Pointer(&size)))
+	if got == 0 {
+		return TaskDetail{}, false
 	}
 	nodeIdList := make([]int64, size)
 	got = C.MaaTaskerGetTaskDetail(
+		t.handle,
 		C.int64_t(taskId),
-		C.MaaStringBufferHandle(entry.Handle()),
+		(*C.MaaStringBuffer)(entry.Handle()),
 		(*C.int64_t)(unsafe.Pointer(&nodeIdList[0])),
 		(*C.uint64_t)(unsafe.Pointer(&size)),
-	) != 0
+	)
 
 	nodeDetails := make([]NodeDetail, size)
 	for i, nodeId := range nodeIdList {
@@ -270,7 +275,7 @@ func (t *Tasker) GetTaskDetail(taskId int64) (TaskDetail, bool) {
 		ID:          taskId,
 		Entry:       entry.Get(),
 		NodeDetails: nodeDetails,
-	}, got
+	}, got != 0
 }
 
 // GetLatestNode returns latest node id.

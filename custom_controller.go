@@ -4,14 +4,15 @@ package maa
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
 #include "custom_controller.h"
+#include "def.h"
 
 extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
 
 extern uint8_t _ConnectAgent(void* handleArg);
-extern uint8_t _RequestUUIDAgent(void* handle_arg, MaaStringBufferHandle buffer);
+extern uint8_t _RequestUUIDAgent(void* handle_arg, MaaStringBuffer* buffer);
 extern uint8_t _StartAppAgent(const char* intent, void* handle_arg);
 extern uint8_t _StopAppAgent(const char* intent, void* handle_arg);
-extern uint8_t _ScreencapAgent(void* handle_arg, MaaImageBufferHandle buffer);
+extern uint8_t _ScreencapAgent(void* handle_arg, MaaImageBuffer* buffer);
 extern uint8_t _ClickAgent(int32_t x, int32_t y, void* handle_arg);
 extern uint8_t _SwipeAgent(
 			int32_t x1,
@@ -80,7 +81,7 @@ type CustomController interface {
 }
 
 type CustomControllerHandler struct {
-	handle C.MaaCustomControllerCallbacksHandle
+	handle *C.MaaCustomControllerCallbacks
 }
 
 func NewCustomControllerHandler() CustomControllerHandler {
@@ -122,7 +123,7 @@ func _ConnectAgent(handleArg unsafe.Pointer) C.uint8_t {
 }
 
 //export _RequestUUIDAgent
-func _RequestUUIDAgent(handleArg unsafe.Pointer, uuidBuffer C.MaaStringBufferHandle) C.uint8_t {
+func _RequestUUIDAgent(handleArg unsafe.Pointer, uuidBuffer *C.MaaStringBuffer) C.uint8_t {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(handleArg))
@@ -137,7 +138,7 @@ func _RequestUUIDAgent(handleArg unsafe.Pointer, uuidBuffer C.MaaStringBufferHan
 }
 
 //export _StartAppAgent
-func _StartAppAgent(intent C.CString, handleArg unsafe.Pointer) C.uint8_t {
+func _StartAppAgent(intent C.StringView, handleArg unsafe.Pointer) C.uint8_t {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(handleArg))
@@ -150,7 +151,7 @@ func _StartAppAgent(intent C.CString, handleArg unsafe.Pointer) C.uint8_t {
 }
 
 //export _StopAppAgent
-func _StopAppAgent(intent C.CString, handleArg unsafe.Pointer) C.uint8_t {
+func _StopAppAgent(intent C.StringView, handleArg unsafe.Pointer) C.uint8_t {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(handleArg))
@@ -163,7 +164,7 @@ func _StopAppAgent(intent C.CString, handleArg unsafe.Pointer) C.uint8_t {
 }
 
 //export _ScreencapAgent
-func _ScreencapAgent(handleArg unsafe.Pointer, imgBuffer C.MaaImageBufferHandle) C.uint8_t {
+func _ScreencapAgent(handleArg unsafe.Pointer, imgBuffer *C.MaaImageBuffer) C.uint8_t {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(handleArg))
@@ -258,7 +259,7 @@ func _PressKey(key C.int32_t, handleArg unsafe.Pointer) C.uint8_t {
 }
 
 //export _InputText
-func _InputText(text C.CString, handleArg unsafe.Pointer) C.uint8_t {
+func _InputText(text C.StringView, handleArg unsafe.Pointer) C.uint8_t {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(handleArg))

@@ -3,14 +3,12 @@ package buffer
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
-
-typedef struct MaaStringBuffer* MaaStringBufferHandle;
 */
 import "C"
 import "unsafe"
 
 type StringBuffer struct {
-	handle C.MaaStringBufferHandle
+	handle *C.MaaStringBuffer
 }
 
 func NewStringBuffer() *StringBuffer {
@@ -22,7 +20,7 @@ func NewStringBuffer() *StringBuffer {
 
 func NewStringBufferByHandle(handle unsafe.Pointer) *StringBuffer {
 	return &StringBuffer{
-		handle: C.MaaStringBufferHandle(handle),
+		handle: (*C.MaaStringBuffer)(handle),
 	}
 }
 

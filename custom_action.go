@@ -3,17 +3,14 @@ package maa
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
+#include "def.h"
 
-typedef struct MaaContext* MaaContextHandle;
-
-typedef struct MaaRect* MaaRectHandle;
-
-extern uint8_t _MaaCustomActionCallback(
-	MaaContextHandle ctx,
+extern uint8_t _MaaCustomActionCallbackAgent(
+	MaaContext* ctx,
 	int64_t task_id,
 	const char*  task_name,
 	const char*  customActionParam,
-	MaaRectHandle box ,
+	const MaaRect* box ,
 	const char* recognition_detail,
 	void* actionArg);
 */
@@ -51,13 +48,13 @@ func clearCustomAction() {
 	customActionCallbackAgents = make(map[uint64]func(ctx *Context, taskId int64, actionName, customActionParam string, box Rect, recognitionDetail string) bool)
 }
 
-//export _MaaCustomActionCallback
-func _MaaCustomActionCallback(
-	ctx C.MaaContextHandle,
+//export _MaaCustomActionCallbackAgent
+func _MaaCustomActionCallbackAgent(
+	ctx *C.MaaContext,
 	taskId C.int64_t,
-	actionName, customActionParam C.CString,
-	box C.MaaRectHandle,
-	recognitionDetail C.CString,
+	actionName, customActionParam C.StringView,
+	box C.ConstMaaRectPtr,
+	recognitionDetail C.StringView,
 	actionArg unsafe.Pointer,
 ) C.uint8_t {
 	// Here, we are simply passing the uint64 value as a pointer

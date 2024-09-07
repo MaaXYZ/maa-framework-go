@@ -3,8 +3,6 @@ package maa
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
-
-typedef struct MaaRect* MaaRectHandle;
 */
 import "C"
 import (
@@ -16,7 +14,7 @@ type Rect struct {
 }
 
 type rectBuffer struct {
-	handle C.MaaRectHandle
+	handle *C.MaaRect
 }
 
 func newRectBuffer() *rectBuffer {
@@ -28,7 +26,7 @@ func newRectBuffer() *rectBuffer {
 
 func newRectBufferByHandle(handle unsafe.Pointer) *rectBuffer {
 	return &rectBuffer{
-		handle: C.MaaRectHandle(handle),
+		handle: (*C.MaaRect)(handle),
 	}
 }
 

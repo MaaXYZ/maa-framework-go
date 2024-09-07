@@ -3,19 +3,17 @@
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
 
-typedef struct MaaCustomControllerCallbacks* MaaCustomControllerCallbacksHandle;
-
 typedef MaaBool (*ConnectCallback)(void* handle_arg);
 
         /// Write result to buffer.
 typedef MaaBool (
-            *RequestUUIDCallback)(void*  handle_arg, /* out */ const char* buffer);
+            *RequestUUIDCallback)(void*  handle_arg, /* out */ MaaStringBuffer* buffer);
 
 typedef MaaBool (*StartAppCallback)(const char* intent, void*  handle_arg);
 typedef MaaBool (*StopAppCallback)(const char* intent, void*  handle_arg);
 
         /// Write result to buffer.
-typedef MaaBool (*ScreencapCallback)(void* handle_arg, /* out */ MaaImageBufferHandle buffer);
+typedef MaaBool (*ScreencapCallback)(void* handle_arg, /* out */ MaaImageBuffer* buffer);
 
 typedef MaaBool (*ClickCallback)(int32_t x, int32_t y, void*  handle_arg);
 typedef MaaBool (*SwipeCallback)(
@@ -42,7 +40,7 @@ typedef MaaBool (*TouchUpCallback)(int32_t contact, void*  handle_arg);
 typedef MaaBool (*PressKeyCallback)(int32_t keycode, void*  handle_arg);
 typedef MaaBool (*InputTextCallback)(const char* text, void*  handle_arg);
 
-extern MaaCustomControllerHandle MaaCustomControllerHandleCreate(
+extern MaaCustomControllerCallbacks* MaaCustomControllerHandleCreate(
     ConnectCallback connect,
     RequestUUIDCallback request_uuid,
     StartAppCallback start_app,
@@ -57,4 +55,4 @@ extern MaaCustomControllerHandle MaaCustomControllerHandleCreate(
     InputTextCallback input_text
 );
 
-extern void MaaCustomControllerHandleDestroy(MaaCustomControllerHandle handle);
+extern void MaaCustomControllerHandleDestroy(MaaCustomControllerCallbacks* handle);

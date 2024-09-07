@@ -3,14 +3,12 @@ package buffer
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
-
-typedef struct MaaCreateStringList* MaaCreateStringListBuffer;
 */
 import "C"
 import "unsafe"
 
 type StringListBuffer struct {
-	handle C.MaaStringListBufferHandle
+	handle *C.MaaStringListBuffer
 }
 
 func NewStringListBuffer() *StringListBuffer {
@@ -22,12 +20,16 @@ func NewStringListBuffer() *StringListBuffer {
 
 func NewStringListBufferByHandle(handle unsafe.Pointer) *StringListBuffer {
 	return &StringListBuffer{
-		handle: C.MaaStringListBufferHandle(handle),
+		handle: (*C.MaaStringListBuffer)(handle),
 	}
 }
 
 func (sl *StringListBuffer) Destroy() {
 	C.MaaStringListBufferDestroy(sl.handle)
+}
+
+func (sl *StringListBuffer) Handle() unsafe.Pointer {
+	return unsafe.Pointer(sl.handle)
 }
 
 func (sl *StringListBuffer) IsEmpty() bool {
@@ -62,7 +64,7 @@ func (sl *StringListBuffer) GetAll() []string {
 func (sl *StringListBuffer) Append(value StringBuffer) bool {
 	return C.MaaStringListBufferAppend(
 		sl.handle,
-		C.MaaStringBufferHandle(value.Handle()),
+		(*C.MaaStringBuffer)(value.Handle()),
 	) != 0
 }
 

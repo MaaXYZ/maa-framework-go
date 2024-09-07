@@ -6,28 +6,22 @@ package maa
 
 extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
 
-typedef struct MaaContext* MaaContextHandle;
-
-typedef struct MaaRect* MaaRectHandle;
-
-typedef struct MaaStringBuffer* MaaStringBufferHandle;
-
-extern uint8_t _MaaCustomRecognizerCallback(
-			MaaContextHandle ctx,
+extern uint8_t _MaaCustomRecognizerCallbackAgent(
+			MaaContext* ctx,
 			int64_t task_id,
             const char* recognizer_name,
             const char* custom_recognition_param,
-            const MaaImageBufferHandle image,
+            const MaaImageBuffer* image,
             void* recognizer_arg,
-           	MaaRectHandle out_box,
-			MaaStringBufferHandle out_detail);
+           	MaaRect* out_box,
+			MaaStringBuffer* out_detail);
 
-extern uint8_t _MaaCustomActionCallback(
-	MaaContextHandle ctx,
+extern uint8_t _MaaCustomActionCallbackAgent(
+	MaaContext* ctx,
 	int64_t task_id,
 	const char*  task_name,
 	const char*  customActionParam,
-	MaaRectHandle box ,
+	MaaRect* box ,
 	const char* recognition_detail,
 	void* actionArg);
 */
@@ -35,12 +29,11 @@ import "C"
 import (
 	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"image"
-	"strings"
 	"unsafe"
 )
 
 type Resource struct {
-	handle C.MaaResourceHandle
+	handle *C.MaaResource
 }
 
 // NewResource creates a new resource.
@@ -78,7 +71,7 @@ func (r *Resource) RegisterCustomRecognizer(
 	got := C.MaaResourceRegisterCustomRecognizer(
 		r.handle,
 		cName,
-		C.MaaCustomRecognizerCallback(C._MaaCustomRecognizerCallback),
+		C.MaaCustomRecognizerCallback(C._MaaCustomRecognizerCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
@@ -178,7 +171,7 @@ func (r *Resource) GetHash() (string, bool) {
 	hash := buffer.NewStringBuffer()
 	defer hash.Destroy()
 
-	got := C.MaaResourceGetHash(r.handle, C.MaaStringBufferHandle(hash.Handle())) != 0
+	got := C.MaaResourceGetHash(r.handle, (*C.MaaStringBuffer)(hash.Handle())) != 0
 	if !got {
 		return "", false
 	}
@@ -187,17 +180,14 @@ func (r *Resource) GetHash() (string, bool) {
 
 // GetTaskList returns the task list of the resource.
 func (r *Resource) GetTaskList() ([]string, bool) {
-	taskList := buffer.NewStringBuffer()
+	taskList := buffer.NewStringListBuffer()
 	defer taskList.Destroy()
 
-	got := C.MaaResourceGetTaskList(r.handle, C.MaaStringBufferHandle(taskList.Handle())) != 0
+	got := C.MaaResourceGetTaskList(r.handle, (*C.MaaStringListBuffer)(taskList.Handle())) != 0
 	if !got {
 		return []string{}, false
 	}
-	taskListStr := taskList.Get()
-	taskListStr = strings.TrimPrefix(taskListStr, "[")
-	taskListStr = strings.TrimSuffix(taskListStr, "]")
-	taskListArr := strings.Split(taskListStr, ",")
+	taskListArr := taskList.GetAll()
 
 	return taskListArr, true
 }

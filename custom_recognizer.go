@@ -3,22 +3,17 @@ package maa
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
+#include "def.h"
 
-typedef struct MaaContext* MaaContextHandle;
-
-typedef struct MaaRect* MaaRectHandle;
-
-typedef struct MaaStringBuffer* MaaStringBufferHandle;
-
-extern uint8_t _MaaCustomRecognizerCallback(
-			MaaContextHandle ctx,
+extern uint8_t _MaaCustomRecognizerCallbackAgent(
+			MaaContext* ctx,
 			int64_t task_id,
             const char* recognizer_name,
             const char* custom_recognition_param,
-            const MaaImageBufferHandle image,
+            const MaaImageBuffer* image,
             void* recognizer_arg,
-           	MaaRectHandle out_box,
-			MaaStringBufferHandle out_detail);
+           	MaaRect* out_box,
+			MaaStringBuffer* out_detail);
 */
 import "C"
 import (
@@ -61,15 +56,15 @@ type AnalyzeResult struct {
 	Detail string
 }
 
-//export _MaaCustomRecognizerCallback
-func _MaaCustomRecognizerCallback(
-	ctx C.MaaContextHandle,
+//export _MaaCustomRecognizerCallbackAgent
+func _MaaCustomRecognizerCallbackAgent(
+	ctx *C.MaaContext,
 	taskId C.int64_t,
-	recognizerName, customRecognitionParam C.CString,
-	img C.MaaImageBufferHandle,
+	recognizerName, customRecognitionParam C.StringView,
+	img C.ConstMaaImageBufferPtr,
 	recognizerArg unsafe.Pointer,
-	outBox C.MaaRectHandle,
-	outDetail C.MaaStringBufferHandle,
+	outBox *C.MaaRect,
+	outDetail *C.MaaStringBuffer,
 ) C.uint8_t {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.

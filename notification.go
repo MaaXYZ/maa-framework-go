@@ -2,6 +2,7 @@ package maa
 
 /*
 #include <MaaFramework/MaaAPI.h>
+#include "def.h"
 
 extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
 */
@@ -23,7 +24,7 @@ func registerNotificationCallback(callback func(msg, detailsJson string)) uint64
 }
 
 //export _MaaNotificationCallbackAgent
-func _MaaNotificationCallbackAgent(msg, detailsJson C.CString, callbackArg unsafe.Pointer) {
+func _MaaNotificationCallbackAgent(msg, detailsJson C.StringView, callbackArg unsafe.Pointer) {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(callbackArg))

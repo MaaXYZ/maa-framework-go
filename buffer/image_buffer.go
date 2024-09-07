@@ -3,8 +3,6 @@ package buffer
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
-
-typedef struct MaaImageBuffer* MaaImageBufferHandle;
 */
 import "C"
 import (
@@ -18,7 +16,7 @@ import (
 )
 
 type ImageBuffer struct {
-	handle C.MaaImageBufferHandle
+	handle *C.MaaImageBuffer
 }
 
 func NewImageBuffer() *ImageBuffer {
@@ -30,7 +28,7 @@ func NewImageBuffer() *ImageBuffer {
 
 func NewImageBufferByHandle(handle unsafe.Pointer) *ImageBuffer {
 	return &ImageBuffer{
-		handle: C.MaaImageBufferHandle(handle),
+		handle: (*C.MaaImageBuffer)(handle),
 	}
 }
 

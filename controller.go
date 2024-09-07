@@ -4,8 +4,6 @@ package maa
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
 
-typedef struct MaaCustomControllerCallbacks* MaaCustomControllerCallbacksHandle;
-
 extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
 */
 import "C"
@@ -46,7 +44,7 @@ type Controller interface {
 
 // controller is a concrete implementation of the Controller interface.
 type controller struct {
-	handle C.MaaControllerHandle
+	handle *C.MaaController
 }
 
 // AdbScreencapMethod
@@ -112,8 +110,8 @@ func NewAdbController(
 	handle := C.MaaAdbControllerCreate(
 		cAdbPath,
 		cAddress,
-		C.int64_t(screencapMethod),
-		C.int64_t(inputMethod),
+		C.uint64_t(screencapMethod),
+		C.uint64_t(inputMethod),
 		cConfig,
 		cAgentPath,
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
@@ -161,9 +159,9 @@ func NewWin32Controller(
 ) Controller {
 	id := registerNotificationCallback(callback)
 	handle := C.MaaWin32ControllerCreate(
-		C.MaaWin32Hwnd(C.MaaWin32Hwnd(hWnd)),
-		C.int64_t(screencapMethod),
-		C.int64_t(inputMethod),
+		hWnd,
+		C.uint64_t(screencapMethod),
+		C.uint64_t(inputMethod),
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
@@ -178,7 +176,7 @@ func NewWin32Controller(
 // DbgControllerType
 //
 // No bitwise OR, just set it.
-type DbgControllerType int64
+type DbgControllerType uint64
 
 // DbgControllerType
 const (
@@ -207,7 +205,7 @@ func NewDbgController(
 	handle := C.MaaDbgControllerCreate(
 		cReadPath,
 		cWritePath,
-		C.int64_t(dbgCtrlType),
+		C.uint64_t(dbgCtrlType),
 		cConfig,
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
@@ -228,7 +226,7 @@ func NewCustomController(
 	ctrlID := registerCustomControllerCallbacks(ctrl)
 	cbID := registerNotificationCallback(callback)
 	handle := C.MaaCustomControllerCreate(
-		C.MaaCustomControllerCallbacksHandle(ctrl.Handle()),
+		(*C.MaaCustomControllerCallbacks)(ctrl.Handle()),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(ctrlID)),
@@ -446,7 +444,7 @@ func (c *controller) CacheImage() (image.Image, error) {
 
 	got := C.MaaControllerCachedImage(
 		c.handle,
-		C.MaaImageBufferHandle(imgBuffer.Handle()),
+		(*C.MaaImageBuffer)(imgBuffer.Handle()),
 	) != 0
 	if !got {
 		return nil, errors.New("failed to get image")
@@ -466,7 +464,7 @@ func (c *controller) GetUUID() (string, bool) {
 	defer uuid.Destroy()
 	got := C.MaaControllerGetUuid(
 		c.handle,
-		C.MaaStringBufferHandle(uuid.Handle()),
+		(*C.MaaStringBuffer)(uuid.Handle()),
 	) != 0
 	if !got {
 		return "", false
