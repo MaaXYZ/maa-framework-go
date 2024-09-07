@@ -3,14 +3,20 @@ package maa
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
-#include "custom_recognizer.h"
 
-extern uint8_t _AnalyzeAgent(
-			MaaSyncContextHandle sync_context,
+typedef struct MaaContext* MaaContextHandle;
+
+typedef struct MaaRect* MaaRectHandle;
+
+typedef struct MaaStringBuffer* MaaStringBufferHandle;
+
+extern uint8_t _MaaCustomRecognizerCallback(
+			MaaContextHandle ctx,
+			int64_t task_id,
+            const char* recognizer_name,
+            const char* custom_recognition_param,
             const MaaImageBufferHandle image,
-            MaaStringView task_name,
-            MaaStringView custom_recognition_param,
-            MaaTransparentArg recognizer_arg,
+            void* recognizer_arg,
            	MaaRectHandle out_box,
 			MaaStringBufferHandle out_detail);
 */
@@ -23,15 +29,15 @@ import (
 )
 
 var (
-	customRecognizerID       uint64
-	customRecognizerNameToID = make(map[string]uint64)
-	customRecognizerAgents   = make(map[uint64]CustomRecognizer)
+	customRecognizerCallbackID     uint64
+	customRecognizerNameToID       = make(map[string]uint64)
+	customRecognizerCallbackAgents = make(map[uint64]func(ctx *Context, taskId int64, recognizerName, customRecognitionParam string, img image.Image) (AnalyzeResult, bool))
 )
 
-func registerCustomRecognizer(name string, recognizer CustomRecognizer) uint64 {
-	id := atomic.AddUint64(&customRecognizerID, 1)
+func registerCustomRecognizer(name string, recognizerCallback func(ctx *Context, taskId int64, recognizerName, customRecognitionParam string, img image.Image) (AnalyzeResult, bool)) uint64 {
+	id := atomic.AddUint64(&customRecognizerCallbackID, 1)
 	customRecognizerNameToID[name] = id
-	customRecognizerAgents[id] = recognizer
+	customRecognizerCallbackAgents[id] = recognizerCallback
 	return id
 }
 
@@ -41,23 +47,13 @@ func unregisterCustomRecognizer(name string) bool {
 		return false
 	}
 	delete(customRecognizerNameToID, name)
-	delete(customRecognizerAgents, id)
+	delete(customRecognizerCallbackAgents, id)
 	return ok
 }
 
 func clearCustomRecognizer() {
 	customRecognizerNameToID = make(map[string]uint64)
-	customRecognizerAgents = make(map[uint64]CustomRecognizer)
-}
-
-// CustomRecognizer defines an interface for custom recognizer.
-// Implementers of this interface must embed a CustomRecognizerHandler struct
-// and provide an implementation for the Analyze method.
-type CustomRecognizer interface {
-	Analyze(syncCtx SyncContext, img image.Image, taskName, RecognitionParam string) (AnalyzeResult, bool)
-
-	Handle() unsafe.Pointer
-	Destroy()
+	customRecognizerCallbackAgents = make(map[uint64]func(ctx *Context, taskId int64, recognizerName, customRecognitionParam string, img image.Image) (AnalyzeResult, bool))
 }
 
 type AnalyzeResult struct {
@@ -65,53 +61,37 @@ type AnalyzeResult struct {
 	Detail string
 }
 
-type CustomRecognizerHandler struct {
-	handle C.MaaCustomRecognizerHandle
-}
-
-func NewCustomRecognizerHandler() CustomRecognizerHandler {
-	return CustomRecognizerHandler{
-		handle: C.MaaCustomRecognizerHandleCreate(C.AnalyzeCallback(C._AnalyzeAgent)),
-	}
-}
-
-func (r CustomRecognizerHandler) Handle() unsafe.Pointer {
-	return unsafe.Pointer(r.handle)
-}
-
-func (r CustomRecognizerHandler) Destroy() {
-	C.MaaCustomRecognizerHandleDestroy(r.handle)
-}
-
-//export _AnalyzeAgent
-func _AnalyzeAgent(
-	ctx C.MaaSyncContextHandle,
+//export _MaaCustomRecognizerCallback
+func _MaaCustomRecognizerCallback(
+	ctx C.MaaContextHandle,
+	taskId C.int64_t,
+	recognizerName, customRecognitionParam C.CString,
 	img C.MaaImageBufferHandle,
-	taskName, customRecognitionParam C.MaaStringView,
-	recognizerArg C.MaaTransparentArg,
+	recognizerArg unsafe.Pointer,
 	outBox C.MaaRectHandle,
 	outDetail C.MaaStringBufferHandle,
 ) C.uint8_t {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(unsafe.Pointer(recognizerArg)))
-	rec := customRecognizerAgents[id]
+	id := uint64(uintptr(recognizerArg))
+	callback := customRecognizerCallbackAgents[id]
 	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(img))
 	imgImg, err := imgBuffer.GetByRawData()
 	if err != nil {
 		return C.uint8_t(0)
 	}
 
-	ret, ok := rec.Analyze(
-		SyncContext{handle: ctx},
-		imgImg,
-		C.GoString(taskName),
+	ret, ok := callback(
+		&Context{handle: ctx},
+		int64(taskId),
+		C.GoString(recognizerName),
 		C.GoString(customRecognitionParam),
+		imgImg,
 	)
 	if ok {
 		box := ret.Box
-		outBoxRect := buffer.NewRectBufferByHandle(unsafe.Pointer(outBox))
-		outBoxRect.Set(toBufferRect(box))
+		outBoxRect := newRectBufferByHandle(unsafe.Pointer(outBox))
+		outBoxRect.Set(box)
 		outDetailString := buffer.NewStringBufferByHandle(unsafe.Pointer(outDetail))
 		outDetailString.Set(ret.Detail)
 		return C.uint8_t(1)
