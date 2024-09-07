@@ -8,17 +8,19 @@ import (
 )
 
 func main() {
-	toolkit.InitOption("./", "{}")
+	toolkit.ConfigInitOption("./", "{}")
 	inst := maa.New(nil)
 	defer inst.Destroy()
 
-	devices := toolkit.AdbDevices()
-	device := devices[0]
+	deviceFinder := toolkit.NewAdbDeviceFinder()
+	deviceFinder.Find()
+	device := deviceFinder.Get(0)
 	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ControllerType,
-		device.Config,
+		device.GetAdbPath(),
+		device.GetAddress(),
+		device.GetScreencapMethod(),
+		device.GetInputMethod(),
+		device.GetConfig(),
 		"path/to/MaaAgentBinary",
 		nil,
 	)
@@ -35,5 +37,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	inst.PostTask("Startup", "{}")
+	inst.PostPipeline("Startup", "{}")
 }

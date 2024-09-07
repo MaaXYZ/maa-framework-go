@@ -8,17 +8,19 @@ import (
 )
 
 func main() {
-	toolkit.InitOption("./", "{}")
+	toolkit.ConfigInitOption("./", "{}")
 	inst := maa.New(nil)
 	defer inst.Destroy()
 
-	devices := toolkit.AdbDevices()
-	device := devices[0]
+	deviceFinder := toolkit.NewAdbDeviceFinder()
+	deviceFinder.Find()
+	device := deviceFinder.Get(0)
 	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ControllerType,
-		device.Config,
+		device.GetAdbPath(),
+		device.GetAddress(),
+		device.GetScreencapMethod(),
+		device.GetInputMethod(),
+		device.GetConfig(),
 		"path/to/MaaAgentBinary",
 		nil,
 	)
@@ -35,26 +37,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAct := NewAct()
-	defer myAct.Destroy()
-	inst.RegisterCustomAction("MyAct", myAct)
+	res.RegisterCustomAction("MyAct", myAct)
 
-	inst.PostTask("Startup", "{}")
+	inst.PostPipeline("Startup", "{}")
 }
 
-type MyAct struct {
-	maa.CustomActionHandler
-}
-
-func NewAct() maa.CustomAction {
-	return &MyAct{
-		CustomActionHandler: maa.NewCustomActionHandler(),
-	}
-}
-
-func (*MyAct) Run(ctx maa.SyncContext, taskName, ActionParam string, curBox maa.Rect, curRecDetail string) bool {
+func myAct(_ *maa.Context, _ int64, _, _ string, _ maa.Rect, _ string) bool {
 	return true
-}
-
-func (*MyAct) Stop() {
 }
