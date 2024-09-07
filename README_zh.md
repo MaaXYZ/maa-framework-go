@@ -109,17 +109,19 @@ import (
 )
 
 func main() {
-	toolkit.InitOption("./", "{}")
+	toolkit.ConfigInitOption("./", "{}")
 	inst := maa.New(nil)
 	defer inst.Destroy()
 
-	devices := toolkit.AdbDevices()
-	device := devices[0]
+	deviceFinder := toolkit.NewAdbDeviceFinder()
+	deviceFinder.Find()
+	device := deviceFinder.Get(0)
 	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ControllerType,
-		device.Config,
+		device.GetAdbPath(),
+		device.GetAddress(),
+		device.GetScreencapMethod(),
+		device.GetInputMethod(),
+		device.GetConfig(),
 		"path/to/MaaAgentBinary",
 		nil,
 	)
@@ -136,7 +138,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	inst.PostTask("Startup", "{}")
+	inst.PostPipeline("Startup", "{}")
 }
 
 ```
@@ -153,24 +155,25 @@ package main
 import (
 	"fmt"
 	"github.com/MaaXYZ/maa-framework-go"
-	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"github.com/MaaXYZ/maa-framework-go/toolkit"
 	"image"
 	"os"
 )
 
 func main() {
-	toolkit.InitOption("./", "{}")
+	toolkit.ConfigInitOption("./", "{}")
 	inst := maa.New(nil)
 	defer inst.Destroy()
 
-	devices := toolkit.AdbDevices()
-	device := devices[0]
+	deviceFinder := toolkit.NewAdbDeviceFinder()
+	deviceFinder.Find()
+	device := deviceFinder.Get(0)
 	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ControllerType,
-		device.Config,
+		device.GetAdbPath(),
+		device.GetAddress(),
+		device.GetScreencapMethod(),
+		device.GetInputMethod(),
+		device.GetConfig(),
 		"path/to/MaaAgentBinary",
 		nil,
 	)
@@ -187,24 +190,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	myRec := NewMyRec()
-	defer myRec.Destroy()
-	inst.RegisterCustomRecognizer("MyRec", myRec)
+	res.RegisterCustomRecognizer("MyRec", myRec)
 
-	inst.PostTask("Startup", "{}")
+	inst.PostPipeline("Startup", "{}")
 }
 
-type MyRec struct {
-	maa.CustomRecognizerHandler
-}
-
-func NewMyRec() maa.CustomRecognizer {
-	return &MyRec{
-		CustomRecognizerHandler: maa.NewCustomRecognizerHandler(),
-	}
-}
-
-func (m MyRec) Analyze(syncCtx maa.SyncContext, img image.Image, taskName, RecognitionParam string) (maa.AnalyzeResult, bool) {
+func myRec(_ *maa.Context, _ int64, _, _ string, _ image.Image) (maa.AnalyzeResult, bool) {
 	return maa.AnalyzeResult{
 		Box:    maa.Rect{0, 0, 100, 100},
 		Detail: "Hello World!",
@@ -225,23 +216,24 @@ package main
 import (
 	"fmt"
 	"github.com/MaaXYZ/maa-framework-go"
-	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"github.com/MaaXYZ/maa-framework-go/toolkit"
 	"os"
 )
 
 func main() {
-	toolkit.InitOption("./", "{}")
+	toolkit.ConfigInitOption("./", "{}")
 	inst := maa.New(nil)
 	defer inst.Destroy()
 
-	devices := toolkit.AdbDevices()
-	device := devices[0]
+	deviceFinder := toolkit.NewAdbDeviceFinder()
+	deviceFinder.Find()
+	device := deviceFinder.Get(0)
 	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ControllerType,
-		device.Config,
+		device.GetAdbPath(),
+		device.GetAddress(),
+		device.GetScreencapMethod(),
+		device.GetInputMethod(),
+		device.GetConfig(),
 		"path/to/MaaAgentBinary",
 		nil,
 	)
@@ -258,28 +250,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAct := NewAct()
-	defer myAct.Destroy()
-	inst.RegisterCustomAction("MyAct", myAct)
+	res.RegisterCustomAction("MyAct", myAct)
 
-	inst.PostTask("Startup", "{}")
+	inst.PostPipeline("Startup", "{}")
 }
 
-type MyAct struct {
-	maa.CustomActionHandler
-}
-
-func NewAct() maa.CustomAction {
-	return &MyAct{
-		CustomActionHandler: maa.NewCustomActionHandler(),
-	}
-}
-
-func (*MyAct) Run(ctx maa.SyncContext, taskName, ActionParam string, curBox maa.Rect, curRecDetail string) bool {
+func myAct(_ *maa.Context, _ int64, _, _ string, _ maa.Rect, _ string) bool {
 	return true
-}
-
-func (*MyAct) Stop() {
 }
 
 ```
