@@ -26,6 +26,6 @@ func TestPipelineSmoking(t *testing.T) {
 
 	require.True(t, inst.Inited())
 
-	got := inst.PostTask("Wilderness", "{}").Wait()
+	got := inst.PostPipeline("Wilderness", "{}").Wait()
 	require.True(t, got)
 }
