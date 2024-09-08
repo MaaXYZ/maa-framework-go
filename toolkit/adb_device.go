@@ -38,7 +38,7 @@ func (f *AdbDeviceFinder) FindSpecified(adbPath string) bool {
 	cAdbPath := C.CString(adbPath)
 	defer C.free(unsafe.Pointer(cAdbPath))
 
-	got := C.MaaToolkitAdbDeviceFindSpecified(f.handle, cAdbPath)
+	got := C.MaaToolkitAdbDeviceFindSpecified(cAdbPath, f.handle)
 	return got != 0
 }
 
