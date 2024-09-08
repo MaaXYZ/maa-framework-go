@@ -19,13 +19,13 @@ func TestPipelineSmoking(t *testing.T) {
 	resDir := "./data_set/PipelineSmoking/resource"
 	res.PostPath(resDir).Wait()
 
-	inst := maa.New(nil)
-	defer inst.Destroy()
-	inst.BindResource(res)
-	inst.BindController(ctrl)
+	tasker := maa.New(nil)
+	defer tasker.Destroy()
+	tasker.BindResource(res)
+	tasker.BindController(ctrl)
 
-	require.True(t, inst.Inited())
+	require.True(t, tasker.Inited())
 
-	got := inst.PostPipeline("Wilderness", "{}").Wait()
+	got := tasker.PostPipeline("Wilderness", "{}").Wait()
 	require.True(t, got)
 }
