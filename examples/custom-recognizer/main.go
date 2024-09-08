@@ -10,8 +10,8 @@ import (
 
 func main() {
 	toolkit.ConfigInitOption("./", "{}")
-	inst := maa.New(nil)
-	defer inst.Destroy()
+	tasker := maa.New(nil)
+	defer tasker.Destroy()
 
 	deviceFinder := toolkit.NewAdbDeviceFinder()
 	deviceFinder.Find()
@@ -27,20 +27,20 @@ func main() {
 	)
 	defer ctrl.Destroy()
 	ctrl.PostConnect().Wait()
-	inst.BindController(ctrl)
+	tasker.BindController(ctrl)
 
 	res := maa.NewResource(nil)
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
-	inst.BindResource(res)
-	if inst.Inited() {
+	tasker.BindResource(res)
+	if tasker.Inited() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
 
 	res.RegisterCustomRecognizer("MyRec", myRec)
 
-	inst.PostPipeline("Startup", "{}")
+	tasker.PostPipeline("Startup", "{}")
 }
 
 func myRec(_ *maa.Context, _ int64, _, _ string, _ image.Image) (maa.AnalyzeResult, bool) {
