@@ -55,14 +55,12 @@ func NewTaskJob(
 	id int64,
 	statusFunc func(id int64) Status,
 	waitFunc func(id int64) Status,
-	overridePipelineFunc func(id int64, param string) bool,
 	getTaskDetailFunc func(id int64) (TaskDetail, bool),
 ) TaskJob {
 	job := NewJob(id, statusFunc, waitFunc)
 	return TaskJob{
-		Job:                  job,
-		overridePipelineFunc: overridePipelineFunc,
-		getTaskDetailFunc:    getTaskDetailFunc,
+		Job:               job,
+		getTaskDetailFunc: getTaskDetailFunc,
 	}
 }
 

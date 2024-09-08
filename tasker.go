@@ -67,7 +67,7 @@ func (t *Tasker) PostPipeline(entry, pipelineOverride string) TaskJob {
 	defer C.free(unsafe.Pointer(cPipelineOverride))
 
 	id := int64(C.MaaTaskerPostPipeline(t.handle, cEntry, cPipelineOverride))
-	return NewTaskJob(id, t.status, t.wait, t.overridePipeline, t.GetTaskDetail)
+	return NewTaskJob(id, t.status, t.wait, t.GetTaskDetail)
 }
 
 // PostRecognition posts a recognition to the instance.
@@ -78,7 +78,7 @@ func (t *Tasker) PostRecognition(entry, pipelineOverride string) TaskJob {
 	defer C.free(unsafe.Pointer(cPipelineOverride))
 
 	id := int64(C.MaaTaskerPostRecognition(t.handle, cEntry, cPipelineOverride))
-	return NewTaskJob(id, t.status, t.wait, t.overridePipeline, t.GetTaskDetail)
+	return NewTaskJob(id, t.status, t.wait, t.GetTaskDetail)
 }
 
 // PostAction posts an action to the instance.
@@ -89,14 +89,7 @@ func (t *Tasker) PostAction(entry, pipelineOverride string) TaskJob {
 	defer C.free(unsafe.Pointer(cPipelineOverride))
 
 	id := int64(C.MaaTaskerPostAction(t.handle, cEntry, cPipelineOverride))
-	return NewTaskJob(id, t.status, t.wait, t.overridePipeline, t.GetTaskDetail)
-}
-
-// overridePipeline overrides the parameter of a task.
-func (t *Tasker) overridePipeline(id int64, param string) bool {
-	cParam := C.CString(param)
-	defer C.free(unsafe.Pointer(cParam))
-	return C.MaaTaskerOverridePipeline(t.handle, C.int64_t(id), cParam) != 0
+	return NewTaskJob(id, t.status, t.wait, t.GetTaskDetail)
 }
 
 // status returns the status of a task identified by the id.
