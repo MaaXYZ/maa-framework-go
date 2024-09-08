@@ -10,6 +10,7 @@ func NewJob(id int64, statusFunc func(id int64) Status, waitFunc func(id int64) 
 	return Job{
 		id:         id,
 		statusFunc: statusFunc,
+		waitFunc:   waitFunc,
 	}
 }
 
@@ -47,8 +48,7 @@ func (job Job) Wait() bool {
 
 type TaskJob struct {
 	Job
-	overridePipelineFunc func(id int64, param string) bool
-	getTaskDetailFunc    func(id int64) (TaskDetail, bool)
+	getTaskDetailFunc func(id int64) (TaskDetail, bool)
 }
 
 func NewTaskJob(
@@ -62,10 +62,6 @@ func NewTaskJob(
 		Job:               job,
 		getTaskDetailFunc: getTaskDetailFunc,
 	}
-}
-
-func (job TaskJob) SetParam(param string) bool {
-	return job.overridePipelineFunc(job.id, param)
 }
 
 func (job TaskJob) GetDetail() (TaskDetail, bool) {
