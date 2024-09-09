@@ -8,7 +8,6 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 */
 import "C"
 import (
-	"errors"
 	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"image"
 	"time"
@@ -146,7 +145,7 @@ type RecognitionDetail struct {
 }
 
 // getRecognitionDetail queries recognition detail.
-func (t *Tasker) getRecognitionDetail(recId int64) (RecognitionDetail, error) {
+func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 	name := buffer.NewStringBuffer()
 	var hit uint8
 	hitBox := newRectBuffer()
@@ -166,42 +165,41 @@ func (t *Tasker) getRecognitionDetail(recId int64) (RecognitionDetail, error) {
 		(*C.MaaStringBuffer)(detailJson.Handle()),
 		(*C.MaaImageBuffer)(raw.Handle()),
 		(*C.MaaImageListBuffer)(draws.Handle()),
-	) != 0
-
-	if !got {
-		return RecognitionDetail{}, errors.New("failed to get recognition detail")
+	)
+	if got == 0 {
+		return nil
 	}
 
 	rawImg, err := raw.GetByRawData()
 	if err != nil {
-		return RecognitionDetail{}, err
+		return nil
 	}
 
 	DrawImages, err := draws.GetAll()
 	if err != nil {
-		return RecognitionDetail{}, err
+		return nil
 	}
 
-	return RecognitionDetail{
+	return &RecognitionDetail{
 		ID:         recId,
 		Name:       name.Get(),
 		Hit:        hit != 0,
 		DetailJson: detailJson.Get(),
 		Raw:        rawImg,
 		Draws:      DrawImages,
-	}, nil
+	}
 }
 
 type NodeDetail struct {
 	ID           int64
 	Name         string
-	Recognition  RecognitionDetail
+	Recognition  *RecognitionDetail
 	Times        uint64
 	RunCompleted bool
 }
 
 // getNodeDetail queries running detail.
-func (t *Tasker) getNodeDetail(nodeId int64) (NodeDetail, bool) {
+func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId int64
@@ -215,36 +213,38 @@ func (t *Tasker) getNodeDetail(nodeId int64) (NodeDetail, bool) {
 		(*C.uint64_t)(unsafe.Pointer(&times)),
 		(*C.uint8_t)(unsafe.Pointer(&runCompleted)),
 	)
-
-	recognitionDetail, err := t.getRecognitionDetail(recId)
-	if err != nil {
-		// todo: handle error
-		return NodeDetail{}, false
+	if got == 0 {
+		return nil
 	}
 
-	return NodeDetail{
+	recognitionDetail := t.getRecognitionDetail(recId)
+	if recognitionDetail == nil {
+		return nil
+	}
+
+	return &NodeDetail{
 		ID:           nodeId,
 		Name:         name.Get(),
 		Recognition:  recognitionDetail,
 		Times:        times,
 		RunCompleted: runCompleted != 0,
-	}, got != 0
+	}
 }
 
 type TaskDetail struct {
 	ID          int64
 	Entry       string
-	NodeDetails []NodeDetail
+	NodeDetails []*NodeDetail
 }
 
 // getTaskDetail queries task detail.
-func (t *Tasker) getTaskDetail(taskId int64) (TaskDetail, bool) {
+func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
 	got := C.MaaTaskerGetTaskDetail(t.handle, C.int64_t(taskId), nil, nil, (*C.uint64_t)(unsafe.Pointer(&size)))
 	if got == 0 {
-		return TaskDetail{}, false
+		return nil
 	}
 	nodeIdList := make([]int64, size)
 	got = C.MaaTaskerGetTaskDetail(
@@ -254,32 +254,35 @@ func (t *Tasker) getTaskDetail(taskId int64) (TaskDetail, bool) {
 		(*C.int64_t)(unsafe.Pointer(&nodeIdList[0])),
 		(*C.uint64_t)(unsafe.Pointer(&size)),
 	)
+	if got == 0 {
+		return nil
+	}
 
-	nodeDetails := make([]NodeDetail, size)
+	nodeDetails := make([]*NodeDetail, size)
 	for i, nodeId := range nodeIdList {
-		nodeDetail, ok := t.getNodeDetail(nodeId)
-		if !ok {
-			nodeDetails[i] = NodeDetail{}
+		nodeDetail := t.getNodeDetail(nodeId)
+		if nodeDetail != nil {
+			nodeDetails[i] = nil
 		}
 		nodeDetails[i] = nodeDetail
 	}
 
-	return TaskDetail{
+	return &TaskDetail{
 		ID:          taskId,
 		Entry:       entry.Get(),
 		NodeDetails: nodeDetails,
-	}, got != 0
+	}
 }
 
 // GetLatestNode returns latest node id.
-func (t *Tasker) GetLatestNode(taskName string) (NodeDetail, bool) {
+func (t *Tasker) GetLatestNode(taskName string) *NodeDetail {
 	cTaskName := C.CString(taskName)
 	defer C.free(unsafe.Pointer(cTaskName))
 	var nodeId int64
 
 	got := C.MaaTaskerGetLatestNode(t.handle, cTaskName, (*C.int64_t)(unsafe.Pointer(&nodeId)))
 	if got == 0 {
-		return NodeDetail{}, false
+		return nil
 	}
 	return t.getNodeDetail(nodeId)
 }

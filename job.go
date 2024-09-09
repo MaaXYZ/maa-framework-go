@@ -48,14 +48,14 @@ func (job Job) Wait() bool {
 
 type TaskJob struct {
 	Job
-	getTaskDetailFunc func(id int64) (TaskDetail, bool)
+	getTaskDetailFunc func(id int64) *TaskDetail
 }
 
 func NewTaskJob(
 	id int64,
 	statusFunc func(id int64) Status,
 	waitFunc func(id int64) Status,
-	getTaskDetailFunc func(id int64) (TaskDetail, bool),
+	getTaskDetailFunc func(id int64) *TaskDetail,
 ) TaskJob {
 	job := NewJob(id, statusFunc, waitFunc)
 	return TaskJob{
@@ -64,6 +64,6 @@ func NewTaskJob(
 	}
 }
 
-func (job TaskJob) GetDetail() (TaskDetail, bool) {
+func (job TaskJob) GetDetail() *TaskDetail {
 	return job.getTaskDetailFunc(job.id)
 }
