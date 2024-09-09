@@ -115,7 +115,7 @@ func main() {
 
 	deviceFinder := toolkit.NewAdbDeviceFinder()
 	deviceFinder.Find()
-	device := deviceFinder.Get(0)
+	device := deviceFinder.List()[0]
 	ctrl := maa.NewAdbController(
 		device.GetAdbPath(),
 		device.GetAddress(),
@@ -167,7 +167,7 @@ func main() {
 
 	deviceFinder := toolkit.NewAdbDeviceFinder()
 	deviceFinder.Find()
-	device := deviceFinder.Get(0)
+	device := deviceFinder.List()[0]
 	ctrl := maa.NewAdbController(
 		device.GetAdbPath(),
 		device.GetAddress(),
@@ -227,7 +227,7 @@ func main() {
 
 	deviceFinder := toolkit.NewAdbDeviceFinder()
 	deviceFinder.Find()
-	device := deviceFinder.Get(0)
+	device := deviceFinder.List()[0]
 	ctrl := maa.NewAdbController(
 		device.GetAdbPath(),
 		device.GetAddress(),
