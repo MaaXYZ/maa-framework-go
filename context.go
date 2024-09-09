@@ -15,16 +15,18 @@ type Context struct {
 	handle *C.MaaContext
 }
 
-func (ctx *Context) RunPipeline(entry, pipelineOverride string) int64 {
+func (ctx *Context) RunPipeline(entry, pipelineOverride string) *TaskDetail {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
 	cPipelineOverride := C.CString(pipelineOverride)
 	defer C.free(unsafe.Pointer(cPipelineOverride))
 
-	return int64(C.MaaContextRunPipeline(ctx.handle, cEntry, cPipelineOverride))
+	taskId := int64(C.MaaContextRunPipeline(ctx.handle, cEntry, cPipelineOverride))
+	tasker := ctx.GetTasker()
+	return tasker.getTaskDetail(taskId)
 }
 
-func (ctx *Context) RunRecognition(entry, pipelineOverride string, img image.Image) int64 {
+func (ctx *Context) RunRecognition(entry, pipelineOverride string, img image.Image) *RecognitionDetail {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
 	cPipelineOverride := C.CString(pipelineOverride)
@@ -33,10 +35,12 @@ func (ctx *Context) RunRecognition(entry, pipelineOverride string, img image.Ima
 	_ = imgBuf.SetRawData(img)
 	defer imgBuf.Destroy()
 
-	return int64(C.MaaContextRunRecognition(ctx.handle, cEntry, cPipelineOverride, (*C.MaaImageBuffer)(imgBuf.Handle())))
+	recId := int64(C.MaaContextRunRecognition(ctx.handle, cEntry, cPipelineOverride, (*C.MaaImageBuffer)(imgBuf.Handle())))
+	tasker := ctx.GetTasker()
+	return tasker.getRecognitionDetail(recId)
 }
 
-func (ctx *Context) RunAction(entry, pipelineOverride string, box Rect, recognitionDetail string) int64 {
+func (ctx *Context) RunAction(entry, pipelineOverride string, box Rect, recognitionDetail string) *NodeDetail {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
 	cPipelineOverride := C.CString(pipelineOverride)
@@ -47,7 +51,9 @@ func (ctx *Context) RunAction(entry, pipelineOverride string, box Rect, recognit
 	cRecognitionDetail := C.CString(recognitionDetail)
 	defer C.free(unsafe.Pointer(cRecognitionDetail))
 
-	return int64(C.MaaContextRunAction(ctx.handle, cEntry, cPipelineOverride, (*C.MaaRect)(rectBuf.Handle()), cRecognitionDetail))
+	nodeId := int64(C.MaaContextRunAction(ctx.handle, cEntry, cPipelineOverride, (*C.MaaRect)(rectBuf.Handle()), cRecognitionDetail))
+	tasker := ctx.GetTasker()
+	return tasker.getNodeDetail(nodeId)
 }
 
 func (ctx *Context) OverridePipeline(pipelineOverride string) bool {
