@@ -58,8 +58,7 @@ func myAct(ctx *maa.Context, taskId int64, actionName, customActionParam string,
 		return false
 	}
 
-	recId := ctx.RunRecognition("MyColorMatching", string(ppOverrideStr), img)
-	_, _ = tasker.GetRecognitionDetail(recId)
+	_ = ctx.RunRecognition("MyColorMatching", string(ppOverrideStr), img)
 
 	return true
 }
