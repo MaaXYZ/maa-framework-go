@@ -42,13 +42,13 @@ func (f *AdbDeviceFinder) FindSpecified(adbPath string) bool {
 	return got != 0
 }
 
-// Size returns the number of devices found.
-func (f *AdbDeviceFinder) Size() uint64 {
+// size returns the number of devices found.
+func (f *AdbDeviceFinder) size() uint64 {
 	return uint64(C.MaaToolkitAdbDeviceListSize(f.handle))
 }
 
-// Get returns AdbDevice by index.
-func (f *AdbDeviceFinder) Get(index uint64) *AdbDevice {
+// get returns AdbDevice by index.
+func (f *AdbDeviceFinder) get(index uint64) *AdbDevice {
 	handle := C.MaaToolkitAdbDeviceListAt(f.handle, C.uint64_t(index))
 	if handle == nil {
 		return nil
@@ -56,6 +56,16 @@ func (f *AdbDeviceFinder) Get(index uint64) *AdbDevice {
 	return &AdbDevice{
 		handle: handle,
 	}
+}
+
+// List returns a slice of all found ADB devices.
+func (f *AdbDeviceFinder) List() []*AdbDevice {
+	size := f.size()
+	list := make([]*AdbDevice, size)
+	for i := uint64(0); i < size; i++ {
+		list[i] = f.get(i)
+	}
+	return list
 }
 
 // AdbDevice represents a single ADB device with various properties and methods to access its information.
