@@ -67,7 +67,7 @@ func (t *Tasker) PostPipeline(entry, pipelineOverride string) TaskJob {
 	defer C.free(unsafe.Pointer(cPipelineOverride))
 
 	id := int64(C.MaaTaskerPostPipeline(t.handle, cEntry, cPipelineOverride))
-	return NewTaskJob(id, t.status, t.wait, t.GetTaskDetail)
+	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
 // PostRecognition posts a recognition to the instance.
@@ -78,7 +78,7 @@ func (t *Tasker) PostRecognition(entry, pipelineOverride string) TaskJob {
 	defer C.free(unsafe.Pointer(cPipelineOverride))
 
 	id := int64(C.MaaTaskerPostRecognition(t.handle, cEntry, cPipelineOverride))
-	return NewTaskJob(id, t.status, t.wait, t.GetTaskDetail)
+	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
 // PostAction posts an action to the instance.
@@ -89,7 +89,7 @@ func (t *Tasker) PostAction(entry, pipelineOverride string) TaskJob {
 	defer C.free(unsafe.Pointer(cPipelineOverride))
 
 	id := int64(C.MaaTaskerPostAction(t.handle, cEntry, cPipelineOverride))
-	return NewTaskJob(id, t.status, t.wait, t.GetTaskDetail)
+	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
 // status returns the status of a task identified by the id.
@@ -145,8 +145,8 @@ type RecognitionDetail struct {
 	Draws      []image.Image
 }
 
-// GetRecognitionDetail queries recognition detail.
-func (t *Tasker) GetRecognitionDetail(recId int64) (RecognitionDetail, error) {
+// getRecognitionDetail queries recognition detail.
+func (t *Tasker) getRecognitionDetail(recId int64) (RecognitionDetail, error) {
 	name := buffer.NewStringBuffer()
 	var hit uint8
 	hitBox := newRectBuffer()
@@ -200,8 +200,8 @@ type NodeDetail struct {
 	RunCompleted bool
 }
 
-// GetNodeDetail queries running detail.
-func (t *Tasker) GetNodeDetail(nodeId int64) (NodeDetail, bool) {
+// getNodeDetail queries running detail.
+func (t *Tasker) getNodeDetail(nodeId int64) (NodeDetail, bool) {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId int64
@@ -216,7 +216,7 @@ func (t *Tasker) GetNodeDetail(nodeId int64) (NodeDetail, bool) {
 		(*C.uint8_t)(unsafe.Pointer(&runCompleted)),
 	)
 
-	recognitionDetail, err := t.GetRecognitionDetail(recId)
+	recognitionDetail, err := t.getRecognitionDetail(recId)
 	if err != nil {
 		// todo: handle error
 		return NodeDetail{}, false
@@ -237,8 +237,8 @@ type TaskDetail struct {
 	NodeDetails []NodeDetail
 }
 
-// GetTaskDetail queries task detail.
-func (t *Tasker) GetTaskDetail(taskId int64) (TaskDetail, bool) {
+// getTaskDetail queries task detail.
+func (t *Tasker) getTaskDetail(taskId int64) (TaskDetail, bool) {
 	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
@@ -257,7 +257,7 @@ func (t *Tasker) GetTaskDetail(taskId int64) (TaskDetail, bool) {
 
 	nodeDetails := make([]NodeDetail, size)
 	for i, nodeId := range nodeIdList {
-		nodeDetail, ok := t.GetNodeDetail(nodeId)
+		nodeDetail, ok := t.getNodeDetail(nodeId)
 		if !ok {
 			nodeDetails[i] = NodeDetail{}
 		}
@@ -272,11 +272,14 @@ func (t *Tasker) GetTaskDetail(taskId int64) (TaskDetail, bool) {
 }
 
 // GetLatestNode returns latest node id.
-func (t *Tasker) GetLatestNode(taskName string) (int64, bool) {
+func (t *Tasker) GetLatestNode(taskName string) (NodeDetail, bool) {
 	cTaskName := C.CString(taskName)
 	defer C.free(unsafe.Pointer(cTaskName))
 	var nodeId int64
 
 	got := C.MaaTaskerGetLatestNode(t.handle, cTaskName, (*C.int64_t)(unsafe.Pointer(&nodeId)))
-	return nodeId, got != 0
+	if got == 0 {
+		return NodeDetail{}, false
+	}
+	return t.getNodeDetail(nodeId)
 }
