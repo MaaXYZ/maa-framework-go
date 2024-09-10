@@ -15,6 +15,7 @@ type Context struct {
 	handle *C.MaaContext
 }
 
+// RunPipeline runs a pipeline and return it detail.
 func (ctx *Context) RunPipeline(entry, pipelineOverride string) *TaskDetail {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
@@ -26,6 +27,7 @@ func (ctx *Context) RunPipeline(entry, pipelineOverride string) *TaskDetail {
 	return tasker.getTaskDetail(taskId)
 }
 
+// RunRecognition run a recognition and return it detail.
 func (ctx *Context) RunRecognition(entry, pipelineOverride string, img image.Image) *RecognitionDetail {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
@@ -40,6 +42,7 @@ func (ctx *Context) RunRecognition(entry, pipelineOverride string, img image.Ima
 	return tasker.getRecognitionDetail(recId)
 }
 
+// RunAction run an action and return it detail.
 func (ctx *Context) RunAction(entry, pipelineOverride string, box Rect, recognitionDetail string) *NodeDetail {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
@@ -56,6 +59,7 @@ func (ctx *Context) RunAction(entry, pipelineOverride string, box Rect, recognit
 	return tasker.getNodeDetail(nodeId)
 }
 
+// OverridePipeline overrides pipeline.
 func (ctx *Context) OverridePipeline(pipelineOverride string) bool {
 	cPipelineOverride := C.CString(pipelineOverride)
 	defer C.free(unsafe.Pointer(cPipelineOverride))
@@ -64,15 +68,18 @@ func (ctx *Context) OverridePipeline(pipelineOverride string) bool {
 	return got != 0
 }
 
+// GetTaskId returns current task id.
 func (ctx *Context) GetTaskId() int64 {
 	return int64(C.MaaContextGetTaskId(ctx.handle))
 }
 
+// GetTasker return current Tasker.
 func (ctx *Context) GetTasker() *Tasker {
 	handle := C.MaaContextGetTasker(ctx.handle)
 	return &Tasker{handle: handle}
 }
 
+// Clone clones current Context.
 func (ctx *Context) Clone() *Context {
 	handle := C.MaaContextClone(ctx.handle)
 	return &Context{handle: handle}
