@@ -15,7 +15,7 @@ func main() {
 
 	deviceFinder := toolkit.NewAdbDeviceFinder()
 	deviceFinder.Find()
-	device := deviceFinder.List()[0]
+	device := deviceFinder.Find()[0]
 	ctrl := maa.NewAdbController(
 		device.GetAdbPath(),
 		device.GetAddress(),
