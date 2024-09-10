@@ -21,8 +21,6 @@ type Controller interface {
 
 	SetScreenshotTargetLongSide(targetLongSide int) bool
 	SetScreenshotTargetShortSide(targetShortSide int) bool
-	SetDefaultAppPackageEntry(appPackage string) bool
-	SetDefaultAppPackage(appPackage string) bool
 	SetRecording(recording bool) bool
 
 	PostConnect() Job
@@ -255,27 +253,21 @@ type CtrlOption int32
 
 // CtrlOption
 const (
-	CtrlOptionInvalid CtrlOption = iota
+	CtrlOptionInvalid CtrlOption = 0
 
 	// CtrlOptionScreenshotTargetLongSide Only one of long and short side can be set, and the other is automatically scaled according
 	// to the aspect ratio.
-	CtrlOptionScreenshotTargetLongSide
+	CtrlOptionScreenshotTargetLongSide CtrlOption = 1
 
 	// CtrlOptionScreenshotTargetShortSide Only one of long and short side can be set, and the other is automatically scaled according
 	// to the aspect ratio.
-	CtrlOptionScreenshotTargetShortSide
-
-	// CtrlOptionDefaultAppPackageEntry For StartApp
-	CtrlOptionDefaultAppPackageEntry
-
-	// CtrlOptionDefaultAppPackage For StopApp
-	CtrlOptionDefaultAppPackage
+	CtrlOptionScreenshotTargetShortSide CtrlOption = 2
 
 	// CtrlOptionRecording Dump all screenshots and actions
 	//
 	// Recording will evaluate to true if any of this or
 	// MaaGlobalOptionEnum::MaaGlobalOption_Recording is true.
-	CtrlOptionRecording
+	CtrlOptionRecording CtrlOption = 5
 )
 
 // setOption sets options for controller instance.
@@ -306,34 +298,6 @@ func (c *controller) SetScreenshotTargetShortSide(targetShortSide int) bool {
 		CtrlOptionScreenshotTargetShortSide,
 		unsafe.Pointer(&targetShortSide32),
 		unsafe.Sizeof(targetShortSide32),
-	)
-}
-
-// SetDefaultAppPackageEntry sets app package for StartApp action.
-//
-// eg: "com.hypergryph.arknights/com.u8.sdk.U8UnityContext"
-func (c *controller) SetDefaultAppPackageEntry(appPackage string) bool {
-	cAppPackage := C.CString(appPackage)
-	defer C.free(unsafe.Pointer(cAppPackage))
-
-	return c.setOption(
-		CtrlOptionDefaultAppPackageEntry,
-		unsafe.Pointer(cAppPackage),
-		uintptr(len(appPackage)),
-	)
-}
-
-// SetDefaultAppPackage sets app package for StopApp action.
-//
-// eg: "com.hypergryph.arknights"
-func (c *controller) SetDefaultAppPackage(appPackage string) bool {
-	cAppPackage := C.CString(appPackage)
-	defer C.free(unsafe.Pointer(cAppPackage))
-
-	return c.setOption(
-		CtrlOptionDefaultAppPackage,
-		unsafe.Pointer(cAppPackage),
-		uintptr(len(appPackage)),
 	)
 }
 
