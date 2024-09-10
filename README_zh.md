@@ -190,13 +190,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	res.RegisterCustomRecognizer("MyRec", myRec)
+	res.RegisterCustomRecognizer("MyRec", &MyRec{})
 
 	tasker.PostPipeline("Startup", "{}")
 }
 
-func myRec(_ *maa.Context, _ int64, _, _ string, _ image.Image) (maa.AnalyzeResult, bool) {
-	return maa.AnalyzeResult{
+type MyRec struct{}
+
+func (r *MyRec) Run(_ *maa.Context, _ int64, _, _ string, _ image.Image) (maa.CustomRecognizerResult, bool) {
+	return maa.CustomRecognizerResult{
 		Box:    maa.Rect{0, 0, 100, 100},
 		Detail: "Hello World!",
 	}, true
@@ -250,12 +252,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	res.RegisterCustomAction("MyAct", myAct)
+	res.RegisterCustomAction("MyAct", &MyAct{})
 
 	tasker.PostPipeline("Startup", "{}")
 }
 
-func myAct(_ *maa.Context, _ int64, _, _ string, _ maa.Rect, _ string) bool {
+type MyAct struct{}
+
+func (a *MyAct) Run(_ *maa.Context, _ int64, _, _ string, _ maa.Rect, _ string) bool {
 	return true
 }
 

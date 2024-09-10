@@ -37,11 +37,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	res.RegisterCustomAction("MyAct", myAct)
+	res.RegisterCustomAction("MyAct", &MyAct{})
 
 	tasker.PostPipeline("Startup", "{}")
 }
 
-func myAct(_ *maa.Context, _ int64, _, _ string, _ maa.Rect, _ string) bool {
+type MyAct struct{}
+
+func (a *MyAct) Run(_ *maa.Context, _ int64, _, _ string, _ maa.Rect, _ string) bool {
 	return true
 }
