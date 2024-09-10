@@ -27,20 +27,20 @@ func (f *DesktopWindowFinder) Destroy() {
 	C.MaaToolkitDesktopWindowListDestroy(f.handle)
 }
 
-// Find posts a request to find all desktop windows.
-func (f *DesktopWindowFinder) Find() bool {
+// find posts a request to find all desktop windows.
+func (f *DesktopWindowFinder) find() bool {
 	got := C.MaaToolkitDesktopWindowFindAll(f.handle)
 	return got != 0
 }
 
-// Size returns the number of windows found.
-func (f *DesktopWindowFinder) Size() uint64 {
+// size returns the number of windows found.
+func (f *DesktopWindowFinder) size() uint64 {
 	size := C.MaaToolkitDesktopWindowListSize(f.handle)
 	return uint64(size)
 }
 
-// Get returns DesktopWindow by index.
-func (f *DesktopWindowFinder) Get(index uint64) *DesktopWindow {
+// get returns DesktopWindow by index.
+func (f *DesktopWindowFinder) get(index uint64) *DesktopWindow {
 	handle := C.MaaToolkitDesktopWindowListAt(f.handle, C.uint64_t(index))
 	if handle == nil {
 		return nil
@@ -48,6 +48,19 @@ func (f *DesktopWindowFinder) Get(index uint64) *DesktopWindow {
 	return &DesktopWindow{
 		handle: handle,
 	}
+}
+
+// Find returns a slice of all found desktop window, or nil if the operation fails.
+func (f *DesktopWindowFinder) Find() []*DesktopWindow {
+	if ok := f.find(); !ok {
+		return nil
+	}
+	size := f.size()
+	list := make([]*DesktopWindow, size)
+	for i := uint64(0); i < size; i++ {
+		list[i] = f.get(i)
+	}
+	return list
 }
 
 // DesktopWindow represents a single desktop window with various properties and methods to access its information.

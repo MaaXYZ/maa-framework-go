@@ -27,14 +27,14 @@ func (f *AdbDeviceFinder) Destroy() {
 	C.MaaToolkitAdbDeviceListDestroy(f.handle)
 }
 
-// Find posts a request to find all ADB devices.
-func (f *AdbDeviceFinder) Find() bool {
+// find posts a request to find all ADB devices.
+func (f *AdbDeviceFinder) find() bool {
 	got := C.MaaToolkitAdbDeviceFind(f.handle)
 	return got != 0
 }
 
-// FindSpecified posts a request to find all ADB devices with a given ADB path.
-func (f *AdbDeviceFinder) FindSpecified(adbPath string) bool {
+// findSpecified posts a request to find all ADB devices with a given ADB path.
+func (f *AdbDeviceFinder) findSpecified(adbPath string) bool {
 	cAdbPath := C.CString(adbPath)
 	defer C.free(unsafe.Pointer(cAdbPath))
 
@@ -58,8 +58,24 @@ func (f *AdbDeviceFinder) get(index uint64) *AdbDevice {
 	}
 }
 
-// List returns a slice of all found ADB devices.
-func (f *AdbDeviceFinder) List() []*AdbDevice {
+// Find returns a slice of all found ADB devices, or nil if the operation fails.
+func (f *AdbDeviceFinder) Find() []*AdbDevice {
+	if ok := f.find(); !ok {
+		return nil
+	}
+	size := f.size()
+	list := make([]*AdbDevice, size)
+	for i := uint64(0); i < size; i++ {
+		list[i] = f.get(i)
+	}
+	return list
+}
+
+// FindSpecified returns a slice of all found ADB devices with the given ADB path, or nil if the operation fails.
+func (f *AdbDeviceFinder) FindSpecified(adbPath string) []*AdbDevice {
+	if ok := f.findSpecified(adbPath); !ok {
+		return nil
+	}
 	size := f.size()
 	list := make([]*AdbDevice, size)
 	for i := uint64(0); i < size; i++ {
