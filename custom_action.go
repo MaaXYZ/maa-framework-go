@@ -21,15 +21,15 @@ import (
 )
 
 var (
-	customActionCallbackID     uint64
-	customActionNameToID       = make(map[string]uint64)
-	customActionCallbackAgents = make(map[uint64]func(ctx *Context, taskId int64, actionName, customActionParam string, box Rect, recognitionDetail string) bool)
+	customActionID       uint64
+	customActionNameToID = make(map[string]uint64)
+	customActionAgents   = make(map[uint64]CustomAction)
 )
 
-func registerCustomAction(name string, action func(ctx *Context, taskId int64, actionName, customActionParam string, box Rect, recognitionDetail string) bool) uint64 {
-	id := atomic.AddUint64(&customActionCallbackID, 1)
+func registerCustomAction(name string, action CustomAction) uint64 {
+	id := atomic.AddUint64(&customActionID, 1)
 	customActionNameToID[name] = id
-	customActionCallbackAgents[id] = action
+	customActionAgents[id] = action
 	return id
 }
 
@@ -39,13 +39,17 @@ func unregisterCustomAction(name string) bool {
 		return false
 	}
 	delete(customActionNameToID, name)
-	delete(customActionCallbackAgents, id)
+	delete(customActionAgents, id)
 	return ok
 }
 
 func clearCustomAction() {
 	customActionNameToID = make(map[string]uint64)
-	customActionCallbackAgents = make(map[uint64]func(ctx *Context, taskId int64, actionName, customActionParam string, box Rect, recognitionDetail string) bool)
+	customActionAgents = make(map[uint64]CustomAction)
+}
+
+type CustomAction interface {
+	Run(ctx *Context, taskId int64, actionName, customActionParam string, box Rect, recognitionDetail string) bool
 }
 
 //export _MaaCustomActionCallbackAgent
@@ -60,10 +64,10 @@ func _MaaCustomActionCallbackAgent(
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(actionArg))
-	callback := customActionCallbackAgents[id]
+	action := customActionAgents[id]
 	curBoxRectBuffer := newRectBufferByHandle(unsafe.Pointer(box))
 
-	ok := callback(
+	ok := action.Run(
 		&Context{handle: ctx},
 		int64(taskId),
 		C.GoString(actionName),

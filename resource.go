@@ -7,14 +7,14 @@ package maa
 extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
 
 extern uint8_t _MaaCustomRecognizerCallbackAgent(
-			MaaContext* ctx,
-			int64_t task_id,
-            const char* recognizer_name,
-            const char* custom_recognition_param,
-            const MaaImageBuffer* image,
-            void* recognizer_arg,
-           	MaaRect* out_box,
-			MaaStringBuffer* out_detail);
+	MaaContext* ctx,
+	int64_t task_id,
+	const char* recognizer_name,
+	const char* custom_recognition_param,
+	const MaaImageBuffer* image,
+	void* recognizer_arg,
+	MaaRect* out_box,
+	MaaStringBuffer* out_detail);
 
 extern uint8_t _MaaCustomActionCallbackAgent(
 	MaaContext* ctx,
@@ -28,7 +28,6 @@ extern uint8_t _MaaCustomActionCallbackAgent(
 import "C"
 import (
 	"github.com/MaaXYZ/maa-framework-go/buffer"
-	"image"
 	"unsafe"
 )
 
@@ -59,10 +58,7 @@ func (r *Resource) Destroy() {
 }
 
 // RegisterCustomRecognizer registers a custom recognizer to the resource.
-func (r *Resource) RegisterCustomRecognizer(
-	name string,
-	recognizer func(ctx *Context, taskId int64, recognizerName, customRecognitionParam string, img image.Image) (AnalyzeResult, bool),
-) bool {
+func (r *Resource) RegisterCustomRecognizer(name string, recognizer CustomRecognizer) bool {
 	id := registerCustomRecognizer(name, recognizer)
 
 	cName := C.CString(name)
@@ -99,10 +95,7 @@ func (r *Resource) ClearCustomRecognizer() bool {
 }
 
 // RegisterCustomAction registers a custom action to the resource.
-func (r *Resource) RegisterCustomAction(
-	name string,
-	action func(ctx *Context, taskId int64, actionName, customActionParam string, box Rect, recognitionDetail string) bool,
-) bool {
+func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
 	id := registerCustomAction(name, action)
 
 	cName := C.CString(name)

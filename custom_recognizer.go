@@ -26,13 +26,13 @@ import (
 var (
 	customRecognizerCallbackID     uint64
 	customRecognizerNameToID       = make(map[string]uint64)
-	customRecognizerCallbackAgents = make(map[uint64]func(ctx *Context, taskId int64, recognizerName, customRecognitionParam string, img image.Image) (AnalyzeResult, bool))
+	customRecognizerCallbackAgents = make(map[uint64]CustomRecognizer)
 )
 
-func registerCustomRecognizer(name string, recognizerCallback func(ctx *Context, taskId int64, recognizerName, customRecognitionParam string, img image.Image) (AnalyzeResult, bool)) uint64 {
+func registerCustomRecognizer(name string, recognizer CustomRecognizer) uint64 {
 	id := atomic.AddUint64(&customRecognizerCallbackID, 1)
 	customRecognizerNameToID[name] = id
-	customRecognizerCallbackAgents[id] = recognizerCallback
+	customRecognizerCallbackAgents[id] = recognizer
 	return id
 }
 
@@ -48,10 +48,14 @@ func unregisterCustomRecognizer(name string) bool {
 
 func clearCustomRecognizer() {
 	customRecognizerNameToID = make(map[string]uint64)
-	customRecognizerCallbackAgents = make(map[uint64]func(ctx *Context, taskId int64, recognizerName, customRecognitionParam string, img image.Image) (AnalyzeResult, bool))
+	customRecognizerCallbackAgents = make(map[uint64]CustomRecognizer)
 }
 
-type AnalyzeResult struct {
+type CustomRecognizer interface {
+	Run(ctx *Context, taskId int64, recognizerName, customRecognitionParam string, img image.Image) (CustomRecognizerResult, bool)
+}
+
+type CustomRecognizerResult struct {
 	Box    Rect
 	Detail string
 }
@@ -69,14 +73,14 @@ func _MaaCustomRecognizerCallbackAgent(
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(recognizerArg))
-	callback := customRecognizerCallbackAgents[id]
+	recognizer := customRecognizerCallbackAgents[id]
 	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(img))
 	imgImg, err := imgBuffer.GetByRawData()
 	if err != nil {
 		return C.uint8_t(0)
 	}
 
-	ret, ok := callback(
+	ret, ok := recognizer.Run(
 		&Context{handle: ctx},
 		int64(taskId),
 		C.GoString(recognizerName),
