@@ -40,6 +40,13 @@ type Controller interface {
 	GetUUID() (string, bool)
 }
 
+type controllerStoreValue struct {
+	NotificationCallbackID      uint64
+	CustomControllerCallbacksID uint64
+}
+
+var controllerStore = newStore[controllerStoreValue]()
+
 // controller is a concrete implementation of the Controller interface.
 type controller struct {
 	handle *C.MaaController
@@ -120,6 +127,9 @@ func NewAdbController(
 	if handle == nil {
 		return nil
 	}
+	controllerStore.set(unsafe.Pointer(handle), controllerStoreValue{
+		NotificationCallbackID: id,
+	})
 	return &controller{handle: handle}
 }
 
@@ -168,6 +178,9 @@ func NewWin32Controller(
 	if handle == nil {
 		return nil
 	}
+	controllerStore.set(unsafe.Pointer(handle), controllerStoreValue{
+		NotificationCallbackID: id,
+	})
 	return &controller{handle: handle}
 }
 
@@ -213,6 +226,9 @@ func NewDbgController(
 	if handle == nil {
 		return nil
 	}
+	controllerStore.set(unsafe.Pointer(handle), controllerStoreValue{
+		NotificationCallbackID: id,
+	})
 	return &controller{handle: handle}
 }
 
@@ -236,11 +252,19 @@ func NewCustomController(
 	if handle == nil {
 		return nil
 	}
+	controllerStore.set(unsafe.Pointer(handle), controllerStoreValue{
+		NotificationCallbackID:      cbID,
+		CustomControllerCallbacksID: ctrlID,
+	})
 	return &controller{handle: handle}
 }
 
 // Destroy frees the controller instance.
 func (c *controller) Destroy() {
+	value := controllerStore.get(c.Handle())
+	unregisterNotificationCallback(value.NotificationCallbackID)
+	unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
+	controllerStore.del(c.Handle())
 	C.MaaControllerDestroy(c.handle)
 }
 

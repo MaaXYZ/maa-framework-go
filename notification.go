@@ -23,6 +23,10 @@ func registerNotificationCallback(callback func(msg, detailsJson string)) uint64
 	return id
 }
 
+func unregisterNotificationCallback(id uint64) {
+	delete(notificationCallbackAgents, id)
+}
+
 //export _MaaNotificationCallbackAgent
 func _MaaNotificationCallbackAgent(msg, detailsJson C.StringView, callbackArg unsafe.Pointer) {
 	// Here, we are simply passing the uint64 value as a pointer

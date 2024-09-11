@@ -14,6 +14,8 @@ import (
 	"unsafe"
 )
 
+var taskerStore = newStore[uint64]()
+
 type Tasker struct {
 	handle *C.MaaTasker
 }
@@ -30,11 +32,15 @@ func NewTasker(callback func(msg, detailsJson string)) *Tasker {
 	if handle == nil {
 		return nil
 	}
+	taskerStore.set(unsafe.Pointer(handle), id)
 	return &Tasker{handle: handle}
 }
 
 // Destroy free the tasker.
 func (t *Tasker) Destroy() {
+	id := taskerStore.get(t.Handle())
+	unregisterNotificationCallback(id)
+	taskerStore.del(t.Handle())
 	C.MaaTaskerDestroy(t.handle)
 }
 

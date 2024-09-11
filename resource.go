@@ -31,6 +31,8 @@ import (
 	"unsafe"
 )
 
+var resourceStore = newStore[uint64]()
+
 type Resource struct {
 	handle *C.MaaResource
 }
@@ -47,6 +49,7 @@ func NewResource(callback func(msg, detailsJson string)) *Resource {
 	if handle == nil {
 		return nil
 	}
+	resourceStore.set(unsafe.Pointer(handle), id)
 	return &Resource{
 		handle: handle,
 	}
@@ -54,7 +57,14 @@ func NewResource(callback func(msg, detailsJson string)) *Resource {
 
 // Destroy frees the resource.
 func (r *Resource) Destroy() {
+	id := resourceStore.get(r.Handle())
+	unregisterNotificationCallback(id)
+	resourceStore.del(r.Handle())
 	C.MaaResourceDestroy(r.handle)
+}
+
+func (r *Resource) Handle() unsafe.Pointer {
+	return unsafe.Pointer(r.handle)
 }
 
 // RegisterCustomRecognizer registers a custom recognizer to the resource.

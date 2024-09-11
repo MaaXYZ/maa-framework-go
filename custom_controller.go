@@ -56,6 +56,10 @@ func registerCustomControllerCallbacks(ctrl CustomController) uint64 {
 	return id
 }
 
+func unregisterCustomControllerCallbacks(id uint64) {
+	delete(customControllerCallbacksAgents, id)
+}
+
 // CustomController defines an interface for custom controller.
 // Implementers of this interface must embed a CustomControllerHandler struct
 // and provide implementations for the following methods:
