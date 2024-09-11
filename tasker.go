@@ -58,8 +58,21 @@ func (t *Tasker) Inited() bool {
 	return C.MaaTaskerInited(t.handle) != 0
 }
 
-// PostPipeline posts a task to the instance.
-func (t *Tasker) PostPipeline(entry, pipelineOverride string) TaskJob {
+func (t *Tasker) handleOverride(entry string, postFunc func(entry, override string) TaskJob, override ...any) TaskJob {
+	if len(override) == 0 {
+		return postFunc(entry, "{}")
+	}
+	if str, ok := override[0].(string); ok {
+		return postFunc(entry, str)
+	}
+	str, err := toJSON(override[0])
+	if err != nil {
+		str = "{}"
+	}
+	return postFunc(entry, str)
+}
+
+func (t *Tasker) postPipeline(entry, pipelineOverride string) TaskJob {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
 	cPipelineOverride := C.CString(pipelineOverride)
@@ -69,8 +82,15 @@ func (t *Tasker) PostPipeline(entry, pipelineOverride string) TaskJob {
 	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
-// PostRecognition posts a recognition to the instance.
-func (t *Tasker) PostRecognition(entry, pipelineOverride string) TaskJob {
+// PostPipeline posts a task to the instance.
+// `override` is an optional parameter. If provided, it should be a single value
+// that can be a JSON string or any data type that can be marshaled to JSON.
+// If multiple values are provided, only the first one will be used.
+func (t *Tasker) PostPipeline(entry string, override ...any) TaskJob {
+	return t.handleOverride(entry, t.postPipeline, override...)
+}
+
+func (t *Tasker) postRecognition(entry, pipelineOverride string) TaskJob {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
 	cPipelineOverride := C.CString(pipelineOverride)
@@ -80,15 +100,31 @@ func (t *Tasker) PostRecognition(entry, pipelineOverride string) TaskJob {
 	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
-// PostAction posts an action to the instance.
-func (t *Tasker) PostAction(entry, pipelineOverride string) TaskJob {
+// PostRecognition posts a recognition to the instance.
+// `override` is an optional parameter. If provided, it should be a single value
+// that can be a JSON string or any data type that can be marshaled to JSON.
+// If multiple values are provided, only the first one will be used.
+func (t *Tasker) PostRecognition(entry string, override ...any) TaskJob {
+
+	return t.handleOverride(entry, t.postRecognition, override...)
+}
+
+func (t *Tasker) postAction(entry, override string) TaskJob {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
-	cPipelineOverride := C.CString(pipelineOverride)
-	defer C.free(unsafe.Pointer(cPipelineOverride))
+	cOverride := C.CString(override)
+	defer C.free(unsafe.Pointer(cOverride))
 
-	id := int64(C.MaaTaskerPostAction(t.handle, cEntry, cPipelineOverride))
+	id := int64(C.MaaTaskerPostAction(t.handle, cEntry, cOverride))
 	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
+}
+
+// PostAction posts an action to the instance.
+// `override` is an optional parameter. If provided, it should be a single value
+// that can be a JSON string or any data type that can be marshaled to JSON.
+// If multiple values are provided, only the first one will be used.
+func (t *Tasker) PostAction(entry string, override ...any) TaskJob {
+	return t.handleOverride(entry, t.postAction, override...)
 }
 
 // status returns the status of a task identified by the id.
