@@ -10,7 +10,7 @@ import (
 
 func main() {
 	toolkit.ConfigInitOption("./", "{}")
-	tasker := maa.New(nil)
+	tasker := maa.NewTasker(nil)
 	defer tasker.Destroy()
 
 	deviceFinder := toolkit.NewAdbDeviceFinder()
@@ -40,7 +40,7 @@ func main() {
 
 	res.RegisterCustomRecognizer("MyRec", &MyRec{})
 
-	tasker.PostPipeline("Startup", "{}")
+	tasker.PostPipeline("Startup")
 }
 
 type MyRec struct{}

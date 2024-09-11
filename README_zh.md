@@ -110,7 +110,7 @@ import (
 
 func main() {
 	toolkit.ConfigInitOption("./", "{}")
-	tasker := maa.New(nil)
+	tasker := maa.NewTasker(nil)
 	defer tasker.Destroy()
 
 	deviceFinder := toolkit.NewAdbDeviceFinder()
@@ -138,7 +138,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	tasker.PostPipeline("Startup", "{}")
+	tasker.PostPipeline("Startup")
 }
 
 ```
@@ -162,7 +162,7 @@ import (
 
 func main() {
 	toolkit.ConfigInitOption("./", "{}")
-	tasker := maa.New(nil)
+	tasker := maa.NewTasker(nil)
 	defer tasker.Destroy()
 
 	deviceFinder := toolkit.NewAdbDeviceFinder()
@@ -192,7 +192,7 @@ func main() {
 
 	res.RegisterCustomRecognizer("MyRec", &MyRec{})
 
-	tasker.PostPipeline("Startup", "{}")
+	tasker.PostPipeline("Startup")
 }
 
 type MyRec struct{}
@@ -224,7 +224,7 @@ import (
 
 func main() {
 	toolkit.ConfigInitOption("./", "{}")
-	tasker := maa.New(nil)
+	tasker := maa.NewTasker(nil)
 	defer tasker.Destroy()
 
 	deviceFinder := toolkit.NewAdbDeviceFinder()
@@ -254,7 +254,7 @@ func main() {
 
 	res.RegisterCustomAction("MyAct", &MyAct{})
 
-	tasker.PostPipeline("Startup", "{}")
+	tasker.PostPipeline("Startup")
 }
 
 type MyAct struct{}
