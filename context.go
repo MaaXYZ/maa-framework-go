@@ -68,6 +68,28 @@ func (ctx *Context) OverridePipeline(pipelineOverride string) bool {
 	return got != 0
 }
 
+// OverrideNext overrides the next list of task by name.
+func (ctx *Context) OverrideNext(name string, nextList []string) bool {
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	list := buffer.NewStringListBuffer()
+	defer list.Destroy()
+	size := len(nextList)
+	items := make([]*buffer.StringBuffer, size)
+	for i := 0; i < size; i++ {
+		items[i] = buffer.NewStringBuffer()
+		items[i].Set(nextList[i])
+		list.Append(items[i])
+	}
+	defer func() {
+		for _, item := range items {
+			item.Destroy()
+		}
+	}()
+	got := C.MaaContextOverrideNext(ctx.handle, cName, (*C.MaaStringListBuffer)(list.Handle()))
+	return got != 0
+}
+
 // GetTaskId returns current task id.
 func (ctx *Context) GetTaskId() int64 {
 	return int64(C.MaaContextGetTaskId(ctx.handle))
