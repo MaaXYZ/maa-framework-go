@@ -61,7 +61,7 @@ func (sl *StringListBuffer) GetAll() []string {
 	return strings
 }
 
-func (sl *StringListBuffer) Append(value StringBuffer) bool {
+func (sl *StringListBuffer) Append(value *StringBuffer) bool {
 	return C.MaaStringListBufferAppend(
 		sl.handle,
 		(*C.MaaStringBuffer)(value.Handle()),
