@@ -1,10 +1,8 @@
 package test
 
 import (
-	"encoding/json"
 	"github.com/MaaXYZ/maa-framework-go"
 	"github.com/stretchr/testify/require"
-	"log"
 	"testing"
 )
 
@@ -19,12 +17,12 @@ func TestRunWithoutFile(t *testing.T) {
 	res := maa.NewResource(nil)
 	defer res.Destroy()
 
-	tasker := maa.New(nil)
+	tasker := maa.NewTasker(nil)
 	defer tasker.Destroy()
 	tasker.BindResource(res)
 	tasker.BindController(ctrl)
 
-	res.RegisterCustomAction("MyAct", myAct)
+	res.RegisterCustomAction("MyAct", &MyAct{})
 
 	taskParam := map[string]interface{}{
 		"MyTask": map[string]interface{}{
@@ -33,32 +31,27 @@ func TestRunWithoutFile(t *testing.T) {
 			"custom_action_param": "abcdefg",
 		},
 	}
-	taskParamStr, err := json.Marshal(taskParam)
-	require.NoError(t, err)
 
-	got := tasker.PostPipeline("MyTask", string(taskParamStr)).Wait()
+	got := tasker.PostPipeline("MyTask", taskParam).Wait()
 	require.True(t, got)
 }
 
-func myAct(ctx *maa.Context, taskId int64, actionName, customActionParam string, box maa.Rect, recognitionDetail string) bool {
+type MyAct struct{}
+
+func (a *MyAct) Run(ctx *maa.Context, _ int64, _, _ string, _ maa.Rect, _ string) bool {
 	tasker := ctx.GetTasker()
 	ctrl := tasker.GetController()
 	img, _ := ctrl.CacheImage()
 
-	ppOverride := map[string]interface{}{
-		"MyColorMatching": map[string]interface{}{
+	override := maa.J{
+		"MyColorMatching": maa.J{
 			"recognition": "ColorMatch",
 			"lower":       []int{100, 100, 100},
 			"upper":       []int{255, 255, 255},
 		},
 	}
-	ppOverrideStr, err := json.Marshal(ppOverride)
-	if err != nil {
-		log.Println("failed to marshal task param:" + err.Error())
-		return false
-	}
 
-	_ = ctx.RunRecognition("MyColorMatching", string(ppOverrideStr), img)
+	_ = ctx.RunRecognition("MyColorMatching", img, override)
 
 	return true
 }
