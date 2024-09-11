@@ -18,8 +18,8 @@ type Tasker struct {
 	handle *C.MaaTasker
 }
 
-// New creates an instance.
-func New(callback func(msg, detailsJson string)) *Tasker {
+// NewTasker creates an new tasker.
+func NewTasker(callback func(msg, detailsJson string)) *Tasker {
 	id := registerNotificationCallback(callback)
 	handle := C.MaaTaskerCreate(
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
@@ -33,27 +33,27 @@ func New(callback func(msg, detailsJson string)) *Tasker {
 	return &Tasker{handle: handle}
 }
 
-// Destroy free the instance.
+// Destroy free the tasker.
 func (t *Tasker) Destroy() {
 	C.MaaTaskerDestroy(t.handle)
 }
 
-// Handle returns the instance handle.
+// Handle returns the tasker handle.
 func (t *Tasker) Handle() unsafe.Pointer {
 	return unsafe.Pointer(t.handle)
 }
 
-// BindResource binds the instance to an initialized resource.
+// BindResource binds the tasker to an initialized resource.
 func (t *Tasker) BindResource(res *Resource) bool {
 	return C.MaaTaskerBindResource(t.handle, res.handle) != 0
 }
 
-// BindController binds the instance to an initialized controller.
+// BindController binds the tasker to an initialized controller.
 func (t *Tasker) BindController(ctrl Controller) bool {
 	return C.MaaTaskerBindController(t.handle, (*C.MaaController)(ctrl.Handle())) != 0
 }
 
-// Inited checks if the instance is initialized.
+// Inited checks if the tasker is initialized.
 func (t *Tasker) Inited() bool {
 	return C.MaaTaskerInited(t.handle) != 0
 }
@@ -82,7 +82,7 @@ func (t *Tasker) postPipeline(entry, pipelineOverride string) TaskJob {
 	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
-// PostPipeline posts a task to the instance.
+// PostPipeline posts a task to the tasker.
 // `override` is an optional parameter. If provided, it should be a single value
 // that can be a JSON string or any data type that can be marshaled to JSON.
 // If multiple values are provided, only the first one will be used.
@@ -100,7 +100,7 @@ func (t *Tasker) postRecognition(entry, pipelineOverride string) TaskJob {
 	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
-// PostRecognition posts a recognition to the instance.
+// PostRecognition posts a recognition to the tasker.
 // `override` is an optional parameter. If provided, it should be a single value
 // that can be a JSON string or any data type that can be marshaled to JSON.
 // If multiple values are provided, only the first one will be used.
@@ -119,7 +119,7 @@ func (t *Tasker) postAction(entry, override string) TaskJob {
 	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
-// PostAction posts an action to the instance.
+// PostAction posts an action to the tasker.
 // `override` is an optional parameter. If provided, it should be a single value
 // that can be a JSON string or any data type that can be marshaled to JSON.
 // If multiple values are provided, only the first one will be used.
@@ -149,18 +149,18 @@ func (t *Tasker) Running() bool {
 	return C.MaaTaskerRunning(t.handle) != 0
 }
 
-// PostStop posts a stop signal to the instance.
+// PostStop posts a stop signal to the tasker.
 func (t *Tasker) PostStop() bool {
 	return C.MaaTaskerPostStop(t.handle) != 0
 }
 
-// GetResource returns the resource handle of the instance.
+// GetResource returns the resource handle of the tasker.
 func (t *Tasker) GetResource() *Resource {
 	handle := C.MaaTaskerGetResource(t.handle)
 	return &Resource{handle: handle}
 }
 
-// GetController returns the controller handle of the instance.
+// GetController returns the controller handle of the tasker.
 func (t *Tasker) GetController() Controller {
 	handle := C.MaaTaskerGetController(t.handle)
 	return &controller{handle: handle}
