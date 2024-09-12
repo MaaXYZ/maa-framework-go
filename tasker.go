@@ -294,6 +294,13 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 	if got == 0 {
 		return nil
 	}
+	if size == 0 {
+		return &TaskDetail{
+			ID:          taskId,
+			Entry:       entry.Get(),
+			NodeDetails: nil,
+		}
+	}
 	nodeIdList := make([]int64, size)
 	got = C.MaaTaskerGetTaskDetail(
 		t.handle,
