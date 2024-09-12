@@ -180,6 +180,7 @@ func (t *Tasker) ClearCache() bool {
 type RecognitionDetail struct {
 	ID         int64
 	Name       string
+	Algorithm  string
 	Hit        bool
 	DetailJson string
 	Raw        image.Image
@@ -189,21 +190,24 @@ type RecognitionDetail struct {
 // getRecognitionDetail queries recognition detail.
 func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 	name := buffer.NewStringBuffer()
+	defer name.Destroy()
+	algorithm := buffer.NewStringBuffer()
+	defer algorithm.Destroy()
 	var hit uint8
-	hitBox := newRectBuffer()
+	box := newRectBuffer()
+	defer box.Destroy()
 	detailJson := buffer.NewStringBuffer()
+	defer detailJson.Destroy()
 	raw := buffer.NewImageBuffer()
+	defer raw.Destroy()
 	draws := buffer.NewImageListBuffer()
-	defer func() {
-		name.Destroy()
-		detailJson.Destroy()
-	}()
+	defer draws.Destroy()
 	got := C.MaaTaskerGetRecognitionDetail(
 		t.handle,
 		C.int64_t(recId),
 		(*C.MaaStringBuffer)(name.Handle()),
 		(*C.uint8_t)(unsafe.Pointer(&hit)),
-		(*C.MaaRect)(hitBox.Handle()),
+		(*C.MaaRect)(box.Handle()),
 		(*C.MaaStringBuffer)(detailJson.Handle()),
 		(*C.MaaImageBuffer)(raw.Handle()),
 		(*C.MaaImageListBuffer)(draws.Handle()),
@@ -225,6 +229,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 	return &RecognitionDetail{
 		ID:         recId,
 		Name:       name.Get(),
+		Algorithm:  algorithm.Get(),
 		Hit:        hit != 0,
 		DetailJson: detailJson.Get(),
 		Raw:        rawImg,
