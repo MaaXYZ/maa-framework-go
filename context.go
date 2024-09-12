@@ -137,9 +137,11 @@ func (ctx *Context) OverrideNext(name string, nextList []string) bool {
 	return got != 0
 }
 
-// GetTaskId returns current task id.
-func (ctx *Context) GetTaskId() int64 {
-	return int64(C.MaaContextGetTaskId(ctx.handle))
+// GetTaskJob returns current task job.
+func (ctx *Context) GetTaskJob() TaskJob {
+	tasker := ctx.GetTasker()
+	taskId := int64(C.MaaContextGetTaskId(ctx.handle))
+	return NewTaskJob(taskId, tasker.status, tasker.wait, tasker.getTaskDetail)
 }
 
 // GetTasker return current Tasker.
