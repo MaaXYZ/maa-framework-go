@@ -38,7 +38,7 @@ func TestRunWithoutFile(t *testing.T) {
 
 type MyAct struct{}
 
-func (a *MyAct) Run(ctx *maa.Context, _ int64, _, _ string, _ maa.Rect, _ string) bool {
+func (a *MyAct) Run(ctx *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ *maa.RecognitionDetail, _ maa.Rect) bool {
 	tasker := ctx.GetTasker()
 	ctrl := tasker.GetController()
 	img, _ := ctrl.CacheImage()

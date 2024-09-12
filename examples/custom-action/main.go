@@ -44,6 +44,6 @@ func main() {
 
 type MyAct struct{}
 
-func (a *MyAct) Run(_ *maa.Context, _ int64, _, _ string, _ maa.Rect, _ string) bool {
+func (a *MyAct) Run(_ *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ *maa.RecognitionDetail, _ maa.Rect) bool {
 	return true
 }

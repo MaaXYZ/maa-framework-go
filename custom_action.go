@@ -8,10 +8,11 @@ package maa
 extern uint8_t _MaaCustomActionCallbackAgent(
 	MaaContext* ctx,
 	int64_t task_id,
-	const char*  task_name,
-	const char*  customActionParam,
+	const char* current_task_name,
+	const char* custom_action_name,
+	const char* custom_action_param,
+	int64_t rec_id,
 	const MaaRect* box ,
-	const char* recognition_detail,
 	void* actionArg);
 */
 import "C"
@@ -49,31 +50,36 @@ func clearCustomAction() {
 }
 
 type CustomAction interface {
-	Run(ctx *Context, taskId int64, actionName, customActionParam string, box Rect, recognitionDetail string) bool
+	Run(ctx *Context, taskDetail *TaskDetail, currentTaskName, customActionName, customActionParam string, recognitionDetail *RecognitionDetail, box Rect) bool
 }
 
 //export _MaaCustomActionCallbackAgent
 func _MaaCustomActionCallbackAgent(
 	ctx *C.MaaContext,
 	taskId C.int64_t,
-	actionName, customActionParam C.StringView,
+	currentTaskName, customActionName, customActionParam C.StringView,
+	recId C.uint64_t,
 	box C.ConstMaaRectPtr,
-	recognitionDetail C.StringView,
 	actionArg unsafe.Pointer,
 ) C.uint8_t {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(actionArg))
 	action := customActionAgents[id]
+	context := &Context{handle: ctx}
+	tasker := context.GetTasker()
+	taskDetail := tasker.getTaskDetail(int64(taskId))
+	recognitionDetail := tasker.getRecognitionDetail(int64(recId))
 	curBoxRectBuffer := newRectBufferByHandle(unsafe.Pointer(box))
 
 	ok := action.Run(
 		&Context{handle: ctx},
-		int64(taskId),
-		C.GoString(actionName),
+		taskDetail,
+		C.GoString(currentTaskName),
+		C.GoString(customActionName),
 		C.GoString(customActionParam),
+		recognitionDetail,
 		curBoxRectBuffer.Get(),
-		C.GoString(recognitionDetail),
 	)
 	if ok {
 		return C.uint8_t(1)

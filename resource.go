@@ -21,10 +21,11 @@ extern uint8_t _MaaCustomRecognizerCallbackAgent(
 extern uint8_t _MaaCustomActionCallbackAgent(
 	MaaContext* ctx,
 	int64_t task_id,
-	const char*  task_name,
-	const char*  customActionParam,
-	MaaRect* box ,
-	const char* recognition_detail,
+	const char* current_task_name,
+	const char* custom_action_name,
+	const char* custom_action_param,
+	int64_t rec_id,
+	const MaaRect* box ,
 	void* actionArg);
 */
 import "C"
