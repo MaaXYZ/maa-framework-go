@@ -9,9 +9,11 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 extern uint8_t _MaaCustomRecognizerCallbackAgent(
 	MaaContext* ctx,
 	int64_t task_id,
-	const char* recognizer_name,
+	const char* current_task_name,
+	const char* custom_recognizer_name,
 	const char* custom_recognition_param,
 	const MaaImageBuffer* image,
+	MaaRect* roi,
 	void* recognizer_arg,
 	MaaRect* out_box,
 	MaaStringBuffer* out_detail);

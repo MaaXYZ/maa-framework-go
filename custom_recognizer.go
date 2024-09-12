@@ -6,14 +6,16 @@ package maa
 #include "def.h"
 
 extern uint8_t _MaaCustomRecognizerCallbackAgent(
-			MaaContext* ctx,
-			int64_t task_id,
-            const char* recognizer_name,
-            const char* custom_recognition_param,
-            const MaaImageBuffer* image,
-            void* recognizer_arg,
-           	MaaRect* out_box,
-			MaaStringBuffer* out_detail);
+	MaaContext* ctx,
+	int64_t task_id,
+	const char* current_task_name,
+	const char* custom_recognizer_name,
+	const char* custom_recognition_param,
+	const MaaImageBuffer* image,
+	MaaRect* roi,
+	void* recognizer_arg,
+	MaaRect* out_box,
+	MaaStringBuffer* out_detail);
 */
 import "C"
 import (
@@ -52,7 +54,7 @@ func clearCustomRecognizer() {
 }
 
 type CustomRecognizer interface {
-	Run(ctx *Context, taskId int64, recognizerName, customRecognitionParam string, img image.Image) (CustomRecognizerResult, bool)
+	Run(ctx *Context, taskId int64, currentTaskName, customRecognizerName, customRecognitionParam string, img image.Image, roi Rect) (CustomRecognizerResult, bool)
 }
 
 type CustomRecognizerResult struct {
@@ -64,8 +66,9 @@ type CustomRecognizerResult struct {
 func _MaaCustomRecognizerCallbackAgent(
 	ctx *C.MaaContext,
 	taskId C.int64_t,
-	recognizerName, customRecognitionParam C.StringView,
+	currentTaskName, customRecognizerName, customRecognitionParam C.StringView,
 	img C.ConstMaaImageBufferPtr,
+	roi *C.MaaRect,
 	recognizerArg unsafe.Pointer,
 	outBox *C.MaaRect,
 	outDetail *C.MaaStringBuffer,
@@ -83,9 +86,11 @@ func _MaaCustomRecognizerCallbackAgent(
 	ret, ok := recognizer.Run(
 		&Context{handle: ctx},
 		int64(taskId),
-		C.GoString(recognizerName),
+		C.GoString(currentTaskName),
+		C.GoString(customRecognizerName),
 		C.GoString(customRecognitionParam),
 		imgImg,
+		newRectBufferByHandle(unsafe.Pointer(roi)).Get(),
 	)
 	if ok {
 		box := ret.Box
