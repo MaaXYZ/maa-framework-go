@@ -58,7 +58,7 @@ func _MaaCustomActionCallbackAgent(
 	ctx *C.MaaContext,
 	taskId C.int64_t,
 	currentTaskName, customActionName, customActionParam C.StringView,
-	recId C.uint64_t,
+	recId C.int64_t,
 	box C.ConstMaaRectPtr,
 	actionArg unsafe.Pointer,
 ) C.uint8_t {

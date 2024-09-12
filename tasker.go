@@ -206,6 +206,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 		t.handle,
 		C.int64_t(recId),
 		(*C.MaaStringBuffer)(name.Handle()),
+		(*C.MaaStringBuffer)(algorithm.Handle()),
 		(*C.uint8_t)(unsafe.Pointer(&hit)),
 		(*C.MaaRect)(box.Handle()),
 		(*C.MaaStringBuffer)(detailJson.Handle()),
