@@ -12,7 +12,7 @@ extern uint8_t _MaaCustomRecognizerCallbackAgent(
 	const char* custom_recognizer_name,
 	const char* custom_recognition_param,
 	const MaaImageBuffer* image,
-	MaaRect* roi,
+	const MaaRect* roi,
 	void* recognizer_arg,
 	MaaRect* out_box,
 	MaaStringBuffer* out_detail);
@@ -54,7 +54,7 @@ func clearCustomRecognizer() {
 }
 
 type CustomRecognizer interface {
-	Run(ctx *Context, taskId int64, currentTaskName, customRecognizerName, customRecognitionParam string, img image.Image, roi Rect) (CustomRecognizerResult, bool)
+	Run(ctx *Context, taskDetail *TaskDetail, currentTaskName, customRecognizerName, customRecognitionParam string, img image.Image, roi Rect) (CustomRecognizerResult, bool)
 }
 
 type CustomRecognizerResult struct {
@@ -68,7 +68,7 @@ func _MaaCustomRecognizerCallbackAgent(
 	taskId C.int64_t,
 	currentTaskName, customRecognizerName, customRecognitionParam C.StringView,
 	img C.ConstMaaImageBufferPtr,
-	roi *C.MaaRect,
+	roi C.ConstMaaRectPtr,
 	recognizerArg unsafe.Pointer,
 	outBox *C.MaaRect,
 	outDetail *C.MaaStringBuffer,
@@ -77,6 +77,9 @@ func _MaaCustomRecognizerCallbackAgent(
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(recognizerArg))
 	recognizer := customRecognizerCallbackAgents[id]
+	context := Context{handle: ctx}
+	tasker := context.GetTasker()
+	taskDetail := tasker.getTaskDetail(int64(taskId))
 	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(img))
 	imgImg, err := imgBuffer.GetByRawData()
 	if err != nil {
@@ -85,7 +88,7 @@ func _MaaCustomRecognizerCallbackAgent(
 
 	ret, ok := recognizer.Run(
 		&Context{handle: ctx},
-		int64(taskId),
+		taskDetail,
 		C.GoString(currentTaskName),
 		C.GoString(customRecognizerName),
 		C.GoString(customRecognitionParam),

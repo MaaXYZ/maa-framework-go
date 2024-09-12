@@ -45,7 +45,7 @@ func main() {
 
 type MyRec struct{}
 
-func (r *MyRec) Run(_ *maa.Context, _ int64, _, _, _ string, _ image.Image, _ maa.Rect) (maa.CustomRecognizerResult, bool) {
+func (r *MyRec) Run(_ *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ image.Image, _ maa.Rect) (maa.CustomRecognizerResult, bool) {
 	return maa.CustomRecognizerResult{
 		Box:    maa.Rect{0, 0, 100, 100},
 		Detail: "Hello World!",

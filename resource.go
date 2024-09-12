@@ -13,7 +13,7 @@ extern uint8_t _MaaCustomRecognizerCallbackAgent(
 	const char* custom_recognizer_name,
 	const char* custom_recognition_param,
 	const MaaImageBuffer* image,
-	MaaRect* roi,
+	const MaaRect* roi,
 	void* recognizer_arg,
 	MaaRect* out_box,
 	MaaStringBuffer* out_detail);
