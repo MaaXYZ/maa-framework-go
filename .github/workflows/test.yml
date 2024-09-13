@@ -136,6 +136,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install LLVM
+        run: brew install llvm
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
