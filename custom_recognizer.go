@@ -3,36 +3,52 @@ package maa
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
-#include "custom_recognizer.h"
+#include "def.h"
 
-extern uint8_t _AnalyzeAgent(
-			MaaSyncContextHandle sync_context,
-            const MaaImageBufferHandle image,
-            MaaStringView task_name,
-            MaaStringView custom_recognition_param,
-            MaaTransparentArg recognizer_arg,
-           	MaaRectHandle out_box,
-			MaaStringBufferHandle out_detail);
+extern uint8_t _MaaCustomRecognizerCallbackAgent(
+	MaaContext* ctx,
+	int64_t task_id,
+	const char* current_task_name,
+	const char* custom_recognizer_name,
+	const char* custom_recognition_param,
+	const MaaImageBuffer* image,
+	const MaaRect* roi,
+	void* recognizer_arg,
+	MaaRect* out_box,
+	MaaStringBuffer* out_detail);
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"image"
 	"sync/atomic"
 	"unsafe"
 )
 
 var (
-	customRecognizerID       uint64
-	customRecognizerNameToID = make(map[string]uint64)
-	customRecognizerAgents   = make(map[uint64]CustomRecognizer)
+	customRecognizerCallbackID     uint64
+	customRecognizerNameToID       = make(map[string]uint64)
+	customRecognizerCallbackAgents = make(map[uint64]CustomRecognizer)
 )
 
 func registerCustomRecognizer(name string, recognizer CustomRecognizer) uint64 {
-	id := atomic.AddUint64(&customRecognizerID, 1)
+	id := atomic.AddUint64(&customRecognizerCallbackID, 1)
 	customRecognizerNameToID[name] = id
-	customRecognizerAgents[id] = recognizer
+	customRecognizerCallbackAgents[id] = recognizer
 	return id
+}
+
+// RegisterCustomRecognizer is a temporary function that exposes the internal
+// registerCustomAction functionality. This function is intended for internal
+// use within the library and should not be used by external users. This function
+// may be removed or changed in future versions without notice.
+//
+// DO NOT USE THIS FUNCTION IN YOUR CODE.
+//
+// This function is expected to be moved to an internal package in the next
+// version of the library.
+func RegisterCustomRecognizer(name string, recognizer CustomRecognizer) uint64 {
+	return registerCustomRecognizer(name, recognizer)
 }
 
 func unregisterCustomRecognizer(name string) bool {
@@ -41,77 +57,74 @@ func unregisterCustomRecognizer(name string) bool {
 		return false
 	}
 	delete(customRecognizerNameToID, name)
-	delete(customRecognizerAgents, id)
+	delete(customRecognizerCallbackAgents, id)
 	return ok
+}
+
+// UnregisterCustomRecognizer is a temporary function that exposes the internal
+// registerCustomAction functionality. This function is intended for internal
+// use within the library and should not be used by external users. This function
+// may be removed or changed in future versions without notice.
+//
+// DO NOT USE THIS FUNCTION IN YOUR CODE.
+//
+// This function is expected to be moved to an internal package in the next
+// version of the library.
+func UnregisterCustomRecognizer(name string) bool {
+	return unregisterCustomRecognizer(name)
 }
 
 func clearCustomRecognizer() {
 	customRecognizerNameToID = make(map[string]uint64)
-	customRecognizerAgents = make(map[uint64]CustomRecognizer)
+	customRecognizerCallbackAgents = make(map[uint64]CustomRecognizer)
 }
 
-// CustomRecognizer defines an interface for custom recognizer.
-// Implementers of this interface must embed a CustomRecognizerHandler struct
-// and provide an implementation for the Analyze method.
 type CustomRecognizer interface {
-	Analyze(syncCtx SyncContext, img image.Image, taskName, RecognitionParam string) (AnalyzeResult, bool)
-
-	Handle() unsafe.Pointer
-	Destroy()
+	Run(ctx *Context, taskDetail *TaskDetail, currentTaskName, customRecognizerName, customRecognitionParam string, img image.Image, roi Rect) (CustomRecognizerResult, bool)
 }
 
-type AnalyzeResult struct {
+type CustomRecognizerResult struct {
 	Box    Rect
 	Detail string
 }
 
-type CustomRecognizerHandler struct {
-	handle C.MaaCustomRecognizerHandle
-}
-
-func NewCustomRecognizerHandler() CustomRecognizerHandler {
-	return CustomRecognizerHandler{
-		handle: C.MaaCustomRecognizerHandleCreate(C.AnalyzeCallback(C._AnalyzeAgent)),
-	}
-}
-
-func (r CustomRecognizerHandler) Handle() unsafe.Pointer {
-	return unsafe.Pointer(r.handle)
-}
-
-func (r CustomRecognizerHandler) Destroy() {
-	C.MaaCustomRecognizerHandleDestroy(r.handle)
-}
-
-//export _AnalyzeAgent
-func _AnalyzeAgent(
-	ctx C.MaaSyncContextHandle,
-	img C.MaaImageBufferHandle,
-	taskName, customRecognitionParam C.MaaStringView,
-	recognizerArg C.MaaTransparentArg,
-	outBox C.MaaRectHandle,
-	outDetail C.MaaStringBufferHandle,
+//export _MaaCustomRecognizerCallbackAgent
+func _MaaCustomRecognizerCallbackAgent(
+	ctx *C.MaaContext,
+	taskId C.int64_t,
+	currentTaskName, customRecognizerName, customRecognitionParam C.StringView,
+	img C.ConstMaaImageBufferPtr,
+	roi C.ConstMaaRectPtr,
+	recognizerArg unsafe.Pointer,
+	outBox *C.MaaRect,
+	outDetail *C.MaaStringBuffer,
 ) C.uint8_t {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(unsafe.Pointer(recognizerArg)))
-	rec := customRecognizerAgents[id]
+	id := uint64(uintptr(recognizerArg))
+	recognizer := customRecognizerCallbackAgents[id]
+	context := Context{handle: ctx}
+	tasker := context.GetTasker()
+	taskDetail := tasker.getTaskDetail(int64(taskId))
 	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(img))
 	imgImg, err := imgBuffer.GetByRawData()
 	if err != nil {
 		return C.uint8_t(0)
 	}
 
-	ret, ok := rec.Analyze(
-		SyncContext{handle: ctx},
-		imgImg,
-		C.GoString(taskName),
+	ret, ok := recognizer.Run(
+		&Context{handle: ctx},
+		taskDetail,
+		C.GoString(currentTaskName),
+		C.GoString(customRecognizerName),
 		C.GoString(customRecognitionParam),
+		imgImg,
+		newRectBufferByHandle(unsafe.Pointer(roi)).Get(),
 	)
 	if ok {
 		box := ret.Box
-		outBoxRect := buffer.NewRectBufferByHandle(unsafe.Pointer(outBox))
-		outBoxRect.Set(toBufferRect(box))
+		outBoxRect := newRectBufferByHandle(unsafe.Pointer(outBox))
+		outBoxRect.Set(box)
 		outDetailString := buffer.NewStringBufferByHandle(unsafe.Pointer(outDetail))
 		outDetailString.Set(ret.Detail)
 		return C.uint8_t(1)

@@ -109,34 +109,36 @@ import (
 )
 
 func main() {
-	toolkit.InitOption("./", "{}")
-	inst := maa.New(nil)
-	defer inst.Destroy()
+	toolkit.ConfigInitOption("./", "{}")
+	tasker := maa.NewTasker(nil)
+	defer tasker.Destroy()
 
-	devices := toolkit.AdbDevices()
-	device := devices[0]
+	deviceFinder := toolkit.NewAdbDeviceFinder()
+	deviceFinder.Find()
+	device := deviceFinder.Find()[0]
 	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ControllerType,
-		device.Config,
+		device.GetAdbPath(),
+		device.GetAddress(),
+		device.GetScreencapMethod(),
+		device.GetInputMethod(),
+		device.GetConfig(),
 		"path/to/MaaAgentBinary",
 		nil,
 	)
 	defer ctrl.Destroy()
 	ctrl.PostConnect().Wait()
-	inst.BindController(ctrl)
+	tasker.BindController(ctrl)
 
 	res := maa.NewResource(nil)
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
-	inst.BindResource(res)
-	if inst.Inited() {
+	tasker.BindResource(res)
+	if tasker.Inited() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
 
-	inst.PostTask("Startup", "{}")
+	tasker.PostPipeline("Startup")
 }
 
 ```
@@ -153,59 +155,50 @@ package main
 import (
 	"fmt"
 	"github.com/MaaXYZ/maa-framework-go"
-	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"github.com/MaaXYZ/maa-framework-go/toolkit"
 	"image"
 	"os"
 )
 
 func main() {
-	toolkit.InitOption("./", "{}")
-	inst := maa.New(nil)
-	defer inst.Destroy()
+	toolkit.ConfigInitOption("./", "{}")
+	tasker := maa.NewTasker(nil)
+	defer tasker.Destroy()
 
-	devices := toolkit.AdbDevices()
-	device := devices[0]
+	deviceFinder := toolkit.NewAdbDeviceFinder()
+	deviceFinder.Find()
+	device := deviceFinder.Find()[0]
 	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ControllerType,
-		device.Config,
+		device.GetAdbPath(),
+		device.GetAddress(),
+		device.GetScreencapMethod(),
+		device.GetInputMethod(),
+		device.GetConfig(),
 		"path/to/MaaAgentBinary",
 		nil,
 	)
 	defer ctrl.Destroy()
 	ctrl.PostConnect().Wait()
-	inst.BindController(ctrl)
+	tasker.BindController(ctrl)
 
 	res := maa.NewResource(nil)
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
-	inst.BindResource(res)
-	if inst.Inited() {
+	tasker.BindResource(res)
+	if tasker.Inited() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
 
-	myRec := NewMyRec()
-	defer myRec.Destroy()
-	inst.RegisterCustomRecognizer("MyRec", myRec)
+	res.RegisterCustomRecognizer("MyRec", &MyRec{})
 
-	inst.PostTask("Startup", "{}")
+	tasker.PostPipeline("Startup")
 }
 
-type MyRec struct {
-	maa.CustomRecognizerHandler
-}
+type MyRec struct{}
 
-func NewMyRec() maa.CustomRecognizer {
-	return &MyRec{
-		CustomRecognizerHandler: maa.NewCustomRecognizerHandler(),
-	}
-}
-
-func (m MyRec) Analyze(syncCtx maa.SyncContext, img image.Image, taskName, RecognitionParam string) (maa.AnalyzeResult, bool) {
-	return maa.AnalyzeResult{
+func (r *MyRec) Run(_ *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ image.Image, _ maa.Rect) (maa.CustomRecognizerResult, bool) {
+	return maa.CustomRecognizerResult{
 		Box:    maa.Rect{0, 0, 100, 100},
 		Detail: "Hello World!",
 	}, true
@@ -225,61 +218,49 @@ package main
 import (
 	"fmt"
 	"github.com/MaaXYZ/maa-framework-go"
-	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"github.com/MaaXYZ/maa-framework-go/toolkit"
 	"os"
 )
 
 func main() {
-	toolkit.InitOption("./", "{}")
-	inst := maa.New(nil)
-	defer inst.Destroy()
+	toolkit.ConfigInitOption("./", "{}")
+	tasker := maa.NewTasker(nil)
+	defer tasker.Destroy()
 
-	devices := toolkit.AdbDevices()
-	device := devices[0]
+	deviceFinder := toolkit.NewAdbDeviceFinder()
+	deviceFinder.Find()
+	device := deviceFinder.Find()[0]
 	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ControllerType,
-		device.Config,
+		device.GetAdbPath(),
+		device.GetAddress(),
+		device.GetScreencapMethod(),
+		device.GetInputMethod(),
+		device.GetConfig(),
 		"path/to/MaaAgentBinary",
 		nil,
 	)
 	defer ctrl.Destroy()
 	ctrl.PostConnect().Wait()
-	inst.BindController(ctrl)
+	tasker.BindController(ctrl)
 
 	res := maa.NewResource(nil)
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
-	inst.BindResource(res)
-	if inst.Inited() {
+	tasker.BindResource(res)
+	if tasker.Inited() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
 
-	myAct := NewAct()
-	defer myAct.Destroy()
-	inst.RegisterCustomAction("MyAct", myAct)
+	res.RegisterCustomAction("MyAct", &MyAct{})
 
-	inst.PostTask("Startup", "{}")
+	tasker.PostPipeline("Startup")
 }
 
-type MyAct struct {
-	maa.CustomActionHandler
-}
+type MyAct struct{}
 
-func NewAct() maa.CustomAction {
-	return &MyAct{
-		CustomActionHandler: maa.NewCustomActionHandler(),
-	}
-}
-
-func (*MyAct) Run(ctx maa.SyncContext, taskName, ActionParam string, curBox maa.Rect, curRecDetail string) bool {
+func (a *MyAct) Run(_ *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ *maa.RecognitionDetail, _ maa.Rect) bool {
 	return true
-}
-
-func (*MyAct) Stop() {
 }
 
 ```

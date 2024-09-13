@@ -3,21 +3,20 @@ package maa
 /*
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
-#include "custom_action.h"
+#include "def.h"
 
-extern uint8_t _RunAgent(
-	MaaSyncContextHandle SyncCtx,
-	MaaStringView taskName,
-	MaaStringView customActionParam,
-	MaaRectHandle curBox ,
-	MaaStringView curRecDetail,
-	MaaTransparentArg actionArg);
-
-extern void _StopAgent(MaaTransparentArg actionArg);
+extern uint8_t _MaaCustomActionCallbackAgent(
+	MaaContext* ctx,
+	int64_t task_id,
+	const char* current_task_name,
+	const char* custom_action_name,
+	const char* custom_action_param,
+	int64_t rec_id,
+	const MaaRect* box ,
+	void* actionArg);
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/buffer"
 	"sync/atomic"
 	"unsafe"
 )
@@ -35,6 +34,19 @@ func registerCustomAction(name string, action CustomAction) uint64 {
 	return id
 }
 
+// RegisterCustomAction is a temporary function that exposes the internal
+// registerCustomAction functionality. This function is intended for internal
+// use within the library and should not be used by external users. This function
+// may be removed or changed in future versions without notice.
+//
+// DO NOT USE THIS FUNCTION IN YOUR CODE.
+//
+// This function is expected to be moved to an internal package in the next
+// version of the library.
+func RegisterCustomAction(name string, action CustomAction) uint64 {
+	return registerCustomAction(name, action)
+}
+
 func unregisterCustomAction(name string) bool {
 	id, ok := customActionNameToID[name]
 	if !ok {
@@ -45,70 +57,58 @@ func unregisterCustomAction(name string) bool {
 	return ok
 }
 
+// UnregisterCustomAction is a temporary function that exposes the internal
+// registerCustomAction functionality. This function is intended for internal
+// use within the library and should not be used by external users. This function
+// may be removed or changed in future versions without notice.
+//
+// DO NOT USE THIS FUNCTION IN YOUR CODE.
+//
+// This function is expected to be moved to an internal package in the next
+// version of the library.
+func UnregisterCustomAction(name string) bool {
+	return unregisterCustomAction(name)
+}
+
 func clearCustomAction() {
 	customActionNameToID = make(map[string]uint64)
 	customActionAgents = make(map[uint64]CustomAction)
 }
 
-// CustomAction defines an interface for custom action.
-// Implementers of this interface must embed an CustomActionHandler struct
-// and provide implementations for the Run and Stop methods.
 type CustomAction interface {
-	Run(ctx SyncContext, taskName, ActionParam string, curBox Rect, curRecDetail string) bool
-	Stop()
-
-	Handle() unsafe.Pointer
-	Destroy()
+	Run(ctx *Context, taskDetail *TaskDetail, currentTaskName, customActionName, customActionParam string, recognitionDetail *RecognitionDetail, box Rect) bool
 }
 
-type CustomActionHandler struct {
-	handle C.MaaCustomActionHandle
-}
-
-func NewCustomActionHandler() CustomActionHandler {
-	return CustomActionHandler{handle: C.MaaCustomActionHandleCreate(C.RunCallback(C._RunAgent), C.StopCallback(C._StopAgent))}
-}
-
-func (a CustomActionHandler) Handle() unsafe.Pointer {
-	return unsafe.Pointer(a.handle)
-}
-
-func (a CustomActionHandler) Destroy() {
-	C.MaaCustomActionHandleDestroy(a.handle)
-}
-
-//export _RunAgent
-func _RunAgent(
-	ctx C.MaaSyncContextHandle,
-	taskName, customActionParam C.MaaStringView,
-	curBox C.MaaRectHandle,
-	curRecDetail C.MaaStringView,
-	actionArg C.MaaTransparentArg,
+//export _MaaCustomActionCallbackAgent
+func _MaaCustomActionCallbackAgent(
+	ctx *C.MaaContext,
+	taskId C.int64_t,
+	currentTaskName, customActionName, customActionParam C.StringView,
+	recId C.int64_t,
+	box C.ConstMaaRectPtr,
+	actionArg unsafe.Pointer,
 ) C.uint8_t {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(unsafe.Pointer(actionArg)))
-	act := customActionAgents[id]
-	curBoxRectBuffer := buffer.NewRectBufferByHandle(unsafe.Pointer(curBox))
+	id := uint64(uintptr(actionArg))
+	action := customActionAgents[id]
+	context := &Context{handle: ctx}
+	tasker := context.GetTasker()
+	taskDetail := tasker.getTaskDetail(int64(taskId))
+	recognitionDetail := tasker.getRecognitionDetail(int64(recId))
+	curBoxRectBuffer := newRectBufferByHandle(unsafe.Pointer(box))
 
-	ok := act.Run(
-		SyncContext{handle: ctx},
-		C.GoString(taskName),
+	ok := action.Run(
+		&Context{handle: ctx},
+		taskDetail,
+		C.GoString(currentTaskName),
+		C.GoString(customActionName),
 		C.GoString(customActionParam),
-		toMaaRect(curBoxRectBuffer.Get()),
-		C.GoString(curRecDetail),
+		recognitionDetail,
+		curBoxRectBuffer.Get(),
 	)
 	if ok {
 		return C.uint8_t(1)
 	}
 	return C.uint8_t(0)
-}
-
-//export _StopAgent
-func _StopAgent(actionArg C.MaaTransparentArg) {
-	// Here, we are simply passing the uint64 value as a pointer
-	// and will not actually dereference this pointer.
-	id := uint64(uintptr(unsafe.Pointer(actionArg)))
-	act := customActionAgents[id]
-	act.Stop()
 }

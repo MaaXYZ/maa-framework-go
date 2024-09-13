@@ -11,11 +11,11 @@ import (
 )
 
 type ImageListBuffer struct {
-	handle C.MaaImageListBufferHandle
+	handle *C.MaaImageListBuffer
 }
 
 func NewImageListBuffer() *ImageListBuffer {
-	handle := C.MaaCreateImageListBuffer()
+	handle := C.MaaImageListBufferCreate()
 	return &ImageListBuffer{
 		handle: handle,
 	}
@@ -23,12 +23,12 @@ func NewImageListBuffer() *ImageListBuffer {
 
 func NewImageListBufferByHandle(handle unsafe.Pointer) *ImageListBuffer {
 	return &ImageListBuffer{
-		handle: C.MaaImageListBufferHandle(handle),
+		handle: (*C.MaaImageListBuffer)(handle),
 	}
 }
 
 func (il *ImageListBuffer) Destroy() {
-	C.MaaDestroyImageListBuffer(il.handle)
+	C.MaaImageListBufferDestroy(il.handle)
 }
 
 func (il *ImageListBuffer) Handle() unsafe.Pointer {
@@ -36,19 +36,19 @@ func (il *ImageListBuffer) Handle() unsafe.Pointer {
 }
 
 func (il *ImageListBuffer) IsEmpty() bool {
-	return C.MaaIsImageListEmpty(il.handle) != 0
+	return C.MaaImageListBufferIsEmpty(il.handle) != 0
 }
 
 func (il *ImageListBuffer) Clear() bool {
-	return C.MaaClearImageList(il.handle) != 0
+	return C.MaaImageListBufferClear(il.handle) != 0
 }
 
 func (il *ImageListBuffer) Size() uint64 {
-	return uint64(C.MaaGetImageListSize(il.handle))
+	return uint64(C.MaaImageListBufferSize(il.handle))
 }
 
 func (il *ImageListBuffer) Get(index uint64) (image.Image, error) {
-	handle := C.MaaGetImageListAt(il.handle, C.uint64_t(index))
+	handle := C.MaaImageListBufferAt(il.handle, C.uint64_t(index))
 	img := &ImageBuffer{
 		handle: handle,
 	}
@@ -69,14 +69,14 @@ func (il *ImageListBuffer) GetAll() ([]image.Image, error) {
 }
 
 func (il *ImageListBuffer) Append(value ImageBuffer) bool {
-	return C.MaaImageListAppend(
+	return C.MaaImageListBufferAppend(
 		il.handle,
-		C.MaaImageBufferHandle(value.Handle()),
+		(*C.MaaImageBuffer)(value.Handle()),
 	) != 0
 }
 
 func (il *ImageListBuffer) Remove(index uint64) bool {
-	return C.MaaImageListRemove(
+	return C.MaaImageListBufferRemove(
 		il.handle,
 		C.uint64_t(index),
 	) != 0

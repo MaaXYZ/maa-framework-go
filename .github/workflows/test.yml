@@ -46,7 +46,7 @@ jobs:
           $env:Path += ";${{ github.workspace }}/deps/bin"
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
           cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
-          go test -v -tags customenv
+          go test -v -tags customenv ./...
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -105,7 +105,7 @@ jobs:
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
           cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
-          go test -v -tags customenv
+          go test -v -tags customenv ./...
           
       - uses: actions/upload-artifact@v4
         if: always()
@@ -136,6 +136,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install LLVM
+        run: brew install llvm
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -158,7 +161,7 @@ jobs:
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
           cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
-          go test -v -tags customenv
+          go test -v -tags customenv ./...
 
       - uses: actions/upload-artifact@v4
         if: always()

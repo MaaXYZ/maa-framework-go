@@ -16,11 +16,11 @@ import (
 )
 
 type ImageBuffer struct {
-	handle C.MaaImageBufferHandle
+	handle *C.MaaImageBuffer
 }
 
 func NewImageBuffer() *ImageBuffer {
-	handle := C.MaaCreateImageBuffer()
+	handle := C.MaaImageBufferCreate()
 	return &ImageBuffer{
 		handle: handle,
 	}
@@ -28,12 +28,12 @@ func NewImageBuffer() *ImageBuffer {
 
 func NewImageBufferByHandle(handle unsafe.Pointer) *ImageBuffer {
 	return &ImageBuffer{
-		handle: C.MaaImageBufferHandle(handle),
+		handle: (*C.MaaImageBuffer)(handle),
 	}
 }
 
 func (i *ImageBuffer) Destroy() {
-	C.MaaDestroyImageBuffer(i.handle)
+	C.MaaImageBufferDestroy(i.handle)
 }
 
 func (i *ImageBuffer) Handle() unsafe.Pointer {
@@ -41,11 +41,11 @@ func (i *ImageBuffer) Handle() unsafe.Pointer {
 }
 
 func (i *ImageBuffer) IsEmpty() bool {
-	return C.MaaIsImageEmpty(i.handle) != 0
+	return C.MaaImageBufferIsEmpty(i.handle) != 0
 }
 
 func (i *ImageBuffer) Clear() bool {
-	return C.MaaClearImage(i.handle) != 0
+	return C.MaaImageBufferClear(i.handle) != 0
 }
 
 // GetByRawData retrieves the image from raw data stored in the buffer.
@@ -129,33 +129,33 @@ func (i *ImageBuffer) SetRawData(img image.Image) error {
 // getRawData retrieves the raw image data from the buffer.
 // It returns a pointer to the raw image data.
 func (i *ImageBuffer) getRawData() unsafe.Pointer {
-	return unsafe.Pointer(C.MaaGetImageRawData(i.handle))
+	return unsafe.Pointer(C.MaaImageBufferGetRawData(i.handle))
 }
 
 // getWidth retrieves the width of the image stored in the buffer.
 // It returns the width as an int32.
 func (i *ImageBuffer) getWidth() int32 {
-	return int32(C.MaaGetImageWidth(i.handle))
+	return int32(C.MaaImageBufferWidth(i.handle))
 }
 
 // getHeight retrieves the height of the image stored in the buffer.
 // It returns the height as an int32.
 func (i *ImageBuffer) getHeight() int32 {
-	return int32(C.MaaGetImageHeight(i.handle))
+	return int32(C.MaaImageBufferHeight(i.handle))
 }
 
 // getType retrieves the type of the image stored in the buffer.
 // This corresponds to the cv::Mat.type() in OpenCV.
 // It returns the type as an int32.
 func (i *ImageBuffer) getType() int32 {
-	return int32(C.MaaGetImageType(i.handle))
+	return int32(C.MaaImageBufferType(i.handle))
 }
 
 // setRawData sets the raw image data in the buffer.
 // It takes a pointer to the raw image data, the width, height, and type of the image.
 // It returns true if the operation was successful, otherwise false.
 func (i *ImageBuffer) setRawData(data unsafe.Pointer, width, height, imageType int32) bool {
-	return C.MaaSetImageRawData(
+	return C.MaaImageBufferSetRawData(
 		i.handle,
 		C.MaaImageRawData(data),
 		C.int32_t(width),
@@ -205,20 +205,20 @@ func (i *ImageBuffer) SetEncoded(img image.Image) error {
 // getEncoded retrieves the encoded image data from the buffer.
 // It returns a pointer to the encoded image data.
 func (i *ImageBuffer) getEncoded() unsafe.Pointer {
-	return unsafe.Pointer(C.MaaGetImageEncoded(i.handle))
+	return unsafe.Pointer(C.MaaImageBufferGetEncoded(i.handle))
 }
 
 // getEncodedSize retrieves the size of the encoded image data in the buffer.
 // It returns the size of the encoded image data as an integer.
 func (i *ImageBuffer) getEncodedSize() int32 {
-	return int32(C.MaaGetImageEncodedSize(i.handle))
+	return int32(C.MaaImageBufferGetEncodedSize(i.handle))
 }
 
 // setEncoded sets the encoded image data in the buffer.
 // It takes a pointer to the encoded image data and the size of the data.
 // It returns true if the operation was successful, otherwise false.
 func (i *ImageBuffer) setEncoded(data unsafe.Pointer, size uint64) bool {
-	return C.MaaSetImageEncoded(
+	return C.MaaImageBufferSetEncoded(
 		i.handle,
 		C.MaaImageEncodedData(data),
 		C.uint64_t(size),

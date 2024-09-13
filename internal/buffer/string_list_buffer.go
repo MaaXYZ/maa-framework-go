@@ -8,11 +8,11 @@ import "C"
 import "unsafe"
 
 type StringListBuffer struct {
-	handle C.MaaStringListBufferHandle
+	handle *C.MaaStringListBuffer
 }
 
 func NewStringListBuffer() *StringListBuffer {
-	handle := C.MaaCreateStringListBuffer()
+	handle := C.MaaStringListBufferCreate()
 	return &StringListBuffer{
 		handle: handle,
 	}
@@ -20,28 +20,32 @@ func NewStringListBuffer() *StringListBuffer {
 
 func NewStringListBufferByHandle(handle unsafe.Pointer) *StringListBuffer {
 	return &StringListBuffer{
-		handle: C.MaaStringListBufferHandle(handle),
+		handle: (*C.MaaStringListBuffer)(handle),
 	}
 }
 
 func (sl *StringListBuffer) Destroy() {
-	C.MaaDestroyStringListBuffer(sl.handle)
+	C.MaaStringListBufferDestroy(sl.handle)
+}
+
+func (sl *StringListBuffer) Handle() unsafe.Pointer {
+	return unsafe.Pointer(sl.handle)
 }
 
 func (sl *StringListBuffer) IsEmpty() bool {
-	return C.MaaIsStringListEmpty(sl.handle) != 0
+	return C.MaaStringListBufferIsEmpty(sl.handle) != 0
 }
 
 func (sl *StringListBuffer) Clear() bool {
-	return C.MaaClearStringList(sl.handle) != 0
+	return C.MaaStringListBufferClear(sl.handle) != 0
 }
 
 func (sl *StringListBuffer) Size() uint64 {
-	return uint64(C.MaaGetStringListSize(sl.handle))
+	return uint64(C.MaaStringListBufferSize(sl.handle))
 }
 
 func (sl *StringListBuffer) Get(index uint64) string {
-	handle := C.MaaGetStringListAt(sl.handle, C.uint64_t(index))
+	handle := C.MaaStringListBufferAt(sl.handle, C.uint64_t(index))
 	str := &StringBuffer{
 		handle: handle,
 	}
@@ -57,15 +61,15 @@ func (sl *StringListBuffer) GetAll() []string {
 	return strings
 }
 
-func (sl *StringListBuffer) Append(value StringBuffer) bool {
-	return C.MaaStringListAppend(
+func (sl *StringListBuffer) Append(value *StringBuffer) bool {
+	return C.MaaStringListBufferAppend(
 		sl.handle,
-		C.MaaStringBufferHandle(value.Handle()),
+		(*C.MaaStringBuffer)(value.Handle()),
 	) != 0
 }
 
 func (sl *StringListBuffer) Remove(index uint64) bool {
-	return C.MaaStringListRemove(
+	return C.MaaStringListBufferRemove(
 		sl.handle,
 		C.uint64_t(index),
 	) != 0

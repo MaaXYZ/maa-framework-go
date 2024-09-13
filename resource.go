@@ -4,31 +4,57 @@ package maa
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
 
-extern void _MaaAPICallbackAgent(MaaStringView msg, MaaStringView detailsJson, MaaTransparentArg callbackArg);
+extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
+
+extern uint8_t _MaaCustomRecognizerCallbackAgent(
+	MaaContext* ctx,
+	int64_t task_id,
+	const char* current_task_name,
+	const char* custom_recognizer_name,
+	const char* custom_recognition_param,
+	const MaaImageBuffer* image,
+	const MaaRect* roi,
+	void* recognizer_arg,
+	MaaRect* out_box,
+	MaaStringBuffer* out_detail);
+
+extern uint8_t _MaaCustomActionCallbackAgent(
+	MaaContext* ctx,
+	int64_t task_id,
+	const char* current_task_name,
+	const char* custom_action_name,
+	const char* custom_action_param,
+	int64_t rec_id,
+	const MaaRect* box ,
+	void* actionArg);
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/buffer"
-	"strings"
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/notification"
+	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"unsafe"
 )
 
+var resourceStore = store.New[uint64]()
+
 type Resource struct {
-	handle C.MaaResourceHandle
+	handle *C.MaaResource
 }
 
 // NewResource creates a new resource.
 func NewResource(callback func(msg, detailsJson string)) *Resource {
-	id := registerCallback(callback)
+	id := notification.RegisterCallback(callback)
 	handle := C.MaaResourceCreate(
-		C.MaaAPICallback(C._MaaAPICallbackAgent),
+		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		C.MaaTransparentArg(unsafe.Pointer(uintptr(id))),
+		unsafe.Pointer(uintptr(id)),
 	)
 	if handle == nil {
 		return nil
 	}
+	resourceStore.Set(unsafe.Pointer(handle), id)
 	return &Resource{
 		handle: handle,
 	}
@@ -36,7 +62,88 @@ func NewResource(callback func(msg, detailsJson string)) *Resource {
 
 // Destroy frees the resource.
 func (r *Resource) Destroy() {
+	id := resourceStore.Get(r.Handle())
+	notification.UnregisterCallback(id)
+	resourceStore.Del(r.Handle())
 	C.MaaResourceDestroy(r.handle)
+}
+
+func (r *Resource) Handle() unsafe.Pointer {
+	return unsafe.Pointer(r.handle)
+}
+
+// RegisterCustomRecognizer registers a custom recognizer to the resource.
+func (r *Resource) RegisterCustomRecognizer(name string, recognizer CustomRecognizer) bool {
+	id := registerCustomRecognizer(name, recognizer)
+
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+
+	got := C.MaaResourceRegisterCustomRecognizer(
+		r.handle,
+		cName,
+		C.MaaCustomRecognizerCallback(C._MaaCustomRecognizerCallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		unsafe.Pointer(uintptr(id)),
+	)
+	return got != 0
+}
+
+// UnregisterCustomRecognizer unregisters a custom recognizer from the resource.
+func (r *Resource) UnregisterCustomRecognizer(name string) bool {
+	unregisterCustomRecognizer(name)
+
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+
+	got := C.MaaResourceUnregisterCustomRecognizer(r.handle, cName)
+	return got != 0
+}
+
+// ClearCustomRecognizer clears all custom recognizers registered from the resource.
+func (r *Resource) ClearCustomRecognizer() bool {
+	clearCustomRecognizer()
+
+	got := C.MaaResourceClearCustomRecognizer(r.handle)
+	return got != 0
+}
+
+// RegisterCustomAction registers a custom action to the resource.
+func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
+	id := registerCustomAction(name, action)
+
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+
+	got := C.MaaResourceRegisterCustomAction(
+		r.handle,
+		cName,
+		C.MaaCustomActionCallback(C._MaaCustomActionCallbackAgent),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		unsafe.Pointer(uintptr(id)),
+	)
+	return got != 0
+}
+
+// UnregisterCustomAction unregisters a custom action from the resource.
+func (r *Resource) UnregisterCustomAction(name string) bool {
+	unregisterCustomAction(name)
+
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+
+	got := C.MaaResourceUnregisterCustomAction(r.handle, cName)
+	return got != 0
+}
+
+// ClearCustomAction clears all custom actions registered from the resource.
+func (r *Resource) ClearCustomAction() bool {
+	clearCustomAction()
+
+	got := C.MaaResourceClearCustomAction(r.handle)
+	return got != 0
 }
 
 // PostPath adds a path to the resource loading paths.
@@ -45,7 +152,7 @@ func (r *Resource) PostPath(path string) Job {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 	id := int64(C.MaaResourcePostPath(r.handle, cPath))
-	return NewJob(id, r.status)
+	return NewJob(id, r.status, r.wait)
 }
 
 // Clear clears the resource loading paths.
@@ -58,6 +165,10 @@ func (r *Resource) status(resId int64) Status {
 	return Status(C.MaaResourceStatus(r.handle, C.int64_t(resId)))
 }
 
+func (r *Resource) wait(resId int64) Status {
+	return Status(C.MaaResourceWait(r.handle, C.int64_t(resId)))
+}
+
 // Loaded checks if resources are loaded.
 func (r *Resource) Loaded() bool {
 	return C.MaaResourceLoaded(r.handle) != 0
@@ -68,7 +179,7 @@ func (r *Resource) GetHash() (string, bool) {
 	hash := buffer.NewStringBuffer()
 	defer hash.Destroy()
 
-	got := C.MaaResourceGetHash(r.handle, C.MaaStringBufferHandle(hash.Handle())) != 0
+	got := C.MaaResourceGetHash(r.handle, (*C.MaaStringBuffer)(hash.Handle())) != 0
 	if !got {
 		return "", false
 	}
@@ -77,17 +188,14 @@ func (r *Resource) GetHash() (string, bool) {
 
 // GetTaskList returns the task list of the resource.
 func (r *Resource) GetTaskList() ([]string, bool) {
-	taskList := buffer.NewStringBuffer()
+	taskList := buffer.NewStringListBuffer()
 	defer taskList.Destroy()
 
-	got := C.MaaResourceGetTaskList(r.handle, C.MaaStringBufferHandle(taskList.Handle())) != 0
+	got := C.MaaResourceGetTaskList(r.handle, (*C.MaaStringListBuffer)(taskList.Handle())) != 0
 	if !got {
 		return []string{}, false
 	}
-	taskListStr := taskList.Get()
-	taskListStr = strings.TrimPrefix(taskListStr, "[")
-	taskListStr = strings.TrimSuffix(taskListStr, "]")
-	taskListArr := strings.Split(taskListStr, ",")
+	taskListArr := taskList.GetAll()
 
 	return taskListArr, true
 }

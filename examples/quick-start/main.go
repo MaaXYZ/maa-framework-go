@@ -8,32 +8,34 @@ import (
 )
 
 func main() {
-	toolkit.InitOption("./", "{}")
-	inst := maa.New(nil)
-	defer inst.Destroy()
+	toolkit.ConfigInitOption("./", "{}")
+	tasker := maa.NewTasker(nil)
+	defer tasker.Destroy()
 
-	devices := toolkit.AdbDevices()
-	device := devices[0]
+	deviceFinder := toolkit.NewAdbDeviceFinder()
+	deviceFinder.Find()
+	device := deviceFinder.Find()[0]
 	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ControllerType,
-		device.Config,
+		device.GetAdbPath(),
+		device.GetAddress(),
+		device.GetScreencapMethod(),
+		device.GetInputMethod(),
+		device.GetConfig(),
 		"path/to/MaaAgentBinary",
 		nil,
 	)
 	defer ctrl.Destroy()
 	ctrl.PostConnect().Wait()
-	inst.BindController(ctrl)
+	tasker.BindController(ctrl)
 
 	res := maa.NewResource(nil)
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
-	inst.BindResource(res)
-	if inst.Inited() {
+	tasker.BindResource(res)
+	if tasker.Inited() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
 
-	inst.PostTask("Startup", "{}")
+	tasker.PostPipeline("Startup")
 }

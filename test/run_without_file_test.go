@@ -1,10 +1,8 @@
 package test
 
 import (
-	"encoding/json"
 	"github.com/MaaXYZ/maa-framework-go"
 	"github.com/stretchr/testify/require"
-	"log"
 	"testing"
 )
 
@@ -19,14 +17,12 @@ func TestRunWithoutFile(t *testing.T) {
 	res := maa.NewResource(nil)
 	defer res.Destroy()
 
-	inst := maa.New(nil)
-	defer inst.Destroy()
-	inst.BindResource(res)
-	inst.BindController(ctrl)
+	tasker := maa.NewTasker(nil)
+	defer tasker.Destroy()
+	tasker.BindResource(res)
+	tasker.BindController(ctrl)
 
-	myAct := NewMyAct()
-	defer myAct.Destroy()
-	inst.RegisterCustomAction("MyAct", myAct)
+	res.RegisterCustomAction("MyAct", &MyAct{})
 
 	taskParam := map[string]interface{}{
 		"MyTask": map[string]interface{}{
@@ -35,52 +31,27 @@ func TestRunWithoutFile(t *testing.T) {
 			"custom_action_param": "abcdefg",
 		},
 	}
-	taskParamStr, err := json.Marshal(taskParam)
-	require.NoError(t, err)
 
-	got := inst.PostTask("MyTask", string(taskParamStr)).Wait()
+	got := tasker.PostPipeline("MyTask", taskParam).Wait()
 	require.True(t, got)
 }
 
-type MyAct struct {
-	maa.CustomActionHandler
-}
+type MyAct struct{}
 
-func NewMyAct() maa.CustomAction {
-	return &MyAct{
-		CustomActionHandler: maa.NewCustomActionHandler(),
-	}
-}
+func (a *MyAct) Run(ctx *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ *maa.RecognitionDetail, _ maa.Rect) bool {
+	tasker := ctx.GetTasker()
+	ctrl := tasker.GetController()
+	img, _ := ctrl.CacheImage()
 
-func (act *MyAct) Run(ctx maa.SyncContext, _, _ string, _ maa.Rect, _ string) bool {
-	image, err := ctx.Screencap()
-	if err != nil {
-		log.Println("failed to screencap:" + err.Error())
-		return false
-	}
-
-	taskParam := map[string]interface{}{
-		"MyColorMatching": map[string]interface{}{
+	override := maa.J{
+		"MyColorMatching": maa.J{
 			"recognition": "ColorMatch",
 			"lower":       []int{100, 100, 100},
 			"upper":       []int{255, 255, 255},
 		},
 	}
-	taskParamStr, err := json.Marshal(taskParam)
-	if err != nil {
-		log.Println("failed to marshal task param:" + err.Error())
-		return false
-	}
 
-	_, err = ctx.RunRecognition(image, "MyColorMatching", string(taskParamStr))
-	if err != nil {
-		log.Println("failed to run recognition:" + err.Error())
-		return false
-	}
+	_ = ctx.RunRecognition("MyColorMatching", img, override)
 
 	return true
-}
-
-func (act *MyAct) Stop() {
-	// do nothing
 }
