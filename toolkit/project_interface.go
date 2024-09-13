@@ -113,7 +113,7 @@ func (i *ProjectInterface) RunCli(instId uint64, resourcePath, userPath string, 
 		C.uint64_t(instId),
 		cResourcePath,
 		cUserPath,
-		cDirectly,
+		C.uint8_t(cDirectly),
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
