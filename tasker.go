@@ -8,13 +8,15 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/notification"
+	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"image"
 	"time"
 	"unsafe"
 )
 
-var taskerStore = newStore[uint64]()
+var taskerStore = store.New[uint64]()
 
 type Tasker struct {
 	handle *C.MaaTasker
@@ -22,7 +24,7 @@ type Tasker struct {
 
 // NewTasker creates an new tasker.
 func NewTasker(callback func(msg, detailsJson string)) *Tasker {
-	id := registerNotificationCallback(callback)
+	id := notification.RegisterCallback(callback)
 	handle := C.MaaTaskerCreate(
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
@@ -32,15 +34,15 @@ func NewTasker(callback func(msg, detailsJson string)) *Tasker {
 	if handle == nil {
 		return nil
 	}
-	taskerStore.set(unsafe.Pointer(handle), id)
+	taskerStore.Set(unsafe.Pointer(handle), id)
 	return &Tasker{handle: handle}
 }
 
 // Destroy free the tasker.
 func (t *Tasker) Destroy() {
-	id := taskerStore.get(t.Handle())
-	unregisterNotificationCallback(id)
-	taskerStore.del(t.Handle())
+	id := taskerStore.Get(t.Handle())
+	notification.UnregisterCallback(id)
+	taskerStore.Del(t.Handle())
 	C.MaaTaskerDestroy(t.handle)
 }
 

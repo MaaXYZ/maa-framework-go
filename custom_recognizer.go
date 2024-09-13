@@ -19,7 +19,7 @@ extern uint8_t _MaaCustomRecognizerCallbackAgent(
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"image"
 	"sync/atomic"
 	"unsafe"

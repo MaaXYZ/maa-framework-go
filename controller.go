@@ -9,7 +9,9 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 import "C"
 import (
 	"errors"
-	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/notification"
+	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"image"
 	"unsafe"
 )
@@ -45,7 +47,7 @@ type controllerStoreValue struct {
 	CustomControllerCallbacksID uint64
 }
 
-var controllerStore = newStore[controllerStoreValue]()
+var controllerStore = store.New[controllerStoreValue]()
 
 // controller is a concrete implementation of the Controller interface.
 type controller struct {
@@ -111,7 +113,7 @@ func NewAdbController(
 		C.free(unsafe.Pointer(cAgentPath))
 	}()
 
-	id := registerNotificationCallback(callback)
+	id := notification.RegisterCallback(callback)
 	handle := C.MaaAdbControllerCreate(
 		cAdbPath,
 		cAddress,
@@ -127,7 +129,7 @@ func NewAdbController(
 	if handle == nil {
 		return nil
 	}
-	controllerStore.set(unsafe.Pointer(handle), controllerStoreValue{
+	controllerStore.Set(unsafe.Pointer(handle), controllerStoreValue{
 		NotificationCallbackID: id,
 	})
 	return &controller{handle: handle}
@@ -165,7 +167,7 @@ func NewWin32Controller(
 	inputMethod Win32InputMethod,
 	callback func(msg, detailsJson string),
 ) Controller {
-	id := registerNotificationCallback(callback)
+	id := notification.RegisterCallback(callback)
 	handle := C.MaaWin32ControllerCreate(
 		hWnd,
 		C.uint64_t(screencapMethod),
@@ -178,7 +180,7 @@ func NewWin32Controller(
 	if handle == nil {
 		return nil
 	}
-	controllerStore.set(unsafe.Pointer(handle), controllerStoreValue{
+	controllerStore.Set(unsafe.Pointer(handle), controllerStoreValue{
 		NotificationCallbackID: id,
 	})
 	return &controller{handle: handle}
@@ -212,7 +214,7 @@ func NewDbgController(
 		C.free(unsafe.Pointer(cConfig))
 	}()
 
-	id := registerNotificationCallback(callback)
+	id := notification.RegisterCallback(callback)
 	handle := C.MaaDbgControllerCreate(
 		cReadPath,
 		cWritePath,
@@ -226,7 +228,7 @@ func NewDbgController(
 	if handle == nil {
 		return nil
 	}
-	controllerStore.set(unsafe.Pointer(handle), controllerStoreValue{
+	controllerStore.Set(unsafe.Pointer(handle), controllerStoreValue{
 		NotificationCallbackID: id,
 	})
 	return &controller{handle: handle}
@@ -238,7 +240,7 @@ func NewCustomController(
 	callback func(msg, detailsJson string),
 ) Controller {
 	ctrlID := registerCustomControllerCallbacks(ctrl)
-	cbID := registerNotificationCallback(callback)
+	cbID := notification.RegisterCallback(callback)
 	handle := C.MaaCustomControllerCreate(
 		(*C.MaaCustomControllerCallbacks)(ctrl.Handle()),
 		// Here, we are simply passing the uint64 value as a pointer
@@ -252,7 +254,7 @@ func NewCustomController(
 	if handle == nil {
 		return nil
 	}
-	controllerStore.set(unsafe.Pointer(handle), controllerStoreValue{
+	controllerStore.Set(unsafe.Pointer(handle), controllerStoreValue{
 		NotificationCallbackID:      cbID,
 		CustomControllerCallbacksID: ctrlID,
 	})
@@ -261,10 +263,10 @@ func NewCustomController(
 
 // Destroy frees the controller instance.
 func (c *controller) Destroy() {
-	value := controllerStore.get(c.Handle())
-	unregisterNotificationCallback(value.NotificationCallbackID)
+	value := controllerStore.Get(c.Handle())
+	notification.UnregisterCallback(value.NotificationCallbackID)
 	unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
-	controllerStore.del(c.Handle())
+	controllerStore.Del(c.Handle())
 	C.MaaControllerDestroy(c.handle)
 }
 

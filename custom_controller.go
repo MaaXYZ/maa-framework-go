@@ -39,7 +39,7 @@ extern uint8_t _InputText(const char* text, void* handle_arg);
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"image"
 	"sync/atomic"
 	"unsafe"

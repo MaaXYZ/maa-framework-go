@@ -30,11 +30,13 @@ extern uint8_t _MaaCustomActionCallbackAgent(
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/notification"
+	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"unsafe"
 )
 
-var resourceStore = newStore[uint64]()
+var resourceStore = store.New[uint64]()
 
 type Resource struct {
 	handle *C.MaaResource
@@ -42,7 +44,7 @@ type Resource struct {
 
 // NewResource creates a new resource.
 func NewResource(callback func(msg, detailsJson string)) *Resource {
-	id := registerNotificationCallback(callback)
+	id := notification.RegisterCallback(callback)
 	handle := C.MaaResourceCreate(
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
@@ -52,7 +54,7 @@ func NewResource(callback func(msg, detailsJson string)) *Resource {
 	if handle == nil {
 		return nil
 	}
-	resourceStore.set(unsafe.Pointer(handle), id)
+	resourceStore.Set(unsafe.Pointer(handle), id)
 	return &Resource{
 		handle: handle,
 	}
@@ -60,9 +62,9 @@ func NewResource(callback func(msg, detailsJson string)) *Resource {
 
 // Destroy frees the resource.
 func (r *Resource) Destroy() {
-	id := resourceStore.get(r.Handle())
-	unregisterNotificationCallback(id)
-	resourceStore.del(r.Handle())
+	id := resourceStore.Get(r.Handle())
+	notification.UnregisterCallback(id)
+	resourceStore.Del(r.Handle())
 	C.MaaResourceDestroy(r.handle)
 }
 

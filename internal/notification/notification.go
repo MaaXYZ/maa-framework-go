@@ -1,8 +1,9 @@
-package maa
+package notification
 
 /*
 #include <MaaFramework/MaaAPI.h>
-#include "def.h"
+
+typedef const char* StringView;
 
 extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
 */
@@ -17,13 +18,13 @@ var (
 	notificationCallbackAgents = make(map[uint64]func(msg, detailsJson string))
 )
 
-func registerNotificationCallback(callback func(msg, detailsJson string)) uint64 {
+func RegisterCallback(callback func(msg, detailsJson string)) uint64 {
 	id := atomic.AddUint64(&notificationCallbackID, 1)
 	notificationCallbackAgents[id] = callback
 	return id
 }
 
-func unregisterNotificationCallback(id uint64) {
+func UnregisterCallback(id uint64) {
 	delete(notificationCallbackAgents, id)
 }
 

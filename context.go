@@ -6,7 +6,7 @@ package maa
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"image"
 	"unsafe"
 )
