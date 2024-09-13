@@ -11,6 +11,9 @@
 	<a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go">
 		<img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
 	</a>
+    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v2.0.0-alpha.2">
+        <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v2.0.0--alpha.2-blue"
+    </a>
 </p>
 
 [English](README.md) | 简体中文
