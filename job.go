@@ -14,36 +14,37 @@ func NewJob(id int64, statusFunc func(id int64) Status, waitFunc func(id int64) 
 	}
 }
 
-func (job Job) Status() Status {
-	return job.statusFunc(job.id)
+func (j Job) Status() Status {
+	return j.statusFunc(j.id)
 }
 
-func (job Job) Invalid() bool {
-	return job.Status().Invalid()
+func (j Job) Invalid() bool {
+	return j.Status().Invalid()
 }
 
-func (job Job) Pending() bool {
-	return job.Status().Pending()
+func (j Job) Pending() bool {
+	return j.Status().Pending()
 }
 
-func (job Job) Running() bool {
-	return job.Status().Running()
+func (j Job) Running() bool {
+	return j.Status().Running()
 }
 
-func (job Job) Success() bool {
-	return job.Status().Success()
+func (j Job) Success() bool {
+	return j.Status().Success()
 }
 
-func (job Job) Failure() bool {
-	return job.Status().Failure()
+func (j Job) Failure() bool {
+	return j.Status().Failure()
 }
 
-func (job Job) Done() bool {
-	return job.Status().Done()
+func (j Job) Done() bool {
+	return j.Status().Done()
 }
 
-func (job Job) Wait() bool {
-	return job.waitFunc(job.id).Success()
+func (j Job) Wait() Job {
+	j.waitFunc(j.id)
+	return j
 }
 
 type TaskJob struct {
@@ -64,6 +65,14 @@ func NewTaskJob(
 	}
 }
 
-func (job TaskJob) GetDetail() *TaskDetail {
-	return job.getTaskDetailFunc(job.id)
+func (j TaskJob) Wait() TaskJob {
+	job := j.Job.Wait()
+	return TaskJob{
+		Job:               job,
+		getTaskDetailFunc: j.getTaskDetailFunc,
+	}
+}
+
+func (j TaskJob) GetDetail() *TaskDetail {
+	return j.getTaskDetailFunc(j.id)
 }
