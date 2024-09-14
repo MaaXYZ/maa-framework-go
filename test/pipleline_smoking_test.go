@@ -13,14 +13,14 @@ func TestPipelineSmoking(t *testing.T) {
 	ctrl := maa.NewDbgController(testingPath, resultPath, maa.DbgControllerTypeReplayRecording, "{}", nil)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait()
+	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
 	res := maa.NewResource(nil)
 	require.NotNil(t, res)
 	defer res.Destroy()
 	resDir := "./data_set/PipelineSmoking/resource"
-	isPathSet := res.PostPath(resDir).Wait()
+	isPathSet := res.PostPath(resDir).Wait().Success()
 	require.True(t, isPathSet)
 
 	tasker := maa.NewTasker(nil)
@@ -34,6 +34,6 @@ func TestPipelineSmoking(t *testing.T) {
 	isInitialized := tasker.Inited()
 	require.True(t, isInitialized)
 
-	got := tasker.PostPipeline("Wilderness").Wait()
+	got := tasker.PostPipeline("Wilderness").Wait().Success()
 	require.True(t, got)
 }

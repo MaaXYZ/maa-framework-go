@@ -13,7 +13,7 @@ func TestRunWithoutFile(t *testing.T) {
 	ctrl := maa.NewDbgController(testingPath, resultPath, maa.DbgControllerTypeCarouselImage, "{}", nil)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait()
+	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
 	res := maa.NewResource(nil)
@@ -39,7 +39,7 @@ func TestRunWithoutFile(t *testing.T) {
 		},
 	}
 
-	got := tasker.PostPipeline("MyTask", taskParam).Wait()
+	got := tasker.PostPipeline("MyTask", taskParam).Wait().Success()
 	require.True(t, got)
 }
 
