@@ -66,7 +66,7 @@ func (t *Tasker) Inited() bool {
 	return C.MaaTaskerInited(t.handle) != 0
 }
 
-func (t *Tasker) handleOverride(entry string, postFunc func(entry, override string) TaskJob, override ...any) TaskJob {
+func (t *Tasker) handleOverride(entry string, postFunc func(entry, override string) *TaskJob, override ...any) *TaskJob {
 	if len(override) == 0 {
 		return postFunc(entry, "{}")
 	}
@@ -80,7 +80,7 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 	return postFunc(entry, str)
 }
 
-func (t *Tasker) postPipeline(entry, pipelineOverride string) TaskJob {
+func (t *Tasker) postPipeline(entry, pipelineOverride string) *TaskJob {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
 	cPipelineOverride := C.CString(pipelineOverride)
@@ -94,11 +94,11 @@ func (t *Tasker) postPipeline(entry, pipelineOverride string) TaskJob {
 // `override` is an optional parameter. If provided, it should be a single value
 // that can be a JSON string or any data type that can be marshaled to JSON.
 // If multiple values are provided, only the first one will be used.
-func (t *Tasker) PostPipeline(entry string, override ...any) TaskJob {
+func (t *Tasker) PostPipeline(entry string, override ...any) *TaskJob {
 	return t.handleOverride(entry, t.postPipeline, override...)
 }
 
-func (t *Tasker) postRecognition(entry, pipelineOverride string) TaskJob {
+func (t *Tasker) postRecognition(entry, pipelineOverride string) *TaskJob {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
 	cPipelineOverride := C.CString(pipelineOverride)
@@ -112,12 +112,12 @@ func (t *Tasker) postRecognition(entry, pipelineOverride string) TaskJob {
 // `override` is an optional parameter. If provided, it should be a single value
 // that can be a JSON string or any data type that can be marshaled to JSON.
 // If multiple values are provided, only the first one will be used.
-func (t *Tasker) PostRecognition(entry string, override ...any) TaskJob {
+func (t *Tasker) PostRecognition(entry string, override ...any) *TaskJob {
 
 	return t.handleOverride(entry, t.postRecognition, override...)
 }
 
-func (t *Tasker) postAction(entry, override string) TaskJob {
+func (t *Tasker) postAction(entry, override string) *TaskJob {
 	cEntry := C.CString(entry)
 	defer C.free(unsafe.Pointer(cEntry))
 	cOverride := C.CString(override)
@@ -131,7 +131,7 @@ func (t *Tasker) postAction(entry, override string) TaskJob {
 // `override` is an optional parameter. If provided, it should be a single value
 // that can be a JSON string or any data type that can be marshaled to JSON.
 // If multiple values are provided, only the first one will be used.
-func (t *Tasker) PostAction(entry string, override ...any) TaskJob {
+func (t *Tasker) PostAction(entry string, override ...any) *TaskJob {
 	return t.handleOverride(entry, t.postAction, override...)
 }
 

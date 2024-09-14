@@ -25,17 +25,17 @@ type Controller interface {
 	SetScreenshotTargetShortSide(targetShortSide int) bool
 	SetRecording(recording bool) bool
 
-	PostConnect() Job
-	PostClick(x, y int32) Job
-	PostSwipe(x1, y1, x2, y2, duration int32) Job
-	PostPressKey(keycode int32) Job
-	PostInputText(text string) Job
-	PostStartApp(intent string) Job
-	PostStopApp(intent string) Job
-	PostTouchDown(contact, x, y, pressure int32) Job
-	PostTouchMove(contact, x, y, pressure int32) Job
-	PostTouchUp(contact int32) Job
-	PostScreencap() Job
+	PostConnect() *Job
+	PostClick(x, y int32) *Job
+	PostSwipe(x1, y1, x2, y2, duration int32) *Job
+	PostPressKey(keycode int32) *Job
+	PostInputText(text string) *Job
+	PostStartApp(intent string) *Job
+	PostStopApp(intent string) *Job
+	PostTouchDown(contact, x, y, pressure int32) *Job
+	PostTouchMove(contact, x, y, pressure int32) *Job
+	PostTouchUp(contact int32) *Job
+	PostScreencap() *Job
 
 	Connected() bool
 	CacheImage() (image.Image, error)
@@ -342,31 +342,31 @@ func (c *controller) SetRecording(enabled bool) bool {
 }
 
 // PostConnect posts a connection.
-func (c *controller) PostConnect() Job {
+func (c *controller) PostConnect() *Job {
 	id := int64(C.MaaControllerPostConnection(c.handle))
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostClick posts a click.
-func (c *controller) PostClick(x, y int32) Job {
+func (c *controller) PostClick(x, y int32) *Job {
 	id := int64(C.MaaControllerPostClick(c.handle, C.int32_t(x), C.int32_t(y)))
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostSwipe posts a swipe.
-func (c *controller) PostSwipe(x1, y1, x2, y2, duration int32) Job {
+func (c *controller) PostSwipe(x1, y1, x2, y2, duration int32) *Job {
 	id := int64(C.MaaControllerPostSwipe(c.handle, C.int32_t(x1), C.int32_t(y1), C.int32_t(x2), C.int32_t(y2), C.int32_t(duration)))
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostPressKey posts a press key.
-func (c *controller) PostPressKey(keycode int32) Job {
+func (c *controller) PostPressKey(keycode int32) *Job {
 	id := int64(C.MaaControllerPostPressKey(c.handle, C.int32_t(keycode)))
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostInputText posts an input text.
-func (c *controller) PostInputText(text string) Job {
+func (c *controller) PostInputText(text string) *Job {
 	cText := C.CString(text)
 	defer C.free(unsafe.Pointer(cText))
 	id := int64(C.MaaControllerPostInputText(c.handle, cText))
@@ -374,7 +374,7 @@ func (c *controller) PostInputText(text string) Job {
 }
 
 // PostStartApp posts a start app.
-func (c *controller) PostStartApp(intent string) Job {
+func (c *controller) PostStartApp(intent string) *Job {
 	cIntent := C.CString(intent)
 	defer C.free(unsafe.Pointer(cIntent))
 	id := int64(C.MaaControllerPostStartApp(c.handle, cIntent))
@@ -382,7 +382,7 @@ func (c *controller) PostStartApp(intent string) Job {
 }
 
 // PostStopApp posts a stop app.
-func (c *controller) PostStopApp(intent string) Job {
+func (c *controller) PostStopApp(intent string) *Job {
 	cIntent := C.CString(intent)
 	defer C.free(unsafe.Pointer(cIntent))
 	id := int64(C.MaaControllerPostStopApp(c.handle, cIntent))
@@ -390,25 +390,25 @@ func (c *controller) PostStopApp(intent string) Job {
 }
 
 // PostTouchDown posts a touch-down.
-func (c *controller) PostTouchDown(contact, x, y, pressure int32) Job {
+func (c *controller) PostTouchDown(contact, x, y, pressure int32) *Job {
 	id := int64(C.MaaControllerPostTouchDown(c.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)))
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostTouchMove posts a touch-move.
-func (c *controller) PostTouchMove(contact, x, y, pressure int32) Job {
+func (c *controller) PostTouchMove(contact, x, y, pressure int32) *Job {
 	id := int64(C.MaaControllerPostTouchMove(c.handle, C.int32_t(contact), C.int32_t(x), C.int32_t(y), C.int32_t(pressure)))
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostTouchUp posts a touch-up.
-func (c *controller) PostTouchUp(contact int32) Job {
+func (c *controller) PostTouchUp(contact int32) *Job {
 	id := int64(C.MaaControllerPostTouchUp(c.handle, C.int32_t(contact)))
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostScreencap posts a screencap.
-func (c *controller) PostScreencap() Job {
+func (c *controller) PostScreencap() *Job {
 	id := int64(C.MaaControllerPostScreencap(c.handle))
 	return NewJob(id, c.status, c.wait)
 }

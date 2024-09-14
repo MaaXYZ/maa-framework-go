@@ -148,7 +148,7 @@ func (r *Resource) ClearCustomAction() bool {
 
 // PostPath adds a path to the resource loading paths.
 // Return id of the resource.
-func (r *Resource) PostPath(path string) Job {
+func (r *Resource) PostPath(path string) *Job {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 	id := int64(C.MaaResourcePostPath(r.handle, cPath))
