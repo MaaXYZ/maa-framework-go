@@ -34,19 +34,6 @@ func registerCustomAction(name string, action CustomAction) uint64 {
 	return id
 }
 
-// RegisterCustomAction is a temporary function that exposes the internal
-// registerCustomAction functionality. This function is intended for internal
-// use within the library and should not be used by external users. This function
-// may be removed or changed in future versions without notice.
-//
-// DO NOT USE THIS FUNCTION IN YOUR CODE.
-//
-// This function is expected to be moved to an internal package in the next
-// version of the library.
-func RegisterCustomAction(name string, action CustomAction) uint64 {
-	return registerCustomAction(name, action)
-}
-
 func unregisterCustomAction(name string) bool {
 	id, ok := customActionNameToID[name]
 	if !ok {
@@ -55,19 +42,6 @@ func unregisterCustomAction(name string) bool {
 	delete(customActionNameToID, name)
 	delete(customActionAgents, id)
 	return ok
-}
-
-// UnregisterCustomAction is a temporary function that exposes the internal
-// registerCustomAction functionality. This function is intended for internal
-// use within the library and should not be used by external users. This function
-// may be removed or changed in future versions without notice.
-//
-// DO NOT USE THIS FUNCTION IN YOUR CODE.
-//
-// This function is expected to be moved to an internal package in the next
-// version of the library.
-func UnregisterCustomAction(name string) bool {
-	return unregisterCustomAction(name)
 }
 
 func clearCustomAction() {

@@ -38,19 +38,6 @@ func registerCustomRecognizer(name string, recognizer CustomRecognizer) uint64 {
 	return id
 }
 
-// RegisterCustomRecognizer is a temporary function that exposes the internal
-// registerCustomAction functionality. This function is intended for internal
-// use within the library and should not be used by external users. This function
-// may be removed or changed in future versions without notice.
-//
-// DO NOT USE THIS FUNCTION IN YOUR CODE.
-//
-// This function is expected to be moved to an internal package in the next
-// version of the library.
-func RegisterCustomRecognizer(name string, recognizer CustomRecognizer) uint64 {
-	return registerCustomRecognizer(name, recognizer)
-}
-
 func unregisterCustomRecognizer(name string) bool {
 	id, ok := customRecognizerNameToID[name]
 	if !ok {
@@ -59,19 +46,6 @@ func unregisterCustomRecognizer(name string) bool {
 	delete(customRecognizerNameToID, name)
 	delete(customRecognizerCallbackAgents, id)
 	return ok
-}
-
-// UnregisterCustomRecognizer is a temporary function that exposes the internal
-// registerCustomAction functionality. This function is intended for internal
-// use within the library and should not be used by external users. This function
-// may be removed or changed in future versions without notice.
-//
-// DO NOT USE THIS FUNCTION IN YOUR CODE.
-//
-// This function is expected to be moved to an internal package in the next
-// version of the library.
-func UnregisterCustomRecognizer(name string) bool {
-	return unregisterCustomRecognizer(name)
 }
 
 func clearCustomRecognizer() {
