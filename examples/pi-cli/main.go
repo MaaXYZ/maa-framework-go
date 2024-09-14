@@ -2,13 +2,12 @@ package main
 
 import (
 	"github.com/MaaXYZ/maa-framework-go"
-	"github.com/MaaXYZ/maa-framework-go/toolkit"
 )
 
 func main() {
-	pi := toolkit.NewProjectInterface()
-	pi.RegisterCustomAction(0, "MyAct", &MyAct{})
-	pi.RunCli(0, "./resource", "./", false, nil)
+	toolkit := maa.NewToolkit()
+	toolkit.RegisterPICustomAction(0, "MyAct", &MyAct{})
+	toolkit.RunCli(0, "./resource", "./", false, nil)
 }
 
 type MyAct struct{}

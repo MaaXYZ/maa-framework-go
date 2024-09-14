@@ -3,25 +3,23 @@ package main
 import (
 	"fmt"
 	"github.com/MaaXYZ/maa-framework-go"
-	"github.com/MaaXYZ/maa-framework-go/toolkit"
 	"image"
 	"os"
 )
 
 func main() {
+	toolkit := maa.NewToolkit()
 	toolkit.ConfigInitOption("./", "{}")
 	tasker := maa.NewTasker(nil)
 	defer tasker.Destroy()
 
-	deviceFinder := toolkit.NewAdbDeviceFinder()
-	deviceFinder.Find()
-	device := deviceFinder.Find()[0]
+	device := toolkit.FindAdbDevices()[0]
 	ctrl := maa.NewAdbController(
-		device.GetAdbPath(),
-		device.GetAddress(),
-		device.GetScreencapMethod(),
-		device.GetInputMethod(),
-		device.GetConfig(),
+		device.AdbPath,
+		device.Address,
+		device.ScreencapMethod,
+		device.InputMethod,
+		device.Config,
 		"path/to/MaaAgentBinary",
 		nil,
 	)
