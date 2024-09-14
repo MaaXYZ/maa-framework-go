@@ -11,21 +11,28 @@ func TestRunWithoutFile(t *testing.T) {
 	resultPath := "./data_set/debug"
 
 	ctrl := maa.NewDbgController(testingPath, resultPath, maa.DbgControllerTypeCarouselImage, "{}", nil)
+	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
-	ctrl.PostConnect().Wait()
+	isConnected := ctrl.PostConnect().Wait()
+	require.True(t, isConnected)
 
 	res := maa.NewResource(nil)
+	require.NotNil(t, res)
 	defer res.Destroy()
 
 	tasker := maa.NewTasker(nil)
+	require.NotNil(t, tasker)
 	defer tasker.Destroy()
-	tasker.BindResource(res)
-	tasker.BindController(ctrl)
+	isResBound := tasker.BindResource(res)
+	require.True(t, isResBound)
+	isCtrlBound := tasker.BindController(ctrl)
+	require.True(t, isCtrlBound)
 
-	res.RegisterCustomAction("MyAct", &MyAct{})
+	ok := res.RegisterCustomAction("MyAct", &MyAct{})
+	require.True(t, ok)
 
-	taskParam := map[string]interface{}{
-		"MyTask": map[string]interface{}{
+	taskParam := maa.J{
+		"MyTask": maa.J{
 			"action":              "Custom",
 			"custom_action":       "MyAct",
 			"custom_action_param": "abcdefg",
