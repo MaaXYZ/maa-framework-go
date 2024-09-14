@@ -37,5 +37,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	tasker.PostPipeline("Startup")
+	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+	fmt.Println(detail)
 }

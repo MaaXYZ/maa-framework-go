@@ -39,7 +39,8 @@ func main() {
 
 	res.RegisterCustomAction("MyAct", &MyAct{})
 
-	tasker.PostPipeline("Startup")
+	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+	fmt.Println(detail)
 }
 
 type MyAct struct{}

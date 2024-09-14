@@ -40,12 +40,38 @@ func main() {
 
 	res.RegisterCustomRecognizer("MyRec", &MyRec{})
 
-	tasker.PostPipeline("Startup")
+	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+	fmt.Println(detail)
 }
 
 type MyRec struct{}
 
-func (r *MyRec) Run(_ *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ image.Image, _ maa.Rect) (maa.CustomRecognizerResult, bool) {
+func (r *MyRec) Run(ctx *maa.Context, _ *maa.TaskDetail, currentTaskName, _, _ string, img image.Image, _ maa.Rect) (maa.CustomRecognizerResult, bool) {
+	ctx.RunRecognition("MyCustomOCR", img, maa.J{
+		"MyCustomOCR": maa.J{
+			"roi": []int{100, 100, 200, 300},
+		},
+	})
+
+	ctx.OverridePipeline(maa.J{
+		"MyCustomOCR": maa.J{
+			"roi": []int{1, 1, 114, 514},
+		},
+	})
+
+	newContext := ctx.Clone()
+	newContext.OverridePipeline(maa.J{
+		"MyCustomOCR": maa.J{
+			"roi": []int{100, 200, 300, 400},
+		},
+	})
+	newContext.RunPipeline("MyCustomOCR", img)
+
+	clickJob := ctx.GetTasker().GetController().PostClick(10, 20)
+	clickJob.Wait()
+
+	ctx.OverrideNext(currentTaskName, []string{"TaskA", "TaskB"})
+
 	return maa.CustomRecognizerResult{
 		Box:    maa.Rect{0, 0, 100, 100},
 		Detail: "Hello World!",

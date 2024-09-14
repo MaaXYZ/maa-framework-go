@@ -142,7 +142,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	tasker.PostPipeline("Startup")
+	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+	fmt.Println(detail)
 }
 
 ```
@@ -196,12 +197,38 @@ func main() {
 
 	res.RegisterCustomRecognizer("MyRec", &MyRec{})
 
-	tasker.PostPipeline("Startup")
+	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+	fmt.Println(detail)
 }
 
 type MyRec struct{}
 
-func (r *MyRec) Run(_ *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ image.Image, _ maa.Rect) (maa.CustomRecognizerResult, bool) {
+func (r *MyRec) Run(ctx *maa.Context, _ *maa.TaskDetail, currentTaskName, _, _ string, img image.Image, _ maa.Rect) (maa.CustomRecognizerResult, bool) {
+	ctx.RunRecognition("MyCustomOCR", img, maa.J{
+		"MyCustomOCR": maa.J{
+			"roi": []int{100, 100, 200, 300},
+		},
+	})
+
+	ctx.OverridePipeline(maa.J{
+		"MyCustomOCR": maa.J{
+			"roi": []int{1, 1, 114, 514},
+		},
+	})
+
+	newContext := ctx.Clone()
+	newContext.OverridePipeline(maa.J{
+		"MyCustomOCR": maa.J{
+			"roi": []int{100, 200, 300, 400},
+		},
+	})
+	newContext.RunPipeline("MyCustomOCR", img)
+
+	clickJob := ctx.GetTasker().GetController().PostClick(10, 20)
+	clickJob.Wait()
+
+	ctx.OverrideNext(currentTaskName, []string{"TaskA", "TaskB"})
+
 	return maa.CustomRecognizerResult{
 		Box:    maa.Rect{0, 0, 100, 100},
 		Detail: "Hello World!",
@@ -258,12 +285,50 @@ func main() {
 
 	res.RegisterCustomAction("MyAct", &MyAct{})
 
-	tasker.PostPipeline("Startup")
+	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+	fmt.Println(detail)
 }
 
 type MyAct struct{}
 
 func (a *MyAct) Run(_ *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ *maa.RecognitionDetail, _ maa.Rect) bool {
+	return true
+}
+
+```
+
+### PI CLI
+
+See [pi-cli](examples/pi-cli) for details.
+
+Here is a basic example of using PI CLI:
+
+```go
+package main
+
+import (
+	"github.com/MaaXYZ/maa-framework-go"
+	"github.com/MaaXYZ/maa-framework-go/toolkit"
+)
+
+func main() {
+	pi := toolkit.NewProjectInterface()
+	pi.RegisterCustomAction(0, "MyAct", &MyAct{})
+	pi.RunCli(0, "./resource", "./", false, nil)
+}
+
+type MyAct struct{}
+
+func (m MyAct) Run(ctx *maa.Context, _ *maa.TaskDetail, currentTaskName, _, _ string, _ *maa.RecognitionDetail, _ maa.Rect) bool {
+	ctx.OverrideNext(currentTaskName, []string{"TaskA", "TaskB"})
+
+	img, _ := ctx.GetTasker().GetController().CacheImage()
+	ctx.GetTasker().GetController().PostClick(100, 100).Wait()
+
+	ctx.RunRecognition("Cat", img, maa.J{
+		"recognition": "OCR",
+		"expected":    "cat",
+	})
 	return true
 }
 
