@@ -53,6 +53,7 @@ type DesktopWindow struct {
 
 type Toolkit struct{}
 
+// NewToolkit creates a new toolkit instance.
 func NewToolkit() *Toolkit {
 	return &Toolkit{}
 }
