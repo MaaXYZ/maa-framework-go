@@ -49,59 +49,41 @@ func (i *ImageBuffer) Clear() bool {
 }
 
 // GetByRawData retrieves the image from raw data stored in the buffer.
-func (i *ImageBuffer) GetByRawData() (image.Image, error) {
+func (i *ImageBuffer) GetByRawData() image.Image {
 	rawData := i.getRawData()
 	if rawData == nil {
-		return nil, errors.New("failed to get raw image data")
+		return nil
 	}
-
 	width := i.getWidth()
 	height := i.getHeight()
-	imageType := i.getType()
 
-	var img image.Image
-
-	if imageType != 16 { // CV_8UC3
-		return nil, errors.New("unsupported image type, only CV_8UC3 is supported")
-	}
-
-	// Create a new NRGBA image
-	nrgbaImg := image.NewNRGBA(image.Rect(0, 0, int(width), int(height)))
+	img := image.NewNRGBA(image.Rect(0, 0, int(width), int(height)))
 	raw := C.GoBytes(rawData, C.int(width*height*3))
-
-	// Copy RGB data to NRGBA
 	for y := 0; y < int(height); y++ {
 		for x := 0; x < int(width); x++ {
 			offset := (y*int(width) + x) * 3
 			r := raw[offset+2]
 			g := raw[offset+1]
 			b := raw[offset]
-			nrgbaImg.SetNRGBA(x, y, color.NRGBA{R: r, G: g, B: b, A: 255})
+			img.SetNRGBA(x, y, color.NRGBA{R: r, G: g, B: b, A: 255})
 		}
 	}
-
-	img = nrgbaImg
-
-	return img, nil
+	return img
 }
 
 // SetRawData converts an image.Image to raw data and sets it in the buffer.
-func (i *ImageBuffer) SetRawData(img image.Image) error {
+func (i *ImageBuffer) SetRawData(img image.Image) bool {
 	width := img.Bounds().Dx()
 	height := img.Bounds().Dy()
 	imageType := int32(16) // CV_8UC3
 
-	// Create a new raw data buffer
 	rawData := make([]byte, width*height*3)
 
-	// Convert image to NRGBA if it's not already
 	nrgbaImg, ok := img.(*image.NRGBA)
 	if !ok {
 		nrgbaImg = image.NewNRGBA(img.Bounds())
 		draw.Draw(nrgbaImg, img.Bounds(), img, image.Point{}, draw.Src)
 	}
-
-	// Copy NRGBA data to raw data buffer
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			offset := (y*width + x) * 4
@@ -114,16 +96,10 @@ func (i *ImageBuffer) SetRawData(img image.Image) error {
 		}
 	}
 
-	// Convert raw data to C pointer
 	cRawData := C.CBytes(rawData)
 	defer C.free(cRawData)
 
-	// Set raw data in the buffer
-	if !i.setRawData(cRawData, int32(width), int32(height), imageType) {
-		return errors.New("failed to set raw image data")
-	}
-
-	return nil
+	return i.setRawData(cRawData, int32(width), int32(height), imageType)
 }
 
 // getRawData retrieves the raw image data from the buffer.

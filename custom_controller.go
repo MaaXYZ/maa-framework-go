@@ -173,11 +173,10 @@ func _ScreencapAgent(handleArg unsafe.Pointer, imgBuffer *C.MaaImageBuffer) C.ui
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(handleArg))
 	ctrl := customControllerCallbacksAgents[id]
-	img, ok := ctrl.Screencap()
-	if ok {
+	img, captured := ctrl.Screencap()
+	if captured {
 		imgImgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(imgBuffer))
-		err := imgImgBuffer.SetRawData(img)
-		if err == nil {
+		if ok := imgImgBuffer.SetRawData(img); ok {
 			return C.uint8_t(1)
 		}
 	}

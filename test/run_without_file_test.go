@@ -28,7 +28,7 @@ func TestRunWithoutFile(t *testing.T) {
 	isCtrlBound := tasker.BindController(ctrl)
 	require.True(t, isCtrlBound)
 
-	ok := res.RegisterCustomAction("MyAct", &MyAct{})
+	ok := res.RegisterCustomAction("MyAct", &MyAct{t})
 	require.True(t, ok)
 
 	taskParam := maa.J{
@@ -43,12 +43,17 @@ func TestRunWithoutFile(t *testing.T) {
 	require.True(t, got)
 }
 
-type MyAct struct{}
+type MyAct struct {
+	t *testing.T
+}
 
 func (a *MyAct) Run(ctx *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ *maa.RecognitionDetail, _ maa.Rect) bool {
 	tasker := ctx.GetTasker()
+	require.NotNil(a.t, tasker)
 	ctrl := tasker.GetController()
-	img, _ := ctrl.CacheImage()
+	require.NotNil(a.t, ctrl)
+	img := ctrl.CacheImage()
+	require.NotNil(a.t, img)
 
 	override := maa.J{
 		"MyColorMatching": maa.J{
@@ -57,8 +62,8 @@ func (a *MyAct) Run(ctx *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ *maa.
 			"upper":       []int{255, 255, 255},
 		},
 	}
-
-	_ = ctx.RunRecognition("MyColorMatching", img, override)
+	detail := ctx.RunRecognition("MyColorMatching", img, override)
+	require.NotNil(a.t, detail)
 
 	return true
 }

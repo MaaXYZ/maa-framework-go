@@ -8,7 +8,6 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 */
 import "C"
 import (
-	"errors"
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/internal/notification"
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
@@ -38,7 +37,7 @@ type Controller interface {
 	PostScreencap() *Job
 
 	Connected() bool
-	CacheImage() (image.Image, error)
+	CacheImage() image.Image
 	GetUUID() (string, bool)
 }
 
@@ -428,7 +427,7 @@ func (c *controller) Connected() bool {
 }
 
 // CacheImage gets the image buffer of the last screencap request.
-func (c *controller) CacheImage() (image.Image, error) {
+func (c *controller) CacheImage() image.Image {
 	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 
@@ -437,15 +436,12 @@ func (c *controller) CacheImage() (image.Image, error) {
 		(*C.MaaImageBuffer)(imgBuffer.Handle()),
 	) != 0
 	if !got {
-		return nil, errors.New("failed to get image")
+		return nil
 	}
 
-	img, err := imgBuffer.GetByRawData()
-	if err != nil {
-		return nil, err
-	}
+	img := imgBuffer.GetByRawData()
 
-	return img, nil
+	return img
 }
 
 // GetUUID gets the UUID of the controller.
