@@ -96,6 +96,11 @@ Replace `[path to maafw include directory]` with the actual path to the MaaFrame
 
 ## Examples
 
+- [Quirk Start](#quirk-start)
+- [Custom Recognizer](#custom-recognizer)
+- [Custom Action](#custom-action)
+- [PI CLI](#pi-cli)
+
 ### Quirk start
 
 See [quirk-start](examples/quick-start) for details.

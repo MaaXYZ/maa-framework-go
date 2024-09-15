@@ -95,6 +95,11 @@ export CGO_LDFLAGS="-L[path to maafw lib directory] -lMaaFramework -lMaaToolkit"
 
 ## 示例
 
+- [快速开始](#快速开始)
+- [自定义识别器](#自定义识别器)
+- [自定义动作](#自定义动作)
+- [PI CLI](#pi-cli)
+
 ### 快速开始
 
 有关详细信息，请参阅 [quick-start](examples/quick-start)。
