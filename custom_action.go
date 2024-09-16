@@ -49,8 +49,17 @@ func clearCustomAction() {
 	customActionAgents = make(map[uint64]CustomAction)
 }
 
+type CustomActionArg struct {
+	TaskDetail        *TaskDetail
+	CurrentTaskName   string
+	CustomActionName  string
+	CustomActionParam string
+	RecognitionDetail *RecognitionDetail
+	Box               Rect
+}
+
 type CustomAction interface {
-	Run(ctx *Context, taskDetail *TaskDetail, currentTaskName, customActionName, customActionParam string, recognitionDetail *RecognitionDetail, box Rect) bool
+	Run(ctx *Context, arg *CustomActionArg) bool
 }
 
 //export _MaaCustomActionCallbackAgent
@@ -74,12 +83,14 @@ func _MaaCustomActionCallbackAgent(
 
 	ok := action.Run(
 		&Context{handle: ctx},
-		taskDetail,
-		C.GoString(currentTaskName),
-		C.GoString(customActionName),
-		C.GoString(customActionParam),
-		recognitionDetail,
-		curBoxRectBuffer.Get(),
+		&CustomActionArg{
+			TaskDetail:        taskDetail,
+			CurrentTaskName:   C.GoString(currentTaskName),
+			CustomActionName:  C.GoString(customActionName),
+			CustomActionParam: C.GoString(customActionParam),
+			RecognitionDetail: recognitionDetail,
+			Box:               curBoxRectBuffer.Get(),
+		},
 	)
 	if ok {
 		return C.uint8_t(1)

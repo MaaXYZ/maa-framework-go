@@ -47,7 +47,7 @@ type MyAct struct {
 	t *testing.T
 }
 
-func (a *MyAct) Run(ctx *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ *maa.RecognitionDetail, _ maa.Rect) bool {
+func (a *MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	tasker := ctx.GetTasker()
 	require.NotNil(a.t, tasker)
 	ctrl := tasker.GetController()

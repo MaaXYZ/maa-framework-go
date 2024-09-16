@@ -53,8 +53,17 @@ func clearCustomRecognizer() {
 	customRecognizerCallbackAgents = make(map[uint64]CustomRecognizer)
 }
 
+type CustomRecognizerArg struct {
+	TaskDetail             *TaskDetail
+	CurrentTaskName        string
+	CustomRecognizerName   string
+	CustomRecognitionParam string
+	Img                    image.Image
+	Roi                    Rect
+}
+
 type CustomRecognizer interface {
-	Run(ctx *Context, taskDetail *TaskDetail, currentTaskName, customRecognizerName, customRecognitionParam string, img image.Image, roi Rect) (CustomRecognizerResult, bool)
+	Run(ctx *Context, arg *CustomRecognizerArg) (CustomRecognizerResult, bool)
 }
 
 type CustomRecognizerResult struct {
@@ -85,12 +94,14 @@ func _MaaCustomRecognizerCallbackAgent(
 
 	ret, ok := recognizer.Run(
 		&Context{handle: ctx},
-		taskDetail,
-		C.GoString(currentTaskName),
-		C.GoString(customRecognizerName),
-		C.GoString(customRecognitionParam),
-		imgImg,
-		newRectBufferByHandle(unsafe.Pointer(roi)).Get(),
+		&CustomRecognizerArg{
+			TaskDetail:             taskDetail,
+			CurrentTaskName:        C.GoString(currentTaskName),
+			CustomRecognizerName:   C.GoString(customRecognizerName),
+			CustomRecognitionParam: C.GoString(customRecognitionParam),
+			Img:                    imgImg,
+			Roi:                    newRectBufferByHandle(unsafe.Pointer(roi)).Get(),
+		},
 	)
 	if ok {
 		box := ret.Box
