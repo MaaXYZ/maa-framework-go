@@ -12,8 +12,8 @@ func main() {
 
 type MyAct struct{}
 
-func (m MyAct) Run(ctx *maa.Context, _ *maa.TaskDetail, currentTaskName, _, _ string, _ *maa.RecognitionDetail, _ maa.Rect) bool {
-	ctx.OverrideNext(currentTaskName, []string{"TaskA", "TaskB"})
+func (m MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
+	ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
 
 	img := ctx.GetTasker().GetController().CacheImage()
 	ctx.GetTasker().GetController().PostClick(100, 100).Wait()

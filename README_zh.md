@@ -162,7 +162,6 @@ package main
 import (
 	"fmt"
 	"github.com/MaaXYZ/maa-framework-go"
-	"image"
 	"os"
 )
 
@@ -203,8 +202,8 @@ func main() {
 
 type MyRec struct{}
 
-func (r *MyRec) Run(ctx *maa.Context, _ *maa.TaskDetail, currentTaskName, _, _ string, img image.Image, _ maa.Rect) (maa.CustomRecognizerResult, bool) {
-	ctx.RunRecognition("MyCustomOCR", img, maa.J{
+func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognizerArg) (maa.CustomRecognizerResult, bool) {
+	ctx.RunRecognition("MyCustomOCR", arg.Img, maa.J{
 		"MyCustomOCR": maa.J{
 			"roi": []int{100, 100, 200, 300},
 		},
@@ -222,12 +221,12 @@ func (r *MyRec) Run(ctx *maa.Context, _ *maa.TaskDetail, currentTaskName, _, _ s
 			"roi": []int{100, 200, 300, 400},
 		},
 	})
-	newContext.RunPipeline("MyCustomOCR", img)
+	newContext.RunPipeline("MyCustomOCR", arg.Img)
 
 	clickJob := ctx.GetTasker().GetController().PostClick(10, 20)
 	clickJob.Wait()
 
-	ctx.OverrideNext(currentTaskName, []string{"TaskA", "TaskB"})
+	ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
 
 	return maa.CustomRecognizerResult{
 		Box:    maa.Rect{0, 0, 100, 100},
@@ -289,7 +288,7 @@ func main() {
 
 type MyAct struct{}
 
-func (a *MyAct) Run(_ *maa.Context, _ *maa.TaskDetail, _, _, _ string, _ *maa.RecognitionDetail, _ maa.Rect) bool {
+func (a *MyAct) Run(_ *maa.Context, arg *maa.CustomActionArg) bool {
 	return true
 }
 
@@ -316,8 +315,8 @@ func main() {
 
 type MyAct struct{}
 
-func (m MyAct) Run(ctx *maa.Context, _ *maa.TaskDetail, currentTaskName, _, _ string, _ *maa.RecognitionDetail, _ maa.Rect) bool {
-	ctx.OverrideNext(currentTaskName, []string{"TaskA", "TaskB"})
+func (m MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
+	ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
 
 	img := ctx.GetTasker().GetController().CacheImage()
 	ctx.GetTasker().GetController().PostClick(100, 100).Wait()
