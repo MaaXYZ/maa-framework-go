@@ -98,43 +98,6 @@ func (t *Tasker) PostPipeline(entry string, override ...any) *TaskJob {
 	return t.handleOverride(entry, t.postPipeline, override...)
 }
 
-func (t *Tasker) postRecognition(entry, pipelineOverride string) *TaskJob {
-	cEntry := C.CString(entry)
-	defer C.free(unsafe.Pointer(cEntry))
-	cPipelineOverride := C.CString(pipelineOverride)
-	defer C.free(unsafe.Pointer(cPipelineOverride))
-
-	id := int64(C.MaaTaskerPostRecognition(t.handle, cEntry, cPipelineOverride))
-	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
-}
-
-// PostRecognition posts a recognition to the tasker.
-// `override` is an optional parameter. If provided, it should be a single value
-// that can be a JSON string or any data type that can be marshaled to JSON.
-// If multiple values are provided, only the first one will be used.
-func (t *Tasker) PostRecognition(entry string, override ...any) *TaskJob {
-
-	return t.handleOverride(entry, t.postRecognition, override...)
-}
-
-func (t *Tasker) postAction(entry, override string) *TaskJob {
-	cEntry := C.CString(entry)
-	defer C.free(unsafe.Pointer(cEntry))
-	cOverride := C.CString(override)
-	defer C.free(unsafe.Pointer(cOverride))
-
-	id := int64(C.MaaTaskerPostAction(t.handle, cEntry, cOverride))
-	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
-}
-
-// PostAction posts an action to the tasker.
-// `override` is an optional parameter. If provided, it should be a single value
-// that can be a JSON string or any data type that can be marshaled to JSON.
-// If multiple values are provided, only the first one will be used.
-func (t *Tasker) PostAction(entry string, override ...any) *TaskJob {
-	return t.handleOverride(entry, t.postAction, override...)
-}
-
 // status returns the status of a task identified by the id.
 func (t *Tasker) status(id int64) Status {
 	return Status(C.MaaTaskerStatus(t.handle, C.int64_t(id)))
