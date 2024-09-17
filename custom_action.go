@@ -17,6 +17,7 @@ extern uint8_t _MaaCustomActionCallbackAgent(
 */
 import "C"
 import (
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"sync/atomic"
 	"unsafe"
 )
@@ -79,7 +80,7 @@ func _MaaCustomActionCallbackAgent(
 	tasker := context.GetTasker()
 	taskDetail := tasker.getTaskDetail(int64(taskId))
 	recognitionDetail := tasker.getRecognitionDetail(int64(recId))
-	curBoxRectBuffer := newRectBufferByHandle(unsafe.Pointer(box))
+	curBoxRectBuffer := buffer.NewRectBufferByHandle(unsafe.Pointer(box))
 
 	ok := action.Run(
 		&Context{handle: ctx},

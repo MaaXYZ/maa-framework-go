@@ -159,7 +159,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 	algorithm := buffer.NewStringBuffer()
 	defer algorithm.Destroy()
 	var hit uint8
-	box := newRectBuffer()
+	box := buffer.NewRectBuffer()
 	defer box.Destroy()
 	detailJson := buffer.NewStringBuffer()
 	defer detailJson.Destroy()

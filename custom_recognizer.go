@@ -100,12 +100,12 @@ func _MaaCustomRecognizerCallbackAgent(
 			CustomRecognizerName:   C.GoString(customRecognizerName),
 			CustomRecognitionParam: C.GoString(customRecognitionParam),
 			Img:                    imgImg,
-			Roi:                    newRectBufferByHandle(unsafe.Pointer(roi)).Get(),
+			Roi:                    buffer.NewRectBufferByHandle(unsafe.Pointer(roi)).Get(),
 		},
 	)
 	if ok {
 		box := ret.Box
-		outBoxRect := newRectBufferByHandle(unsafe.Pointer(outBox))
+		outBoxRect := buffer.NewRectBufferByHandle(unsafe.Pointer(outBox))
 		outBoxRect.Set(box)
 		outDetailString := buffer.NewStringBufferByHandle(unsafe.Pointer(outDetail))
 		outDetailString.Set(ret.Detail)

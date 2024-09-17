@@ -75,7 +75,7 @@ func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetai
 	defer C.free(unsafe.Pointer(cEntry))
 	cOverride := C.CString(override)
 	defer C.free(unsafe.Pointer(cOverride))
-	rectBuf := newRectBuffer()
+	rectBuf := buffer.NewRectBuffer()
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
 	cRecognitionDetail := C.CString(recognitionDetail)
