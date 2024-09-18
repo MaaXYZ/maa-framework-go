@@ -36,7 +36,13 @@ import (
 	"unsafe"
 )
 
-var resourceStore = store.New[uint64]()
+type resourceStoreValue struct {
+	NotificationCallbackID      uint64
+	CustomRecognizersCallbackID map[string]uint64
+	CustomActionsCallbackID     map[string]uint64
+}
+
+var resourceStore = store.New[resourceStoreValue]()
 
 type Resource struct {
 	handle *C.MaaResource
@@ -54,7 +60,11 @@ func NewResource(callback func(msg, detailsJson string)) *Resource {
 	if handle == nil {
 		return nil
 	}
-	resourceStore.Set(unsafe.Pointer(handle), id)
+	resourceStore.Set(unsafe.Pointer(handle), resourceStoreValue{
+		NotificationCallbackID:      id,
+		CustomRecognizersCallbackID: make(map[string]uint64),
+		CustomActionsCallbackID:     make(map[string]uint64),
+	})
 	return &Resource{
 		handle: handle,
 	}
@@ -62,8 +72,8 @@ func NewResource(callback func(msg, detailsJson string)) *Resource {
 
 // Destroy frees the resource.
 func (r *Resource) Destroy() {
-	id := resourceStore.Get(r.Handle())
-	notification.UnregisterCallback(id)
+	value := resourceStore.Get(r.Handle())
+	notification.UnregisterCallback(value.NotificationCallbackID)
 	resourceStore.Del(r.Handle())
 	C.MaaResourceDestroy(r.handle)
 }
@@ -74,7 +84,13 @@ func (r *Resource) Handle() unsafe.Pointer {
 
 // RegisterCustomRecognizer registers a custom recognizer to the resource.
 func (r *Resource) RegisterCustomRecognizer(name string, recognizer CustomRecognizer) bool {
-	id := registerCustomRecognizer(name, recognizer)
+	id := registerCustomRecognizer(recognizer)
+	value := resourceStore.Get(r.Handle())
+	if oldID, ok := value.CustomRecognizersCallbackID[name]; ok {
+		unregisterCustomRecognizer(oldID)
+	}
+	value.CustomRecognizersCallbackID[name] = id
+	resourceStore.Set(r.Handle(), value)
 
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
@@ -92,7 +108,12 @@ func (r *Resource) RegisterCustomRecognizer(name string, recognizer CustomRecogn
 
 // UnregisterCustomRecognizer unregisters a custom recognizer from the resource.
 func (r *Resource) UnregisterCustomRecognizer(name string) bool {
-	unregisterCustomRecognizer(name)
+	value := resourceStore.Get(r.Handle())
+	if id, ok := value.CustomRecognizersCallbackID[name]; ok {
+		unregisterCustomRecognizer(id)
+	} else {
+		return false
+	}
 
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
@@ -103,7 +124,10 @@ func (r *Resource) UnregisterCustomRecognizer(name string) bool {
 
 // ClearCustomRecognizer clears all custom recognizers registered from the resource.
 func (r *Resource) ClearCustomRecognizer() bool {
-	clearCustomRecognizer()
+	value := resourceStore.Get(r.Handle())
+	for _, id := range value.CustomRecognizersCallbackID {
+		unregisterCustomRecognizer(id)
+	}
 
 	got := C.MaaResourceClearCustomRecognizer(r.handle)
 	return got != 0
@@ -111,7 +135,13 @@ func (r *Resource) ClearCustomRecognizer() bool {
 
 // RegisterCustomAction registers a custom action to the resource.
 func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
-	id := registerCustomAction(name, action)
+	id := registerCustomAction(action)
+	value := resourceStore.Get(r.Handle())
+	if oldID, ok := value.CustomActionsCallbackID[name]; ok {
+		unregisterCustomAction(oldID)
+	}
+	value.CustomActionsCallbackID[name] = id
+	resourceStore.Set(r.Handle(), value)
 
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
@@ -129,7 +159,12 @@ func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
 
 // UnregisterCustomAction unregisters a custom action from the resource.
 func (r *Resource) UnregisterCustomAction(name string) bool {
-	unregisterCustomAction(name)
+	value := resourceStore.Get(r.Handle())
+	if id, ok := value.CustomActionsCallbackID[name]; ok {
+		unregisterCustomAction(id)
+	} else {
+		return false
+	}
 
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
@@ -140,7 +175,10 @@ func (r *Resource) UnregisterCustomAction(name string) bool {
 
 // ClearCustomAction clears all custom actions registered from the resource.
 func (r *Resource) ClearCustomAction() bool {
-	clearCustomAction()
+	value := resourceStore.Get(r.Handle())
+	for _, id := range value.CustomActionsCallbackID {
+		unregisterCustomAction(id)
+	}
 
 	got := C.MaaResourceClearCustomAction(r.handle)
 	return got != 0

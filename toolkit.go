@@ -131,17 +131,27 @@ func (t *Toolkit) FindDesktopWindows() []*DesktopWindow {
 	return list
 }
 
-var piSore = make(map[uint64]map[string][]string)
+type piStoreValue struct {
+	CustomRecognizersCallbackID map[string]uint64
+	CustomActionsCallbackID     map[string]uint64
+}
+
+var piStore = make(map[uint64]piStoreValue)
 
 // RegisterPICustomRecognizer registers a custom recognizer.
 func (t *Toolkit) RegisterPICustomRecognizer(instId uint64, name string, recognizer CustomRecognizer) {
+	id := registerCustomRecognizer(recognizer)
+	if _, ok := piStore[instId]; !ok {
+		piStore[instId] = piStoreValue{
+			CustomRecognizersCallbackID: make(map[string]uint64),
+			CustomActionsCallbackID:     make(map[string]uint64),
+		}
+	}
+	piStore[instId].CustomRecognizersCallbackID[name] = id
+
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	id := registerCustomRecognizer(name, recognizer)
-	if _, ok := piSore[instId]; !ok {
-		piSore[instId] = make(map[string][]string)
-	}
-	piSore[instId]["recognizer"] = append(piSore[instId]["recognizer"], name)
+
 	C.MaaToolkitProjectInterfaceRegisterCustomRecognition(
 		C.uint64_t(instId),
 		cName,
@@ -154,13 +164,18 @@ func (t *Toolkit) RegisterPICustomRecognizer(instId uint64, name string, recogni
 
 // RegisterPICustomAction registers a custom action.
 func (t *Toolkit) RegisterPICustomAction(instId uint64, name string, action CustomAction) {
+	id := registerCustomAction(action)
+	if _, ok := piStore[instId]; !ok {
+		piStore[instId] = piStoreValue{
+			CustomRecognizersCallbackID: make(map[string]uint64),
+			CustomActionsCallbackID:     make(map[string]uint64),
+		}
+	}
+	piStore[instId].CustomActionsCallbackID[name] = id
+
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	id := registerCustomAction(name, action)
-	if _, ok := piSore[instId]; !ok {
-		piSore[instId] = make(map[string][]string)
-	}
-	piSore[instId]["action"] = append(piSore[instId]["action"], name)
+
 	C.MaaToolkitProjectInterfaceRegisterCustomAction(
 		C.uint64_t(instId),
 		cName,
@@ -173,15 +188,12 @@ func (t *Toolkit) RegisterPICustomAction(instId uint64, name string, action Cust
 
 // ClearPICustom unregisters all custom recognizers and actions for a given instance.
 func (t *Toolkit) ClearPICustom(instId uint64) {
-	if _, ok := piSore[instId]["recognizer"]; ok {
-		for _, name := range piSore[instId]["recognizer"] {
-			unregisterCustomRecognizer(name)
-		}
+	value := piStore[instId]
+	for _, id := range value.CustomRecognizersCallbackID {
+		unregisterCustomRecognizer(id)
 	}
-	if _, ok := piSore[instId]["action"]; ok {
-		for _, name := range piSore[instId]["action"] {
-			unregisterCustomAction(name)
-		}
+	for _, id := range value.CustomActionsCallbackID {
+		unregisterCustomAction(id)
 	}
 }
 

@@ -23,31 +23,22 @@ import (
 )
 
 var (
-	customActionID       uint64
-	customActionNameToID = make(map[string]uint64)
-	customActionAgents   = make(map[uint64]CustomAction)
+	customActionCallbackID     uint64
+	customActionCallbackAgents = make(map[uint64]CustomAction)
 )
 
-func registerCustomAction(name string, action CustomAction) uint64 {
-	id := atomic.AddUint64(&customActionID, 1)
-	customActionNameToID[name] = id
-	customActionAgents[id] = action
+func registerCustomAction(action CustomAction) uint64 {
+	id := atomic.AddUint64(&customActionCallbackID, 1)
+	customActionCallbackAgents[id] = action
 	return id
 }
 
-func unregisterCustomAction(name string) bool {
-	id, ok := customActionNameToID[name]
-	if !ok {
+func unregisterCustomAction(id uint64) bool {
+	if _, ok := customActionCallbackAgents[id]; !ok {
 		return false
 	}
-	delete(customActionNameToID, name)
-	delete(customActionAgents, id)
-	return ok
-}
-
-func clearCustomAction() {
-	customActionNameToID = make(map[string]uint64)
-	customActionAgents = make(map[uint64]CustomAction)
+	delete(customActionCallbackAgents, id)
+	return true
 }
 
 type CustomActionArg struct {
@@ -75,7 +66,7 @@ func _MaaCustomActionCallbackAgent(
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(actionArg))
-	action := customActionAgents[id]
+	action := customActionCallbackAgents[id]
 	context := &Context{handle: ctx}
 	tasker := context.GetTasker()
 	taskDetail := tasker.getTaskDetail(int64(taskId))

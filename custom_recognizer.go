@@ -27,30 +27,21 @@ import (
 
 var (
 	customRecognizerCallbackID     uint64
-	customRecognizerNameToID       = make(map[string]uint64)
 	customRecognizerCallbackAgents = make(map[uint64]CustomRecognizer)
 )
 
-func registerCustomRecognizer(name string, recognizer CustomRecognizer) uint64 {
+func registerCustomRecognizer(recognizer CustomRecognizer) uint64 {
 	id := atomic.AddUint64(&customRecognizerCallbackID, 1)
-	customRecognizerNameToID[name] = id
 	customRecognizerCallbackAgents[id] = recognizer
 	return id
 }
 
-func unregisterCustomRecognizer(name string) bool {
-	id, ok := customRecognizerNameToID[name]
-	if !ok {
+func unregisterCustomRecognizer(id uint64) bool {
+	if _, ok := customRecognizerCallbackAgents[id]; !ok {
 		return false
 	}
-	delete(customRecognizerNameToID, name)
 	delete(customRecognizerCallbackAgents, id)
-	return ok
-}
-
-func clearCustomRecognizer() {
-	customRecognizerNameToID = make(map[string]uint64)
-	customRecognizerCallbackAgents = make(map[uint64]CustomRecognizer)
+	return true
 }
 
 type CustomRecognizerArg struct {
