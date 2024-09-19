@@ -152,7 +152,7 @@ func main() {
 
 ### 自定义识别器
 
-有关详细信息，请参阅 [custom-recognizer](examples/custom-recognizer)。
+有关详细信息，请参阅 [custom-recognition](examples/custom-recognition)。
 
 以下是一个实现自定义识别器的基本示例：
 
@@ -194,7 +194,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	res.RegisterCustomRecognizer("MyRec", &MyRec{})
+	res.RegisterCustomRecognition("MyRec", &MyRec{})
 
 	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
 	fmt.Println(detail)
@@ -202,7 +202,7 @@ func main() {
 
 type MyRec struct{}
 
-func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognizerArg) (maa.CustomRecognizerResult, bool) {
+func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (maa.CustomRecognitionResult, bool) {
 	ctx.RunRecognition("MyCustomOCR", arg.Img, maa.J{
 		"MyCustomOCR": maa.J{
 			"roi": []int{100, 100, 200, 300},
@@ -228,7 +228,7 @@ func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognizerArg) (maa.CustomR
 
 	ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
 
-	return maa.CustomRecognizerResult{
+	return maa.CustomRecognitionResult{
 		Box:    maa.Rect{0, 0, 100, 100},
 		Detail: "Hello World!",
 	}, true
