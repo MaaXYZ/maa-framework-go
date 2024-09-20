@@ -199,7 +199,6 @@ type NodeDetail struct {
 	ID           int64
 	Name         string
 	Recognition  *RecognitionDetail
-	Times        uint64
 	RunCompleted bool
 }
 
@@ -208,14 +207,12 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId int64
-	var times uint64
 	var runCompleted uint8
 	got := C.MaaTaskerGetNodeDetail(
 		t.handle,
 		C.int64_t(nodeId),
 		(*C.MaaStringBuffer)(name.Handle()),
 		(*C.int64_t)(unsafe.Pointer(&recId)),
-		(*C.uint64_t)(unsafe.Pointer(&times)),
 		(*C.uint8_t)(unsafe.Pointer(&runCompleted)),
 	)
 	if got == 0 {
@@ -231,7 +228,6 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 		ID:           nodeId,
 		Name:         name.Get(),
 		Recognition:  recognitionDetail,
-		Times:        times,
 		RunCompleted: runCompleted != 0,
 	}
 }
