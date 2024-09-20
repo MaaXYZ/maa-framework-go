@@ -30,7 +30,6 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/internal/notification"
 	"unsafe"
 )
 
@@ -198,7 +197,7 @@ func (t *Toolkit) ClearPICustom(instId uint64) {
 }
 
 // RunCli runs the PI CLI.
-func (t *Toolkit) RunCli(instId uint64, resourcePath, userPath string, directly bool, callback func(msg, detailsJson string)) bool {
+func (t *Toolkit) RunCli(instId uint64, resourcePath, userPath string, directly bool, notify Notification) bool {
 	cResourcePath := C.CString(resourcePath)
 	defer C.free(unsafe.Pointer(cResourcePath))
 	cUserPath := C.CString(userPath)
@@ -207,7 +206,7 @@ func (t *Toolkit) RunCli(instId uint64, resourcePath, userPath string, directly 
 	if directly {
 		cDirectly = 1
 	}
-	id := notification.RegisterCallback(callback)
+	id := registerNotificationCallback(notify)
 	got := C.MaaToolkitProjectInterfaceRunCli(
 		C.uint64_t(instId),
 		cResourcePath,

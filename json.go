@@ -13,3 +13,11 @@ func toJSON(v any) (string, error) {
 	}
 	return string(data), nil
 }
+
+func formJSON(data []byte, v any) error {
+	err := json.Unmarshal(data, v)
+	if err != nil {
+		return err
+	}
+	return nil
+}

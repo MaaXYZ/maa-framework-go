@@ -31,7 +31,6 @@ extern uint8_t _MaaCustomActionCallbackAgent(
 import "C"
 import (
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/internal/notification"
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"unsafe"
 )
@@ -49,8 +48,8 @@ type Resource struct {
 }
 
 // NewResource creates a new resource.
-func NewResource(callback func(msg, detailsJson string)) *Resource {
-	id := notification.RegisterCallback(callback)
+func NewResource(notify Notification) *Resource {
+	id := registerNotificationCallback(notify)
 	handle := C.MaaResourceCreate(
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
@@ -73,7 +72,7 @@ func NewResource(callback func(msg, detailsJson string)) *Resource {
 // Destroy frees the resource.
 func (r *Resource) Destroy() {
 	value := resourceStore.Get(r.Handle())
-	notification.UnregisterCallback(value.NotificationCallbackID)
+	unregisterNotificationCallback(value.NotificationCallbackID)
 	resourceStore.Del(r.Handle())
 	C.MaaResourceDestroy(r.handle)
 }

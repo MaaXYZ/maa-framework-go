@@ -9,7 +9,6 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 import "C"
 import (
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/internal/notification"
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"image"
 	"time"
@@ -23,8 +22,8 @@ type Tasker struct {
 }
 
 // NewTasker creates an new tasker.
-func NewTasker(callback func(msg, detailsJson string)) *Tasker {
-	id := notification.RegisterCallback(callback)
+func NewTasker(notify Notification) *Tasker {
+	id := registerNotificationCallback(notify)
 	handle := C.MaaTaskerCreate(
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
@@ -41,7 +40,7 @@ func NewTasker(callback func(msg, detailsJson string)) *Tasker {
 // Destroy free the tasker.
 func (t *Tasker) Destroy() {
 	id := taskerStore.Get(t.Handle())
-	notification.UnregisterCallback(id)
+	unregisterNotificationCallback(id)
 	taskerStore.Del(t.Handle())
 	C.MaaTaskerDestroy(t.handle)
 }
