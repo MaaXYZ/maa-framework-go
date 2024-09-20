@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func createTasker(t *testing.T) *Tasker {
-	tasker := NewTasker(nil)
+func createTasker(t *testing.T, notify Notification) *Tasker {
+	tasker := NewTasker(notify)
 	require.NotNil(t, tasker)
 	return tasker
 }

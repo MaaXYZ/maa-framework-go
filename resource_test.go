@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func createResource(t *testing.T) *Resource {
-	res := NewResource(nil)
+func createResource(t *testing.T, notify Notification) *Resource {
+	res := NewResource(notify)
 	require.NotNil(t, res)
 	return res
 }

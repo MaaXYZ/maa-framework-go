@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func createDbgController(t *testing.T) Controller {
+func createDbgController(t *testing.T, notify Notification) Controller {
 	testingPath := "./test/data_set/PipelineSmoking/Screenshot"
 	resultPath := "./test/data_set/debug"
 
