@@ -297,7 +297,7 @@ func TestResource_GetHash(t *testing.T) {
 	require.True(t, isPathSet)
 	hash, ok := res.GetHash()
 	require.True(t, ok)
-	require.NotEmpty(t, hash)
+	require.NotEqual(t, "0", hash)
 }
 
 func TestResource_GetTaskList(t *testing.T) {
