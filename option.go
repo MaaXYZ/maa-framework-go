@@ -40,14 +40,17 @@ const (
 	// value: bool, eg: true; val_size: sizeof(bool)
 	GlobalOptionShowHitDraw
 
-	// GlobalOptionDebugMessage Whether to callback debug message
+	// GlobalOptionDebugMode Whether to debug
 	//
 	// value: bool, eg: true; val_size: sizeof(bool)
-	GlobalOptionDebugMessage
+	GlobalOptionDebugMode
 )
 
 // SetLogDir sets the log directory.
 func SetLogDir(path string) bool {
+	if path == "" {
+		return false
+	}
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 	return C.MaaSetGlobalOption(C.int32_t(GlobalOptionLogDir), C.MaaOptionValue(cPath), C.uint64_t(len(path))) != 0
@@ -99,11 +102,11 @@ func SetShowHitDraw(enabled bool) bool {
 	return C.MaaSetGlobalOption(C.int32_t(GlobalOptionShowHitDraw), C.MaaOptionValue(unsafe.Pointer(&cEnabled)), C.uint64_t(unsafe.Sizeof(cEnabled))) != 0
 }
 
-// SetDebugMessage sets whether to callback debug message.
-func SetDebugMessage(enabled bool) bool {
+// SetDebugMode sets whether to enable debug mode.
+func SetDebugMode(enabled bool) bool {
 	var cEnabled uint8
 	if enabled {
 		cEnabled = 1
 	}
-	return C.MaaSetGlobalOption(C.int32_t(GlobalOptionDebugMessage), C.MaaOptionValue(unsafe.Pointer(&cEnabled)), C.uint64_t(unsafe.Sizeof(cEnabled))) != 0
+	return C.MaaSetGlobalOption(C.int32_t(GlobalOptionDebugMode), C.MaaOptionValue(unsafe.Pointer(&cEnabled)), C.uint64_t(unsafe.Sizeof(cEnabled))) != 0
 }

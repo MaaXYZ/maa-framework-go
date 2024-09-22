@@ -9,9 +9,9 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 import "C"
 import (
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/internal/notification"
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"image"
+	"time"
 	"unsafe"
 )
 
@@ -26,7 +26,7 @@ type Controller interface {
 
 	PostConnect() *Job
 	PostClick(x, y int32) *Job
-	PostSwipe(x1, y1, x2, y2, duration int32) *Job
+	PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job
 	PostPressKey(keycode int32) *Job
 	PostInputText(text string) *Job
 	PostStartApp(intent string) *Job
@@ -99,7 +99,7 @@ func NewAdbController(
 	screencapMethod AdbScreencapMethod,
 	inputMethod AdbInputMethod,
 	config, agentPath string,
-	callback func(msg, detailsJson string),
+	notify Notification,
 ) Controller {
 	cAdbPath := C.CString(adbPath)
 	cAddress := C.CString(address)
@@ -112,7 +112,7 @@ func NewAdbController(
 		C.free(unsafe.Pointer(cAgentPath))
 	}()
 
-	id := notification.RegisterCallback(callback)
+	id := registerNotificationCallback(notify)
 	handle := C.MaaAdbControllerCreate(
 		cAdbPath,
 		cAddress,
@@ -164,9 +164,9 @@ func NewWin32Controller(
 	hWnd unsafe.Pointer,
 	screencapMethod Win32ScreencapMethod,
 	inputMethod Win32InputMethod,
-	callback func(msg, detailsJson string),
+	notify Notification,
 ) Controller {
-	id := notification.RegisterCallback(callback)
+	id := registerNotificationCallback(notify)
 	handle := C.MaaWin32ControllerCreate(
 		hWnd,
 		C.uint64_t(screencapMethod),
@@ -202,7 +202,7 @@ func NewDbgController(
 	readPath, writePath string,
 	dbgCtrlType DbgControllerType,
 	config string,
-	callback func(msg, detailsJson string),
+	notify Notification,
 ) Controller {
 	cReadPath := C.CString(readPath)
 	cWritePath := C.CString(writePath)
@@ -213,7 +213,7 @@ func NewDbgController(
 		C.free(unsafe.Pointer(cConfig))
 	}()
 
-	id := notification.RegisterCallback(callback)
+	id := registerNotificationCallback(notify)
 	handle := C.MaaDbgControllerCreate(
 		cReadPath,
 		cWritePath,
@@ -236,10 +236,10 @@ func NewDbgController(
 // NewCustomController creates a custom controller instance.
 func NewCustomController(
 	ctrl CustomController,
-	callback func(msg, detailsJson string),
+	notify Notification,
 ) Controller {
 	ctrlID := registerCustomControllerCallbacks(ctrl)
-	cbID := notification.RegisterCallback(callback)
+	notifyID := registerNotificationCallback(notify)
 	handle := C.MaaCustomControllerCreate(
 		(*C.MaaCustomControllerCallbacks)(ctrl.Handle()),
 		// Here, we are simply passing the uint64 value as a pointer
@@ -248,13 +248,13 @@ func NewCustomController(
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(cbID)),
+		unsafe.Pointer(uintptr(notifyID)),
 	)
 	if handle == nil {
 		return nil
 	}
 	controllerStore.Set(unsafe.Pointer(handle), controllerStoreValue{
-		NotificationCallbackID:      cbID,
+		NotificationCallbackID:      notifyID,
 		CustomControllerCallbacksID: ctrlID,
 	})
 	return &controller{handle: handle}
@@ -263,7 +263,7 @@ func NewCustomController(
 // Destroy frees the controller instance.
 func (c *controller) Destroy() {
 	value := controllerStore.Get(c.Handle())
-	notification.UnregisterCallback(value.NotificationCallbackID)
+	unregisterNotificationCallback(value.NotificationCallbackID)
 	unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
 	controllerStore.Del(c.Handle())
 	C.MaaControllerDestroy(c.handle)
@@ -353,8 +353,15 @@ func (c *controller) PostClick(x, y int32) *Job {
 }
 
 // PostSwipe posts a swipe.
-func (c *controller) PostSwipe(x1, y1, x2, y2, duration int32) *Job {
-	id := int64(C.MaaControllerPostSwipe(c.handle, C.int32_t(x1), C.int32_t(y1), C.int32_t(x2), C.int32_t(y2), C.int32_t(duration)))
+func (c *controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job {
+	id := int64(C.MaaControllerPostSwipe(
+		c.handle,
+		C.int32_t(x1),
+		C.int32_t(y1),
+		C.int32_t(x2),
+		C.int32_t(y2),
+		C.int32_t(duration.Milliseconds()),
+	))
 	return NewJob(id, c.status, c.wait)
 }
 
@@ -439,7 +446,7 @@ func (c *controller) CacheImage() image.Image {
 		return nil
 	}
 
-	img := imgBuffer.GetByRawData()
+	img := imgBuffer.Get()
 
 	return img
 }

@@ -6,7 +6,7 @@ package maa
 
 extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
 
-extern uint8_t _MaaCustomRecognizerCallbackAgent(
+extern uint8_t _MaaCustomRecognitionCallbackAgent(
 	MaaContext* ctx,
 	int64_t task_id,
 	const char* current_task_name,
@@ -31,7 +31,6 @@ extern uint8_t _MaaCustomActionCallbackAgent(
 import "C"
 import (
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/internal/notification"
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"unsafe"
 )
@@ -49,8 +48,8 @@ type Resource struct {
 }
 
 // NewResource creates a new resource.
-func NewResource(callback func(msg, detailsJson string)) *Resource {
-	id := notification.RegisterCallback(callback)
+func NewResource(notify Notification) *Resource {
+	id := registerNotificationCallback(notify)
 	handle := C.MaaResourceCreate(
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
@@ -73,7 +72,7 @@ func NewResource(callback func(msg, detailsJson string)) *Resource {
 // Destroy frees the resource.
 func (r *Resource) Destroy() {
 	value := resourceStore.Get(r.Handle())
-	notification.UnregisterCallback(value.NotificationCallbackID)
+	unregisterNotificationCallback(value.NotificationCallbackID)
 	resourceStore.Del(r.Handle())
 	C.MaaResourceDestroy(r.handle)
 }
@@ -82,12 +81,12 @@ func (r *Resource) Handle() unsafe.Pointer {
 	return unsafe.Pointer(r.handle)
 }
 
-// RegisterCustomRecognizer registers a custom recognizer to the resource.
-func (r *Resource) RegisterCustomRecognizer(name string, recognizer CustomRecognizer) bool {
-	id := registerCustomRecognizer(recognizer)
+// RegisterCustomRecognition registers a custom recognition to the resource.
+func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognition) bool {
+	id := registerCustomRecognition(recognition)
 	value := resourceStore.Get(r.Handle())
 	if oldID, ok := value.CustomRecognizersCallbackID[name]; ok {
-		unregisterCustomRecognizer(oldID)
+		unregisterCustomRecognition(oldID)
 	}
 	value.CustomRecognizersCallbackID[name] = id
 	resourceStore.Set(r.Handle(), value)
@@ -95,10 +94,10 @@ func (r *Resource) RegisterCustomRecognizer(name string, recognizer CustomRecogn
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 
-	got := C.MaaResourceRegisterCustomRecognizer(
+	got := C.MaaResourceRegisterCustomRecognition(
 		r.handle,
 		cName,
-		C.MaaCustomRecognizerCallback(C._MaaCustomRecognizerCallbackAgent),
+		C.MaaCustomRecognitionCallback(C._MaaCustomRecognitionCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
@@ -106,11 +105,11 @@ func (r *Resource) RegisterCustomRecognizer(name string, recognizer CustomRecogn
 	return got != 0
 }
 
-// UnregisterCustomRecognizer unregisters a custom recognizer from the resource.
-func (r *Resource) UnregisterCustomRecognizer(name string) bool {
+// UnregisterCustomRecognition unregisters a custom recognition from the resource.
+func (r *Resource) UnregisterCustomRecognition(name string) bool {
 	value := resourceStore.Get(r.Handle())
 	if id, ok := value.CustomRecognizersCallbackID[name]; ok {
-		unregisterCustomRecognizer(id)
+		unregisterCustomRecognition(id)
 	} else {
 		return false
 	}
@@ -118,18 +117,18 @@ func (r *Resource) UnregisterCustomRecognizer(name string) bool {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 
-	got := C.MaaResourceUnregisterCustomRecognizer(r.handle, cName)
+	got := C.MaaResourceUnregisterCustomRecognition(r.handle, cName)
 	return got != 0
 }
 
-// ClearCustomRecognizer clears all custom recognizers registered from the resource.
-func (r *Resource) ClearCustomRecognizer() bool {
+// ClearCustomRecognition clears all custom recognitions registered from the resource.
+func (r *Resource) ClearCustomRecognition() bool {
 	value := resourceStore.Get(r.Handle())
 	for _, id := range value.CustomRecognizersCallbackID {
-		unregisterCustomRecognizer(id)
+		unregisterCustomRecognition(id)
 	}
 
-	got := C.MaaResourceClearCustomRecognizer(r.handle)
+	got := C.MaaResourceClearCustomRecognition(r.handle)
 	return got != 0
 }
 

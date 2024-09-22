@@ -13,6 +13,9 @@ type StringBuffer struct {
 
 func NewStringBuffer() *StringBuffer {
 	handle := C.MaaStringBufferCreate()
+	if handle == nil {
+		return nil
+	}
 	return &StringBuffer{
 		handle: handle,
 	}

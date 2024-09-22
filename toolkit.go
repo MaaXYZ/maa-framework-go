@@ -4,7 +4,7 @@ package maa
 #include <stdlib.h>
 #include <MaaToolkit/MaaToolkitAPI.h>
 
-extern uint8_t _MaaCustomRecognizerCallbackAgent(
+extern uint8_t _MaaCustomRecognitionCallbackAgent(
 	MaaContext* ctx,
 	int64_t task_id,
 	const char* current_task_name,
@@ -30,7 +30,6 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/internal/notification"
 	"unsafe"
 )
 
@@ -138,9 +137,9 @@ type piStoreValue struct {
 
 var piStore = make(map[uint64]piStoreValue)
 
-// RegisterPICustomRecognizer registers a custom recognizer.
-func (t *Toolkit) RegisterPICustomRecognizer(instId uint64, name string, recognizer CustomRecognizer) {
-	id := registerCustomRecognizer(recognizer)
+// RegisterPICustomRecognition registers a custom recognizer.
+func (t *Toolkit) RegisterPICustomRecognition(instId uint64, name string, recognition CustomRecognition) {
+	id := registerCustomRecognition(recognition)
 	if _, ok := piStore[instId]; !ok {
 		piStore[instId] = piStoreValue{
 			CustomRecognizersCallbackID: make(map[string]uint64),
@@ -155,7 +154,7 @@ func (t *Toolkit) RegisterPICustomRecognizer(instId uint64, name string, recogni
 	C.MaaToolkitProjectInterfaceRegisterCustomRecognition(
 		C.uint64_t(instId),
 		cName,
-		C.MaaCustomRecognizerCallback(C._MaaCustomRecognizerCallbackAgent),
+		C.MaaCustomRecognitionCallback(C._MaaCustomRecognitionCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
@@ -186,11 +185,11 @@ func (t *Toolkit) RegisterPICustomAction(instId uint64, name string, action Cust
 	)
 }
 
-// ClearPICustom unregisters all custom recognizers and actions for a given instance.
+// ClearPICustom unregisters all custom recognitions and actions for a given instance.
 func (t *Toolkit) ClearPICustom(instId uint64) {
 	value := piStore[instId]
 	for _, id := range value.CustomRecognizersCallbackID {
-		unregisterCustomRecognizer(id)
+		unregisterCustomRecognition(id)
 	}
 	for _, id := range value.CustomActionsCallbackID {
 		unregisterCustomAction(id)
@@ -198,7 +197,7 @@ func (t *Toolkit) ClearPICustom(instId uint64) {
 }
 
 // RunCli runs the PI CLI.
-func (t *Toolkit) RunCli(instId uint64, resourcePath, userPath string, directly bool, callback func(msg, detailsJson string)) bool {
+func (t *Toolkit) RunCli(instId uint64, resourcePath, userPath string, directly bool, notify Notification) bool {
 	cResourcePath := C.CString(resourcePath)
 	defer C.free(unsafe.Pointer(cResourcePath))
 	cUserPath := C.CString(userPath)
@@ -207,7 +206,7 @@ func (t *Toolkit) RunCli(instId uint64, resourcePath, userPath string, directly 
 	if directly {
 		cDirectly = 1
 	}
-	id := notification.RegisterCallback(callback)
+	id := registerNotificationCallback(notify)
 	got := C.MaaToolkitProjectInterfaceRunCli(
 		C.uint64_t(instId),
 		cResourcePath,

@@ -2,6 +2,8 @@ name: test
 
 on:
   push:
+    tags:
+      - "v*"
     branches:
       - "**"
 
@@ -9,7 +11,12 @@ on:
     branches:
       - "**"
 
+  workflow_dispatch:
+
 jobs:
+  meta:
+    uses: ./.github/workflows/meta.yml
+
   windows:
     runs-on: windows-latest
     strategy:
@@ -174,3 +181,14 @@ jobs:
         with:
           name: MAA-macos-${{ matrix.arch }}-full_log
           path: "test/debug"
+
+  release:
+    if: ${{ needs.meta.outputs.is_release == 'true' }}
+    needs: [meta, windows, ubuntu, macos]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.meta.outputs.tag }}

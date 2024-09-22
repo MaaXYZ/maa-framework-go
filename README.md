@@ -12,8 +12,8 @@
 	<a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go">
 		<img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
 	</a>
-    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v2.0.0-beta.1">
-        <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v2.0.0--beta.1-blue">
+    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v2.0.0">
+        <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v2.0.0-blue">
     </a>
 </p>
 
@@ -97,7 +97,7 @@ Replace `[path to maafw include directory]` with the actual path to the MaaFrame
 ## Examples
 
 - [Quirk Start](#quirk-start)
-- [Custom Recognizer](#custom-recognizer)
+- [Custom Recognition](#custom-recognition)
 - [Custom Action](#custom-action)
 - [PI CLI](#pi-cli)
 
@@ -140,7 +140,7 @@ func main() {
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
 	tasker.BindResource(res)
-	if tasker.Inited() {
+	if tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
@@ -151,11 +151,11 @@ func main() {
 
 ```
 
-### Custom Recognizer
+### Custom Recognition
 
-See [custom-recognizer](examples/custom-recognizer) for details.
+See [custom-recognition](examples/custom-recognition) for details.
 
-Here is a basic example to implement your custom recognizer:
+Here is a basic example to implement your custom recognition:
 
 ```go
 package main
@@ -190,12 +190,12 @@ func main() {
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
 	tasker.BindResource(res)
-	if tasker.Inited() {
+	if tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
 
-	res.RegisterCustomRecognizer("MyRec", &MyRec{})
+	res.RegisterCustomRecognition("MyRec", &MyRec{})
 
 	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
 	fmt.Println(detail)
@@ -203,7 +203,7 @@ func main() {
 
 type MyRec struct{}
 
-func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognizerArg) (maa.CustomRecognizerResult, bool) {
+func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (maa.CustomRecognitionResult, bool) {
 	ctx.RunRecognition("MyCustomOCR", arg.Img, maa.J{
 		"MyCustomOCR": maa.J{
 			"roi": []int{100, 100, 200, 300},
@@ -229,7 +229,7 @@ func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognizerArg) (maa.CustomR
 
 	ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
 
-	return maa.CustomRecognizerResult{
+	return maa.CustomRecognitionResult{
 		Box:    maa.Rect{0, 0, 100, 100},
 		Detail: "Hello World!",
 	}, true
@@ -276,7 +276,7 @@ func main() {
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
 	tasker.BindResource(res)
-	if tasker.Inited() {
+	if tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
@@ -289,7 +289,7 @@ func main() {
 
 type MyAct struct{}
 
-func (a *MyAct) Run(_ *maa.Context, arg *maa.CustomActionArg) bool {
+func (a *MyAct) Run(_ *maa.Context, _ *maa.CustomActionArg) bool {
 	return true
 }
 

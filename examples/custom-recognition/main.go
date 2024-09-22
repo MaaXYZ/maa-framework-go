@@ -30,12 +30,12 @@ func main() {
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
 	tasker.BindResource(res)
-	if tasker.Inited() {
+	if tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
 
-	res.RegisterCustomRecognizer("MyRec", &MyRec{})
+	res.RegisterCustomRecognition("MyRec", &MyRec{})
 
 	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
 	fmt.Println(detail)
@@ -43,7 +43,7 @@ func main() {
 
 type MyRec struct{}
 
-func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognizerArg) (maa.CustomRecognizerResult, bool) {
+func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (maa.CustomRecognitionResult, bool) {
 	ctx.RunRecognition("MyCustomOCR", arg.Img, maa.J{
 		"MyCustomOCR": maa.J{
 			"roi": []int{100, 100, 200, 300},
@@ -69,7 +69,7 @@ func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognizerArg) (maa.CustomR
 
 	ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
 
-	return maa.CustomRecognizerResult{
+	return maa.CustomRecognitionResult{
 		Box:    maa.Rect{0, 0, 100, 100},
 		Detail: "Hello World!",
 	}, true

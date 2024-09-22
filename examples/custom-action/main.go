@@ -30,7 +30,7 @@ func main() {
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
 	tasker.BindResource(res)
-	if tasker.Inited() {
+	if tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
@@ -43,6 +43,6 @@ func main() {
 
 type MyAct struct{}
 
-func (a *MyAct) Run(_ *maa.Context, arg *maa.CustomActionArg) bool {
+func (a *MyAct) Run(_ *maa.Context, _ *maa.CustomActionArg) bool {
 	return true
 }

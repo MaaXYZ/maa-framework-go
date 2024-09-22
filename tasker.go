@@ -9,10 +9,8 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 import "C"
 import (
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/internal/notification"
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"image"
-	"time"
 	"unsafe"
 )
 
@@ -23,8 +21,8 @@ type Tasker struct {
 }
 
 // NewTasker creates an new tasker.
-func NewTasker(callback func(msg, detailsJson string)) *Tasker {
-	id := notification.RegisterCallback(callback)
+func NewTasker(notify Notification) *Tasker {
+	id := registerNotificationCallback(notify)
 	handle := C.MaaTaskerCreate(
 		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
 		// Here, we are simply passing the uint64 value as a pointer
@@ -41,7 +39,7 @@ func NewTasker(callback func(msg, detailsJson string)) *Tasker {
 // Destroy free the tasker.
 func (t *Tasker) Destroy() {
 	id := taskerStore.Get(t.Handle())
-	notification.UnregisterCallback(id)
+	unregisterNotificationCallback(id)
 	taskerStore.Del(t.Handle())
 	C.MaaTaskerDestroy(t.handle)
 }
@@ -61,8 +59,8 @@ func (t *Tasker) BindController(ctrl Controller) bool {
 	return C.MaaTaskerBindController(t.handle, (*C.MaaController)(ctrl.Handle())) != 0
 }
 
-// Inited checks if the tasker is initialized.
-func (t *Tasker) Inited() bool {
+// Initialized checks if the tasker is initialized.
+func (t *Tasker) Initialized() bool {
 	return C.MaaTaskerInited(t.handle) != 0
 }
 
@@ -106,13 +104,6 @@ func (t *Tasker) status(id int64) Status {
 // wait waits until the task is complete and returns the status of the completed task identified by the id.
 func (t *Tasker) wait(id int64) Status {
 	return Status(C.MaaTaskerWait(t.handle, C.int64_t(id)))
-}
-
-// WaitAll waits for all tasks to complete.
-func (t *Tasker) WaitAll() {
-	for t.Running() {
-		time.Sleep(time.Millisecond * 10)
-	}
 }
 
 // Running checks if the instance running.
@@ -182,7 +173,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 		return nil
 	}
 
-	rawImg := raw.GetByRawData()
+	rawImg := raw.Get()
 	DrawImages := draws.GetAll()
 
 	return &RecognitionDetail{
@@ -200,7 +191,6 @@ type NodeDetail struct {
 	ID           int64
 	Name         string
 	Recognition  *RecognitionDetail
-	Times        uint64
 	RunCompleted bool
 }
 
@@ -209,14 +199,12 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId int64
-	var times uint64
 	var runCompleted uint8
 	got := C.MaaTaskerGetNodeDetail(
 		t.handle,
 		C.int64_t(nodeId),
 		(*C.MaaStringBuffer)(name.Handle()),
 		(*C.int64_t)(unsafe.Pointer(&recId)),
-		(*C.uint64_t)(unsafe.Pointer(&times)),
 		(*C.uint8_t)(unsafe.Pointer(&runCompleted)),
 	)
 	if got == 0 {
@@ -232,7 +220,6 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 		ID:           nodeId,
 		Name:         name.Get(),
 		Recognition:  recognitionDetail,
-		Times:        times,
 		RunCompleted: runCompleted != 0,
 	}
 }

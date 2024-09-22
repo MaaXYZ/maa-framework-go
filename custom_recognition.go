@@ -5,7 +5,7 @@ package maa
 #include <MaaFramework/MaaAPI.h>
 #include "def.h"
 
-extern uint8_t _MaaCustomRecognizerCallbackAgent(
+extern uint8_t _MaaCustomRecognitionCallbackAgent(
 	MaaContext* ctx,
 	int64_t task_id,
 	const char* current_task_name,
@@ -26,25 +26,25 @@ import (
 )
 
 var (
-	customRecognizerCallbackID     uint64
-	customRecognizerCallbackAgents = make(map[uint64]CustomRecognizer)
+	customRecognitionCallbackID     uint64
+	customRecognitionCallbackAgents = make(map[uint64]CustomRecognition)
 )
 
-func registerCustomRecognizer(recognizer CustomRecognizer) uint64 {
-	id := atomic.AddUint64(&customRecognizerCallbackID, 1)
-	customRecognizerCallbackAgents[id] = recognizer
+func registerCustomRecognition(recognizer CustomRecognition) uint64 {
+	id := atomic.AddUint64(&customRecognitionCallbackID, 1)
+	customRecognitionCallbackAgents[id] = recognizer
 	return id
 }
 
-func unregisterCustomRecognizer(id uint64) bool {
-	if _, ok := customRecognizerCallbackAgents[id]; !ok {
+func unregisterCustomRecognition(id uint64) bool {
+	if _, ok := customRecognitionCallbackAgents[id]; !ok {
 		return false
 	}
-	delete(customRecognizerCallbackAgents, id)
+	delete(customRecognitionCallbackAgents, id)
 	return true
 }
 
-type CustomRecognizerArg struct {
+type CustomRecognitionArg struct {
 	TaskDetail             *TaskDetail
 	CurrentTaskName        string
 	CustomRecognizerName   string
@@ -53,17 +53,17 @@ type CustomRecognizerArg struct {
 	Roi                    Rect
 }
 
-type CustomRecognizer interface {
-	Run(ctx *Context, arg *CustomRecognizerArg) (CustomRecognizerResult, bool)
+type CustomRecognition interface {
+	Run(ctx *Context, arg *CustomRecognitionArg) (CustomRecognitionResult, bool)
 }
 
-type CustomRecognizerResult struct {
+type CustomRecognitionResult struct {
 	Box    Rect
 	Detail string
 }
 
-//export _MaaCustomRecognizerCallbackAgent
-func _MaaCustomRecognizerCallbackAgent(
+//export _MaaCustomRecognitionCallbackAgent
+func _MaaCustomRecognitionCallbackAgent(
 	ctx *C.MaaContext,
 	taskId C.int64_t,
 	currentTaskName, customRecognizerName, customRecognitionParam C.StringView,
@@ -76,16 +76,16 @@ func _MaaCustomRecognizerCallbackAgent(
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(recognizerArg))
-	recognizer := customRecognizerCallbackAgents[id]
+	recognizer := customRecognitionCallbackAgents[id]
 	context := Context{handle: ctx}
 	tasker := context.GetTasker()
 	taskDetail := tasker.getTaskDetail(int64(taskId))
 	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(img))
-	imgImg := imgBuffer.GetByRawData()
+	imgImg := imgBuffer.Get()
 
 	ret, ok := recognizer.Run(
 		&Context{handle: ctx},
-		&CustomRecognizerArg{
+		&CustomRecognitionArg{
 			TaskDetail:             taskDetail,
 			CurrentTaskName:        C.GoString(currentTaskName),
 			CustomRecognizerName:   C.GoString(customRecognizerName),
