@@ -23,6 +23,9 @@ type RectBuffer struct {
 
 func NewRectBuffer() *RectBuffer {
 	handle := C.MaaRectCreate()
+	if handle == nil {
+		return nil
+	}
 	return &RectBuffer{
 		handle: handle,
 	}
