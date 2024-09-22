@@ -289,7 +289,7 @@ func main() {
 
 type MyAct struct{}
 
-func (a *MyAct) Run(_ *maa.Context, arg *maa.CustomActionArg) bool {
+func (a *MyAct) Run(_ *maa.Context, _ *maa.CustomActionArg) bool {
 	return true
 }
 
