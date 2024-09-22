@@ -13,6 +13,9 @@ type StringListBuffer struct {
 
 func NewStringListBuffer() *StringListBuffer {
 	handle := C.MaaStringListBufferCreate()
+	if handle == nil {
+		return nil
+	}
 	return &StringListBuffer{
 		handle: handle,
 	}
