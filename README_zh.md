@@ -139,7 +139,7 @@ func main() {
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
 	tasker.BindResource(res)
-	if tasker.Inited() {
+	if tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
@@ -189,7 +189,7 @@ func main() {
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
 	tasker.BindResource(res)
-	if tasker.Inited() {
+	if tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
@@ -275,7 +275,7 @@ func main() {
 	defer res.Destroy()
 	res.PostPath("./resource").Wait()
 	tasker.BindResource(res)
-	if tasker.Inited() {
+	if tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
