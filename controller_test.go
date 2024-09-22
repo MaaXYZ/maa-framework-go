@@ -3,6 +3,7 @@ package maa
 import (
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 func createDbgController(t *testing.T, notify Notification) Controller {
@@ -77,7 +78,7 @@ func TestController_PostSwipe(t *testing.T) {
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
-	swiped := ctrl.PostSwipe(100, 200, 400, 300, 2000).Wait().Success()
+	swiped := ctrl.PostSwipe(100, 200, 400, 300, 2*time.Second).Wait().Success()
 	require.True(t, swiped)
 }
 

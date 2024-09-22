@@ -11,6 +11,7 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"image"
+	"time"
 	"unsafe"
 )
 
@@ -25,7 +26,7 @@ type Controller interface {
 
 	PostConnect() *Job
 	PostClick(x, y int32) *Job
-	PostSwipe(x1, y1, x2, y2, duration int32) *Job
+	PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job
 	PostPressKey(keycode int32) *Job
 	PostInputText(text string) *Job
 	PostStartApp(intent string) *Job
@@ -352,8 +353,15 @@ func (c *controller) PostClick(x, y int32) *Job {
 }
 
 // PostSwipe posts a swipe.
-func (c *controller) PostSwipe(x1, y1, x2, y2, duration int32) *Job {
-	id := int64(C.MaaControllerPostSwipe(c.handle, C.int32_t(x1), C.int32_t(y1), C.int32_t(x2), C.int32_t(y2), C.int32_t(duration)))
+func (c *controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job {
+	id := int64(C.MaaControllerPostSwipe(
+		c.handle,
+		C.int32_t(x1),
+		C.int32_t(y1),
+		C.int32_t(x2),
+		C.int32_t(y2),
+		C.int32_t(duration.Milliseconds()),
+	))
 	return NewJob(id, c.status, c.wait)
 }
 
