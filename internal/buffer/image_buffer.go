@@ -6,12 +6,9 @@ package buffer
 */
 import "C"
 import (
-	"bytes"
-	"errors"
 	"image"
 	"image/color"
 	"image/draw"
-	"image/png"
 	"unsafe"
 )
 
@@ -21,6 +18,9 @@ type ImageBuffer struct {
 
 func NewImageBuffer() *ImageBuffer {
 	handle := C.MaaImageBufferCreate()
+	if handle == nil {
+		return nil
+	}
 	return &ImageBuffer{
 		handle: handle,
 	}
@@ -137,66 +137,5 @@ func (i *ImageBuffer) setRawData(data unsafe.Pointer, width, height, imageType i
 		C.int32_t(width),
 		C.int32_t(height),
 		C.int32_t(imageType),
-	) != 0
-}
-
-// GetByEncoded retrieves the decoded image from the buffer.
-// It returns the decoded image and an error if the operation was unsuccessful.
-func (i *ImageBuffer) GetByEncoded() (image.Image, error) {
-	encodedData := i.getEncoded()
-	if encodedData == nil {
-		return nil, errors.New("failed to get encoded image data")
-	}
-	dataSize := i.getEncodedSize()
-	if dataSize == 0 {
-		return nil, errors.New("encoded image size is zero")
-	}
-
-	data := C.GoBytes(encodedData, C.int32_t(dataSize))
-	img, err := png.Decode(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-	return img, nil
-}
-
-// SetEncoded encodes the given image and sets it in the buffer.
-// It takes an image.Image as input and returns an error if the operation was unsuccessful.
-func (i *ImageBuffer) SetEncoded(img image.Image) error {
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
-		return err
-	}
-
-	data := buf.Bytes()
-	cData := C.CBytes(data)
-	defer C.free(cData)
-
-	if !i.setEncoded(cData, uint64(len(data))) {
-		return errors.New("failed to set encoded image data")
-	}
-	return nil
-}
-
-// getEncoded retrieves the encoded image data from the buffer.
-// It returns a pointer to the encoded image data.
-func (i *ImageBuffer) getEncoded() unsafe.Pointer {
-	return unsafe.Pointer(C.MaaImageBufferGetEncoded(i.handle))
-}
-
-// getEncodedSize retrieves the size of the encoded image data in the buffer.
-// It returns the size of the encoded image data as an integer.
-func (i *ImageBuffer) getEncodedSize() int32 {
-	return int32(C.MaaImageBufferGetEncodedSize(i.handle))
-}
-
-// setEncoded sets the encoded image data in the buffer.
-// It takes a pointer to the encoded image data and the size of the data.
-// It returns true if the operation was successful, otherwise false.
-func (i *ImageBuffer) setEncoded(data unsafe.Pointer, size uint64) bool {
-	return C.MaaImageBufferSetEncoded(
-		i.handle,
-		C.MaaImageEncodedData(data),
-		C.uint64_t(size),
 	) != 0
 }
