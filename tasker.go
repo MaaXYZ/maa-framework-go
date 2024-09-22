@@ -60,8 +60,8 @@ func (t *Tasker) BindController(ctrl Controller) bool {
 	return C.MaaTaskerBindController(t.handle, (*C.MaaController)(ctrl.Handle())) != 0
 }
 
-// Inited checks if the tasker is initialized.
-func (t *Tasker) Inited() bool {
+// Initialized checks if the tasker is initialized.
+func (t *Tasker) Initialized() bool {
 	return C.MaaTaskerInited(t.handle) != 0
 }
 

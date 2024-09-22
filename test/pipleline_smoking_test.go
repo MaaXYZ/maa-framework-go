@@ -31,7 +31,7 @@ func TestPipelineSmoking(t *testing.T) {
 	isCtrlBound := tasker.BindController(ctrl)
 	require.True(t, isCtrlBound)
 
-	isInitialized := tasker.Inited()
+	isInitialized := tasker.Initialized()
 	require.True(t, isInitialized)
 
 	got := tasker.PostPipeline("Wilderness").Wait().Success()
