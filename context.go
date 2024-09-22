@@ -54,7 +54,7 @@ func (ctx *Context) runRecognition(entry, override string, img image.Image) *Rec
 	cOverride := C.CString(override)
 	defer C.free(unsafe.Pointer(cOverride))
 	imgBuf := buffer.NewImageBuffer()
-	imgBuf.SetRawData(img)
+	imgBuf.Set(img)
 	defer imgBuf.Destroy()
 
 	recId := int64(C.MaaContextRunRecognition(ctx.handle, cEntry, cOverride, (*C.MaaImageBuffer)(imgBuf.Handle())))

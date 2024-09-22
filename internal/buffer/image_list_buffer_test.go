@@ -53,7 +53,7 @@ func TestImageListBuffer_Append(t *testing.T) {
 	img1.SetNRGBA(0, 1, color.NRGBA{R: 0, G: 0, B: 255, A: 255})
 	img1.SetNRGBA(1, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
 
-	got := imageBuffer.SetRawData(img1)
+	got := imageBuffer.Set(img1)
 	require.True(t, got)
 
 	appended := imageListBuffer.Append(imageBuffer)
@@ -81,7 +81,7 @@ func TestImageListBuffer_Remove(t *testing.T) {
 	img.SetNRGBA(0, 1, color.NRGBA{R: 0, G: 0, B: 255, A: 255})
 	img.SetNRGBA(1, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
 
-	got := imageBuffer.SetRawData(img)
+	got := imageBuffer.Set(img)
 	require.True(t, got)
 
 	appended := imageListBuffer.Append(imageBuffer)
@@ -108,7 +108,7 @@ func TestImageListBuffer_Size(t *testing.T) {
 	img1.SetNRGBA(0, 1, color.NRGBA{R: 0, G: 0, B: 255, A: 255})
 	img1.SetNRGBA(1, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
 
-	got := imageBuffer.SetRawData(img1)
+	got := imageBuffer.Set(img1)
 	require.True(t, got)
 
 	appended := imageListBuffer.Append(imageBuffer)
@@ -132,7 +132,7 @@ func TestImageListBuffer_GetAll(t *testing.T) {
 	img1.SetNRGBA(0, 1, color.NRGBA{R: 0, G: 0, B: 255, A: 255})
 	img1.SetNRGBA(1, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
 
-	got := imageBuffer.SetRawData(img1)
+	got := imageBuffer.Set(img1)
 	require.True(t, got)
 
 	appended := imageListBuffer.Append(imageBuffer)

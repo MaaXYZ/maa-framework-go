@@ -176,7 +176,7 @@ func _ScreencapAgent(handleArg unsafe.Pointer, imgBuffer *C.MaaImageBuffer) C.ui
 	img, captured := ctrl.Screencap()
 	if captured {
 		imgImgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(imgBuffer))
-		if ok := imgImgBuffer.SetRawData(img); ok {
+		if ok := imgImgBuffer.Set(img); ok {
 			return C.uint8_t(1)
 		}
 	}

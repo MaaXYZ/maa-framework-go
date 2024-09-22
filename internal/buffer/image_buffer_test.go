@@ -39,7 +39,7 @@ func TestImageBuffer_Clear(t *testing.T) {
 	require.True(t, got)
 }
 
-func TestImageBuffer_SetRawData(t *testing.T) {
+func TestImageBuffer_Set(t *testing.T) {
 	imageBuffer := createImageBuffer(t)
 	defer imageBuffer.Destroy()
 
@@ -50,10 +50,10 @@ func TestImageBuffer_SetRawData(t *testing.T) {
 	img1.SetNRGBA(0, 1, color.NRGBA{R: 0, G: 0, B: 255, A: 255})
 	img1.SetNRGBA(1, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
 
-	got := imageBuffer.SetRawData(img1)
+	got := imageBuffer.Set(img1)
 	require.True(t, got)
 
-	img2 := imageBuffer.GetByRawData()
+	img2 := imageBuffer.Get()
 	require.NotNil(t, img2)
 	require.Equal(t, img1, img2)
 }

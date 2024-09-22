@@ -55,7 +55,7 @@ func (il *ImageListBuffer) Get(index uint64) image.Image {
 	img := &ImageBuffer{
 		handle: handle,
 	}
-	return img.GetByRawData()
+	return img.Get()
 }
 
 func (il *ImageListBuffer) GetAll() []image.Image {

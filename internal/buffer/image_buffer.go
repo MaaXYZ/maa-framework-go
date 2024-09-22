@@ -48,8 +48,8 @@ func (i *ImageBuffer) Clear() bool {
 	return C.MaaImageBufferClear(i.handle) != 0
 }
 
-// GetByRawData retrieves the image from raw data stored in the buffer.
-func (i *ImageBuffer) GetByRawData() image.Image {
+// Get retrieves the image from raw data stored in the buffer.
+func (i *ImageBuffer) Get() image.Image {
 	rawData := i.getRawData()
 	if rawData == nil {
 		return nil
@@ -71,8 +71,8 @@ func (i *ImageBuffer) GetByRawData() image.Image {
 	return img
 }
 
-// SetRawData converts an image.Image to raw data and sets it in the buffer.
-func (i *ImageBuffer) SetRawData(img image.Image) bool {
+// Set converts an image.Image to raw data and sets it in the buffer.
+func (i *ImageBuffer) Set(img image.Image) bool {
 	width := img.Bounds().Dx()
 	height := img.Bounds().Dy()
 	imageType := int32(16) // CV_8UC3

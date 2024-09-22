@@ -173,7 +173,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 		return nil
 	}
 
-	rawImg := raw.GetByRawData()
+	rawImg := raw.Get()
 	DrawImages := draws.GetAll()
 
 	return &RecognitionDetail{

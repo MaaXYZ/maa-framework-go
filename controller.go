@@ -446,7 +446,7 @@ func (c *controller) CacheImage() image.Image {
 		return nil
 	}
 
-	img := imgBuffer.GetByRawData()
+	img := imgBuffer.Get()
 
 	return img
 }

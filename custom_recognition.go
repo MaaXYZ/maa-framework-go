@@ -81,7 +81,7 @@ func _MaaCustomRecognitionCallbackAgent(
 	tasker := context.GetTasker()
 	taskDetail := tasker.getTaskDetail(int64(taskId))
 	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(img))
-	imgImg := imgBuffer.GetByRawData()
+	imgImg := imgBuffer.Get()
 
 	ret, ok := recognizer.Run(
 		&Context{handle: ctx},
