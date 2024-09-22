@@ -11,7 +11,6 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"image"
-	"time"
 	"unsafe"
 )
 
@@ -105,13 +104,6 @@ func (t *Tasker) status(id int64) Status {
 // wait waits until the task is complete and returns the status of the completed task identified by the id.
 func (t *Tasker) wait(id int64) Status {
 	return Status(C.MaaTaskerWait(t.handle, C.int64_t(id)))
-}
-
-// WaitAll waits for all tasks to complete.
-func (t *Tasker) WaitAll() {
-	for t.Running() {
-		time.Sleep(time.Millisecond * 10)
-	}
 }
 
 // Running checks if the instance running.
