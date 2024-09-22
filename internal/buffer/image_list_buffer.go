@@ -16,6 +16,9 @@ type ImageListBuffer struct {
 
 func NewImageListBuffer() *ImageListBuffer {
 	handle := C.MaaImageListBufferCreate()
+	if handle == nil {
+		return nil
+	}
 	return &ImageListBuffer{
 		handle: handle,
 	}
@@ -65,7 +68,7 @@ func (il *ImageListBuffer) GetAll() []image.Image {
 	return images
 }
 
-func (il *ImageListBuffer) Append(value ImageBuffer) bool {
+func (il *ImageListBuffer) Append(value *ImageBuffer) bool {
 	return C.MaaImageListBufferAppend(
 		il.handle,
 		(*C.MaaImageBuffer)(value.Handle()),
