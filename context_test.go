@@ -286,8 +286,10 @@ func TestContext_GetTasker(t *testing.T) {
 	require.True(t, ok)
 
 	got := tasker.PostPipeline("TestContext_GetTasker", J{
-		"action":        "Custom",
-		"custom_action": "TestContext_GetTasker",
+		"TestContext_GetTasker": J{
+			"action":        "Custom",
+			"custom_action": "TestContext_GetTaskerAct",
+		},
 	}).Wait().Success()
 	require.True(t, got)
 }
