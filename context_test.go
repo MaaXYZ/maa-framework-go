@@ -79,7 +79,7 @@ func TestContext_RunRecognition(t *testing.T) {
 	require.True(t, ok)
 
 	got := tasker.PostPipeline("TestContext_RunRecognition", J{
-		"TestContext_RunPipeline": J{
+		"TestContext_RunRecognition": J{
 			"action":        "Custom",
 			"custom_action": "TestContext_RunRecognitionAct",
 		},
