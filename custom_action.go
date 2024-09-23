@@ -81,7 +81,7 @@ func _MaaCustomActionCallbackAgent(
 			CustomActionName:  C.GoString(customActionName),
 			CustomActionParam: C.GoString(customActionParam),
 			RecognitionDetail: recognitionDetail,
-			Box:               curBoxRectBuffer.Get(),
+			Box:               toMaaRect(curBoxRectBuffer.Get()),
 		},
 	)
 	if ok {
