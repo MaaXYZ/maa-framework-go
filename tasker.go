@@ -138,6 +138,7 @@ type RecognitionDetail struct {
 	Name       string
 	Algorithm  string
 	Hit        bool
+	Box        Rect
 	DetailJson string
 	Raw        image.Image
 	Draws      []image.Image
@@ -181,6 +182,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 		Name:       name.Get(),
 		Algorithm:  algorithm.Get(),
 		Hit:        hit != 0,
+		Box:        toMaaRect(box.Get()),
 		DetailJson: detailJson.Get(),
 		Raw:        rawImg,
 		Draws:      DrawImages,
