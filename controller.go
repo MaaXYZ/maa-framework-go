@@ -8,7 +8,6 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"image"
 	"time"
@@ -435,7 +434,7 @@ func (c *controller) Connected() bool {
 
 // CacheImage gets the image buffer of the last screencap request.
 func (c *controller) CacheImage() image.Image {
-	imgBuffer := buffer.NewImageBuffer()
+	imgBuffer := newImageBuffer()
 	defer imgBuffer.Destroy()
 
 	got := C.MaaControllerCachedImage(
@@ -453,7 +452,7 @@ func (c *controller) CacheImage() image.Image {
 
 // GetUUID gets the UUID of the controller.
 func (c *controller) GetUUID() (string, bool) {
-	uuid := buffer.NewStringBuffer()
+	uuid := newStringBuffer()
 	defer uuid.Destroy()
 	got := C.MaaControllerGetUuid(
 		c.handle,

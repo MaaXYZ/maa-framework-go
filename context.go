@@ -6,7 +6,6 @@ package maa
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"image"
 	"unsafe"
 )
@@ -53,7 +52,7 @@ func (ctx *Context) runRecognition(entry, override string, img image.Image) *Rec
 	defer C.free(unsafe.Pointer(cEntry))
 	cOverride := C.CString(override)
 	defer C.free(unsafe.Pointer(cOverride))
-	imgBuf := buffer.NewImageBuffer()
+	imgBuf := newImageBuffer()
 	imgBuf.Set(img)
 	defer imgBuf.Destroy()
 
@@ -75,8 +74,8 @@ func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetai
 	defer C.free(unsafe.Pointer(cEntry))
 	cOverride := C.CString(override)
 	defer C.free(unsafe.Pointer(cOverride))
-	rectBuf := buffer.NewRectBuffer()
-	rectBuf.Set(box.toBufferRect())
+	rectBuf := newRectBuffer()
+	rectBuf.Set(box)
 	defer rectBuf.Destroy()
 	cRecognitionDetail := C.CString(recognitionDetail)
 	defer C.free(unsafe.Pointer(cRecognitionDetail))
@@ -119,12 +118,12 @@ func (ctx *Context) OverridePipeline(override any) bool {
 func (ctx *Context) OverrideNext(name string, nextList []string) bool {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	list := buffer.NewStringListBuffer()
+	list := newStringListBuffer()
 	defer list.Destroy()
 	size := len(nextList)
-	items := make([]*buffer.StringBuffer, size)
+	items := make([]*stringBuffer, size)
 	for i := 0; i < size; i++ {
-		items[i] = buffer.NewStringBuffer()
+		items[i] = newStringBuffer()
 		items[i].Set(nextList[i])
 		list.Append(items[i])
 	}

@@ -19,7 +19,6 @@ extern uint8_t _MaaCustomRecognitionCallbackAgent(
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"image"
 	"sync/atomic"
 	"unsafe"
@@ -80,7 +79,7 @@ func _MaaCustomRecognitionCallbackAgent(
 	context := Context{handle: ctx}
 	tasker := context.GetTasker()
 	taskDetail := tasker.getTaskDetail(int64(taskId))
-	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(img))
+	imgBuffer := newImageBufferByHandle(unsafe.Pointer(img))
 	imgImg := imgBuffer.Get()
 
 	ret, ok := recognizer.Run(
@@ -91,14 +90,14 @@ func _MaaCustomRecognitionCallbackAgent(
 			CustomRecognizerName:   C.GoString(customRecognizerName),
 			CustomRecognitionParam: C.GoString(customRecognitionParam),
 			Img:                    imgImg,
-			Roi:                    toMaaRect(buffer.NewRectBufferByHandle(unsafe.Pointer(roi)).Get()),
+			Roi:                    newRectBufferByHandle(unsafe.Pointer(roi)).Get(),
 		},
 	)
 	if ok {
 		box := ret.Box
-		outBoxRect := buffer.NewRectBufferByHandle(unsafe.Pointer(outBox))
-		outBoxRect.Set(box.toBufferRect())
-		outDetailString := buffer.NewStringBufferByHandle(unsafe.Pointer(outDetail))
+		outBoxRect := newRectBufferByHandle(unsafe.Pointer(outBox))
+		outBoxRect.Set(box)
+		outDetailString := newStringBufferByHandle(unsafe.Pointer(outDetail))
 		outDetailString.Set(ret.Detail)
 		return C.uint8_t(1)
 	}
