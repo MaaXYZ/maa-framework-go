@@ -182,7 +182,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 		Name:       name.Get(),
 		Algorithm:  algorithm.Get(),
 		Hit:        hit != 0,
-		Box:        toMaaRect(box.Get()),
+		Box:        box.Get(),
 		DetailJson: detailJson.Get(),
 		Raw:        rawImg,
 		Draws:      DrawImages,
