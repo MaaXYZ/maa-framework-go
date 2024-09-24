@@ -1,9 +1,5 @@
 package maa
 
-type Rect struct {
-	X, Y, W, H int32
-}
+import "github.com/MaaXYZ/maa-framework-go/internal/buffer"
 
-func (r Rect) ToInts() [4]int32 {
-	return [4]int32{r.X, r.Y, r.W, r.H}
-}
+type Rect = buffer.Rect

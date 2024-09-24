@@ -8,6 +8,7 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 */
 import "C"
 import (
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"image"
 	"unsafe"
@@ -145,18 +146,18 @@ type RecognitionDetail struct {
 
 // getRecognitionDetail queries recognition detail.
 func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
-	name := newStringBuffer()
+	name := buffer.NewStringBuffer()
 	defer name.Destroy()
-	algorithm := newStringBuffer()
+	algorithm := buffer.NewStringBuffer()
 	defer algorithm.Destroy()
 	var hit uint8
-	box := newRectBuffer()
+	box := buffer.NewRectBuffer()
 	defer box.Destroy()
-	detailJson := newStringBuffer()
+	detailJson := buffer.NewStringBuffer()
 	defer detailJson.Destroy()
-	raw := newImageBuffer()
+	raw := buffer.NewImageBuffer()
 	defer raw.Destroy()
-	draws := newImageListBuffer()
+	draws := buffer.NewImageListBuffer()
 	defer draws.Destroy()
 	got := C.MaaTaskerGetRecognitionDetail(
 		t.handle,
@@ -181,7 +182,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 		Name:       name.Get(),
 		Algorithm:  algorithm.Get(),
 		Hit:        hit != 0,
-		Box:        box.Get(),
+		Box:        toMaaRect(box.Get()),
 		DetailJson: detailJson.Get(),
 		Raw:        rawImg,
 		Draws:      DrawImages,
@@ -197,7 +198,7 @@ type NodeDetail struct {
 
 // getNodeDetail queries running detail.
 func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
-	name := newStringBuffer()
+	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId int64
 	var runCompleted uint8
@@ -233,7 +234,7 @@ type TaskDetail struct {
 
 // getTaskDetail queries task detail.
 func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
-	entry := newStringBuffer()
+	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
 	got := C.MaaTaskerGetTaskDetail(t.handle, C.int64_t(taskId), nil, nil, (*C.uint64_t)(unsafe.Pointer(&size)))

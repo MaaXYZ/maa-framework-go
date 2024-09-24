@@ -39,6 +39,7 @@ extern uint8_t _InputText(const char* text, void* handle_arg);
 */
 import "C"
 import (
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"image"
 	"sync/atomic"
 	"unsafe"
@@ -133,7 +134,7 @@ func _RequestUUIDAgent(handleArg unsafe.Pointer, uuidBuffer *C.MaaStringBuffer) 
 	ctrl := customControllerCallbacksAgents[id]
 	uuid, ok := ctrl.RequestUUID()
 	if ok {
-		uuidStrBuffer := newStringBufferByHandle(unsafe.Pointer(uuidBuffer))
+		uuidStrBuffer := buffer.NewStringBufferByHandle(unsafe.Pointer(uuidBuffer))
 		uuidStrBuffer.Set(uuid)
 		return C.uint8_t(1)
 	}
@@ -174,7 +175,7 @@ func _ScreencapAgent(handleArg unsafe.Pointer, imgBuffer *C.MaaImageBuffer) C.ui
 	ctrl := customControllerCallbacksAgents[id]
 	img, captured := ctrl.Screencap()
 	if captured {
-		imgImgBuffer := newImageBufferByHandle(unsafe.Pointer(imgBuffer))
+		imgImgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(imgBuffer))
 		if ok := imgImgBuffer.Set(img); ok {
 			return C.uint8_t(1)
 		}

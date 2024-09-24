@@ -30,6 +30,7 @@ extern uint8_t _MaaCustomActionCallbackAgent(
 */
 import "C"
 import (
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"unsafe"
 )
@@ -212,7 +213,7 @@ func (r *Resource) Loaded() bool {
 
 // GetHash returns the hash of the resource.
 func (r *Resource) GetHash() (string, bool) {
-	hash := newStringBuffer()
+	hash := buffer.NewStringBuffer()
 	defer hash.Destroy()
 
 	got := C.MaaResourceGetHash(r.handle, (*C.MaaStringBuffer)(hash.Handle())) != 0
@@ -224,7 +225,7 @@ func (r *Resource) GetHash() (string, bool) {
 
 // GetTaskList returns the task list of the resource.
 func (r *Resource) GetTaskList() ([]string, bool) {
-	taskList := newStringListBuffer()
+	taskList := buffer.NewStringListBuffer()
 	defer taskList.Destroy()
 
 	got := C.MaaResourceGetTaskList(r.handle, (*C.MaaStringListBuffer)(taskList.Handle())) != 0
