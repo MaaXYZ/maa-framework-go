@@ -81,6 +81,37 @@ func (r *Resource) Handle() unsafe.Pointer {
 	return unsafe.Pointer(r.handle)
 }
 
+type resOption int32
+
+// resOption
+const (
+	resOptionInvalid resOption = 0
+
+	/// Use the specified inference device, the default is INT32_MAX, which means CPU.
+	/// Please set this option before loading the model.
+	///
+	/// value: int32_t, eg: 0; val_size: sizeof(int32_t)
+	resOptionGpuId resOption = 1
+)
+
+func (r *Resource) setOption(key resOption, value unsafe.Pointer, valSize uintptr) bool {
+	return C.MaaResourceSetOption(
+		r.handle,
+		C.int32_t(key),
+		C.MaaOptionValue(value),
+		C.uint64_t(valSize),
+	) != 0
+}
+
+func (r *Resource) SetGpuID(id int) bool {
+	id32 := int32(id)
+	return r.setOption(
+		resOptionGpuId,
+		unsafe.Pointer(&id32),
+		unsafe.Sizeof(id32),
+	)
+}
+
 // RegisterCustomRecognition registers a custom recognition to the resource.
 func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognition) bool {
 	id := registerCustomRecognition(recognition)
