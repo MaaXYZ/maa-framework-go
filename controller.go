@@ -274,29 +274,29 @@ func (c *controller) Handle() unsafe.Pointer {
 	return unsafe.Pointer(c.handle)
 }
 
-type CtrlOption int32
+type ctrlOption int32
 
-// CtrlOption
+// ctrlOption
 const (
-	CtrlOptionInvalid CtrlOption = 0
+	ctrlOptionInvalid ctrlOption = 0
 
-	// CtrlOptionScreenshotTargetLongSide Only one of long and short side can be set, and the other is automatically scaled according
+	// ctrlOptionScreenshotTargetLongSide Only one of long and short side can be set, and the other is automatically scaled according
 	// to the aspect ratio.
-	CtrlOptionScreenshotTargetLongSide CtrlOption = 1
+	ctrlOptionScreenshotTargetLongSide ctrlOption = 1
 
-	// CtrlOptionScreenshotTargetShortSide Only one of long and short side can be set, and the other is automatically scaled according
+	// ctrlOptionScreenshotTargetShortSide Only one of long and short side can be set, and the other is automatically scaled according
 	// to the aspect ratio.
-	CtrlOptionScreenshotTargetShortSide CtrlOption = 2
+	ctrlOptionScreenshotTargetShortSide ctrlOption = 2
 
-	// CtrlOptionRecording Dump all screenshots and actions
+	// ctrlOptionRecording Dump all screenshots and actions
 	//
 	// Recording will evaluate to true if any of this or
 	// MaaGlobalOptionEnum::MaaGlobalOption_Recording is true.
-	CtrlOptionRecording CtrlOption = 5
+	ctrlOptionRecording ctrlOption = 5
 )
 
 // setOption sets options for controller instance.
-func (c *controller) setOption(key CtrlOption, value unsafe.Pointer, valSize uintptr) bool {
+func (c *controller) setOption(key ctrlOption, value unsafe.Pointer, valSize uintptr) bool {
 	return C.MaaControllerSetOption(c.handle, C.int32_t(key), C.MaaOptionValue(value), C.uint64_t(valSize)) != 0
 }
 
@@ -307,7 +307,7 @@ func (c *controller) setOption(key CtrlOption, value unsafe.Pointer, valSize uin
 func (c *controller) SetScreenshotTargetLongSide(targetLongSide int) bool {
 	targetLongSide32 := int32(targetLongSide)
 	return c.setOption(
-		CtrlOptionScreenshotTargetLongSide,
+		ctrlOptionScreenshotTargetLongSide,
 		unsafe.Pointer(&targetLongSide32),
 		unsafe.Sizeof(targetLongSide32),
 	)
@@ -320,7 +320,7 @@ func (c *controller) SetScreenshotTargetLongSide(targetLongSide int) bool {
 func (c *controller) SetScreenshotTargetShortSide(targetShortSide int) bool {
 	targetShortSide32 := int32(targetShortSide)
 	return c.setOption(
-		CtrlOptionScreenshotTargetShortSide,
+		ctrlOptionScreenshotTargetShortSide,
 		unsafe.Pointer(&targetShortSide32),
 		unsafe.Sizeof(targetShortSide32),
 	)
@@ -334,7 +334,7 @@ func (c *controller) SetRecording(enabled bool) bool {
 	}
 
 	return c.setOption(
-		CtrlOptionRecording,
+		ctrlOptionRecording,
 		unsafe.Pointer(&cEnabled),
 		unsafe.Sizeof(cEnabled),
 	)
