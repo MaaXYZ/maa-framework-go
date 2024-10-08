@@ -40,10 +40,23 @@ func (ctx *Context) runPipeline(entry, override string) *TaskDetail {
 	return tasker.getTaskDetail(taskId)
 }
 
-// RunPipeline runs a pipeline and return it detail.
-// `override` is an optional parameter. If provided, it should be a single value
-// that can be a JSON string or any data type that can be marshaled to JSON.
-// If multiple values are provided, only the first one will be used.
+// RunPipeline runs a pipeline and returns its detail.
+// It accepts an entry string and an optional override parameter which can be
+// a JSON string or any data type that can be marshaled to JSON.
+// If multiple overrides are provided, only the first one will be used.
+//
+// Example 1:
+//
+//	ctx.RunPipeline("Task", `{"Task":{"action":"Click","target":[100, 200, 100, 100]}}`)
+//
+// Example 2:
+//
+//	ctx.RunPipeline("Task", map[string]interface{}{
+//	    "Task": map[string]interface{}{
+//	        "action": "Click",
+//	        "target": []int{100, 200, 100, 100},
+//		}
+//	})
 func (ctx *Context) RunPipeline(entry string, override ...any) *TaskDetail {
 	return ctx.runPipeline(entry, ctx.handleOverride(override...))
 }
@@ -62,10 +75,23 @@ func (ctx *Context) runRecognition(entry, override string, img image.Image) *Rec
 	return tasker.getRecognitionDetail(recId)
 }
 
-// RunRecognition run a recognition and return it detail.
-// `override` is an optional parameter. If provided, it should be a single value
-// that can be a JSON string or any data type that can be marshaled to JSON.
-// If multiple values are provided, only the first one will be used.
+// RunRecognition run a recognition and return its detail.
+// It accepts an entry string and an optional override parameter which can be
+// a JSON string or any data type that can be marshaled to JSON.
+// If multiple overrides are provided, only the first one will be used.
+//
+// Example 1:
+//
+//	ctx.RunRecognition("Task", `{"Task":{"recognition":"OCR","expected":"Hello"}}`)
+//
+// Example 2:
+//
+//	ctx.RunRecognition("Task", map[string]interface{}{
+//	    "Task": map[string]interface{}{
+//	        "recognition": "OCR",
+//	        "expected": "Hello",
+//		}
+//	})
 func (ctx *Context) RunRecognition(entry string, img image.Image, override ...any) *RecognitionDetail {
 	return ctx.runRecognition(entry, ctx.handleOverride(override...), img)
 }
@@ -86,10 +112,23 @@ func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetai
 	return tasker.getNodeDetail(nodeId)
 }
 
-// RunAction run an action and return it detail.
-// `override` is an optional parameter. If provided, it should be a single value
-// that can be a JSON string or any data type that can be marshaled to JSON.
-// If multiple values are provided, only the first one will be used.
+// RunAction run an action and return its detail.
+// It accepts an entry string and an optional override parameter which can be
+// a JSON string or any data type that can be marshaled to JSON.
+// If multiple overrides are provided, only the first one will be used.
+//
+// Example 1:
+//
+//	ctx.RunAction("Task", `{"Task":{"action":"Click","target":[100, 200, 100, 100]}}`)
+//
+// Example 2:
+//
+//	ctx.RunAction("Task", map[string]interface{}{
+//	    "Task": map[string]interface{}{
+//	        "action": "Click",
+//	        "target": []int{100, 200, 100, 100},
+//		}
+//	})
 func (ctx *Context) RunAction(entry string, box Rect, recognitionDetail string, override ...any) *NodeDetail {
 	return ctx.runAction(entry, ctx.handleOverride(override...), box, recognitionDetail)
 }
