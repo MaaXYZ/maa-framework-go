@@ -87,11 +87,12 @@ type resOption int32
 const (
 	resOptionInvalid resOption = 0
 
-	/// Use the specified inference device, the default is INT32_MAX, which means CPU.
+	/// Use the specified inference device.
 	/// Please set this option before loading the model.
 	///
-	/// value: int32_t, eg: 0; val_size: sizeof(int32_t)
-	resOptionGpuId resOption = 1
+	/// value: MaaInferenceDevice, eg: 0; val_size: sizeof(MaaInferenceDevice)
+	/// default value is MaaInferenceDevice_Auto
+	resOptionInterfaceDevice resOption = 1
 )
 
 func (r *Resource) setOption(key resOption, value unsafe.Pointer, valSize uintptr) bool {
@@ -103,12 +104,22 @@ func (r *Resource) setOption(key resOption, value unsafe.Pointer, valSize uintpt
 	) != 0
 }
 
-func (r *Resource) SetGpuID(id int) bool {
-	id32 := int32(id)
+type InterfaceDevice int32
+
+// InterfaceDevice
+const (
+	InterfaceDeviceCPU  InterfaceDevice = -2
+	InterfaceDeviceAuto InterfaceDevice = -1
+	InterfaceDeviceGPU0 InterfaceDevice = 0
+	interfaceDeviceGPU1 InterfaceDevice = 1
+	// and more gpu id...
+)
+
+func (r *Resource) SetInterfaceDevice(device InterfaceDevice) bool {
 	return r.setOption(
-		resOptionGpuId,
-		unsafe.Pointer(&id32),
-		unsafe.Sizeof(id32),
+		resOptionInterfaceDevice,
+		unsafe.Pointer(&device),
+		unsafe.Sizeof(device),
 	)
 }
 
