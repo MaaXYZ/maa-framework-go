@@ -23,7 +23,7 @@ type Controller interface {
 	SetScreenshotTargetLongSide(targetLongSide int) bool
 	SetScreenshotTargetShortSide(targetShortSide int) bool
 	SetScreenshotUseRawSize(enabled bool) bool
-	SetRecording(recording bool) bool
+	SetRecording(enabled bool) bool
 
 	PostConnect() *Job
 	PostClick(x, y int32) *Job
