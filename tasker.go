@@ -230,6 +230,7 @@ type TaskDetail struct {
 	ID          int64
 	Entry       string
 	NodeDetails []*NodeDetail
+	Status      Status
 }
 
 // getTaskDetail queries task detail.
@@ -237,7 +238,14 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
-	got := C.MaaTaskerGetTaskDetail(t.handle, C.int64_t(taskId), nil, nil, (*C.uint64_t)(unsafe.Pointer(&size)))
+	got := C.MaaTaskerGetTaskDetail(
+		t.handle,
+		C.int64_t(taskId),
+		nil,
+		nil,
+		(*C.uint64_t)(unsafe.Pointer(&size)),
+		nil,
+	)
 	if got == 0 {
 		return nil
 	}
@@ -249,12 +257,14 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 		}
 	}
 	nodeIdList := make([]int64, size)
+	var status Status
 	got = C.MaaTaskerGetTaskDetail(
 		t.handle,
 		C.int64_t(taskId),
 		(*C.MaaStringBuffer)(entry.Handle()),
 		(*C.int64_t)(unsafe.Pointer(&nodeIdList[0])),
 		(*C.uint64_t)(unsafe.Pointer(&size)),
+		(*C.int32_t)(unsafe.Pointer(&status)),
 	)
 	if got == 0 {
 		return nil
@@ -273,6 +283,7 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 		ID:          taskId,
 		Entry:       entry.Get(),
 		NodeDetails: nodeDetails,
+		Status:      status,
 	}
 }
 

@@ -81,13 +81,16 @@ func TestTasker_PostPipeline(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	got := tasker.PostPipeline("TestTasker_PostPipeline", J{
+	taskJob := tasker.PostPipeline("TestTasker_PostPipeline", J{
 		"TestTasker_PostPipeline": J{
 			"action": "Click",
 			"target": []int{100, 200, 100, 100},
 		},
-	}).Wait().Success()
+	})
+	got := taskJob.Wait().Success()
 	require.True(t, got)
+	detail := taskJob.GetDetail()
+	t.Logf("%#v", detail)
 }
 
 func TestTasker_Running(t *testing.T) {
