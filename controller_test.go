@@ -41,6 +41,32 @@ func TestController_SetScreenshotTargetShortSide(t *testing.T) {
 	require.True(t, got)
 }
 
+func TestController_SetScreenshotUseRawSize(t *testing.T) {
+	testCases := []struct {
+		name     string
+		enabled  bool
+		expected bool
+	}{
+		{
+			name:    "enabled true",
+			enabled: true,
+		},
+		{
+			name:    "enabled false",
+			enabled: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := createDbgController(t, nil)
+			defer ctrl.Destroy()
+			got := ctrl.SetScreenshotUseRawSize(tc.enabled)
+			require.True(t, got)
+		})
+	}
+}
+
 func TestController_SetRecording(t *testing.T) {
 	ctrl := createDbgController(t, nil)
 	defer ctrl.Destroy()

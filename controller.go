@@ -22,6 +22,7 @@ type Controller interface {
 
 	SetScreenshotTargetLongSide(targetLongSide int) bool
 	SetScreenshotTargetShortSide(targetShortSide int) bool
+	SetScreenshotUseRawSize(enabled bool) bool
 	SetRecording(recording bool) bool
 
 	PostConnect() *Job
@@ -280,18 +281,20 @@ type ctrlOption int32
 const (
 	ctrlOptionInvalid ctrlOption = 0
 
-	// ctrlOptionScreenshotTargetLongSide Only one of long and short side can be set, and the other is automatically scaled according
-	// to the aspect ratio.
+	// ctrlOptionScreenshotTargetLongSide specifies that only the long side can be set, and the short side
+	// is automatically scaled according to the aspect ratio.
 	ctrlOptionScreenshotTargetLongSide ctrlOption = 1
 
-	// ctrlOptionScreenshotTargetShortSide Only one of long and short side can be set, and the other is automatically scaled according
-	// to the aspect ratio.
+	// ctrlOptionScreenshotTargetShortSide specifies that only the short side can be set, and the long side
+	// is automatically scaled according to the aspect ratio.
 	ctrlOptionScreenshotTargetShortSide ctrlOption = 2
 
-	// ctrlOptionRecording Dump all screenshots and actions
-	//
-	// Recording will evaluate to true if any of this or
-	// MaaGlobalOptionEnum::MaaGlobalOption_Recording is true.
+	// ctrlOptionScreenshotUseRawSize specifies that the screenshot uses the raw size without scaling.
+	// Note that this option may cause incorrect coordinates on user devices with different resolutions if scaling is not performed.
+	ctrlOptionScreenshotUseRawSize ctrlOption = 3
+
+	/// ctrlOptionRecording indicates that all screenshots and actions should be dumped.
+	// Recording will evaluate to true if either this or MaaGlobalOptionEnum::MaaGlobalOption_Recording is true.
 	ctrlOptionRecording ctrlOption = 5
 )
 
@@ -303,7 +306,7 @@ func (c *controller) setOption(key ctrlOption, value unsafe.Pointer, valSize uin
 // SetScreenshotTargetLongSide sets screenshot target long side.
 // Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
 //
-// eg: 1920
+// eg: 1280
 func (c *controller) SetScreenshotTargetLongSide(targetLongSide int) bool {
 	targetLongSide32 := int32(targetLongSide)
 	return c.setOption(
@@ -316,13 +319,26 @@ func (c *controller) SetScreenshotTargetLongSide(targetLongSide int) bool {
 // SetScreenshotTargetShortSide sets screenshot target short side.
 // Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
 //
-// eg: 1080
+// eg: 720
 func (c *controller) SetScreenshotTargetShortSide(targetShortSide int) bool {
 	targetShortSide32 := int32(targetShortSide)
 	return c.setOption(
 		ctrlOptionScreenshotTargetShortSide,
 		unsafe.Pointer(&targetShortSide32),
 		unsafe.Sizeof(targetShortSide32),
+	)
+}
+
+// SetScreenshotUseRawSize sets whether the screenshot uses the raw size without scaling.
+func (c *controller) SetScreenshotUseRawSize(enabled bool) bool {
+	var cEnabled uint8
+	if enabled {
+		cEnabled = 1
+	}
+	return c.setOption(
+		ctrlOptionScreenshotUseRawSize,
+		unsafe.Pointer(&cEnabled),
+		unsafe.Sizeof(cEnabled),
 	)
 }
 
