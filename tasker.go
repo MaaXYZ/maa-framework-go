@@ -116,7 +116,7 @@ func (t *Tasker) PostStop() bool {
 // GetResource returns the resource handle of the tasker.
 func (t *Tasker) GetResource() *Resource {
 	handle := maa.MaaTaskerGetResource(t.handle)
-	return &Resource{handle: (*C.MaaResource)(unsafe.Pointer(handle))}
+	return &Resource{handle: handle}
 }
 
 // GetController returns the controller handle of the tasker.

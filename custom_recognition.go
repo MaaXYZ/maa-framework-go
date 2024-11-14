@@ -4,25 +4,14 @@ package maa
 #include <stdlib.h>
 #include <MaaFramework/MaaAPI.h>
 #include "def.h"
-
-extern uint8_t _MaaCustomRecognitionCallbackAgent(
-	MaaContext* ctx,
-	int64_t task_id,
-	const char* current_task_name,
-	const char* custom_recognizer_name,
-	const char* custom_recognition_param,
-	const MaaImageBuffer* image,
-	const MaaRect* roi,
-	void* recognizer_arg,
-	MaaRect* out_box,
-	MaaStringBuffer* out_detail);
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"image"
 	"sync/atomic"
 	"unsafe"
+
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 )
 
 var (
@@ -62,34 +51,31 @@ type CustomRecognitionResult struct {
 	Detail string
 }
 
-//export _MaaCustomRecognitionCallbackAgent
 func _MaaCustomRecognitionCallbackAgent(
-	ctx *C.MaaContext,
-	taskId C.int64_t,
-	currentTaskName, customRecognizerName, customRecognitionParam C.StringView,
-	img C.ConstMaaImageBufferPtr,
-	roi C.ConstMaaRectPtr,
-	recognizerArg unsafe.Pointer,
-	outBox *C.MaaRect,
-	outDetail *C.MaaStringBuffer,
-) C.uint8_t {
+	context uintptr,
+	taskId int64,
+	currentTaskName, customRecognitionName, customRecognitionParam *byte,
+	image, roi uintptr,
+	transArg unsafe.Pointer,
+	outBox, outDetail uintptr,
+) uint64 {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(recognizerArg))
+	id := uint64(uintptr(transArg))
 	recognizer := customRecognitionCallbackAgents[id]
-	context := Context{handle: ctx}
-	tasker := context.GetTasker()
+	ctx := Context{handle: (*C.MaaContext)(unsafe.Pointer(context))}
+	tasker := ctx.GetTasker()
 	taskDetail := tasker.getTaskDetail(int64(taskId))
-	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(img))
+	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(image))
 	imgImg := imgBuffer.Get()
 
 	ret, ok := recognizer.Run(
-		&Context{handle: ctx},
+		&Context{handle: (*C.MaaContext)(unsafe.Pointer(context))},
 		&CustomRecognitionArg{
 			TaskDetail:             taskDetail,
-			CurrentTaskName:        C.GoString(currentTaskName),
-			CustomRecognizerName:   C.GoString(customRecognizerName),
-			CustomRecognitionParam: C.GoString(customRecognitionParam),
+			CurrentTaskName:        bytePtrToString(currentTaskName),
+			CustomRecognizerName:   bytePtrToString(customRecognitionName),
+			CustomRecognitionParam: bytePtrToString(customRecognitionParam),
 			Img:                    imgImg,
 			Roi:                    buffer.NewRectBufferByHandle(unsafe.Pointer(roi)).Get(),
 		},
@@ -100,7 +86,7 @@ func _MaaCustomRecognitionCallbackAgent(
 		outBoxRect.Set(box)
 		outDetailString := buffer.NewStringBufferByHandle(unsafe.Pointer(outDetail))
 		outDetailString.Set(ret.Detail)
-		return C.uint8_t(1)
+		return 1
 	}
-	return C.uint8_t(0)
+	return 0
 }

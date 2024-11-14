@@ -35,6 +35,42 @@ var (
 	MaaTaskerGetLatestNode        func(tasker uintptr, taskName string, latestId *int64) bool
 )
 
+type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi uintptr, transArg unsafe.Pointer, outBox, outDetail uintptr) uint64
+
+type MaaCustomActionCallback func(context uintptr, taskId int64, currentTaskName, customActionName, customActionParam *byte, recoId int64, box uintptr, transArg unsafe.Pointer) uint64
+
+type MaaResOption int32
+
+const (
+	MaaResOption_Invalid MaaResOption = 0
+
+	/// Use the specified inference device.
+	/// Please set this option before loading the model.
+	///
+	/// value: MaaInferenceDevice, eg: 0; val_size: sizeof(MaaInferenceDevice)
+	/// default value is MaaInferenceDevice_Auto
+	MaaResOption_InterfaceDevice MaaResOption = 1
+)
+
+var (
+	MaaResourceCreate                      func(notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) uintptr
+	MaaResourceDestroy                     func(res uintptr)
+	MaaResourceRegisterCustomRecognition   func(res uintptr, name string, recognition MaaCustomRecognitionCallback, transArg unsafe.Pointer) bool
+	MaaResourceUnregisterCustomRecognition func(res uintptr, name string) bool
+	MaaResourceClearCustomRecognition      func(res uintptr) bool
+	MaaResourceRegisterCustomAction        func(res uintptr, name string, action MaaCustomActionCallback, transArg unsafe.Pointer) bool
+	MaaResourceUnregisterCustomAction      func(res uintptr, name string) bool
+	MaaResourceClearCustomAction           func(res uintptr) bool
+	MaaResourcePostPath                    func(res uintptr, path string) int64
+	MaaResourceClear                       func(res uintptr) bool
+	MaaResourceStatus                      func(res uintptr, id int64) int32
+	MaaResourceWait                        func(res uintptr, id int64) int32
+	MaaResourceLoaded                      func(res uintptr) bool
+	MaaResourceSetOption                   func(res uintptr, key MaaResOption, value unsafe.Pointer, valSize uint64) bool
+	MaaResourceGetHash                     func(res uintptr, buffer uintptr) bool
+	MaaResourceGetTaskList                 func(res uintptr, buffer uintptr) bool
+)
+
 func init() {
 	maaFramework, err := openLibrary(getMaaFrameworkLibrary())
 	if err != nil {
@@ -61,5 +97,22 @@ func init() {
 	purego.RegisterLibFunc(&MaaTaskerGetNodeDetail, maaFramework, "MaaTaskerGetNodeDetail")
 	purego.RegisterLibFunc(&MaaTaskerGetTaskDetail, maaFramework, "MaaTaskerGetTaskDetail")
 	purego.RegisterLibFunc(&MaaTaskerGetLatestNode, maaFramework, "MaaTaskerGetLatestNode")
+	// Resource
+	purego.RegisterLibFunc(&MaaResourceCreate, maaFramework, "MaaResourceCreate")
+	purego.RegisterLibFunc(&MaaResourceDestroy, maaFramework, "MaaResourceDestroy")
+	purego.RegisterLibFunc(&MaaResourceRegisterCustomRecognition, maaFramework, "MaaResourceRegisterCustomRecognition")
+	purego.RegisterLibFunc(&MaaResourceUnregisterCustomRecognition, maaFramework, "MaaResourceUnregisterCustomRecognition")
+	purego.RegisterLibFunc(&MaaResourceClearCustomRecognition, maaFramework, "MaaResourceClearCustomRecognition")
+	purego.RegisterLibFunc(&MaaResourceRegisterCustomAction, maaFramework, "MaaResourceRegisterCustomAction")
+	purego.RegisterLibFunc(&MaaResourceUnregisterCustomAction, maaFramework, "MaaResourceUnregisterCustomAction")
+	purego.RegisterLibFunc(&MaaResourceClearCustomAction, maaFramework, "MaaResourceClearCustomAction")
+	purego.RegisterLibFunc(&MaaResourcePostPath, maaFramework, "MaaResourcePostPath")
+	purego.RegisterLibFunc(&MaaResourceClear, maaFramework, "MaaResourceClear")
+	purego.RegisterLibFunc(&MaaResourceStatus, maaFramework, "MaaResourceStatus")
+	purego.RegisterLibFunc(&MaaResourceWait, maaFramework, "MaaResourceWait")
+	purego.RegisterLibFunc(&MaaResourceLoaded, maaFramework, "MaaResourceLoaded")
+	purego.RegisterLibFunc(&MaaResourceSetOption, maaFramework, "MaaResourceSetOption")
+	purego.RegisterLibFunc(&MaaResourceGetHash, maaFramework, "MaaResourceGetHash")
+	purego.RegisterLibFunc(&MaaResourceGetTaskList, maaFramework, "MaaResourceGetTaskList")
 
 }
