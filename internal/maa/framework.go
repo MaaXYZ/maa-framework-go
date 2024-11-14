@@ -71,6 +71,129 @@ var (
 	MaaResourceGetTaskList                 func(res uintptr, buffer uintptr) bool
 )
 
+// MaaAdbScreencapMethod
+//
+// Use bitwise OR to set the method you need,
+// MaaFramework will test their speed and use the fastest one.
+type MaaAdbScreencapMethod uint64
+
+const (
+	MaaAdbScreencapMethod_None                MaaAdbScreencapMethod = 0
+	MaaAdbScreencapMethod_EncodeToFileAndPull MaaAdbScreencapMethod = 1
+	MaaAdbScreencapMethod_Encode              MaaAdbScreencapMethod = 1 << 1
+	MaaAdbScreencapMethod_RawWithGzip         MaaAdbScreencapMethod = 1 << 2
+	MaaAdbScreencapMethod_RawByNetcat         MaaAdbScreencapMethod = 1 << 3
+	MaaAdbScreencapMethod_MinicapDirect       MaaAdbScreencapMethod = 1 << 4
+	MaaAdbScreencapMethod_MinicapStream       MaaAdbScreencapMethod = 1 << 5
+	MaaAdbScreencapMethod_EmulatorExtras      MaaAdbScreencapMethod = 1 << 6
+
+	MaaAdbScreencapMethod_All     = ^MaaAdbScreencapMethod_None
+	MaaAdbScreencapMethod_Default = MaaAdbScreencapMethod_All & (^MaaAdbScreencapMethod_MinicapDirect) & (^MaaAdbScreencapMethod_MinicapStream)
+)
+
+// MaaAdbInputMethod
+//
+// Use bitwise OR to set the method you need,
+// MaaFramework will select the available ones according to priority.
+// The priority is: EmulatorExtras > Maatouch > MinitouchAndAdbKey > AdbShell
+type MaaAdbInputMethod uint64
+
+const (
+	MaaAdbInputMethod_None               MaaAdbInputMethod = 0
+	MaaAdbInputMethod_AdbShell           MaaAdbInputMethod = 1
+	MaaAdbInputMethod_MinitouchAndAdbKey MaaAdbInputMethod = 1 << 1
+	MaaAdbInputMethod_Maatouch           MaaAdbInputMethod = 1 << 2
+	MaaAdbInputMethod_EmulatorExtras     MaaAdbInputMethod = 1 << 3
+
+	MaaAdbInputMethod_All     = ^MaaAdbInputMethod_None
+	MaaAdbInputMethod_Default = MaaAdbInputMethod_All & (^MaaAdbInputMethod_EmulatorExtras)
+)
+
+// MaaWin32ScreencapMethod
+//
+// No bitwise OR, just set it.
+type MaaWin32ScreencapMethod uint64
+
+const (
+	MaaWin32ScreencapMethod_None           MaaWin32ScreencapMethod = 0
+	MaaWin32ScreencapMethod_GDI            MaaWin32ScreencapMethod = 1
+	MaaWin32ScreencapMethod_FramePool      MaaWin32ScreencapMethod = 1 << 1
+	MaaWin32ScreencapMethod_DXGIDesktopDup MaaWin32ScreencapMethod = 1 << 2
+)
+
+// MaaWin32InputMethod
+//
+// No bitwise OR, just set it.
+type MaaWin32InputMethod uint64
+
+const (
+	MaaWin32InputMethod_None        MaaWin32ScreencapMethod = 0
+	MaaWin32InputMethod_Seize       MaaWin32ScreencapMethod = 1
+	MaaWin32InputMethod_SendMessage MaaWin32ScreencapMethod = 1 << 1
+)
+
+// DbgControllerType
+//
+// No bitwise OR, just set it.
+type MaaDbgControllerType uint64
+
+const (
+	MaaDbgControllerType_None            MaaDbgControllerType = 0
+	MaaDbgControllerType_CarouselImage   MaaDbgControllerType = 1
+	MaaDbgControllerType_ReplayRecording MaaDbgControllerType = 1 << 1
+)
+
+type MaaCtrlOption int32
+
+const (
+	MaaCtrlOption_Invalid MaaCtrlOption = 0
+
+	// MaaCtrlOptionScreenshotTargetLongSide specifies that only the long side can be set, and the short side
+	// is automatically scaled according to the aspect ratio.
+	MaaCtrlOption_ScreenshotTargetLongSide MaaCtrlOption = 1
+
+	// MaaCtrlOptionScreenshotTargetShortSide specifies that only the short side can be set, and the long side
+	// is automatically scaled according to the aspect ratio.
+	MaaCtrlOption_ScreenshotTargetShortSide MaaCtrlOption = 2
+
+	// MaaCtrlOptionScreenshotUseRawSize specifies that the screenshot uses the raw size without scaling.
+	// Note that this option may cause incorrect coordinates on user devices with different resolutions if scaling is not performed.
+	MaaCtrlOption_ScreenshotUseRawSize MaaCtrlOption = 3
+
+	/// MaaCtrlOptionRecording indicates that all screenshots and actions should be dumped.
+	// Recording will evaluate to true if either this or MaaGlobalOptionEnum::MaaGlobalOption_Recording is true.
+	MaaCtrlOption_Recording MaaCtrlOption = 5
+)
+
+var (
+	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods MaaAdbScreencapMethod, inputMethods MaaAdbInputMethod, config, agentPath string, notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) uintptr
+	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods MaaWin32ScreencapMethod, inputMethods MaaWin32InputMethod, notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) uintptr
+	MaaCustomControllerCreate   func(controller uintptr, controllerArg unsafe.Pointer, notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) uintptr
+	MaaDbgControllerCreate      func(readPath, writePath string, dbgCtrlType MaaDbgControllerType, config string, notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) uintptr
+	MaaControllerDestroy        func(ctrl uintptr)
+	MaaControllerSetOption      func(ctrl uintptr, key MaaCtrlOption, value unsafe.Pointer, valSize uint64) bool
+	MaaControllerPostConnection func(ctrl uintptr) int64
+	MaaControllerPostClick      func(ctrl uintptr, x, y int32) int64
+	MaaControllerPostSwipe      func(ctrl uintptr, x1, y1, x2, y2, duration int32) int64
+	MaaControllerPostPressKey   func(ctrl uintptr, keycode int32) int64
+	MaaControllerPostInputText  func(ctrl uintptr, text string) int64
+	MaaControllerPostStartApp   func(ctrl uintptr, intent string) int64
+	MaaControllerPostStopApp    func(ctrl uintptr, intent string) int64
+	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
+	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
+	MaaControllerPostTouchDown func(ctrl uintptr, contact, x, y, pressure int32) int64
+	MaaControllerPostTouchMove func(ctrl uintptr, contact, x, y, pressure int32) int64
+	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
+	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
+	MaaControllerPostTouchUp   func(ctrl uintptr, contact int32) int64
+	MaaControllerPostScreencap func(ctrl uintptr) int64
+	MaaControllerStatus        func(ctrl uintptr, id int64) int32
+	MaaControllerWait          func(ctrl uintptr, id int64) int32
+	MaaControllerConnected     func(ctrl uintptr) bool
+	MaaControllerCachedImage   func(ctrl uintptr, buffer uintptr) bool
+	MaaControllerGetUuid       func(ctrl uintptr, buffer uintptr) bool
+)
+
 func init() {
 	maaFramework, err := openLibrary(getMaaFrameworkLibrary())
 	if err != nil {
@@ -114,5 +237,28 @@ func init() {
 	purego.RegisterLibFunc(&MaaResourceSetOption, maaFramework, "MaaResourceSetOption")
 	purego.RegisterLibFunc(&MaaResourceGetHash, maaFramework, "MaaResourceGetHash")
 	purego.RegisterLibFunc(&MaaResourceGetTaskList, maaFramework, "MaaResourceGetTaskList")
+	// Controller
+	purego.RegisterLibFunc(&MaaAdbControllerCreate, maaFramework, "MaaAdbControllerCreate")
+	purego.RegisterLibFunc(&MaaWin32ControllerCreate, maaFramework, "MaaWin32ControllerCreate")
+	purego.RegisterLibFunc(&MaaCustomControllerCreate, maaFramework, "MaaCustomControllerCreate")
+	purego.RegisterLibFunc(&MaaDbgControllerCreate, maaFramework, "MaaDbgControllerCreate")
+	purego.RegisterLibFunc(&MaaControllerDestroy, maaFramework, "MaaControllerDestroy")
+	purego.RegisterLibFunc(&MaaControllerSetOption, maaFramework, "MaaControllerSetOption")
+	purego.RegisterLibFunc(&MaaControllerPostConnection, maaFramework, "MaaControllerPostConnection")
+	purego.RegisterLibFunc(&MaaControllerPostClick, maaFramework, "MaaControllerPostClick")
+	purego.RegisterLibFunc(&MaaControllerPostSwipe, maaFramework, "MaaControllerPostSwipe")
+	purego.RegisterLibFunc(&MaaControllerPostPressKey, maaFramework, "MaaControllerPostPressKey")
+	purego.RegisterLibFunc(&MaaControllerPostInputText, maaFramework, "MaaControllerPostInputText")
+	purego.RegisterLibFunc(&MaaControllerPostStartApp, maaFramework, "MaaControllerPostStartApp")
+	purego.RegisterLibFunc(&MaaControllerPostStopApp, maaFramework, "MaaControllerPostStopApp")
+	purego.RegisterLibFunc(&MaaControllerPostTouchDown, maaFramework, "MaaControllerPostTouchDown")
+	purego.RegisterLibFunc(&MaaControllerPostTouchMove, maaFramework, "MaaControllerPostTouchMove")
+	purego.RegisterLibFunc(&MaaControllerPostTouchUp, maaFramework, "MaaControllerPostTouchUp")
+	purego.RegisterLibFunc(&MaaControllerPostScreencap, maaFramework, "MaaControllerPostScreencap")
+	purego.RegisterLibFunc(&MaaControllerStatus, maaFramework, "MaaControllerStatus")
+	purego.RegisterLibFunc(&MaaControllerWait, maaFramework, "MaaControllerWait")
+	purego.RegisterLibFunc(&MaaControllerConnected, maaFramework, "MaaControllerConnected")
+	purego.RegisterLibFunc(&MaaControllerCachedImage, maaFramework, "MaaControllerCachedImage")
+	purego.RegisterLibFunc(&MaaControllerGetUuid, maaFramework, "MaaControllerGetUuid")
 
 }

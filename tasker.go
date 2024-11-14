@@ -122,7 +122,7 @@ func (t *Tasker) GetResource() *Resource {
 // GetController returns the controller handle of the tasker.
 func (t *Tasker) GetController() Controller {
 	handle := maa.MaaTaskerGetController(t.handle)
-	return &controller{handle: (*C.MaaController)(unsafe.Pointer(handle))}
+	return &controller{handle: handle}
 }
 
 // ClearCache clears runtime cache.
