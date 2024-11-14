@@ -1,11 +1,5 @@
 package maa
 
-/*
-#include <stdlib.h>
-#include <MaaFramework/MaaAPI.h>
-#include "def.h"
-*/
-import "C"
 import (
 	"image"
 	"sync/atomic"
@@ -63,14 +57,14 @@ func _MaaCustomRecognitionCallbackAgent(
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(transArg))
 	recognizer := customRecognitionCallbackAgents[id]
-	ctx := Context{handle: (*C.MaaContext)(unsafe.Pointer(context))}
+	ctx := Context{handle: context}
 	tasker := ctx.GetTasker()
 	taskDetail := tasker.getTaskDetail(int64(taskId))
 	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(image))
 	imgImg := imgBuffer.Get()
 
 	ret, ok := recognizer.Run(
-		&Context{handle: (*C.MaaContext)(unsafe.Pointer(context))},
+		&Context{handle: context},
 		&CustomRecognitionArg{
 			TaskDetail:             taskDetail,
 			CurrentTaskName:        bytePtrToString(currentTaskName),

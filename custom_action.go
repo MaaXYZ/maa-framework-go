@@ -1,11 +1,5 @@
 package maa
 
-/*
-#include <stdlib.h>
-#include <MaaFramework/MaaAPI.h>
-#include "def.h"
-*/
-import "C"
 import (
 	"sync/atomic"
 	"unsafe"
@@ -57,14 +51,14 @@ func _MaaCustomActionCallbackAgent(
 	// and will not actually dereference this pointer.
 	id := uint64(uintptr(transArg))
 	action := customActionCallbackAgents[id]
-	ctx := &Context{handle: (*C.MaaContext)(unsafe.Pointer(context))}
+	ctx := &Context{handle: context}
 	tasker := ctx.GetTasker()
 	taskDetail := tasker.getTaskDetail(taskId)
 	recognitionDetail := tasker.getRecognitionDetail(recoId)
 	curBoxRectBuffer := buffer.NewRectBufferByHandle(unsafe.Pointer(box))
 
 	ok := action.Run(
-		&Context{handle: (*C.MaaContext)(unsafe.Pointer(context))},
+		&Context{handle: context},
 		&CustomActionArg{
 			TaskDetail:        taskDetail,
 			CurrentTaskName:   bytePtrToString(currentTaskName),

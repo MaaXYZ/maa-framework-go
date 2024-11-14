@@ -1,19 +1,15 @@
 package maa
 
-/*
-#include <stdlib.h>
-#include <MaaFramework/MaaAPI.h>
-*/
-import "C"
 import (
 	"image"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/maa"
 )
 
 type Context struct {
-	handle *C.MaaContext
+	handle uintptr
 }
 
 func (ctx *Context) handleOverride(override ...any) string {
@@ -31,12 +27,7 @@ func (ctx *Context) handleOverride(override ...any) string {
 }
 
 func (ctx *Context) runPipeline(entry, override string) *TaskDetail {
-	cEntry := C.CString(entry)
-	defer C.free(unsafe.Pointer(cEntry))
-	cOverride := C.CString(override)
-	defer C.free(unsafe.Pointer(cOverride))
-
-	taskId := int64(C.MaaContextRunPipeline(ctx.handle, cEntry, cOverride))
+	taskId := maa.MaaContextRunPipeline(ctx.handle, entry, override)
 	tasker := ctx.GetTasker()
 	return tasker.getTaskDetail(taskId)
 }
@@ -63,15 +54,11 @@ func (ctx *Context) RunPipeline(entry string, override ...any) *TaskDetail {
 }
 
 func (ctx *Context) runRecognition(entry, override string, img image.Image) *RecognitionDetail {
-	cEntry := C.CString(entry)
-	defer C.free(unsafe.Pointer(cEntry))
-	cOverride := C.CString(override)
-	defer C.free(unsafe.Pointer(cOverride))
 	imgBuf := buffer.NewImageBuffer()
 	imgBuf.Set(img)
 	defer imgBuf.Destroy()
 
-	recId := int64(C.MaaContextRunRecognition(ctx.handle, cEntry, cOverride, (*C.MaaImageBuffer)(imgBuf.Handle())))
+	recId := maa.MaaContextRunRecognition(ctx.handle, entry, override, uintptr(imgBuf.Handle()))
 	tasker := ctx.GetTasker()
 	return tasker.getRecognitionDetail(recId)
 }
@@ -98,17 +85,11 @@ func (ctx *Context) RunRecognition(entry string, img image.Image, override ...an
 }
 
 func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetail string) *NodeDetail {
-	cEntry := C.CString(entry)
-	defer C.free(unsafe.Pointer(cEntry))
-	cOverride := C.CString(override)
-	defer C.free(unsafe.Pointer(cOverride))
 	rectBuf := buffer.NewRectBuffer()
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
-	cRecognitionDetail := C.CString(recognitionDetail)
-	defer C.free(unsafe.Pointer(cRecognitionDetail))
 
-	nodeId := int64(C.MaaContextRunAction(ctx.handle, cEntry, cOverride, (*C.MaaRect)(rectBuf.Handle()), cRecognitionDetail))
+	nodeId := maa.MaaContextRunAction(ctx.handle, entry, override, uintptr(rectBuf.Handle()), recognitionDetail)
 	tasker := ctx.GetTasker()
 	return tasker.getNodeDetail(nodeId)
 }
@@ -135,11 +116,7 @@ func (ctx *Context) RunAction(entry string, box Rect, recognitionDetail string, 
 }
 
 func (ctx *Context) overridePipeline(override string) bool {
-	cPipelineOverride := C.CString(override)
-	defer C.free(unsafe.Pointer(cPipelineOverride))
-
-	got := C.MaaContextOverridePipeline(ctx.handle, cPipelineOverride)
-	return got != 0
+	return maa.MaaContextOverridePipeline(ctx.handle, override)
 }
 
 // OverridePipeline overrides pipeline.
@@ -157,8 +134,6 @@ func (ctx *Context) OverridePipeline(override any) bool {
 
 // OverrideNext overrides the next list of task by name.
 func (ctx *Context) OverrideNext(name string, nextList []string) bool {
-	cName := C.CString(name)
-	defer C.free(unsafe.Pointer(cName))
 	list := buffer.NewStringListBuffer()
 	defer list.Destroy()
 	size := len(nextList)
@@ -173,25 +148,24 @@ func (ctx *Context) OverrideNext(name string, nextList []string) bool {
 			item.Destroy()
 		}
 	}()
-	got := C.MaaContextOverrideNext(ctx.handle, cName, (*C.MaaStringListBuffer)(list.Handle()))
-	return got != 0
+	return maa.MaaContextOverrideNext(ctx.handle, name, uintptr(list.Handle()))
 }
 
 // GetTaskJob returns current task job.
 func (ctx *Context) GetTaskJob() *TaskJob {
 	tasker := ctx.GetTasker()
-	taskId := int64(C.MaaContextGetTaskId(ctx.handle))
+	taskId := maa.MaaContextGetTaskId(ctx.handle)
 	return NewTaskJob(taskId, tasker.status, tasker.wait, tasker.getTaskDetail)
 }
 
 // GetTasker return current Tasker.
 func (ctx *Context) GetTasker() *Tasker {
-	handle := C.MaaContextGetTasker(ctx.handle)
+	handle := maa.MaaContextGetTasker(ctx.handle)
 	return &Tasker{handle: uintptr(unsafe.Pointer(handle))}
 }
 
 // Clone clones current Context.
 func (ctx *Context) Clone() *Context {
-	handle := C.MaaContextClone(ctx.handle)
+	handle := maa.MaaContextClone(ctx.handle)
 	return &Context{handle: handle}
 }

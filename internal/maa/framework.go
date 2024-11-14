@@ -194,6 +194,17 @@ var (
 	MaaControllerGetUuid       func(ctrl uintptr, buffer uintptr) bool
 )
 
+var (
+	MaaContextRunPipeline      func(context uintptr, entry, pipelineOverride string) int64
+	MaaContextRunRecognition   func(context uintptr, entry, pipelineOverride string, image uintptr) int64
+	MaaContextRunAction        func(context uintptr, entry, pipelineOverride string, box uintptr, recoDetail string) int64
+	MaaContextOverridePipeline func(context uintptr, pipelineOverride string) bool
+	MaaContextOverrideNext     func(context uintptr, name string, nextList uintptr) bool
+	MaaContextGetTaskId        func(context uintptr) int64
+	MaaContextGetTasker        func(context uintptr) uintptr
+	MaaContextClone            func(context uintptr) uintptr
+)
+
 func init() {
 	maaFramework, err := openLibrary(getMaaFrameworkLibrary())
 	if err != nil {
@@ -260,5 +271,14 @@ func init() {
 	purego.RegisterLibFunc(&MaaControllerConnected, maaFramework, "MaaControllerConnected")
 	purego.RegisterLibFunc(&MaaControllerCachedImage, maaFramework, "MaaControllerCachedImage")
 	purego.RegisterLibFunc(&MaaControllerGetUuid, maaFramework, "MaaControllerGetUuid")
+	// Context
+	purego.RegisterLibFunc(&MaaContextRunPipeline, maaFramework, "MaaContextRunPipeline")
+	purego.RegisterLibFunc(&MaaContextRunRecognition, maaFramework, "MaaContextRunRecognition")
+	purego.RegisterLibFunc(&MaaContextRunAction, maaFramework, "MaaContextRunAction")
+	purego.RegisterLibFunc(&MaaContextOverridePipeline, maaFramework, "MaaContextOverridePipeline")
+	purego.RegisterLibFunc(&MaaContextOverrideNext, maaFramework, "MaaContextOverrideNext")
+	purego.RegisterLibFunc(&MaaContextGetTaskId, maaFramework, "MaaContextGetTaskId")
+	purego.RegisterLibFunc(&MaaContextGetTasker, maaFramework, "MaaContextGetTasker")
+	purego.RegisterLibFunc(&MaaContextClone, maaFramework, "MaaContextClone")
 
 }
