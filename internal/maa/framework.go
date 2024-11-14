@@ -194,6 +194,67 @@ var (
 	MaaControllerGetUuid       func(ctrl uintptr, buffer uintptr) bool
 )
 
+type MaaCustomControllerCallbacks struct {
+	Connect     uintptr
+	RequestUUID uintptr
+	StartApp    uintptr
+	StopApp     uintptr
+	Screencap   uintptr
+	Click       uintptr
+	Swipe       uintptr
+	TouchDown   uintptr
+	TouchMove   uintptr
+	TouchUp     uintptr
+	PressKey    uintptr
+	InputText   uintptr
+}
+
+type (
+	ConnectCallback     func(transArg unsafe.Pointer) bool
+	RequestUUIDCallback func(transArg unsafe.Pointer, buffer uintptr) bool
+	StartAppCallback    func(intent string, transArg unsafe.Pointer) bool
+	StopAppCallback     func(intent string, transArg unsafe.Pointer) bool
+	ScreencapCallback   func(transArg unsafe.Pointer, buffer uintptr) bool
+	ClickCallback       func(x, y int32, transArg unsafe.Pointer) bool
+	SwipeCallback       func(x1, y1, x2, y2, duration int32, transArg unsafe.Pointer) bool
+	TouchDownCallback   func(contact, x, y, pressure int32, transArg unsafe.Pointer) bool
+	TouchMoveCallback   func(contact, x, y, pressure int32, transArg unsafe.Pointer) bool
+	TouchUpCallback     func(contact int32, transArg unsafe.Pointer) bool
+	PressKeyCallback    func(keycode int32, transArg unsafe.Pointer) bool
+	InputTextCallback   func(text string, transArg unsafe.Pointer) bool
+)
+
+func MaaCustomControllerCallbacksCreate(
+	connect ConnectCallback,
+	requestUUID RequestUUIDCallback,
+	startApp StartAppCallback,
+	stopApp StopAppCallback,
+	screencap ScreencapCallback,
+	click ClickCallback,
+	swipe SwipeCallback,
+	touchDown TouchDownCallback,
+	touchMove TouchMoveCallback,
+	touchUp TouchUpCallback,
+	pressKey PressKeyCallback,
+	inputText InputTextCallback,
+) uintptr {
+	callbacks := &MaaCustomControllerCallbacks{
+		Connect:     purego.NewCallback(connect),
+		RequestUUID: purego.NewCallback(requestUUID),
+		StartApp:    purego.NewCallback(startApp),
+		StopApp:     purego.NewCallback(stopApp),
+		Screencap:   purego.NewCallback(screencap),
+		Click:       purego.NewCallback(click),
+		Swipe:       purego.NewCallback(swipe),
+		TouchDown:   purego.NewCallback(touchDown),
+		TouchMove:   purego.NewCallback(touchMove),
+		TouchUp:     purego.NewCallback(touchUp),
+		PressKey:    purego.NewCallback(pressKey),
+		InputText:   purego.NewCallback(inputText),
+	}
+	return uintptr(unsafe.Pointer(callbacks))
+}
+
 var (
 	MaaContextRunPipeline      func(context uintptr, entry, pipelineOverride string) int64
 	MaaContextRunRecognition   func(context uintptr, entry, pipelineOverride string, image uintptr) int64
