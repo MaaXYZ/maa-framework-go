@@ -6,9 +6,10 @@ package maa
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"image"
 	"unsafe"
+
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 )
 
 type Context struct {
@@ -186,7 +187,7 @@ func (ctx *Context) GetTaskJob() *TaskJob {
 // GetTasker return current Tasker.
 func (ctx *Context) GetTasker() *Tasker {
 	handle := C.MaaContextGetTasker(ctx.handle)
-	return &Tasker{handle: handle}
+	return &Tasker{handle: uintptr(unsafe.Pointer(handle))}
 }
 
 // Clone clones current Context.

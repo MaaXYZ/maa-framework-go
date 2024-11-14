@@ -8,28 +8,30 @@ extern void _MaaNotificationCallbackAgent(const char* message, const char* detai
 */
 import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"image"
 	"unsafe"
+
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/internal/store"
 )
 
 var taskerStore = store.New[uint64]()
 
 type Tasker struct {
-	handle *C.MaaTasker
+	handle uintptr
 }
 
 // NewTasker creates an new tasker.
 func NewTasker(notify Notification) *Tasker {
 	id := registerNotificationCallback(notify)
-	handle := C.MaaTaskerCreate(
-		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
+	handle := maa.MaaTaskerCreate(
+		MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
 	)
-	if handle == nil {
+	if handle == 0 {
 		return nil
 	}
 	taskerStore.Set(unsafe.Pointer(handle), id)
@@ -41,7 +43,7 @@ func (t *Tasker) Destroy() {
 	id := taskerStore.Get(t.Handle())
 	unregisterNotificationCallback(id)
 	taskerStore.Del(t.Handle())
-	C.MaaTaskerDestroy(t.handle)
+	maa.MaaTaskerDestroy(t.handle)
 }
 
 // Handle returns the tasker handle.
@@ -51,17 +53,17 @@ func (t *Tasker) Handle() unsafe.Pointer {
 
 // BindResource binds the tasker to an initialized resource.
 func (t *Tasker) BindResource(res *Resource) bool {
-	return C.MaaTaskerBindResource(t.handle, res.handle) != 0
+	return maa.MaaTaskerBindResource(t.handle, uintptr(res.Handle()))
 }
 
 // BindController binds the tasker to an initialized controller.
 func (t *Tasker) BindController(ctrl Controller) bool {
-	return C.MaaTaskerBindController(t.handle, (*C.MaaController)(ctrl.Handle())) != 0
+	return maa.MaaTaskerBindController(t.handle, uintptr(ctrl.Handle()))
 }
 
 // Initialized checks if the tasker is initialized.
 func (t *Tasker) Initialized() bool {
-	return C.MaaTaskerInited(t.handle) != 0
+	return maa.MaaTaskerInited(t.handle)
 }
 
 func (t *Tasker) handleOverride(entry string, postFunc func(entry, override string) *TaskJob, override ...any) *TaskJob {
@@ -79,12 +81,7 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 }
 
 func (t *Tasker) postPipeline(entry, pipelineOverride string) *TaskJob {
-	cEntry := C.CString(entry)
-	defer C.free(unsafe.Pointer(cEntry))
-	cPipelineOverride := C.CString(pipelineOverride)
-	defer C.free(unsafe.Pointer(cPipelineOverride))
-
-	id := int64(C.MaaTaskerPostPipeline(t.handle, cEntry, cPipelineOverride))
+	id := maa.MaaTaskerPostPipeline(t.handle, entry, pipelineOverride)
 	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
@@ -98,39 +95,39 @@ func (t *Tasker) PostPipeline(entry string, override ...any) *TaskJob {
 
 // status returns the status of a task identified by the id.
 func (t *Tasker) status(id int64) Status {
-	return Status(C.MaaTaskerStatus(t.handle, C.int64_t(id)))
+	return Status(maa.MaaTaskerStatus(t.handle, id))
 }
 
 // wait waits until the task is complete and returns the status of the completed task identified by the id.
 func (t *Tasker) wait(id int64) Status {
-	return Status(C.MaaTaskerWait(t.handle, C.int64_t(id)))
+	return Status(maa.MaaTaskerWait(t.handle, id))
 }
 
 // Running checks if the instance running.
 func (t *Tasker) Running() bool {
-	return C.MaaTaskerRunning(t.handle) != 0
+	return maa.MaaTaskerRunning(t.handle)
 }
 
 // PostStop posts a stop signal to the tasker.
 func (t *Tasker) PostStop() bool {
-	return C.MaaTaskerPostStop(t.handle) != 0
+	return maa.MaaTaskerPostStop(t.handle)
 }
 
 // GetResource returns the resource handle of the tasker.
 func (t *Tasker) GetResource() *Resource {
-	handle := C.MaaTaskerGetResource(t.handle)
-	return &Resource{handle: handle}
+	handle := maa.MaaTaskerGetResource(t.handle)
+	return &Resource{handle: (*C.MaaResource)((unsafe.Pointer)(handle))}
 }
 
 // GetController returns the controller handle of the tasker.
 func (t *Tasker) GetController() Controller {
-	handle := C.MaaTaskerGetController(t.handle)
-	return &controller{handle: handle}
+	handle := maa.MaaTaskerGetController(t.handle)
+	return &controller{handle: (*C.MaaController)((unsafe.Pointer)(handle))}
 }
 
 // ClearCache clears runtime cache.
 func (t *Tasker) ClearCache() bool {
-	return C.MaaTaskerClearCache(t.handle) != 0
+	return maa.MaaTaskerClearCache(t.handle)
 }
 
 type RecognitionDetail struct {
@@ -150,7 +147,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 	defer name.Destroy()
 	algorithm := buffer.NewStringBuffer()
 	defer algorithm.Destroy()
-	var hit uint8
+	var hit bool
 	box := buffer.NewRectBuffer()
 	defer box.Destroy()
 	detailJson := buffer.NewStringBuffer()
@@ -159,18 +156,18 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 	defer raw.Destroy()
 	draws := buffer.NewImageListBuffer()
 	defer draws.Destroy()
-	got := C.MaaTaskerGetRecognitionDetail(
+	got := maa.MaaTaskerGetRecognitionDetail(
 		t.handle,
-		C.int64_t(recId),
-		(*C.MaaStringBuffer)(name.Handle()),
-		(*C.MaaStringBuffer)(algorithm.Handle()),
-		(*C.uint8_t)(unsafe.Pointer(&hit)),
-		(*C.MaaRect)(box.Handle()),
-		(*C.MaaStringBuffer)(detailJson.Handle()),
-		(*C.MaaImageBuffer)(raw.Handle()),
-		(*C.MaaImageListBuffer)(draws.Handle()),
+		recId,
+		uintptr(name.Handle()),
+		uintptr(algorithm.Handle()),
+		&hit,
+		uintptr(box.Handle()),
+		uintptr(detailJson.Handle()),
+		uintptr(raw.Handle()),
+		uintptr(draws.Handle()),
 	)
-	if got == 0 {
+	if !got {
 		return nil
 	}
 
@@ -181,7 +178,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 		ID:         recId,
 		Name:       name.Get(),
 		Algorithm:  algorithm.Get(),
-		Hit:        hit != 0,
+		Hit:        hit,
 		Box:        box.Get(),
 		DetailJson: detailJson.Get(),
 		Raw:        rawImg,
@@ -201,15 +198,15 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId int64
-	var runCompleted uint8
-	got := C.MaaTaskerGetNodeDetail(
+	var runCompleted bool
+	got := maa.MaaTaskerGetNodeDetail(
 		t.handle,
-		C.int64_t(nodeId),
-		(*C.MaaStringBuffer)(name.Handle()),
-		(*C.int64_t)(unsafe.Pointer(&recId)),
-		(*C.uint8_t)(unsafe.Pointer(&runCompleted)),
+		nodeId,
+		uintptr(name.Handle()),
+		&recId,
+		&runCompleted,
 	)
-	if got == 0 {
+	if !got {
 		return nil
 	}
 
@@ -222,7 +219,7 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 		ID:           nodeId,
 		Name:         name.Get(),
 		Recognition:  recognitionDetail,
-		RunCompleted: runCompleted != 0,
+		RunCompleted: runCompleted,
 	}
 }
 
@@ -238,15 +235,15 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
-	got := C.MaaTaskerGetTaskDetail(
+	got := maa.MaaTaskerGetTaskDetail(
 		t.handle,
-		C.int64_t(taskId),
-		nil,
-		nil,
-		(*C.uint64_t)(unsafe.Pointer(&size)),
+		taskId,
+		0,
+		0,
+		&size,
 		nil,
 	)
-	if got == 0 {
+	if !got {
 		return nil
 	}
 	if size == 0 {
@@ -258,15 +255,15 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 	}
 	nodeIdList := make([]int64, size)
 	var status Status
-	got = C.MaaTaskerGetTaskDetail(
+	got = maa.MaaTaskerGetTaskDetail(
 		t.handle,
-		C.int64_t(taskId),
-		(*C.MaaStringBuffer)(entry.Handle()),
-		(*C.int64_t)(unsafe.Pointer(&nodeIdList[0])),
-		(*C.uint64_t)(unsafe.Pointer(&size)),
-		(*C.int32_t)(unsafe.Pointer(&status)),
+		taskId,
+		uintptr(entry.Handle()),
+		uintptr(unsafe.Pointer(&nodeIdList[0])),
+		&size,
+		(*int32)(&status),
 	)
-	if got == 0 {
+	if !got {
 		return nil
 	}
 
@@ -289,12 +286,10 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 
 // GetLatestNode returns latest node id.
 func (t *Tasker) GetLatestNode(taskName string) *NodeDetail {
-	cTaskName := C.CString(taskName)
-	defer C.free(unsafe.Pointer(cTaskName))
 	var nodeId int64
 
-	got := C.MaaTaskerGetLatestNode(t.handle, cTaskName, (*C.int64_t)(unsafe.Pointer(&nodeId)))
-	if got == 0 {
+	got := maa.MaaTaskerGetLatestNode(t.handle, taskName, &nodeId)
+	if !got {
 		return nil
 	}
 	return t.getNodeDetail(nodeId)
