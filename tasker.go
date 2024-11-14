@@ -1,12 +1,5 @@
 package maa
 
-/*
-#include <stdlib.h>
-#include <MaaFramework/MaaAPI.h>
-
-extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
-*/
-import "C"
 import (
 	"image"
 	"unsafe"
