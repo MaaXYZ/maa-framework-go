@@ -3,34 +3,12 @@ package maa
 /*
 #include <stdlib.h>
 #include <MaaToolkit/MaaToolkitAPI.h>
-
-extern uint8_t _MaaCustomRecognitionCallbackAgent(
-	MaaContext* ctx,
-	int64_t task_id,
-	const char* current_task_name,
-	const char* custom_recognizer_name,
-	const char* custom_recognition_param,
-	const MaaImageBuffer* image,
-	const MaaRect* roi,
-	void* recognizer_arg,
-	MaaRect* out_box,
-	MaaStringBuffer* out_detail);
-
-extern uint8_t _MaaCustomActionCallbackAgent(
-	MaaContext* ctx,
-	int64_t task_id,
-	const char* current_task_name,
-	const char* custom_action_name,
-	const char* custom_action_param,
-	int64_t rec_id,
-	const MaaRect* box ,
-	void* actionArg);
-
-extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
 */
 import "C"
 import (
 	"unsafe"
+
+	"github.com/MaaXYZ/maa-framework-go/internal/maa"
 )
 
 // AdbDevice represents a single ADB device with various properties about its information.
@@ -148,13 +126,10 @@ func (t *Toolkit) RegisterPICustomRecognition(instId uint64, name string, recogn
 	}
 	piStore[instId].CustomRecognizersCallbackID[name] = id
 
-	cName := C.CString(name)
-	defer C.free(unsafe.Pointer(cName))
-
-	C.MaaToolkitProjectInterfaceRegisterCustomRecognition(
-		C.uint64_t(instId),
-		cName,
-		C.MaaCustomRecognitionCallback(C._MaaCustomRecognitionCallbackAgent),
+	maa.MaaToolkitProjectInterfaceRegisterCustomRecognition(
+		instId,
+		name,
+		_MaaCustomRecognitionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
@@ -172,13 +147,10 @@ func (t *Toolkit) RegisterPICustomAction(instId uint64, name string, action Cust
 	}
 	piStore[instId].CustomActionsCallbackID[name] = id
 
-	cName := C.CString(name)
-	defer C.free(unsafe.Pointer(cName))
-
-	C.MaaToolkitProjectInterfaceRegisterCustomAction(
-		C.uint64_t(instId),
-		cName,
-		C.MaaCustomActionCallback(C._MaaCustomActionCallbackAgent),
+	maa.MaaToolkitProjectInterfaceRegisterCustomAction(
+		instId,
+		name,
+		_MaaCustomActionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
@@ -198,24 +170,16 @@ func (t *Toolkit) ClearPICustom(instId uint64) {
 
 // RunCli runs the PI CLI.
 func (t *Toolkit) RunCli(instId uint64, resourcePath, userPath string, directly bool, notify Notification) bool {
-	cResourcePath := C.CString(resourcePath)
-	defer C.free(unsafe.Pointer(cResourcePath))
-	cUserPath := C.CString(userPath)
-	defer C.free(unsafe.Pointer(cUserPath))
-	var cDirectly uint8
-	if directly {
-		cDirectly = 1
-	}
 	id := registerNotificationCallback(notify)
-	got := C.MaaToolkitProjectInterfaceRunCli(
-		C.uint64_t(instId),
-		cResourcePath,
-		cUserPath,
-		C.uint8_t(cDirectly),
-		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
+	got := maa.MaaToolkitProjectInterfaceRunCli(
+		instId,
+		resourcePath,
+		userPath,
+		directly,
+		MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
 	)
-	return got != 0
+	return got
 }

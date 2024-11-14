@@ -20,15 +20,15 @@ func getMaaFrameworkLibrary() string {
 	}
 }
 
-// func getMaaToolkitLibrary() string {
-// 	switch runtime.GOOS {
-// 	case "darwin":
-// 		return "libMaaToolkit.dylib"
-// 	case "linux":
-// 		return "libMaaToolkit.so"
-// 	case "windows":
-// 		return "MaaToolkit.dll"
-// 	default:
-// 		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
-// 	}
-// }
+func getMaaToolkitLibrary() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "libMaaToolkit.dylib"
+	case "linux":
+		return "libMaaToolkit.so"
+	case "windows":
+		return "MaaToolkit.dll"
+	default:
+		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
+	}
+}
