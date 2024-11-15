@@ -25,6 +25,10 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Output system architecture
+        run: |
+          echo %PROCESSOR_ARCHITECTURE%
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -76,6 +80,10 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Output system architecture
+        run: |
+          uname -m
+
       - name: Update system
         run: |
           pacman -Syu --noconfirm
