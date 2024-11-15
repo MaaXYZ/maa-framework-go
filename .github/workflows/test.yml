@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: Output system architecture
         run: |
-          echo %PROCESSOR_ARCHITECTURE%
+          echo $env:PROCESSOR_ARCHITECTURE
 
       - name: Checkout
         uses: actions/checkout@v4
