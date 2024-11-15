@@ -27,15 +27,15 @@ func NewTasker(notify Notification) *Tasker {
 	if handle == 0 {
 		return nil
 	}
-	taskerStore.Set(unsafe.Pointer(handle), id)
+	taskerStore.Set(handle, id)
 	return &Tasker{handle: handle}
 }
 
 // Destroy free the tasker.
 func (t *Tasker) Destroy() {
-	id := taskerStore.Get(t.Handle())
+	id := taskerStore.Get(t.handle)
 	unregisterNotificationCallback(id)
-	taskerStore.Del(t.Handle())
+	taskerStore.Del(t.handle)
 	maa.MaaTaskerDestroy(t.handle)
 }
 

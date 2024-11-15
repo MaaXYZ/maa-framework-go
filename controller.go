@@ -113,7 +113,7 @@ func NewAdbController(
 	if handle == 0 {
 		return nil
 	}
-	controllerStore.Set(unsafe.Pointer(handle), controllerStoreValue{
+	controllerStore.Set(handle, controllerStoreValue{
 		NotificationCallbackID: id,
 	})
 	return &controller{handle: handle}
@@ -164,7 +164,7 @@ func NewWin32Controller(
 	if handle == 0 {
 		return nil
 	}
-	controllerStore.Set(unsafe.Pointer(handle), controllerStoreValue{
+	controllerStore.Set(handle, controllerStoreValue{
 		NotificationCallbackID: id,
 	})
 	return &controller{handle: handle}
@@ -203,7 +203,7 @@ func NewDbgController(
 	if handle == 0 {
 		return nil
 	}
-	controllerStore.Set(unsafe.Pointer(handle), controllerStoreValue{
+	controllerStore.Set(handle, controllerStoreValue{
 		NotificationCallbackID: id,
 	})
 	return &controller{handle: handle}
@@ -229,7 +229,7 @@ func NewCustomController(
 	if handle == 0 {
 		return nil
 	}
-	controllerStore.Set(unsafe.Pointer(handle), controllerStoreValue{
+	controllerStore.Set(handle, controllerStoreValue{
 		NotificationCallbackID:      notifyID,
 		CustomControllerCallbacksID: ctrlID,
 	})
@@ -238,10 +238,10 @@ func NewCustomController(
 
 // Destroy frees the controller instance.
 func (c *controller) Destroy() {
-	value := controllerStore.Get(c.Handle())
+	value := controllerStore.Get(c.handle)
 	unregisterNotificationCallback(value.NotificationCallbackID)
 	unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
-	controllerStore.Del(c.Handle())
+	controllerStore.Del(c.handle)
 	maa.MaaControllerDestroy(c.handle)
 }
 
