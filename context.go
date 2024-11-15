@@ -2,7 +2,6 @@ package maa
 
 import (
 	"image"
-	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/internal/maa"
@@ -161,7 +160,7 @@ func (ctx *Context) GetTaskJob() *TaskJob {
 // GetTasker return current Tasker.
 func (ctx *Context) GetTasker() *Tasker {
 	handle := maa.MaaContextGetTasker(ctx.handle)
-	return &Tasker{handle: uintptr(unsafe.Pointer(handle))}
+	return &Tasker{handle: handle}
 }
 
 // Clone clones current Context.
