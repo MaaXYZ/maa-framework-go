@@ -24,7 +24,7 @@ type Resource struct {
 func NewResource(notify Notification) *Resource {
 	id := registerNotificationCallback(notify)
 	handle := maa.MaaResourceCreate(
-		MaaNotificationCallbackAgent,
+		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),

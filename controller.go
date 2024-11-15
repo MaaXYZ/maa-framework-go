@@ -105,7 +105,7 @@ func NewAdbController(
 		maa.MaaAdbInputMethod(inputMethod),
 		config,
 		agentPath,
-		MaaNotificationCallbackAgent,
+		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
@@ -156,7 +156,7 @@ func NewWin32Controller(
 		hWnd,
 		maa.MaaWin32ScreencapMethod(screencapMethod),
 		maa.MaaWin32InputMethod(inputMethod),
-		MaaNotificationCallbackAgent,
+		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
@@ -195,7 +195,7 @@ func NewDbgController(
 		writePath,
 		maa.MaaDbgControllerType(dbgCtrlType),
 		config,
-		MaaNotificationCallbackAgent,
+		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
@@ -221,7 +221,7 @@ func NewCustomController(
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(ctrlID)),
-		MaaNotificationCallbackAgent,
+		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(notifyID)),

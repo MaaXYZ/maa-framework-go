@@ -164,7 +164,7 @@ func (t *Toolkit) RunCli(instId uint64, resourcePath, userPath string, directly 
 		resourcePath,
 		userPath,
 		directly,
-		MaaNotificationCallbackAgent,
+		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),

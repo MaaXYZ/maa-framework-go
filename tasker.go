@@ -19,7 +19,7 @@ type Tasker struct {
 func NewTasker(notify Notification) *Tasker {
 	id := registerNotificationCallback(notify)
 	handle := maa.MaaTaskerCreate(
-		MaaNotificationCallbackAgent,
+		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
