@@ -15,7 +15,7 @@ func SetLogDir(path string) bool {
 	if path == "" {
 		return false
 	}
-	return setGlobalOption(maa.MaaGlobalOption_LogDir, unsafe.Pointer(&[]byte(path)[0]), unsafe.Sizeof(path))
+	return setGlobalOption(maa.MaaGlobalOption_LogDir, unsafe.Pointer(&[]byte(path)[0]), uintptr(len(path)))
 }
 
 // SetSaveDraw sets whether to save draw.
