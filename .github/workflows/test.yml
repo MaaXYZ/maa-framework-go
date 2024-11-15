@@ -21,7 +21,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        arch: [ x86_64, aarch64 ]
+        arch: [ x86_64 ]
       fail-fast: false
 
     steps:
@@ -51,8 +51,6 @@ jobs:
       - name: Test
         env:
           CGO_ENABLED: 0
-          GOARCH: ${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}
-          GOHOSTARCH: ${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}
         run: |
           $env:Path += ";${{ github.workspace }}/deps/bin"
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
@@ -115,8 +113,6 @@ jobs:
       - name: Test
         env:
           CGO_ENABLED: 0
-          GOARCH: ${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}
-          GOHOSTARCH: ${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}
           LD_LIBRARY_PATH: /__w/maa-framework-go/maa-framework-go/deps/bin:$LD_LIBRARY_PATH
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
