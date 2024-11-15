@@ -60,7 +60,7 @@ func _MaaCustomRecognitionCallbackAgent(
 	ctx := Context{handle: context}
 	tasker := ctx.GetTasker()
 	taskDetail := tasker.getTaskDetail(int64(taskId))
-	imgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(image))
+	imgBuffer := buffer.NewImageBufferByHandle(image)
 	imgImg := imgBuffer.Get()
 
 	ret, ok := recognizer.Run(
@@ -71,14 +71,14 @@ func _MaaCustomRecognitionCallbackAgent(
 			CustomRecognizerName:   bytePtrToString(customRecognitionName),
 			CustomRecognitionParam: bytePtrToString(customRecognitionParam),
 			Img:                    imgImg,
-			Roi:                    buffer.NewRectBufferByHandle(unsafe.Pointer(roi)).Get(),
+			Roi:                    buffer.NewRectBufferByHandle(roi).Get(),
 		},
 	)
 	if ok {
 		box := ret.Box
-		outBoxRect := buffer.NewRectBufferByHandle(unsafe.Pointer(outBox))
+		outBoxRect := buffer.NewRectBufferByHandle(outBox)
 		outBoxRect.Set(box)
-		outDetailString := buffer.NewStringBufferByHandle(unsafe.Pointer(outDetail))
+		outDetailString := buffer.NewStringBufferByHandle(outDetail)
 		outDetailString.Set(ret.Detail)
 		return 1
 	}

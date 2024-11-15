@@ -1,22 +1,18 @@
 package buffer
 
-/*
-#include <stdlib.h>
-#include <MaaFramework/MaaAPI.h>
-*/
-import "C"
 import (
 	"image"
-	"unsafe"
+
+	"github.com/MaaXYZ/maa-framework-go/internal/maa"
 )
 
 type ImageListBuffer struct {
-	handle *C.MaaImageListBuffer
+	handle uintptr
 }
 
 func NewImageListBuffer() *ImageListBuffer {
-	handle := C.MaaImageListBufferCreate()
-	if handle == nil {
+	handle := maa.MaaImageListBufferCreate()
+	if handle == 0 {
 		return nil
 	}
 	return &ImageListBuffer{
@@ -24,34 +20,34 @@ func NewImageListBuffer() *ImageListBuffer {
 	}
 }
 
-func NewImageListBufferByHandle(handle unsafe.Pointer) *ImageListBuffer {
+func NewImageListBufferByHandle(handle uintptr) *ImageListBuffer {
 	return &ImageListBuffer{
-		handle: (*C.MaaImageListBuffer)(handle),
+		handle: handle,
 	}
 }
 
 func (il *ImageListBuffer) Destroy() {
-	C.MaaImageListBufferDestroy(il.handle)
+	maa.MaaImageListBufferDestroy(il.handle)
 }
 
-func (il *ImageListBuffer) Handle() unsafe.Pointer {
-	return unsafe.Pointer(il.handle)
+func (il *ImageListBuffer) Handle() uintptr {
+	return il.handle
 }
 
 func (il *ImageListBuffer) IsEmpty() bool {
-	return C.MaaImageListBufferIsEmpty(il.handle) != 0
+	return maa.MaaImageListBufferIsEmpty(il.handle)
 }
 
 func (il *ImageListBuffer) Clear() bool {
-	return C.MaaImageListBufferClear(il.handle) != 0
+	return maa.MaaImageListBufferClear(il.handle)
 }
 
 func (il *ImageListBuffer) Size() uint64 {
-	return uint64(C.MaaImageListBufferSize(il.handle))
+	return maa.MaaImageListBufferSize(il.handle)
 }
 
 func (il *ImageListBuffer) Get(index uint64) image.Image {
-	handle := C.MaaImageListBufferAt(il.handle, C.uint64_t(index))
+	handle := maa.MaaImageListBufferAt(il.handle, index)
 	img := &ImageBuffer{
 		handle: handle,
 	}
@@ -69,15 +65,9 @@ func (il *ImageListBuffer) GetAll() []image.Image {
 }
 
 func (il *ImageListBuffer) Append(value *ImageBuffer) bool {
-	return C.MaaImageListBufferAppend(
-		il.handle,
-		(*C.MaaImageBuffer)(value.Handle()),
-	) != 0
+	return maa.MaaImageListBufferAppend(il.handle, value.handle)
 }
 
 func (il *ImageListBuffer) Remove(index uint64) bool {
-	return C.MaaImageListBufferRemove(
-		il.handle,
-		C.uint64_t(index),
-	) != 0
+	return maa.MaaImageListBufferRemove(il.handle, index)
 }

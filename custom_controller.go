@@ -90,7 +90,7 @@ func _RequestUUIDAgent(handleArg unsafe.Pointer, uuidBuffer uintptr) bool {
 	ctrl := customControllerCallbacksAgents[id]
 	uuid, ok := ctrl.RequestUUID()
 	if ok {
-		uuidStrBuffer := buffer.NewStringBufferByHandle(unsafe.Pointer(uuidBuffer))
+		uuidStrBuffer := buffer.NewStringBufferByHandle(uuidBuffer)
 		uuidStrBuffer.Set(uuid)
 		return true
 	}
@@ -120,7 +120,7 @@ func _ScreencapAgent(handleArg unsafe.Pointer, imgBuffer uintptr) bool {
 	ctrl := customControllerCallbacksAgents[id]
 	img, captured := ctrl.Screencap()
 	if captured {
-		imgImgBuffer := buffer.NewImageBufferByHandle(unsafe.Pointer(imgBuffer))
+		imgImgBuffer := buffer.NewImageBufferByHandle(imgBuffer)
 		if ok := imgImgBuffer.Set(img); ok {
 			return true
 		}

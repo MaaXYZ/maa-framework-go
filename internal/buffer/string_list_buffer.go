@@ -1,19 +1,16 @@
 package buffer
 
-/*
-#include <stdlib.h>
-#include <MaaFramework/MaaAPI.h>
-*/
-import "C"
-import "unsafe"
+import (
+	"github.com/MaaXYZ/maa-framework-go/internal/maa"
+)
 
 type StringListBuffer struct {
-	handle *C.MaaStringListBuffer
+	handle uintptr
 }
 
 func NewStringListBuffer() *StringListBuffer {
-	handle := C.MaaStringListBufferCreate()
-	if handle == nil {
+	handle := maa.MaaStringListBufferCreate()
+	if handle == 0 {
 		return nil
 	}
 	return &StringListBuffer{
@@ -21,37 +18,35 @@ func NewStringListBuffer() *StringListBuffer {
 	}
 }
 
-func NewStringListBufferByHandle(handle unsafe.Pointer) *StringListBuffer {
+func NewStringListBufferByHandle(handle uintptr) *StringListBuffer {
 	return &StringListBuffer{
-		handle: (*C.MaaStringListBuffer)(handle),
+		handle: handle,
 	}
 }
 
 func (sl *StringListBuffer) Destroy() {
-	C.MaaStringListBufferDestroy(sl.handle)
+	maa.MaaStringListBufferDestroy(sl.handle)
 }
 
-func (sl *StringListBuffer) Handle() unsafe.Pointer {
-	return unsafe.Pointer(sl.handle)
+func (sl *StringListBuffer) Handle() uintptr {
+	return sl.handle
 }
 
 func (sl *StringListBuffer) IsEmpty() bool {
-	return C.MaaStringListBufferIsEmpty(sl.handle) != 0
+	return maa.MaaStringListBufferIsEmpty(sl.handle)
 }
 
 func (sl *StringListBuffer) Clear() bool {
-	return C.MaaStringListBufferClear(sl.handle) != 0
+	return maa.MaaStringListBufferClear(sl.handle)
 }
 
 func (sl *StringListBuffer) Size() uint64 {
-	return uint64(C.MaaStringListBufferSize(sl.handle))
+	return maa.MaaStringListBufferSize(sl.handle)
 }
 
 func (sl *StringListBuffer) Get(index uint64) string {
-	handle := C.MaaStringListBufferAt(sl.handle, C.uint64_t(index))
-	str := &StringBuffer{
-		handle: handle,
-	}
+	handle := maa.MaaStringListBufferAt(sl.handle, index)
+	str := &StringBuffer{handle: handle}
 	return str.Get()
 }
 
@@ -65,15 +60,9 @@ func (sl *StringListBuffer) GetAll() []string {
 }
 
 func (sl *StringListBuffer) Append(value *StringBuffer) bool {
-	return C.MaaStringListBufferAppend(
-		sl.handle,
-		(*C.MaaStringBuffer)(value.Handle()),
-	) != 0
+	return maa.MaaStringListBufferAppend(sl.handle, value.handle)
 }
 
 func (sl *StringListBuffer) Remove(index uint64) bool {
-	return C.MaaStringListBufferRemove(
-		sl.handle,
-		C.uint64_t(index),
-	) != 0
+	return maa.MaaStringListBufferRemove(sl.handle, index)
 }

@@ -266,6 +266,54 @@ var (
 	MaaContextClone            func(context uintptr) uintptr
 )
 
+var (
+	MaaStringBufferCreate  func() uintptr
+	MaaStringBufferDestroy func(handle uintptr)
+	MaaStringBufferIsEmpty func(handle uintptr) bool
+	MaaStringBufferClear   func(handle uintptr) bool
+	MaaStringBufferGet     func(handle uintptr) string
+	MaaStringBufferSize    func(handle uintptr) uint64
+	MaaStringBufferSet     func(handle uintptr, str string) bool
+	MaaStringBufferSetEx   func(handle uintptr, str string, size uint64) bool
+
+	MaaStringListBufferCreate  func() uintptr
+	MaaStringListBufferDestroy func(handle uintptr)
+	MaaStringListBufferIsEmpty func(handle uintptr) bool
+	MaaStringListBufferSize    func(handle uintptr) uint64
+	MaaStringListBufferAt      func(handle uintptr, index uint64) uintptr
+	MaaStringListBufferAppend  func(handle uintptr, value uintptr) bool
+	MaaStringListBufferRemove  func(handle uintptr, index uint64) bool
+	MaaStringListBufferClear   func(handle uintptr) bool
+
+	MaaImageBufferCreate     func() uintptr
+	MaaImageBufferDestroy    func(handle uintptr)
+	MaaImageBufferIsEmpty    func(handle uintptr) bool
+	MaaImageBufferClear      func(handle uintptr) bool
+	MaaImageBufferGetRawData func(handle uintptr) unsafe.Pointer
+	MaaImageBufferWidth      func(handle uintptr) int32
+	MaaImageBufferHeight     func(handle uintptr) int32
+	MaaImageBufferChannels   func(handle uintptr) int32
+	MaaImageBufferType       func(handle uintptr) int32
+	MaaImageBufferSetRawData func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
+
+	MaaImageListBufferCreate  func() uintptr
+	MaaImageListBufferDestroy func(handle uintptr)
+	MaaImageListBufferIsEmpty func(handle uintptr) bool
+	MaaImageListBufferSize    func(handle uintptr) uint64
+	MaaImageListBufferAt      func(handle uintptr, index uint64) uintptr
+	MaaImageListBufferAppend  func(handle uintptr, value uintptr) bool
+	MaaImageListBufferRemove  func(handle uintptr, index uint64) bool
+	MaaImageListBufferClear   func(handle uintptr) bool
+
+	MaaRectCreate  func() uintptr
+	MaaRectDestroy func(handle uintptr)
+	MaaRectGetX    func(handle uintptr) int32
+	MaaRectGetY    func(handle uintptr) int32
+	MaaRectGetW    func(handle uintptr) int32
+	MaaRectGetH    func(handle uintptr) int32
+	MaaRectSet     func(handle uintptr, x, y, w, h int32) bool
+)
+
 func init() {
 	maaFramework, err := openLibrary(getMaaFrameworkLibrary())
 	if err != nil {
@@ -341,5 +389,46 @@ func init() {
 	purego.RegisterLibFunc(&MaaContextGetTaskId, maaFramework, "MaaContextGetTaskId")
 	purego.RegisterLibFunc(&MaaContextGetTasker, maaFramework, "MaaContextGetTasker")
 	purego.RegisterLibFunc(&MaaContextClone, maaFramework, "MaaContextClone")
-
+	// Buffer
+	purego.RegisterLibFunc(&MaaStringBufferCreate, maaFramework, "MaaStringBufferCreate")
+	purego.RegisterLibFunc(&MaaStringBufferDestroy, maaFramework, "MaaStringBufferDestroy")
+	purego.RegisterLibFunc(&MaaStringBufferIsEmpty, maaFramework, "MaaStringBufferIsEmpty")
+	purego.RegisterLibFunc(&MaaStringBufferClear, maaFramework, "MaaStringBufferClear")
+	purego.RegisterLibFunc(&MaaStringBufferGet, maaFramework, "MaaStringBufferGet")
+	purego.RegisterLibFunc(&MaaStringBufferSize, maaFramework, "MaaStringBufferSize")
+	purego.RegisterLibFunc(&MaaStringBufferSet, maaFramework, "MaaStringBufferSet")
+	purego.RegisterLibFunc(&MaaStringBufferSetEx, maaFramework, "MaaStringBufferSetEx")
+	purego.RegisterLibFunc(&MaaStringListBufferCreate, maaFramework, "MaaStringListBufferCreate")
+	purego.RegisterLibFunc(&MaaStringListBufferDestroy, maaFramework, "MaaStringListBufferDestroy")
+	purego.RegisterLibFunc(&MaaStringListBufferIsEmpty, maaFramework, "MaaStringListBufferIsEmpty")
+	purego.RegisterLibFunc(&MaaStringListBufferSize, maaFramework, "MaaStringListBufferSize")
+	purego.RegisterLibFunc(&MaaStringListBufferAt, maaFramework, "MaaStringListBufferAt")
+	purego.RegisterLibFunc(&MaaStringListBufferAppend, maaFramework, "MaaStringListBufferAppend")
+	purego.RegisterLibFunc(&MaaStringListBufferRemove, maaFramework, "MaaStringListBufferRemove")
+	purego.RegisterLibFunc(&MaaStringListBufferClear, maaFramework, "MaaStringListBufferClear")
+	purego.RegisterLibFunc(&MaaImageBufferCreate, maaFramework, "MaaImageBufferCreate")
+	purego.RegisterLibFunc(&MaaImageBufferDestroy, maaFramework, "MaaImageBufferDestroy")
+	purego.RegisterLibFunc(&MaaImageBufferIsEmpty, maaFramework, "MaaImageBufferIsEmpty")
+	purego.RegisterLibFunc(&MaaImageBufferClear, maaFramework, "MaaImageBufferClear")
+	purego.RegisterLibFunc(&MaaImageBufferGetRawData, maaFramework, "MaaImageBufferGetRawData")
+	purego.RegisterLibFunc(&MaaImageBufferWidth, maaFramework, "MaaImageBufferWidth")
+	purego.RegisterLibFunc(&MaaImageBufferHeight, maaFramework, "MaaImageBufferHeight")
+	purego.RegisterLibFunc(&MaaImageBufferChannels, maaFramework, "MaaImageBufferChannels")
+	purego.RegisterLibFunc(&MaaImageBufferType, maaFramework, "MaaImageBufferType")
+	purego.RegisterLibFunc(&MaaImageBufferSetRawData, maaFramework, "MaaImageBufferSetRawData")
+	purego.RegisterLibFunc(&MaaImageListBufferCreate, maaFramework, "MaaImageListBufferCreate")
+	purego.RegisterLibFunc(&MaaImageListBufferDestroy, maaFramework, "MaaImageListBufferDestroy")
+	purego.RegisterLibFunc(&MaaImageListBufferIsEmpty, maaFramework, "MaaImageListBufferIsEmpty")
+	purego.RegisterLibFunc(&MaaImageListBufferSize, maaFramework, "MaaImageListBufferSize")
+	purego.RegisterLibFunc(&MaaImageListBufferAt, maaFramework, "MaaImageListBufferAt")
+	purego.RegisterLibFunc(&MaaImageListBufferAppend, maaFramework, "MaaImageListBufferAppend")
+	purego.RegisterLibFunc(&MaaImageListBufferRemove, maaFramework, "MaaImageListBufferRemove")
+	purego.RegisterLibFunc(&MaaImageListBufferClear, maaFramework, "MaaImageListBufferClear")
+	purego.RegisterLibFunc(&MaaRectCreate, maaFramework, "MaaRectCreate")
+	purego.RegisterLibFunc(&MaaRectDestroy, maaFramework, "MaaRectDestroy")
+	purego.RegisterLibFunc(&MaaRectGetX, maaFramework, "MaaRectGetX")
+	purego.RegisterLibFunc(&MaaRectGetY, maaFramework, "MaaRectGetY")
+	purego.RegisterLibFunc(&MaaRectGetW, maaFramework, "MaaRectGetW")
+	purego.RegisterLibFunc(&MaaRectGetH, maaFramework, "MaaRectGetH")
+	purego.RegisterLibFunc(&MaaRectSet, maaFramework, "MaaRectSet")
 }
