@@ -47,30 +47,28 @@ func (t *Toolkit) ConfigInitOption(userPath, defaultJson string) bool {
 
 // FindAdbDevices finds adb devices.
 func (t *Toolkit) FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
-	listHandle := C.MaaToolkitAdbDeviceListCreate()
-	defer C.MaaToolkitAdbDeviceListDestroy(listHandle)
-	var got C.uint8_t
+	listHandle := maa.MaaToolkitAdbDeviceListCreate()
+	defer maa.MaaToolkitAdbDeviceListDestroy(listHandle)
+	var got bool
 	if len(specifiedAdb) > 0 {
-		cAdbPath := C.CString(specifiedAdb[0])
-		defer C.free(unsafe.Pointer(cAdbPath))
-		got = C.MaaToolkitAdbDeviceFindSpecified(cAdbPath, listHandle)
+		got = maa.MaaToolkitAdbDeviceFindSpecified(specifiedAdb[0], listHandle)
 	} else {
-		got = C.MaaToolkitAdbDeviceFind(listHandle)
+		got = maa.MaaToolkitAdbDeviceFind(listHandle)
 	}
-	if got == 0 {
+	if !got {
 		return nil
 	}
 
-	size := uint64(C.MaaToolkitAdbDeviceListSize(listHandle))
+	size := maa.MaaToolkitAdbDeviceListSize(listHandle)
 	list := make([]*AdbDevice, size)
 	for i := uint64(0); i < size; i++ {
-		deviceHandle := C.MaaToolkitAdbDeviceListAt(listHandle, C.uint64_t(i))
-		name := C.GoString(C.MaaToolkitAdbDeviceGetName(deviceHandle))
-		adbPath := C.GoString(C.MaaToolkitAdbDeviceGetAdbPath(deviceHandle))
-		address := C.GoString(C.MaaToolkitAdbDeviceGetAddress(deviceHandle))
-		screencapMethod := AdbScreencapMethod(C.MaaToolkitAdbDeviceGetScreencapMethods(deviceHandle))
-		inputMethod := AdbInputMethod(C.MaaToolkitAdbDeviceGetInputMethods(deviceHandle))
-		config := C.GoString(C.MaaToolkitAdbDeviceGetConfig(deviceHandle))
+		deviceHandle := maa.MaaToolkitAdbDeviceListAt(listHandle, i)
+		name := maa.MaaToolkitAdbDeviceGetName(deviceHandle)
+		adbPath := maa.MaaToolkitAdbDeviceGetAdbPath(deviceHandle)
+		address := maa.MaaToolkitAdbDeviceGetAddress(deviceHandle)
+		screencapMethod := AdbScreencapMethod(maa.MaaToolkitAdbDeviceGetScreencapMethods(deviceHandle))
+		inputMethod := AdbInputMethod(maa.MaaToolkitAdbDeviceGetInputMethods(deviceHandle))
+		config := maa.MaaToolkitAdbDeviceGetConfig(deviceHandle)
 		list[i] = &AdbDevice{
 			Name:            name,
 			AdbPath:         adbPath,
