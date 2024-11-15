@@ -70,7 +70,7 @@ const (
 	InterfaceDeviceCPU  InterfaceDevice = -2
 	InterfaceDeviceAuto InterfaceDevice = -1
 	InterfaceDeviceGPU0 InterfaceDevice = 0
-	interfaceDeviceGPU1 InterfaceDevice = 1
+	InterfaceDeviceGPU1 InterfaceDevice = 1
 	// and more gpu id...
 )
 
