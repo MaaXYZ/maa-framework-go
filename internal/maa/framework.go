@@ -314,6 +314,46 @@ var (
 	MaaRectSet     func(handle uintptr, x, y, w, h int32) bool
 )
 
+type MaaGlobalOption int32
+
+const (
+	MaaGlobalOption_Invalid MaaGlobalOption = iota
+
+	// MaaGlobalOption_LogDir Log dir
+	//
+	// value: string, eg: "C:\\Users\\Administrator\\Desktop\\log"; val_size: string length
+	MaaGlobalOption_LogDir
+
+	// MaaGlobalOption_SaveDraw Whether to save draw
+	//
+	// value: bool, eg: true; val_size: sizeof(bool)
+	MaaGlobalOption_SaveDraw
+
+	// MaaGlobalOption_Recording Dump all screenshots and actions
+	//
+	// Recording will evaluate to true if any of this or MaaCtrlOptionEnum::MaaCtrlOption_Recording
+	// is true. value: bool, eg: true; val_size: sizeof(bool)
+	MaaGlobalOption_Recording
+
+	// MaaGlobalOption_StdoutLevel The level of log output to stdout
+	//
+	// value: MaaLoggingLevel, val_size: sizeof(MaaLoggingLevel)
+	// default value is MaaLoggingLevel_Error
+	MaaGlobalOption_StdoutLevel
+
+	// MaaGlobalOption_ShowHitDraw Whether to show hit draw
+	//
+	// value: bool, eg: true; val_size: sizeof(bool)
+	MaaGlobalOption_ShowHitDraw
+
+	// MaaGlobalOption_DebugMode Whether to debug
+	//
+	// value: bool, eg: true; val_size: sizeof(bool)
+	MaaGlobalOption_DebugMode
+)
+
+var MaaSetGlobalOption func(key MaaGlobalOption, value unsafe.Pointer, valSize uint64) bool
+
 func init() {
 	maaFramework, err := openLibrary(getMaaFrameworkLibrary())
 	if err != nil {
@@ -431,4 +471,6 @@ func init() {
 	purego.RegisterLibFunc(&MaaRectGetW, maaFramework, "MaaRectGetW")
 	purego.RegisterLibFunc(&MaaRectGetH, maaFramework, "MaaRectGetH")
 	purego.RegisterLibFunc(&MaaRectSet, maaFramework, "MaaRectSet")
+	// Option
+	purego.RegisterLibFunc(&MaaSetGlobalOption, maaFramework, "MaaSetGlobalOption")
 }
