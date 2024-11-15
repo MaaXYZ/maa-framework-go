@@ -21,7 +21,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        arch: [ x86_64 ]
+        arch: [ x86_64, aarch64 ]
       fail-fast: false
 
     steps:
@@ -70,7 +70,7 @@ jobs:
     container: archlinux:base-devel
     strategy:
       matrix:
-        arch: [ x86_64 ]
+        arch: [ x86_64, aarch64 ]
       fail-fast: false
 
     steps:
