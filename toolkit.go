@@ -1,10 +1,5 @@
 package maa
 
-/*
-#include <stdlib.h>
-#include <MaaToolkit/MaaToolkitAPI.h>
-*/
-import "C"
 import (
 	"unsafe"
 
@@ -37,12 +32,7 @@ func NewToolkit() *Toolkit {
 
 // ConfigInitOption inits the toolkit config option.
 func (t *Toolkit) ConfigInitOption(userPath, defaultJson string) bool {
-	cUserPath := C.CString(userPath)
-	defer C.free(unsafe.Pointer(cUserPath))
-	cDefaultJson := C.CString(defaultJson)
-	defer C.free(unsafe.Pointer(cDefaultJson))
-
-	return C.MaaToolkitConfigInitOption(cUserPath, cDefaultJson) != 0
+	return maa.MaaToolkitConfigInitOption(userPath, defaultJson)
 }
 
 // FindAdbDevices finds adb devices.
@@ -83,20 +73,20 @@ func (t *Toolkit) FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
 
 // FindDesktopWindows finds desktop windows.
 func (t *Toolkit) FindDesktopWindows() []*DesktopWindow {
-	listHandle := C.MaaToolkitDesktopWindowListCreate()
-	defer C.MaaToolkitDesktopWindowListDestroy(listHandle)
-	got := C.MaaToolkitDesktopWindowFindAll(listHandle)
-	if got == 0 {
+	listHandle := maa.MaaToolkitDesktopWindowListCreate()
+	defer maa.MaaToolkitDesktopWindowListDestroy(listHandle)
+	got := maa.MaaToolkitDesktopWindowFindAll(listHandle)
+	if !got {
 		return nil
 	}
 
-	size := uint64(C.MaaToolkitDesktopWindowListSize(listHandle))
+	size := maa.MaaToolkitDesktopWindowListSize(listHandle)
 	list := make([]*DesktopWindow, size)
 	for i := uint64(0); i < size; i++ {
-		windowHandle := C.MaaToolkitDesktopWindowListAt(listHandle, C.uint64_t(i))
-		handle := unsafe.Pointer(C.MaaToolkitDesktopWindowGetHandle(windowHandle))
-		className := C.GoString(C.MaaToolkitDesktopWindowGetClassName(windowHandle))
-		windowName := C.GoString(C.MaaToolkitDesktopWindowGetWindowName(windowHandle))
+		windowHandle := maa.MaaToolkitDesktopWindowListAt(listHandle, i)
+		handle := maa.MaaToolkitDesktopWindowGetHandle(windowHandle)
+		className := maa.MaaToolkitDesktopWindowGetClassName(windowHandle)
+		windowName := maa.MaaToolkitDesktopWindowGetWindowName(windowHandle)
 		list[i] = &DesktopWindow{
 			Handle:     handle,
 			ClassName:  className,

@@ -12,6 +12,8 @@ var (
 	MaaToolkitProjectInterfaceRunCli                    func(instId uint64, resourcePath, userPath string, directly bool, notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) bool
 )
 
+var MaaToolkitConfigInitOption func(userPath, defaultJson string) bool
+
 var (
 	MaaToolkitAdbDeviceListCreate          func() uintptr
 	MaaToolkitAdbDeviceListDestroy         func(handle uintptr)
@@ -27,6 +29,17 @@ var (
 	MaaToolkitAdbDeviceGetConfig           func(device uintptr) string
 )
 
+var (
+	MaaToolkitDesktopWindowListCreate    func() uintptr
+	MaaToolkitDesktopWindowListDestroy   func(handle uintptr)
+	MaaToolkitDesktopWindowFindAll       func(buffer uintptr) bool
+	MaaToolkitDesktopWindowListSize      func(list uintptr) uint64
+	MaaToolkitDesktopWindowListAt        func(list uintptr, index uint64) uintptr
+	MaaToolkitDesktopWindowGetHandle     func(window uintptr) unsafe.Pointer
+	MaaToolkitDesktopWindowGetClassName  func(window uintptr) string
+	MaaToolkitDesktopWindowGetWindowName func(window uintptr) string
+)
+
 func init() {
 	maaToolkit, err := openLibrary(getMaaToolkitLibrary())
 	if err != nil {
@@ -36,6 +49,8 @@ func init() {
 	purego.RegisterLibFunc(&MaaToolkitProjectInterfaceRegisterCustomRecognition, maaToolkit, "MaaToolkitProjectInterfaceRegisterCustomRecognition")
 	purego.RegisterLibFunc(&MaaToolkitProjectInterfaceRegisterCustomAction, maaToolkit, "MaaToolkitProjectInterfaceRegisterCustomAction")
 	purego.RegisterLibFunc(&MaaToolkitProjectInterfaceRunCli, maaToolkit, "MaaToolkitProjectInterfaceRunCli")
+	// Config
+	purego.RegisterLibFunc(&MaaToolkitConfigInitOption, maaToolkit, "MaaToolkitConfigInitOption")
 	// AdbDevice
 	purego.RegisterLibFunc(&MaaToolkitAdbDeviceListCreate, maaToolkit, "MaaToolkitAdbDeviceListCreate")
 	purego.RegisterLibFunc(&MaaToolkitAdbDeviceListDestroy, maaToolkit, "MaaToolkitAdbDeviceListDestroy")
@@ -49,4 +64,13 @@ func init() {
 	purego.RegisterLibFunc(&MaaToolkitAdbDeviceGetScreencapMethods, maaToolkit, "MaaToolkitAdbDeviceGetScreencapMethods")
 	purego.RegisterLibFunc(&MaaToolkitAdbDeviceGetInputMethods, maaToolkit, "MaaToolkitAdbDeviceGetInputMethods")
 	purego.RegisterLibFunc(&MaaToolkitAdbDeviceGetConfig, maaToolkit, "MaaToolkitAdbDeviceGetConfig")
+	// DesktopWindow
+	purego.RegisterLibFunc(&MaaToolkitDesktopWindowListCreate, maaToolkit, "MaaToolkitDesktopWindowListCreate")
+	purego.RegisterLibFunc(&MaaToolkitDesktopWindowListDestroy, maaToolkit, "MaaToolkitDesktopWindowListDestroy")
+	purego.RegisterLibFunc(&MaaToolkitDesktopWindowFindAll, maaToolkit, "MaaToolkitDesktopWindowFindAll")
+	purego.RegisterLibFunc(&MaaToolkitDesktopWindowListSize, maaToolkit, "MaaToolkitDesktopWindowListSize")
+	purego.RegisterLibFunc(&MaaToolkitDesktopWindowListAt, maaToolkit, "MaaToolkitDesktopWindowListAt")
+	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetHandle, maaToolkit, "MaaToolkitDesktopWindowGetHandle")
+	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetClassName, maaToolkit, "MaaToolkitDesktopWindowGetClassName")
+	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetWindowName, maaToolkit, "MaaToolkitDesktopWindowGetWindowName")
 }
