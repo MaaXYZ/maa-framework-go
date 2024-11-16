@@ -10,12 +10,12 @@ var (
 	MaaVersion func() string
 )
 
-type MaaNotificationCallback func(message, detailsJson *byte, notifyTransArg unsafe.Pointer) uintptr
+type MaaNotificationCallback func(message, detailsJson *byte, notifyTransArg uintptr) uintptr
 
 type MaaTaskerOption int32
 
 var (
-	MaaTaskerCreate               func(notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) uintptr
+	MaaTaskerCreate               func(notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
 	MaaTaskerDestroy              func(tasker uintptr)
 	MaaTaskerSetOption            func(tasker uintptr, key MaaTaskerOption, value unsafe.Pointer, valSize uint64) bool
 	MaaTaskerBindResource         func(tasker uintptr, res uintptr) bool
@@ -35,9 +35,9 @@ var (
 	MaaTaskerGetLatestNode        func(tasker uintptr, taskName string, latestId *int64) bool
 )
 
-type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi uintptr, transArg unsafe.Pointer, outBox, outDetail uintptr) uint64
+type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi uintptr, transArg uintptr, outBox, outDetail uintptr) uint64
 
-type MaaCustomActionCallback func(context uintptr, taskId int64, currentTaskName, customActionName, customActionParam *byte, recoId int64, box uintptr, transArg unsafe.Pointer) uint64
+type MaaCustomActionCallback func(context uintptr, taskId int64, currentTaskName, customActionName, customActionParam *byte, recoId int64, box uintptr, transArg uintptr) uint64
 
 type MaaResOption int32
 
@@ -53,12 +53,12 @@ const (
 )
 
 var (
-	MaaResourceCreate                      func(notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) uintptr
+	MaaResourceCreate                      func(notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
 	MaaResourceDestroy                     func(res uintptr)
-	MaaResourceRegisterCustomRecognition   func(res uintptr, name string, recognition MaaCustomRecognitionCallback, transArg unsafe.Pointer) bool
+	MaaResourceRegisterCustomRecognition   func(res uintptr, name string, recognition MaaCustomRecognitionCallback, transArg uintptr) bool
 	MaaResourceUnregisterCustomRecognition func(res uintptr, name string) bool
 	MaaResourceClearCustomRecognition      func(res uintptr) bool
-	MaaResourceRegisterCustomAction        func(res uintptr, name string, action MaaCustomActionCallback, transArg unsafe.Pointer) bool
+	MaaResourceRegisterCustomAction        func(res uintptr, name string, action MaaCustomActionCallback, transArg uintptr) bool
 	MaaResourceUnregisterCustomAction      func(res uintptr, name string) bool
 	MaaResourceClearCustomAction           func(res uintptr) bool
 	MaaResourcePostPath                    func(res uintptr, path string) int64
@@ -166,10 +166,10 @@ const (
 )
 
 var (
-	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods MaaAdbScreencapMethod, inputMethods MaaAdbInputMethod, config, agentPath string, notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) uintptr
-	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods MaaWin32ScreencapMethod, inputMethods MaaWin32InputMethod, notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) uintptr
-	MaaCustomControllerCreate   func(controller uintptr, controllerArg unsafe.Pointer, notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) uintptr
-	MaaDbgControllerCreate      func(readPath, writePath string, dbgCtrlType MaaDbgControllerType, config string, notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) uintptr
+	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods MaaAdbScreencapMethod, inputMethods MaaAdbInputMethod, config, agentPath string, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
+	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods MaaWin32ScreencapMethod, inputMethods MaaWin32InputMethod, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
+	MaaCustomControllerCreate   func(controller uintptr, controllerArg uintptr, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
+	MaaDbgControllerCreate      func(readPath, writePath string, dbgCtrlType MaaDbgControllerType, config string, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
 	MaaControllerDestroy        func(ctrl uintptr)
 	MaaControllerSetOption      func(ctrl uintptr, key MaaCtrlOption, value unsafe.Pointer, valSize uint64) bool
 	MaaControllerPostConnection func(ctrl uintptr) int64
@@ -210,18 +210,18 @@ type MaaCustomControllerCallbacks struct {
 }
 
 type (
-	ConnectCallback     func(transArg unsafe.Pointer) bool
-	RequestUUIDCallback func(transArg unsafe.Pointer, buffer uintptr) bool
-	StartAppCallback    func(intent string, transArg unsafe.Pointer) bool
-	StopAppCallback     func(intent string, transArg unsafe.Pointer) bool
-	ScreencapCallback   func(transArg unsafe.Pointer, buffer uintptr) bool
-	ClickCallback       func(x, y int32, transArg unsafe.Pointer) bool
-	SwipeCallback       func(x1, y1, x2, y2, duration int32, transArg unsafe.Pointer) bool
-	TouchDownCallback   func(contact, x, y, pressure int32, transArg unsafe.Pointer) bool
-	TouchMoveCallback   func(contact, x, y, pressure int32, transArg unsafe.Pointer) bool
-	TouchUpCallback     func(contact int32, transArg unsafe.Pointer) bool
-	PressKeyCallback    func(keycode int32, transArg unsafe.Pointer) bool
-	InputTextCallback   func(text string, transArg unsafe.Pointer) bool
+	ConnectCallback     func(transArg uintptr) bool
+	RequestUUIDCallback func(transArg uintptr, buffer uintptr) bool
+	StartAppCallback    func(intent string, transArg uintptr) bool
+	StopAppCallback     func(intent string, transArg uintptr) bool
+	ScreencapCallback   func(transArg uintptr, buffer uintptr) bool
+	ClickCallback       func(x, y int32, transArg uintptr) bool
+	SwipeCallback       func(x1, y1, x2, y2, duration int32, transArg uintptr) bool
+	TouchDownCallback   func(contact, x, y, pressure int32, transArg uintptr) bool
+	TouchMoveCallback   func(contact, x, y, pressure int32, transArg uintptr) bool
+	TouchUpCallback     func(contact int32, transArg uintptr) bool
+	PressKeyCallback    func(keycode int32, transArg uintptr) bool
+	InputTextCallback   func(text string, transArg uintptr) bool
 )
 
 func MaaCustomControllerCallbacksCreate(
