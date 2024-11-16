@@ -2,7 +2,6 @@ package maa
 
 import (
 	"sync/atomic"
-	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 )
@@ -45,11 +44,11 @@ func _MaaCustomActionCallbackAgent(
 	currentTaskName, customActionName, customActionParam *byte,
 	recoId int64,
 	box uintptr,
-	transArg unsafe.Pointer,
+	transArg uintptr,
 ) uint64 {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(transArg))
+	id := uint64(transArg)
 	action := customActionCallbackAgents[id]
 	ctx := &Context{handle: context}
 	tasker := ctx.GetTasker()

@@ -27,7 +27,7 @@ func NewResource(notify Notification) *Resource {
 		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
 	if handle == 0 {
 		return nil
@@ -94,7 +94,7 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 		_MaaCustomRecognitionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
 	return got
 }
@@ -139,7 +139,7 @@ func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
 		_MaaCustomActionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
 	return got
 }

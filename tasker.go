@@ -22,7 +22,7 @@ func NewTasker(notify Notification) *Tasker {
 		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
 	if handle == 0 {
 		return nil

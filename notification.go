@@ -164,10 +164,10 @@ func (n *NotificationHandler) notificationType(msg string) NotificationType {
 	}
 }
 
-func _MaaNotificationCallbackAgent(message, detailsJson *byte, notifyTransArg unsafe.Pointer) uintptr {
+func _MaaNotificationCallbackAgent(message, detailsJson *byte, notifyTransArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(notifyTransArg))
+	id := uint64(notifyTransArg)
 	notify := notificationCallbackAgents[id]
 	if notify == nil {
 		return 0

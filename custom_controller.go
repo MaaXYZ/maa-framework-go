@@ -3,7 +3,6 @@ package maa
 import (
 	"image"
 	"sync/atomic"
-	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/internal/maa"
@@ -74,18 +73,18 @@ func (c CustomControllerHandler) Handle() uintptr {
 	return c.handle
 }
 
-func _ConnectAgent(handleArg unsafe.Pointer) bool {
+func _ConnectAgent(handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	return ctrl.Connect()
 }
 
-func _RequestUUIDAgent(handleArg unsafe.Pointer, uuidBuffer uintptr) bool {
+func _RequestUUIDAgent(handleArg uintptr, uuidBuffer uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	uuid, ok := ctrl.RequestUUID()
 	if ok {
@@ -96,26 +95,26 @@ func _RequestUUIDAgent(handleArg unsafe.Pointer, uuidBuffer uintptr) bool {
 	return false
 }
 
-func _StartAppAgent(intent string, handleArg unsafe.Pointer) bool {
+func _StartAppAgent(intent string, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	return ctrl.StartApp(intent)
 }
 
-func _StopAppAgent(intent string, handleArg unsafe.Pointer) bool {
+func _StopAppAgent(intent string, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	return ctrl.StopApp(intent)
 }
 
-func _ScreencapAgent(handleArg unsafe.Pointer, imgBuffer uintptr) bool {
+func _ScreencapAgent(handleArg uintptr, imgBuffer uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	img, captured := ctrl.Screencap()
 	if captured {
@@ -127,58 +126,58 @@ func _ScreencapAgent(handleArg unsafe.Pointer, imgBuffer uintptr) bool {
 	return false
 }
 
-func _ClickAgent(x, y int32, handleArg unsafe.Pointer) bool {
+func _ClickAgent(x, y int32, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	return ctrl.Click(x, y)
 }
 
-func _SwipeAgent(x1, y1, x2, y2, duration int32, handleArg unsafe.Pointer) bool {
+func _SwipeAgent(x1, y1, x2, y2, duration int32, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	return ctrl.Swipe(x1, y1, x2, y2, duration)
 }
 
-func _TouchDownAgent(contact, x, y, pressure int32, handleArg unsafe.Pointer) bool {
+func _TouchDownAgent(contact, x, y, pressure int32, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	return ctrl.TouchDown(contact, x, y, pressure)
 }
 
-func _TouchMoveAgent(contact, x, y, pressure int32, handleArg unsafe.Pointer) bool {
+func _TouchMoveAgent(contact, x, y, pressure int32, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	return ctrl.TouchMove(contact, x, y, pressure)
 }
 
-func _TouchUpAgent(contact int32, handleArg unsafe.Pointer) bool {
+func _TouchUpAgent(contact int32, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	return ctrl.TouchUp(contact)
 }
 
-func _PressKey(key int32, handleArg unsafe.Pointer) bool {
+func _PressKey(key int32, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	return ctrl.PressKey(key)
 }
 
-func _InputText(text string, handleArg unsafe.Pointer) bool {
+func _InputText(text string, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(handleArg))
+	id := uint64(handleArg)
 	ctrl := customControllerCallbacksAgents[id]
 	return ctrl.InputText(text)
 }

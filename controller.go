@@ -108,7 +108,7 @@ func NewAdbController(
 		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
 	if handle == 0 {
 		return nil
@@ -159,7 +159,7 @@ func NewWin32Controller(
 		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
 	if handle == 0 {
 		return nil
@@ -198,7 +198,7 @@ func NewDbgController(
 		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
 	if handle == 0 {
 		return nil
@@ -220,11 +220,11 @@ func NewCustomController(
 		uintptr(ctrl.Handle()),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(ctrlID)),
+		uintptr(ctrlID),
 		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(notifyID)),
+		uintptr(notifyID),
 	)
 	if handle == 0 {
 		return nil

@@ -3,7 +3,6 @@ package maa
 import (
 	"image"
 	"sync/atomic"
-	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 )
@@ -50,12 +49,12 @@ func _MaaCustomRecognitionCallbackAgent(
 	taskId int64,
 	currentTaskName, customRecognitionName, customRecognitionParam *byte,
 	image, roi uintptr,
-	transArg unsafe.Pointer,
+	transArg uintptr,
 	outBox, outDetail uintptr,
 ) uint64 {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(transArg))
+	id := uint64(transArg)
 	recognizer := customRecognitionCallbackAgents[id]
 	ctx := Context{handle: context}
 	tasker := ctx.GetTasker()
