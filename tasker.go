@@ -39,19 +39,14 @@ func (t *Tasker) Destroy() {
 	maa.MaaTaskerDestroy(t.handle)
 }
 
-// Handle returns the tasker handle.
-func (t *Tasker) Handle() unsafe.Pointer {
-	return unsafe.Pointer(t.handle)
-}
-
 // BindResource binds the tasker to an initialized resource.
 func (t *Tasker) BindResource(res *Resource) bool {
-	return maa.MaaTaskerBindResource(t.handle, uintptr(res.Handle()))
+	return maa.MaaTaskerBindResource(t.handle, res.handle)
 }
 
 // BindController binds the tasker to an initialized controller.
 func (t *Tasker) BindController(ctrl Controller) bool {
-	return maa.MaaTaskerBindController(t.handle, uintptr(ctrl.Handle()))
+	return maa.MaaTaskerBindController(t.handle, ctrl.Handle())
 }
 
 // Initialized checks if the tasker is initialized.

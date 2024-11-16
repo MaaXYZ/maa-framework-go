@@ -44,8 +44,7 @@ type CustomController interface {
 	PressKey(keycode int32) bool
 	InputText(text string) bool
 
-	Handle() unsafe.Pointer
-	Destroy()
+	Handle() uintptr
 }
 
 type CustomControllerHandler struct {
@@ -71,8 +70,8 @@ func NewCustomControllerHandler() CustomControllerHandler {
 	}
 }
 
-func (c CustomControllerHandler) Handle() unsafe.Pointer {
-	return unsafe.Pointer(c.handle)
+func (c CustomControllerHandler) Handle() uintptr {
+	return c.handle
 }
 
 func _ConnectAgent(handleArg unsafe.Pointer) bool {

@@ -1,8 +1,9 @@
 package maa
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func createResource(t *testing.T, notify Notification) *Resource {
@@ -14,13 +15,6 @@ func createResource(t *testing.T, notify Notification) *Resource {
 func TestNewResource(t *testing.T) {
 	res := createResource(t, nil)
 	res.Destroy()
-}
-
-func TestResource_Handle(t *testing.T) {
-	res := createResource(t, nil)
-	defer res.Destroy()
-	handle := res.Handle()
-	require.NotNil(t, handle)
 }
 
 type testResourceTestRec struct{}

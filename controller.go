@@ -13,7 +13,7 @@ import (
 // Controller is an interface that defines various methods for MAA controller.
 type Controller interface {
 	Destroy()
-	Handle() unsafe.Pointer
+	Handle() uintptr
 
 	SetScreenshotTargetLongSide(targetLongSide int32) bool
 	SetScreenshotTargetShortSide(targetShortSide int32) bool
@@ -246,8 +246,8 @@ func (c *controller) Destroy() {
 }
 
 // Handle returns controller handle.
-func (c *controller) Handle() unsafe.Pointer {
-	return unsafe.Pointer(c.handle)
+func (c *controller) Handle() uintptr {
+	return c.handle
 }
 
 // setOption sets options for controller instance.

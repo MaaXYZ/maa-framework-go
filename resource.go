@@ -50,10 +50,6 @@ func (r *Resource) Destroy() {
 	maa.MaaResourceDestroy(r.handle)
 }
 
-func (r *Resource) Handle() unsafe.Pointer {
-	return unsafe.Pointer(r.handle)
-}
-
 func (r *Resource) setOption(key maa.MaaResOption, value unsafe.Pointer, valSize uintptr) bool {
 	return maa.MaaResourceSetOption(
 		r.handle,
