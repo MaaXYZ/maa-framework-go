@@ -1,36 +1,9 @@
 package maa
 
-/*
-#include <stdlib.h>
-#include <MaaToolkit/MaaToolkitAPI.h>
-
-extern uint8_t _MaaCustomRecognitionCallbackAgent(
-	MaaContext* ctx,
-	int64_t task_id,
-	const char* current_task_name,
-	const char* custom_recognizer_name,
-	const char* custom_recognition_param,
-	const MaaImageBuffer* image,
-	const MaaRect* roi,
-	void* recognizer_arg,
-	MaaRect* out_box,
-	MaaStringBuffer* out_detail);
-
-extern uint8_t _MaaCustomActionCallbackAgent(
-	MaaContext* ctx,
-	int64_t task_id,
-	const char* current_task_name,
-	const char* custom_action_name,
-	const char* custom_action_param,
-	int64_t rec_id,
-	const MaaRect* box ,
-	void* actionArg);
-
-extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
-*/
-import "C"
 import (
 	"unsafe"
+
+	"github.com/MaaXYZ/maa-framework-go/internal/maa"
 )
 
 // AdbDevice represents a single ADB device with various properties about its information.
@@ -59,40 +32,33 @@ func NewToolkit() *Toolkit {
 
 // ConfigInitOption inits the toolkit config option.
 func (t *Toolkit) ConfigInitOption(userPath, defaultJson string) bool {
-	cUserPath := C.CString(userPath)
-	defer C.free(unsafe.Pointer(cUserPath))
-	cDefaultJson := C.CString(defaultJson)
-	defer C.free(unsafe.Pointer(cDefaultJson))
-
-	return C.MaaToolkitConfigInitOption(cUserPath, cDefaultJson) != 0
+	return maa.MaaToolkitConfigInitOption(userPath, defaultJson)
 }
 
 // FindAdbDevices finds adb devices.
 func (t *Toolkit) FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
-	listHandle := C.MaaToolkitAdbDeviceListCreate()
-	defer C.MaaToolkitAdbDeviceListDestroy(listHandle)
-	var got C.uint8_t
+	listHandle := maa.MaaToolkitAdbDeviceListCreate()
+	defer maa.MaaToolkitAdbDeviceListDestroy(listHandle)
+	var got bool
 	if len(specifiedAdb) > 0 {
-		cAdbPath := C.CString(specifiedAdb[0])
-		defer C.free(unsafe.Pointer(cAdbPath))
-		got = C.MaaToolkitAdbDeviceFindSpecified(cAdbPath, listHandle)
+		got = maa.MaaToolkitAdbDeviceFindSpecified(specifiedAdb[0], listHandle)
 	} else {
-		got = C.MaaToolkitAdbDeviceFind(listHandle)
+		got = maa.MaaToolkitAdbDeviceFind(listHandle)
 	}
-	if got == 0 {
+	if !got {
 		return nil
 	}
 
-	size := uint64(C.MaaToolkitAdbDeviceListSize(listHandle))
+	size := maa.MaaToolkitAdbDeviceListSize(listHandle)
 	list := make([]*AdbDevice, size)
 	for i := uint64(0); i < size; i++ {
-		deviceHandle := C.MaaToolkitAdbDeviceListAt(listHandle, C.uint64_t(i))
-		name := C.GoString(C.MaaToolkitAdbDeviceGetName(deviceHandle))
-		adbPath := C.GoString(C.MaaToolkitAdbDeviceGetAdbPath(deviceHandle))
-		address := C.GoString(C.MaaToolkitAdbDeviceGetAddress(deviceHandle))
-		screencapMethod := AdbScreencapMethod(C.MaaToolkitAdbDeviceGetScreencapMethods(deviceHandle))
-		inputMethod := AdbInputMethod(C.MaaToolkitAdbDeviceGetInputMethods(deviceHandle))
-		config := C.GoString(C.MaaToolkitAdbDeviceGetConfig(deviceHandle))
+		deviceHandle := maa.MaaToolkitAdbDeviceListAt(listHandle, i)
+		name := maa.MaaToolkitAdbDeviceGetName(deviceHandle)
+		adbPath := maa.MaaToolkitAdbDeviceGetAdbPath(deviceHandle)
+		address := maa.MaaToolkitAdbDeviceGetAddress(deviceHandle)
+		screencapMethod := AdbScreencapMethod(maa.MaaToolkitAdbDeviceGetScreencapMethods(deviceHandle))
+		inputMethod := AdbInputMethod(maa.MaaToolkitAdbDeviceGetInputMethods(deviceHandle))
+		config := maa.MaaToolkitAdbDeviceGetConfig(deviceHandle)
 		list[i] = &AdbDevice{
 			Name:            name,
 			AdbPath:         adbPath,
@@ -107,20 +73,20 @@ func (t *Toolkit) FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
 
 // FindDesktopWindows finds desktop windows.
 func (t *Toolkit) FindDesktopWindows() []*DesktopWindow {
-	listHandle := C.MaaToolkitDesktopWindowListCreate()
-	defer C.MaaToolkitDesktopWindowListDestroy(listHandle)
-	got := C.MaaToolkitDesktopWindowFindAll(listHandle)
-	if got == 0 {
+	listHandle := maa.MaaToolkitDesktopWindowListCreate()
+	defer maa.MaaToolkitDesktopWindowListDestroy(listHandle)
+	got := maa.MaaToolkitDesktopWindowFindAll(listHandle)
+	if !got {
 		return nil
 	}
 
-	size := uint64(C.MaaToolkitDesktopWindowListSize(listHandle))
+	size := maa.MaaToolkitDesktopWindowListSize(listHandle)
 	list := make([]*DesktopWindow, size)
 	for i := uint64(0); i < size; i++ {
-		windowHandle := C.MaaToolkitDesktopWindowListAt(listHandle, C.uint64_t(i))
-		handle := unsafe.Pointer(C.MaaToolkitDesktopWindowGetHandle(windowHandle))
-		className := C.GoString(C.MaaToolkitDesktopWindowGetClassName(windowHandle))
-		windowName := C.GoString(C.MaaToolkitDesktopWindowGetWindowName(windowHandle))
+		windowHandle := maa.MaaToolkitDesktopWindowListAt(listHandle, i)
+		handle := maa.MaaToolkitDesktopWindowGetHandle(windowHandle)
+		className := maa.MaaToolkitDesktopWindowGetClassName(windowHandle)
+		windowName := maa.MaaToolkitDesktopWindowGetWindowName(windowHandle)
 		list[i] = &DesktopWindow{
 			Handle:     handle,
 			ClassName:  className,
@@ -148,13 +114,10 @@ func (t *Toolkit) RegisterPICustomRecognition(instId uint64, name string, recogn
 	}
 	piStore[instId].CustomRecognizersCallbackID[name] = id
 
-	cName := C.CString(name)
-	defer C.free(unsafe.Pointer(cName))
-
-	C.MaaToolkitProjectInterfaceRegisterCustomRecognition(
-		C.uint64_t(instId),
-		cName,
-		C.MaaCustomRecognitionCallback(C._MaaCustomRecognitionCallbackAgent),
+	maa.MaaToolkitProjectInterfaceRegisterCustomRecognition(
+		instId,
+		name,
+		_MaaCustomRecognitionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
@@ -172,13 +135,10 @@ func (t *Toolkit) RegisterPICustomAction(instId uint64, name string, action Cust
 	}
 	piStore[instId].CustomActionsCallbackID[name] = id
 
-	cName := C.CString(name)
-	defer C.free(unsafe.Pointer(cName))
-
-	C.MaaToolkitProjectInterfaceRegisterCustomAction(
-		C.uint64_t(instId),
-		cName,
-		C.MaaCustomActionCallback(C._MaaCustomActionCallbackAgent),
+	maa.MaaToolkitProjectInterfaceRegisterCustomAction(
+		instId,
+		name,
+		_MaaCustomActionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
@@ -198,24 +158,16 @@ func (t *Toolkit) ClearPICustom(instId uint64) {
 
 // RunCli runs the PI CLI.
 func (t *Toolkit) RunCli(instId uint64, resourcePath, userPath string, directly bool, notify Notification) bool {
-	cResourcePath := C.CString(resourcePath)
-	defer C.free(unsafe.Pointer(cResourcePath))
-	cUserPath := C.CString(userPath)
-	defer C.free(unsafe.Pointer(cUserPath))
-	var cDirectly uint8
-	if directly {
-		cDirectly = 1
-	}
 	id := registerNotificationCallback(notify)
-	got := C.MaaToolkitProjectInterfaceRunCli(
-		C.uint64_t(instId),
-		cResourcePath,
-		cUserPath,
-		C.uint8_t(cDirectly),
-		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
+	got := maa.MaaToolkitProjectInterfaceRunCli(
+		instId,
+		resourcePath,
+		userPath,
+		directly,
+		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
 	)
-	return got != 0
+	return got
 }

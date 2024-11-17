@@ -1,19 +1,16 @@
 package buffer
 
-/*
-#include <stdlib.h>
-#include <MaaFramework/MaaAPI.h>
-*/
-import "C"
-import "unsafe"
+import (
+	"github.com/MaaXYZ/maa-framework-go/internal/maa"
+)
 
 type StringBuffer struct {
-	handle *C.MaaStringBuffer
+	handle uintptr
 }
 
 func NewStringBuffer() *StringBuffer {
-	handle := C.MaaStringBufferCreate()
-	if handle == nil {
+	handle := maa.MaaStringBufferCreate()
+	if handle == 0 {
 		return nil
 	}
 	return &StringBuffer{
@@ -21,51 +18,40 @@ func NewStringBuffer() *StringBuffer {
 	}
 }
 
-func NewStringBufferByHandle(handle unsafe.Pointer) *StringBuffer {
+func NewStringBufferByHandle(handle uintptr) *StringBuffer {
 	return &StringBuffer{
-		handle: (*C.MaaStringBuffer)(handle),
+		handle: handle,
 	}
 }
 
 func (s *StringBuffer) Destroy() {
-	C.MaaStringBufferDestroy(s.handle)
+	maa.MaaStringBufferDestroy(s.handle)
 }
 
-func (s *StringBuffer) Handle() unsafe.Pointer {
-	return unsafe.Pointer(s.handle)
+func (s *StringBuffer) Handle() uintptr {
+	return s.handle
 }
 
 func (s *StringBuffer) IsEmpty() bool {
-	return C.MaaStringBufferIsEmpty(s.handle) != 0
+	return maa.MaaStringBufferIsEmpty(s.handle)
 }
 
 func (s *StringBuffer) Clear() bool {
-	return C.MaaStringBufferClear(s.handle) != 0
+	return maa.MaaStringBufferClear(s.handle)
 }
 
 func (s *StringBuffer) Get() string {
-	return C.GoString(C.MaaStringBufferGet(s.handle))
+	return maa.MaaStringBufferGet(s.handle)
 }
 
 func (s *StringBuffer) Size() uint64 {
-	return uint64(C.MaaStringBufferSize(s.handle))
+	return maa.MaaStringBufferSize(s.handle)
 }
 
 func (s *StringBuffer) Set(str string) bool {
-	cStr := C.CString(str)
-	defer C.free(unsafe.Pointer(cStr))
-	return C.MaaStringBufferSet(
-		s.handle,
-		cStr,
-	) != 0
+	return maa.MaaStringBufferSet(s.handle, str)
 }
 
 func (s *StringBuffer) SetWithSize(str string, size uint64) bool {
-	cStr := C.CString(str)
-	defer C.free(unsafe.Pointer(cStr))
-	return C.MaaStringBufferSetEx(
-		s.handle,
-		cStr,
-		C.uint64_t(size),
-	) != 0
+	return maa.MaaStringBufferSetEx(s.handle, str, size)
 }

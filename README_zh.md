@@ -20,6 +20,8 @@
 
 这是 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 的Go语言绑定，为Go开发者提供了一种简单而有效的方式，在他们的Go应用程序中使用MaaFramework的功能。
 
+> 无需 Cgo！
+
 ## 安装
 
 要安装MaaFramework Go绑定，请在终端中运行以下命令：
@@ -27,6 +29,8 @@
 ```shell
 go get github.com/MaaXYZ/maa-framework-go
 ```
+
+此外，请下载MaaFramework的[Release 包](https://github.com/MaaXYZ/MaaFramework/releases)，以获取必要的动态库文件。
 
 ## 使用
 
@@ -36,7 +40,14 @@ go get github.com/MaaXYZ/maa-framework-go
 import "github.com/MaaXYZ/maa-framework-go"
 ```
 
-然后，您可以使用MaaFramework提供的功能。有关详细用法，请参阅仓库中提供的示例和文档。
+然后，您可以使用MaaFramework提供的功能。有关详细用法，请参阅仓库中提供的 [文档](#文档) 和 [示例](#示例)。
+
+> 注意: 使用 maa-framework-go 构建的程序依赖于 MaaFramework 的动态库运行。请确保以下条件之一满足：
+>
+> 1. 程序的工作目录包含 MaaFramework 的动态库。
+> 2. 设置了指向动态库的环境变量（如 LD_LIBRARY_PATH 或 PATH）。
+>
+> 否则，程序可能无法正确运行。
 
 ## 文档
 
@@ -46,52 +57,6 @@ import "github.com/MaaXYZ/maa-framework-go"
 
 - [快速开始](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md)
 - [任务流水线协议](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.1-%E4%BB%BB%E5%8A%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%8D%8F%E8%AE%AE.md)
-
-## 平台特定说明
-
-### Windows
-
-在Windows上，MaaFramework的默认位置是 `C:\maa`。请确保MaaFramework安装在此目录，以便绑定能够开箱即用。
-
-如果您需要指定自定义安装路径，请参阅 [自定义环境](#自定义环境) 部分。
-
-### Linux 和 macOS
-
-在Linux和macOS上，您需要创建一个名为 `maa.pc` 的 `pkg-config` 文件。此文件应正确指向MaaFramework头文件和库的位置。将此文件放在 `pkg-config` 可以找到的目录中（例如，`/usr/lib/pkgconfig`）。
-
-一个示例 `maa.pc` 文件可能如下所示：
-
-```
-prefix=/path/to/maafw
-exec_prefix=${prefix}
-libdir=${exec_prefix}/lib
-includedir=${prefix}/include
-
-Name: MaaFramework
-Description: MaaFramework library
-Version: 1.0
-Libs: -L${libdir} -lMaaFramework -lMaaToolkit
-Cflags: -I${includedir}
-```
-
-如果您需要指定自定义环境，请参阅 [自定义环境](#自定义环境) 部分。
-
-## 自定义环境
-
-如果您需要为MaaFramework指定自定义安装路径，可以使用 `-tags customenv` 构建标记禁用默认位置。然后，设置必要的环境变量 `CGO_CFLAGS` 和 `CGO_LDFLAGS`。
-
-```shell
-go build -tags customenv
-```
-
-设置环境变量如下：
-
-```shell
-export CGO_CFLAGS="-I[path to maafw include directory]"
-export CGO_LDFLAGS="-L[path to maafw lib directory] -lMaaFramework -lMaaToolkit"
-```
-
-将 `[path to maafw include directory]` 替换为MaaFramework包含目录的实际路径，将 `[path to maafw lib directory]` 替换为MaaFramework库目录的实际路径。
 
 ## 示例
 

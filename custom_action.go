@@ -1,25 +1,9 @@
 package maa
 
-/*
-#include <stdlib.h>
-#include <MaaFramework/MaaAPI.h>
-#include "def.h"
-
-extern uint8_t _MaaCustomActionCallbackAgent(
-	MaaContext* ctx,
-	int64_t task_id,
-	const char* current_task_name,
-	const char* custom_action_name,
-	const char* custom_action_param,
-	int64_t rec_id,
-	const MaaRect* box ,
-	void* actionArg);
-*/
-import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 	"sync/atomic"
-	"unsafe"
+
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 )
 
 var (
@@ -54,38 +38,37 @@ type CustomAction interface {
 	Run(ctx *Context, arg *CustomActionArg) bool
 }
 
-//export _MaaCustomActionCallbackAgent
 func _MaaCustomActionCallbackAgent(
-	ctx *C.MaaContext,
-	taskId C.int64_t,
-	currentTaskName, customActionName, customActionParam C.StringView,
-	recId C.int64_t,
-	box C.ConstMaaRectPtr,
-	actionArg unsafe.Pointer,
-) C.uint8_t {
+	context uintptr,
+	taskId int64,
+	currentTaskName, customActionName, customActionParam *byte,
+	recoId int64,
+	box uintptr,
+	transArg uintptr,
+) uint64 {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(actionArg))
+	id := uint64(transArg)
 	action := customActionCallbackAgents[id]
-	context := &Context{handle: ctx}
-	tasker := context.GetTasker()
-	taskDetail := tasker.getTaskDetail(int64(taskId))
-	recognitionDetail := tasker.getRecognitionDetail(int64(recId))
-	curBoxRectBuffer := buffer.NewRectBufferByHandle(unsafe.Pointer(box))
+	ctx := &Context{handle: context}
+	tasker := ctx.GetTasker()
+	taskDetail := tasker.getTaskDetail(taskId)
+	recognitionDetail := tasker.getRecognitionDetail(recoId)
+	curBoxRectBuffer := buffer.NewRectBufferByHandle(box)
 
 	ok := action.Run(
-		&Context{handle: ctx},
+		&Context{handle: context},
 		&CustomActionArg{
 			TaskDetail:        taskDetail,
-			CurrentTaskName:   C.GoString(currentTaskName),
-			CustomActionName:  C.GoString(customActionName),
-			CustomActionParam: C.GoString(customActionParam),
+			CurrentTaskName:   bytePtrToString(currentTaskName),
+			CustomActionName:  bytePtrToString(customActionName),
+			CustomActionParam: bytePtrToString(customActionParam),
 			RecognitionDetail: recognitionDetail,
 			Box:               curBoxRectBuffer.Get(),
 		},
 	)
 	if ok {
-		return C.uint8_t(1)
+		return 1
 	}
-	return C.uint8_t(0)
+	return 0
 }

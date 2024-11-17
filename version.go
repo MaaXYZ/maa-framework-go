@@ -1,12 +1,8 @@
 package maa
 
-/*
-#include <stdlib.h>
-#include <MaaFramework/MaaAPI.h>
-*/
-import "C"
+import "github.com/MaaXYZ/maa-framework-go/internal/maa"
 
 // Version returns the version of the maa framework.
 func Version() string {
-	return C.GoString(C.MaaVersion())
+	return maa.MaaVersion()
 }

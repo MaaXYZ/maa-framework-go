@@ -1,13 +1,5 @@
 package maa
 
-/*
-#include <MaaFramework/MaaAPI.h>
-
-typedef const char* StringView;
-
-extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* notify_arg);
-*/
-import "C"
 import (
 	"strings"
 	"sync/atomic"
@@ -172,14 +164,24 @@ func (n *NotificationHandler) notificationType(msg string) NotificationType {
 	}
 }
 
-//export _MaaNotificationCallbackAgent
-func _MaaNotificationCallbackAgent(msg, detailsJson C.StringView, notifyArg unsafe.Pointer) {
+func _MaaNotificationCallbackAgent(message, detailsJson *byte, notifyTransArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
-	id := uint64(uintptr(notifyArg))
+	id := uint64(notifyTransArg)
 	notify := notificationCallbackAgents[id]
 	if notify == nil {
-		return
+		return 0
 	}
-	notify.OnRawNotification(C.GoString(msg), C.GoString(detailsJson))
+	notify.OnRawNotification(bytePtrToString(message), bytePtrToString(detailsJson))
+	return 0
+}
+
+func bytePtrToString(b *byte) string {
+	length := 0
+	for ptr := b; *ptr != 0; ptr = (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(ptr)) + 1)) {
+		length++
+	}
+	byteSlice := unsafe.Slice(b, length)
+
+	return string(byteSlice)
 }

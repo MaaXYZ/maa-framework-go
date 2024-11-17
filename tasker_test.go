@@ -1,9 +1,10 @@
 package maa
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func createTasker(t *testing.T, notify Notification) *Tasker {
@@ -22,13 +23,6 @@ func taskerBind(t *testing.T, tasker *Tasker, ctrl Controller, res *Resource) {
 func TestNewTasker(t *testing.T) {
 	tasker := createTasker(t, nil)
 	tasker.Destroy()
-}
-
-func TestTasker_Handle(t *testing.T) {
-	tasker := createTasker(t, nil)
-	defer tasker.Destroy()
-	handle := tasker.Handle()
-	require.NotNil(t, handle)
 }
 
 func TestTasker_BindResource(t *testing.T) {
@@ -138,7 +132,7 @@ func TestTasker_GetResource(t *testing.T) {
 
 	res2 := tasker.GetResource()
 	require.NotNil(t, res2)
-	require.Equal(t, res1.Handle(), res2.Handle())
+	require.Equal(t, res1.handle, res2.handle)
 }
 
 func TestTasker_GetController(t *testing.T) {

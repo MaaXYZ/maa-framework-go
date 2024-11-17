@@ -22,6 +22,8 @@ English | [简体中文](README_zh.md)
 
 This is the Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), providing Go developers with a simple and effective way to use MaaFramework's features within their Go applications.
 
+> No Cgo required!
+
 ## Installation
 
 To install the MaaFramework Go binding, run the following command in your terminal:
@@ -29,6 +31,8 @@ To install the MaaFramework Go binding, run the following command in your termin
 ```shell
 go get github.com/MaaXYZ/maa-framework-go
 ```
+
+In addition, please download the [Release package](https://github.com/MaaXYZ/MaaFramework/releases) for MaaFramework to get the necessary dynamic library files.
 
 ## Usage
 
@@ -38,7 +42,14 @@ To use MaaFramework in your Go project, import the package as you would with any
 import "github.com/MaaXYZ/maa-framework-go"
 ```
 
-Then, you can use the functionalities provided by MaaFramework. For detailed usage, refer to the examples and documentation provided in the repository.
+Then, you can use the functionalities provided by MaaFramework. For detailed usage, refer to the [documentation](#documentation) and [examples](#examples) provided in the repository.
+
+> Note: Programs built with maa-framework-go rely on the dynamic libraries of MaaFramework. Please ensure one of the following conditions is met:
+>
+> 1. The program's working directory contains the MaaFramework dynamic libraries.
+> 2. Environment variables (such as LD_LIBRARY_PATH or PATH) are set to include the path to the dynamic libraries.
+> 
+> Otherwise, the program may not run correctly.
 
 ## Documentation
 
@@ -48,51 +59,6 @@ Here are some documents from the maa framework that might help you:
 
 - [QuickStarted](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/1.1-QuickStarted.md)
 - [PipelineProtocol](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md)
-
-## Platform-Specific Notes
-
-### Windows
-
-On Windows, the default location for MaaFramework is `C:\maa`. Ensure that MaaFramework is installed in this directory for the binding to work out of the box.
-
-If you need to specify a custom installation path, refer to the [Custom Environment](#custom-environment) section.
-
-### Linux and macOS
-
-On Linux and macOS, you will need to create a `pkg-config` file named `maa.pc`. This file should correctly point to the locations of the MaaFramework headers and libraries. Place this file in a directory where `pkg-config` can find it (e.g., `/usr/lib/pkgconfig`).
-
-A sample `maa.pc` file might look like this:
-
-```
-prefix=/path/to/maafw
-exec_prefix=${prefix}
-libdir=${exec_prefix}/lib
-includedir=${prefix}/include
-
-Name: MaaFramework
-Description: MaaFramework library
-Version: 1.0
-Libs: -L${libdir} -lMaaFramework -lMaaToolkit
-Cflags: -I${includedir}
-```
-
-If you need to specify a custom environment, refer to the [Custom Environment](#custom-environment) section.
-
-## Custom Environment
-
-If you need to specify a custom installation path for MaaFramework, you can disable the default location using the `-tags customenv` build tag. Then, set the necessary environment variables `CGO_CFLAGS` and `CGO_LDFLAGS`.
-
-```shell
-go build -tags customenv
-```
-
-Set the environment variables as follows:
-
-```shell
-export CGO_CFLAGS="-I[path to maafw include directory]"
-export CGO_LDFLAGS="-L[path to maafw lib directory] -lMaaFramework -lMaaToolkit"
-```
-Replace `[path to maafw include directory]` with the actual path to the MaaFramework include directory and `[path to maafw lib directory]` with the actual path to the MaaFramework library directory.
 
 ## Examples
 

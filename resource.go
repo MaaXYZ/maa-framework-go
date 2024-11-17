@@ -1,38 +1,11 @@
 package maa
 
-/*
-#include <stdlib.h>
-#include <MaaFramework/MaaAPI.h>
-
-extern void _MaaNotificationCallbackAgent(const char* message, const char* details_json, void* callback_arg);
-
-extern uint8_t _MaaCustomRecognitionCallbackAgent(
-	MaaContext* ctx,
-	int64_t task_id,
-	const char* current_task_name,
-	const char* custom_recognizer_name,
-	const char* custom_recognition_param,
-	const MaaImageBuffer* image,
-	const MaaRect* roi,
-	void* recognizer_arg,
-	MaaRect* out_box,
-	MaaStringBuffer* out_detail);
-
-extern uint8_t _MaaCustomActionCallbackAgent(
-	MaaContext* ctx,
-	int64_t task_id,
-	const char* current_task_name,
-	const char* custom_action_name,
-	const char* custom_action_param,
-	int64_t rec_id,
-	const MaaRect* box ,
-	void* actionArg);
-*/
-import "C"
 import (
-	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/internal/store"
 	"unsafe"
+
+	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/internal/store"
 )
 
 type resourceStoreValue struct {
@@ -44,22 +17,22 @@ type resourceStoreValue struct {
 var resourceStore = store.New[resourceStoreValue]()
 
 type Resource struct {
-	handle *C.MaaResource
+	handle uintptr
 }
 
 // NewResource creates a new resource.
 func NewResource(notify Notification) *Resource {
 	id := registerNotificationCallback(notify)
-	handle := C.MaaResourceCreate(
-		C.MaaNotificationCallback(C._MaaNotificationCallbackAgent),
+	handle := maa.MaaResourceCreate(
+		_MaaNotificationCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
-	if handle == nil {
+	if handle == 0 {
 		return nil
 	}
-	resourceStore.Set(unsafe.Pointer(handle), resourceStoreValue{
+	resourceStore.Set(handle, resourceStoreValue{
 		NotificationCallbackID:      id,
 		CustomRecognizersCallbackID: make(map[string]uint64),
 		CustomActionsCallbackID:     make(map[string]uint64),
@@ -71,37 +44,19 @@ func NewResource(notify Notification) *Resource {
 
 // Destroy frees the resource.
 func (r *Resource) Destroy() {
-	value := resourceStore.Get(r.Handle())
+	value := resourceStore.Get(r.handle)
 	unregisterNotificationCallback(value.NotificationCallbackID)
-	resourceStore.Del(r.Handle())
-	C.MaaResourceDestroy(r.handle)
+	resourceStore.Del(r.handle)
+	maa.MaaResourceDestroy(r.handle)
 }
 
-func (r *Resource) Handle() unsafe.Pointer {
-	return unsafe.Pointer(r.handle)
-}
-
-type resOption int32
-
-// resOption
-const (
-	resOptionInvalid resOption = 0
-
-	/// Use the specified inference device.
-	/// Please set this option before loading the model.
-	///
-	/// value: MaaInferenceDevice, eg: 0; val_size: sizeof(MaaInferenceDevice)
-	/// default value is MaaInferenceDevice_Auto
-	resOptionInterfaceDevice resOption = 1
-)
-
-func (r *Resource) setOption(key resOption, value unsafe.Pointer, valSize uintptr) bool {
-	return C.MaaResourceSetOption(
+func (r *Resource) setOption(key maa.MaaResOption, value unsafe.Pointer, valSize uintptr) bool {
+	return maa.MaaResourceSetOption(
 		r.handle,
-		C.int32_t(key),
-		C.MaaOptionValue(value),
-		C.uint64_t(valSize),
-	) != 0
+		key,
+		value,
+		uint64(valSize),
+	)
 }
 
 type InterfaceDevice int32
@@ -111,13 +66,13 @@ const (
 	InterfaceDeviceCPU  InterfaceDevice = -2
 	InterfaceDeviceAuto InterfaceDevice = -1
 	InterfaceDeviceGPU0 InterfaceDevice = 0
-	interfaceDeviceGPU1 InterfaceDevice = 1
+	InterfaceDeviceGPU1 InterfaceDevice = 1
 	// and more gpu id...
 )
 
 func (r *Resource) SetInterfaceDevice(device InterfaceDevice) bool {
 	return r.setOption(
-		resOptionInterfaceDevice,
+		maa.MaaResOption_InterfaceDevice,
 		unsafe.Pointer(&device),
 		unsafe.Sizeof(device),
 	)
@@ -126,131 +81,117 @@ func (r *Resource) SetInterfaceDevice(device InterfaceDevice) bool {
 // RegisterCustomRecognition registers a custom recognition to the resource.
 func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognition) bool {
 	id := registerCustomRecognition(recognition)
-	value := resourceStore.Get(r.Handle())
+	value := resourceStore.Get(r.handle)
 	if oldID, ok := value.CustomRecognizersCallbackID[name]; ok {
 		unregisterCustomRecognition(oldID)
 	}
 	value.CustomRecognizersCallbackID[name] = id
-	resourceStore.Set(r.Handle(), value)
+	resourceStore.Set(r.handle, value)
 
-	cName := C.CString(name)
-	defer C.free(unsafe.Pointer(cName))
-
-	got := C.MaaResourceRegisterCustomRecognition(
+	got := maa.MaaResourceRegisterCustomRecognition(
 		r.handle,
-		cName,
-		C.MaaCustomRecognitionCallback(C._MaaCustomRecognitionCallbackAgent),
+		name,
+		_MaaCustomRecognitionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
-	return got != 0
+	return got
 }
 
 // UnregisterCustomRecognition unregisters a custom recognition from the resource.
 func (r *Resource) UnregisterCustomRecognition(name string) bool {
-	value := resourceStore.Get(r.Handle())
+	value := resourceStore.Get(r.handle)
 	if id, ok := value.CustomRecognizersCallbackID[name]; ok {
 		unregisterCustomRecognition(id)
 	} else {
 		return false
 	}
 
-	cName := C.CString(name)
-	defer C.free(unsafe.Pointer(cName))
-
-	got := C.MaaResourceUnregisterCustomRecognition(r.handle, cName)
-	return got != 0
+	got := maa.MaaResourceUnregisterCustomRecognition(r.handle, name)
+	return got
 }
 
 // ClearCustomRecognition clears all custom recognitions registered from the resource.
 func (r *Resource) ClearCustomRecognition() bool {
-	value := resourceStore.Get(r.Handle())
+	value := resourceStore.Get(r.handle)
 	for _, id := range value.CustomRecognizersCallbackID {
 		unregisterCustomRecognition(id)
 	}
 
-	got := C.MaaResourceClearCustomRecognition(r.handle)
-	return got != 0
+	got := maa.MaaResourceClearCustomRecognition(r.handle)
+	return got
 }
 
 // RegisterCustomAction registers a custom action to the resource.
 func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
 	id := registerCustomAction(action)
-	value := resourceStore.Get(r.Handle())
+	value := resourceStore.Get(r.handle)
 	if oldID, ok := value.CustomActionsCallbackID[name]; ok {
 		unregisterCustomAction(oldID)
 	}
 	value.CustomActionsCallbackID[name] = id
-	resourceStore.Set(r.Handle(), value)
+	resourceStore.Set(r.handle, value)
 
-	cName := C.CString(name)
-	defer C.free(unsafe.Pointer(cName))
-
-	got := C.MaaResourceRegisterCustomAction(
+	got := maa.MaaResourceRegisterCustomAction(
 		r.handle,
-		cName,
-		C.MaaCustomActionCallback(C._MaaCustomActionCallbackAgent),
+		name,
+		_MaaCustomActionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
-	return got != 0
+	return got
 }
 
 // UnregisterCustomAction unregisters a custom action from the resource.
 func (r *Resource) UnregisterCustomAction(name string) bool {
-	value := resourceStore.Get(r.Handle())
+	value := resourceStore.Get(r.handle)
 	if id, ok := value.CustomActionsCallbackID[name]; ok {
 		unregisterCustomAction(id)
 	} else {
 		return false
 	}
 
-	cName := C.CString(name)
-	defer C.free(unsafe.Pointer(cName))
-
-	got := C.MaaResourceUnregisterCustomAction(r.handle, cName)
-	return got != 0
+	got := maa.MaaResourceUnregisterCustomAction(r.handle, name)
+	return got
 }
 
 // ClearCustomAction clears all custom actions registered from the resource.
 func (r *Resource) ClearCustomAction() bool {
-	value := resourceStore.Get(r.Handle())
+	value := resourceStore.Get(r.handle)
 	for _, id := range value.CustomActionsCallbackID {
 		unregisterCustomAction(id)
 	}
 
-	got := C.MaaResourceClearCustomAction(r.handle)
-	return got != 0
+	got := maa.MaaResourceClearCustomAction(r.handle)
+	return got
 }
 
 // PostPath adds a path to the resource loading paths.
 // Return id of the resource.
 func (r *Resource) PostPath(path string) *Job {
-	cPath := C.CString(path)
-	defer C.free(unsafe.Pointer(cPath))
-	id := int64(C.MaaResourcePostPath(r.handle, cPath))
+	id := maa.MaaResourcePostPath(r.handle, path)
 	return NewJob(id, r.status, r.wait)
 }
 
 // Clear clears the resource loading paths.
 func (r *Resource) Clear() bool {
-	return C.MaaResourceClear(r.handle) != 0
+	return maa.MaaResourceClear(r.handle)
 }
 
 // status returns the loading status of a resource identified by id.
 func (r *Resource) status(resId int64) Status {
-	return Status(C.MaaResourceStatus(r.handle, C.int64_t(resId)))
+	return Status(maa.MaaResourceStatus(r.handle, resId))
 }
 
 func (r *Resource) wait(resId int64) Status {
-	return Status(C.MaaResourceWait(r.handle, C.int64_t(resId)))
+	return Status(maa.MaaResourceWait(r.handle, resId))
 }
 
 // Loaded checks if resources are loaded.
 func (r *Resource) Loaded() bool {
-	return C.MaaResourceLoaded(r.handle) != 0
+	return maa.MaaResourceLoaded(r.handle)
 }
 
 // GetHash returns the hash of the resource.
@@ -258,7 +199,7 @@ func (r *Resource) GetHash() (string, bool) {
 	hash := buffer.NewStringBuffer()
 	defer hash.Destroy()
 
-	got := C.MaaResourceGetHash(r.handle, (*C.MaaStringBuffer)(hash.Handle())) != 0
+	got := maa.MaaResourceGetHash(r.handle, uintptr(hash.Handle()))
 	if !got {
 		return "", false
 	}
@@ -270,7 +211,7 @@ func (r *Resource) GetTaskList() ([]string, bool) {
 	taskList := buffer.NewStringListBuffer()
 	defer taskList.Destroy()
 
-	got := C.MaaResourceGetTaskList(r.handle, (*C.MaaStringListBuffer)(taskList.Handle())) != 0
+	got := maa.MaaResourceGetTaskList(r.handle, uintptr(taskList.Handle()))
 	if !got {
 		return []string{}, false
 	}

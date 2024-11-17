@@ -25,6 +25,10 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Output system architecture
+        run: |
+          echo $env:PROCESSOR_ARCHITECTURE
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -46,14 +50,12 @@ jobs:
 
       - name: Test
         env:
-          CGO_ENABLED: 1
-          CGO_CFLAGS: -I${{ github.workspace }}/deps/include
-          CGO_LDFLAGS: -L${{ github.workspace }}/deps/bin -lMaaFramework -lMaaToolkit
+          CGO_ENABLED: 0
         run: |
           $env:Path += ";${{ github.workspace }}/deps/bin"
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
           cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
-          go test -v -tags customenv ./...
+          go test -v ./...
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -76,6 +78,10 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Output system architecture
+        run: |
+          uname -m
+
       - name: Update system
         run: |
           pacman -Syu --noconfirm
@@ -106,13 +112,12 @@ jobs:
 
       - name: Test
         env:
-          CGO_CFLAGS: -I/__w/maa-framework-go/maa-framework-go/deps/include
-          CGO_LDFLAGS: -L/__w/maa-framework-go/maa-framework-go/deps/bin -lMaaFramework -lMaaToolkit
+          CGO_ENABLED: 0
           LD_LIBRARY_PATH: /__w/maa-framework-go/maa-framework-go/deps/bin:$LD_LIBRARY_PATH
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
           cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
-          go test -v -tags customenv ./...
+          go test -v ./...
           
       - uses: actions/upload-artifact@v4
         if: always()
@@ -162,13 +167,12 @@ jobs:
 
       - name: Test
         env:
-          CGO_CFLAGS: -I${{ github.workspace }}/deps/include
-          CGO_LDFLAGS: -L${{ github.workspace }}/deps/bin -lMaaFramework -lMaaToolkit
+          CGO_ENABLED: 0
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/deps/bin:$DYLD_LIBRARY_PATH
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
           cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
-          go test -v -tags customenv ./...
+          go test -v ./...
 
       - uses: actions/upload-artifact@v4
         if: always()

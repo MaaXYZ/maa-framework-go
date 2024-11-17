@@ -1,9 +1,10 @@
 package maa
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func createDbgController(t *testing.T, notify Notification) Controller {
@@ -23,8 +24,7 @@ func TestNewDbgController(t *testing.T) {
 func TestController_Handle(t *testing.T) {
 	ctrl := createDbgController(t, nil)
 	defer ctrl.Destroy()
-	handle := ctrl.Handle()
-	require.NotNil(t, handle)
+	require.NotNil(t, ctrl)
 }
 
 func TestController_SetScreenshotTargetLongSide(t *testing.T) {
