@@ -20,6 +20,8 @@
 
 这是 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 的Go语言绑定，为Go开发者提供了一种简单而有效的方式，在他们的Go应用程序中使用MaaFramework的功能。
 
+> 无需 Cgo！
+
 ## 安装
 
 要安装MaaFramework Go绑定，请在终端中运行以下命令：
@@ -27,6 +29,8 @@
 ```shell
 go get github.com/MaaXYZ/maa-framework-go
 ```
+
+此外，请下载MaaFramework的[Release 包](https://github.com/MaaXYZ/MaaFramework/releases)，以获取必要的动态库文件。
 
 ## 使用
 
@@ -36,7 +40,14 @@ go get github.com/MaaXYZ/maa-framework-go
 import "github.com/MaaXYZ/maa-framework-go"
 ```
 
-然后，您可以使用MaaFramework提供的功能。有关详细用法，请参阅仓库中提供的示例和文档。
+然后，您可以使用MaaFramework提供的功能。有关详细用法，请参阅仓库中提供的 [文档](#文档) 和 [示例](#示例)。
+
+> 注意: 使用 maa-framework-go 构建的程序依赖于 MaaFramework 的动态库运行。请确保以下条件之一满足：
+>
+> 1. 程序的工作目录包含 MaaFramework 的动态库。
+> 2. 设置了指向动态库的环境变量（如 LD_LIBRARY_PATH 或 PATH）。
+>
+> 否则，程序可能无法正确运行。
 
 ## 文档
 

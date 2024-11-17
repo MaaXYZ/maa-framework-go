@@ -22,6 +22,8 @@ English | [简体中文](README_zh.md)
 
 This is the Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), providing Go developers with a simple and effective way to use MaaFramework's features within their Go applications.
 
+> No Cgo required!
+
 ## Installation
 
 To install the MaaFramework Go binding, run the following command in your terminal:
@@ -29,6 +31,8 @@ To install the MaaFramework Go binding, run the following command in your termin
 ```shell
 go get github.com/MaaXYZ/maa-framework-go
 ```
+
+In addition, please download the [Release package](https://github.com/MaaXYZ/MaaFramework/releases) for MaaFramework to get the necessary dynamic library files.
 
 ## Usage
 
@@ -38,7 +42,14 @@ To use MaaFramework in your Go project, import the package as you would with any
 import "github.com/MaaXYZ/maa-framework-go"
 ```
 
-Then, you can use the functionalities provided by MaaFramework. For detailed usage, refer to the examples and documentation provided in the repository.
+Then, you can use the functionalities provided by MaaFramework. For detailed usage, refer to the [documentation](#documentation) and [examples](#examples) provided in the repository.
+
+> Note: Programs built with maa-framework-go rely on the dynamic libraries of MaaFramework. Please ensure one of the following conditions is met:
+>
+> 1. The program's working directory contains the MaaFramework dynamic libraries.
+> 2. Environment variables (such as LD_LIBRARY_PATH or PATH) are set to include the path to the dynamic libraries.
+> 
+> Otherwise, the program may not run correctly.
 
 ## Documentation
 
