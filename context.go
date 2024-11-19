@@ -27,6 +27,9 @@ func (ctx *Context) handleOverride(override ...any) string {
 
 func (ctx *Context) runPipeline(entry, override string) *TaskDetail {
 	taskId := maa.MaaContextRunPipeline(ctx.handle, entry, override)
+	if taskId == 0 {
+		return nil
+	}
 	tasker := ctx.GetTasker()
 	return tasker.getTaskDetail(taskId)
 }
@@ -58,6 +61,9 @@ func (ctx *Context) runRecognition(entry, override string, img image.Image) *Rec
 	defer imgBuf.Destroy()
 
 	recId := maa.MaaContextRunRecognition(ctx.handle, entry, override, uintptr(imgBuf.Handle()))
+	if recId == 0 {
+		return nil
+	}
 	tasker := ctx.GetTasker()
 	return tasker.getRecognitionDetail(recId)
 }
@@ -89,6 +95,9 @@ func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetai
 	defer rectBuf.Destroy()
 
 	nodeId := maa.MaaContextRunAction(ctx.handle, entry, override, uintptr(rectBuf.Handle()), recognitionDetail)
+	if nodeId == 0 {
+		return nil
+	}
 	tasker := ctx.GetTasker()
 	return tasker.getNodeDetail(nodeId)
 }
