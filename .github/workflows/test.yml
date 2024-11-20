@@ -48,10 +48,6 @@ jobs:
         run: |
           echo "${{ github.workspace }}/deps/bin;%PATH%" | Out-File -FilePath $env:GITHUB_PATH -Append
 
-      - name: Output Env Path
-        run: |
-          echo $env:Path
-
       - name: Prepare Test Data
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
