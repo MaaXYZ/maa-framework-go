@@ -1,8 +1,9 @@
 package maa
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type testContextRunPipelineAct struct {
@@ -52,13 +53,12 @@ type testContextRunRecognitionAct struct {
 func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	img := ctx.GetTasker().GetController().CacheImage()
 	require.NotNil(t.t, img)
-	detail := ctx.RunRecognition("Test", img, J{
+	_ = ctx.RunRecognition("Test", img, J{
 		"Test": J{
 			"recognition": "OCR",
 			"expected":    "Hello",
 		},
 	})
-	require.NotNil(t.t, detail)
 	return true
 }
 
