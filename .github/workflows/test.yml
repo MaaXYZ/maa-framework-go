@@ -46,7 +46,7 @@ jobs:
 
       - name: Setup Test Environment
         run: |
-          echo "${{ github.workspace }}/deps/bin" >> $GITHUB_PATH
+          echo "${{ github.workspace }}/deps/bin;%PATH%" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Output Env Path
         run: |
