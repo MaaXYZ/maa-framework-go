@@ -1,22 +1,42 @@
 package maa
 
 import (
-	"fmt"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type testNotificationHandlerOnRawNotification struct {
-	*NotificationHandler
+	t *testing.T
 }
 
-func (t *testNotificationHandlerOnRawNotification) OnRawNotification(msg, detailsJson string) {
-	fmt.Printf("TestNotificationHandler_OnRawNotification, msg: %s, detailsJson: %s\n", msg, detailsJson)
-	t.NotificationHandler.OnRawNotification(msg, detailsJson)
+func (t *testNotificationHandlerOnRawNotification) OnControllerAction(notifyType NotificationType, detail ControllerActionDetail) {
+}
+
+func (t *testNotificationHandlerOnRawNotification) OnResourceLoading(notifyType NotificationType, detail ResourceLoadingDetail) {
+}
+
+func (t *testNotificationHandlerOnRawNotification) OnTaskAction(notifyType NotificationType, detail TaskActionDetail) {
+}
+
+func (t *testNotificationHandlerOnRawNotification) OnTaskNextList(notifyType NotificationType, detail TaskNextListDetail) {
+}
+
+func (t *testNotificationHandlerOnRawNotification) OnTaskRecognition(notifyType NotificationType, detail TaskRecognitionDetail) {
+}
+
+func (t *testNotificationHandlerOnRawNotification) OnTaskerTask(notifyType NotificationType, detail TaskerTaskDetail) {
+}
+
+func (t *testNotificationHandlerOnRawNotification) OnUnknownNotification(msg string, detailsJSON string) {
+}
+
+func NewTestNotificationHandlerOnRawNotification() Notification {
+	return &testNotificationHandlerOnRawNotification{}
 }
 
 func TestNotificationHandler_OnRawNotification(t *testing.T) {
-	ctrl := createDbgController(t, &testNotificationHandlerOnRawNotification{})
+	ctrl := createDbgController(t, &testNotificationHandlerOnRawNotification{t})
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
