@@ -19,8 +19,8 @@ func TestNewResource(t *testing.T) {
 
 type testResourceTestRec struct{}
 
-func (t *testResourceTestRec) Run(_ *Context, _ *CustomRecognitionArg) (CustomRecognitionResult, bool) {
-	return CustomRecognitionResult{}, true
+func (t *testResourceTestRec) Run(_ *Context, _ *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
+	return &CustomRecognitionResult{}, true
 }
 
 func TestResource_RegisterCustomRecognition(t *testing.T) {

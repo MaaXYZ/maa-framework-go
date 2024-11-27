@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/MaaXYZ/maa-framework-go"
 	"os"
+
+	"github.com/MaaXYZ/maa-framework-go"
 )
 
 func main() {
@@ -43,7 +44,7 @@ func main() {
 
 type MyRec struct{}
 
-func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (maa.CustomRecognitionResult, bool) {
+func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*maa.CustomRecognitionResult, bool) {
 	ctx.RunRecognition("MyCustomOCR", arg.Img, maa.J{
 		"MyCustomOCR": maa.J{
 			"roi": []int{100, 100, 200, 300},
@@ -69,7 +70,7 @@ func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (maa.Custom
 
 	ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
 
-	return maa.CustomRecognitionResult{
+	return &maa.CustomRecognitionResult{
 		Box:    maa.Rect{0, 0, 100, 100},
 		Detail: "Hello World!",
 	}, true

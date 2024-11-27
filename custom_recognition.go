@@ -36,7 +36,7 @@ type CustomRecognitionArg struct {
 }
 
 type CustomRecognition interface {
-	Run(ctx *Context, arg *CustomRecognitionArg) (CustomRecognitionResult, bool)
+	Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool)
 }
 
 type CustomRecognitionResult struct {

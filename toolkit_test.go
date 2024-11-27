@@ -1,8 +1,9 @@
 package maa
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func createToolkit(t *testing.T) *Toolkit {
@@ -35,8 +36,8 @@ func TestToolkit_FindDesktopWindows(t *testing.T) {
 
 type testToolKitRec struct{}
 
-func (t *testToolKitRec) Run(_ *Context, _ *CustomRecognitionArg) (CustomRecognitionResult, bool) {
-	return CustomRecognitionResult{}, true
+func (t *testToolKitRec) Run(_ *Context, _ *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
+	return &CustomRecognitionResult{}, true
 }
 
 func TestToolkit_RegisterPICustomRecognition(t *testing.T) {
