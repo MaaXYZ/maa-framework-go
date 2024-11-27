@@ -7,7 +7,6 @@ import (
 )
 
 type testNotificationHandlerOnRawNotification struct {
-	t *testing.T
 }
 
 func (t *testNotificationHandlerOnRawNotification) OnControllerAction(notifyType NotificationType, detail ControllerActionDetail) {
@@ -31,20 +30,20 @@ func (t *testNotificationHandlerOnRawNotification) OnTaskerTask(notifyType Notif
 func (t *testNotificationHandlerOnRawNotification) OnUnknownNotification(msg string, detailsJSON string) {
 }
 
-func NewTestNotificationHandlerOnRawNotification() Notification {
+func newTestNotificationHandlerOnRawNotification() Notification {
 	return &testNotificationHandlerOnRawNotification{}
 }
 
 func TestNotificationHandler_OnRawNotification(t *testing.T) {
-	ctrl := createDbgController(t, &testNotificationHandlerOnRawNotification{t})
+	ctrl := createDbgController(t, newTestNotificationHandlerOnRawNotification())
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, &testNotificationHandlerOnRawNotification{})
+	res := createResource(t, newTestNotificationHandlerOnRawNotification())
 	defer res.Destroy()
 
-	tasker := createTasker(t, &testNotificationHandlerOnRawNotification{})
+	tasker := createTasker(t, newTestNotificationHandlerOnRawNotification())
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -52,6 +51,7 @@ func TestNotificationHandler_OnRawNotification(t *testing.T) {
 		"TestNotificationHandler_OnRawNotification": J{
 			"action": "Click",
 			"target": []int{100, 200, 100, 100},
+			"focus":  true,
 		},
 	}).Wait().Success()
 	require.True(t, got)
