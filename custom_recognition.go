@@ -38,7 +38,7 @@ func unregisterCustomRecognition(id uint64) bool {
 type CustomRecognitionArg struct {
 	TaskDetail             *TaskDetail
 	CurrentTaskName        string
-	CustomRecognizerName   string
+	CustomRecognitionName  string
 	CustomRecognitionParam string
 	Img                    image.Image
 	Roi                    Rect
@@ -84,7 +84,7 @@ func _MaaCustomRecognitionCallbackAgent(
 		&CustomRecognitionArg{
 			TaskDetail:             taskDetail,
 			CurrentTaskName:        bytePtrToString(currentTaskName),
-			CustomRecognizerName:   bytePtrToString(customRecognitionName),
+			CustomRecognitionName:  bytePtrToString(customRecognitionName),
 			CustomRecognitionParam: bytePtrToString(customRecognitionParam),
 			Img:                    imgImg,
 			Roi:                    buffer.NewRectBufferByHandle(roi).Get(),
