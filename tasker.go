@@ -2,6 +2,7 @@ package maa
 
 import (
 	"image"
+	"sync"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
@@ -9,7 +10,10 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/internal/store"
 )
 
-var taskerStore = store.New[uint64]()
+var (
+	taskerStore      = store.New[uint64]()
+	taskerStoreMutex sync.RWMutex
+)
 
 type Tasker struct {
 	handle uintptr
@@ -27,15 +31,22 @@ func NewTasker(notify Notification) *Tasker {
 	if handle == 0 {
 		return nil
 	}
+
+	taskerStoreMutex.Lock()
 	taskerStore.Set(handle, id)
+	taskerStoreMutex.Unlock()
+
 	return &Tasker{handle: handle}
 }
 
 // Destroy free the tasker.
 func (t *Tasker) Destroy() {
+	taskerStoreMutex.Lock()
 	id := taskerStore.Get(t.handle)
 	unregisterNotificationCallback(id)
 	taskerStore.Del(t.handle)
+	taskerStoreMutex.Unlock()
+
 	maa.MaaTaskerDestroy(t.handle)
 }
 

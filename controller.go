@@ -2,6 +2,7 @@ package maa
 
 import (
 	"image"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -42,7 +43,10 @@ type controllerStoreValue struct {
 	CustomControllerCallbacksID uint64
 }
 
-var controllerStore = store.New[controllerStoreValue]()
+var (
+	controllerStore      = store.New[controllerStoreValue]()
+	controllerStoreMutex sync.RWMutex
+)
 
 // controller is a concrete implementation of the Controller interface.
 type controller struct {
@@ -113,9 +117,13 @@ func NewAdbController(
 	if handle == 0 {
 		return nil
 	}
+
+	controllerStoreMutex.Lock()
 	controllerStore.Set(handle, controllerStoreValue{
 		NotificationCallbackID: id,
 	})
+	controllerStoreMutex.Unlock()
+
 	return &controller{handle: handle}
 }
 
@@ -164,9 +172,13 @@ func NewWin32Controller(
 	if handle == 0 {
 		return nil
 	}
+
+	controllerStoreMutex.Lock()
 	controllerStore.Set(handle, controllerStoreValue{
 		NotificationCallbackID: id,
 	})
+	controllerStoreMutex.Unlock()
+
 	return &controller{handle: handle}
 }
 
@@ -203,9 +215,13 @@ func NewDbgController(
 	if handle == 0 {
 		return nil
 	}
+
+	controllerStoreMutex.Lock()
 	controllerStore.Set(handle, controllerStoreValue{
 		NotificationCallbackID: id,
 	})
+	controllerStoreMutex.Unlock()
+
 	return &controller{handle: handle}
 }
 
@@ -229,19 +245,26 @@ func NewCustomController(
 	if handle == 0 {
 		return nil
 	}
+
+	controllerStoreMutex.Lock()
 	controllerStore.Set(handle, controllerStoreValue{
 		NotificationCallbackID:      notifyID,
 		CustomControllerCallbacksID: ctrlID,
 	})
+	controllerStoreMutex.Unlock()
+
 	return &controller{handle: handle}
 }
 
 // Destroy frees the controller instance.
 func (c *controller) Destroy() {
+	controllerStoreMutex.Lock()
 	value := controllerStore.Get(c.handle)
 	unregisterNotificationCallback(value.NotificationCallbackID)
 	unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
 	controllerStore.Del(c.handle)
+	controllerStoreMutex.Unlock()
+
 	maa.MaaControllerDestroy(c.handle)
 }
 

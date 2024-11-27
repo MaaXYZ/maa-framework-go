@@ -1,23 +1,32 @@
 package maa
 
 import (
+	"sync"
 	"sync/atomic"
 
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 )
 
 var (
-	customActionCallbackID     uint64
-	customActionCallbackAgents = make(map[uint64]CustomAction)
+	customActionCallbackID          uint64
+	customActionCallbackAgents      = make(map[uint64]CustomAction)
+	customActionCallbackAgentsMutex sync.RWMutex
 )
 
 func registerCustomAction(action CustomAction) uint64 {
 	id := atomic.AddUint64(&customActionCallbackID, 1)
+
+	customActionCallbackAgentsMutex.Lock()
 	customActionCallbackAgents[id] = action
+	customActionCallbackAgentsMutex.Unlock()
+
 	return id
 }
 
 func unregisterCustomAction(id uint64) bool {
+	customActionCallbackAgentsMutex.Lock()
+	defer customActionCallbackAgentsMutex.Unlock()
+
 	if _, ok := customActionCallbackAgents[id]; !ok {
 		return false
 	}
@@ -49,7 +58,15 @@ func _MaaCustomActionCallbackAgent(
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(transArg)
-	action := customActionCallbackAgents[id]
+
+	customActionCallbackAgentsMutex.RLock()
+	action, exists := customActionCallbackAgents[id]
+	customActionCallbackAgentsMutex.RUnlock()
+
+	if !exists || action == nil {
+		return 0
+	}
+
 	ctx := &Context{handle: context}
 	tasker := ctx.GetTasker()
 	taskDetail := tasker.getTaskDetail(taskId)

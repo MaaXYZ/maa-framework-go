@@ -2,23 +2,31 @@ package maa
 
 import (
 	"strings"
+	"sync"
 	"sync/atomic"
 	"unsafe"
 )
 
 var (
-	notificationCallbackID     uint64
-	notificationCallbackAgents = make(map[uint64]Notification)
+	notificationCallbackID          uint64
+	notificationCallbackAgents      = make(map[uint64]Notification)
+	notificationCallbackAgentsMutex sync.RWMutex
 )
 
 func registerNotificationCallback(notify Notification) uint64 {
 	id := atomic.AddUint64(&notificationCallbackID, 1)
+
+	notificationCallbackAgentsMutex.Lock()
 	notificationCallbackAgents[id] = notify
+	notificationCallbackAgentsMutex.Unlock()
+
 	return id
 }
 
 func unregisterNotificationCallback(id uint64) {
+	notificationCallbackAgentsMutex.Lock()
 	delete(notificationCallbackAgents, id)
+	notificationCallbackAgentsMutex.Unlock()
 }
 
 type NotificationType int
@@ -141,10 +149,15 @@ func _MaaNotificationCallbackAgent(message, detailsJson *byte, notifyTransArg ui
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(notifyTransArg)
-	notify := notificationCallbackAgents[id]
-	if notify == nil {
+
+	notificationCallbackAgentsMutex.RLock()
+	notify, exists := notificationCallbackAgents[id]
+	notificationCallbackAgentsMutex.RUnlock()
+
+	if !exists || notify == nil {
 		return 0
 	}
+
 	handler := &notificationHandler{notify: notify}
 	handler.OnRawNotification(bytePtrToString(message), bytePtrToString(detailsJson))
 	return 0

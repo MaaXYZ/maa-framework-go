@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"sync"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
@@ -14,7 +15,10 @@ type resourceStoreValue struct {
 	CustomActionsCallbackID     map[string]uint64
 }
 
-var resourceStore = store.New[resourceStoreValue]()
+var (
+	resourceStore      = store.New[resourceStoreValue]()
+	resourceStoreMutex sync.RWMutex
+)
 
 type Resource struct {
 	handle uintptr
@@ -32,11 +36,15 @@ func NewResource(notify Notification) *Resource {
 	if handle == 0 {
 		return nil
 	}
+
+	resourceStoreMutex.Lock()
 	resourceStore.Set(handle, resourceStoreValue{
 		NotificationCallbackID:      id,
 		CustomRecognizersCallbackID: make(map[string]uint64),
 		CustomActionsCallbackID:     make(map[string]uint64),
 	})
+	resourceStoreMutex.Unlock()
+
 	return &Resource{
 		handle: handle,
 	}
@@ -44,9 +52,12 @@ func NewResource(notify Notification) *Resource {
 
 // Destroy frees the resource.
 func (r *Resource) Destroy() {
+	resourceStoreMutex.Lock()
 	value := resourceStore.Get(r.handle)
 	unregisterNotificationCallback(value.NotificationCallbackID)
 	resourceStore.Del(r.handle)
+	resourceStoreMutex.Unlock()
+
 	maa.MaaResourceDestroy(r.handle)
 }
 
@@ -81,14 +92,17 @@ func (r *Resource) SetInterfaceDevice(device InterfaceDevice) bool {
 // RegisterCustomRecognition registers a custom recognition to the resource.
 func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognition) bool {
 	id := registerCustomRecognition(recognition)
+
+	resourceStoreMutex.Lock()
 	value := resourceStore.Get(r.handle)
 	if oldID, ok := value.CustomRecognizersCallbackID[name]; ok {
 		unregisterCustomRecognition(oldID)
 	}
 	value.CustomRecognizersCallbackID[name] = id
 	resourceStore.Set(r.handle, value)
+	resourceStoreMutex.Unlock()
 
-	got := maa.MaaResourceRegisterCustomRecognition(
+	return maa.MaaResourceRegisterCustomRecognition(
 		r.handle,
 		name,
 		_MaaCustomRecognitionCallbackAgent,
@@ -96,11 +110,13 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 		// and will not actually dereference this pointer.
 		uintptr(id),
 	)
-	return got
 }
 
 // UnregisterCustomRecognition unregisters a custom recognition from the resource.
 func (r *Resource) UnregisterCustomRecognition(name string) bool {
+	resourceStoreMutex.Lock()
+	defer resourceStoreMutex.Unlock()
+
 	value := resourceStore.Get(r.handle)
 	if id, ok := value.CustomRecognizersCallbackID[name]; ok {
 		unregisterCustomRecognition(id)
@@ -108,32 +124,36 @@ func (r *Resource) UnregisterCustomRecognition(name string) bool {
 		return false
 	}
 
-	got := maa.MaaResourceUnregisterCustomRecognition(r.handle, name)
-	return got
+	return maa.MaaResourceUnregisterCustomRecognition(r.handle, name)
 }
 
 // ClearCustomRecognition clears all custom recognitions registered from the resource.
 func (r *Resource) ClearCustomRecognition() bool {
+	resourceStoreMutex.Lock()
+	defer resourceStoreMutex.Unlock()
+
 	value := resourceStore.Get(r.handle)
 	for _, id := range value.CustomRecognizersCallbackID {
 		unregisterCustomRecognition(id)
 	}
 
-	got := maa.MaaResourceClearCustomRecognition(r.handle)
-	return got
+	return maa.MaaResourceClearCustomRecognition(r.handle)
 }
 
 // RegisterCustomAction registers a custom action to the resource.
 func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
 	id := registerCustomAction(action)
+
+	resourceStoreMutex.Lock()
 	value := resourceStore.Get(r.handle)
 	if oldID, ok := value.CustomActionsCallbackID[name]; ok {
 		unregisterCustomAction(oldID)
 	}
 	value.CustomActionsCallbackID[name] = id
 	resourceStore.Set(r.handle, value)
+	resourceStoreMutex.Unlock()
 
-	got := maa.MaaResourceRegisterCustomAction(
+	return maa.MaaResourceRegisterCustomAction(
 		r.handle,
 		name,
 		_MaaCustomActionCallbackAgent,
@@ -141,11 +161,13 @@ func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
 		// and will not actually dereference this pointer.
 		uintptr(id),
 	)
-	return got
 }
 
 // UnregisterCustomAction unregisters a custom action from the resource.
 func (r *Resource) UnregisterCustomAction(name string) bool {
+	resourceStoreMutex.Lock()
+	defer resourceStoreMutex.Unlock()
+
 	value := resourceStore.Get(r.handle)
 	if id, ok := value.CustomActionsCallbackID[name]; ok {
 		unregisterCustomAction(id)
@@ -153,19 +175,20 @@ func (r *Resource) UnregisterCustomAction(name string) bool {
 		return false
 	}
 
-	got := maa.MaaResourceUnregisterCustomAction(r.handle, name)
-	return got
+	return maa.MaaResourceUnregisterCustomAction(r.handle, name)
 }
 
 // ClearCustomAction clears all custom actions registered from the resource.
 func (r *Resource) ClearCustomAction() bool {
+	resourceStoreMutex.Lock()
+	defer resourceStoreMutex.Unlock()
+
 	value := resourceStore.Get(r.handle)
 	for _, id := range value.CustomActionsCallbackID {
 		unregisterCustomAction(id)
 	}
 
-	got := maa.MaaResourceClearCustomAction(r.handle)
-	return got
+	return maa.MaaResourceClearCustomAction(r.handle)
 }
 
 // PostPath adds a path to the resource loading paths.

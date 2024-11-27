@@ -2,23 +2,32 @@ package maa
 
 import (
 	"image"
+	"sync"
 	"sync/atomic"
 
 	"github.com/MaaXYZ/maa-framework-go/internal/buffer"
 )
 
 var (
-	customRecognitionCallbackID     uint64
-	customRecognitionCallbackAgents = make(map[uint64]CustomRecognition)
+	customRecognitionCallbackID          uint64
+	customRecognitionCallbackAgents      = make(map[uint64]CustomRecognition)
+	customRecognitionCallbackAgentsMutex sync.RWMutex
 )
 
 func registerCustomRecognition(recognizer CustomRecognition) uint64 {
 	id := atomic.AddUint64(&customRecognitionCallbackID, 1)
+
+	customRecognitionCallbackAgentsMutex.Lock()
 	customRecognitionCallbackAgents[id] = recognizer
+	customRecognitionCallbackAgentsMutex.Unlock()
+
 	return id
 }
 
 func unregisterCustomRecognition(id uint64) bool {
+	customRecognitionCallbackAgentsMutex.Lock()
+	defer customRecognitionCallbackAgentsMutex.Unlock()
+
 	if _, ok := customRecognitionCallbackAgents[id]; !ok {
 		return false
 	}
@@ -55,14 +64,22 @@ func _MaaCustomRecognitionCallbackAgent(
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(transArg)
-	recognizer := customRecognitionCallbackAgents[id]
+
+	customRecognitionCallbackAgentsMutex.RLock()
+	recognition, exists := customRecognitionCallbackAgents[id]
+	customRecognitionCallbackAgentsMutex.RUnlock()
+
+	if !exists || recognition == nil {
+		return 0
+	}
+
 	ctx := Context{handle: context}
 	tasker := ctx.GetTasker()
 	taskDetail := tasker.getTaskDetail(taskId)
 	imgBuffer := buffer.NewImageBufferByHandle(image)
 	imgImg := imgBuffer.Get()
 
-	ret, ok := recognizer.Run(
+	ret, ok := recognition.Run(
 		&Context{handle: context},
 		&CustomRecognitionArg{
 			TaskDetail:             taskDetail,
