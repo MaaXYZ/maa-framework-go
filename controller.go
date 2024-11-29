@@ -71,7 +71,7 @@ const (
 	AdbScreencapMethodEmulatorExtras      AdbScreencapMethod = 1 << 6
 
 	AdbScreencapMethodAll     = ^AdbScreencapMethodNone
-	AdbScreencapMethodDefault = AdbScreencapMethodAll & (^AdbScreencapMethodMinicapDirect) & (^AdbScreencapMethodMinicapStream)
+	AdbScreencapMethodDefault = AdbScreencapMethodAll & (^AdbScreencapMethodRawByNetcat) & (^AdbScreencapMethodMinicapDirect) & (^AdbScreencapMethodMinicapStream)
 )
 
 // AdbInputMethod
