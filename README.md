@@ -6,19 +6,18 @@
 # MaaFramework Golang Binding
 
 <p>
-	<a href="https://github.com/MaaXYZ/maa-framework-go/blob/main/LICENSE.md">
-		<img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
-	</a>
-	<a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go">
-		<img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
-	</a>
+    <a href="https://github.com/MaaXYZ/maa-framework-go/blob/main/LICENSE.md">
+        <img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
+    </a>
+    <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go">
+        <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
+    </a>
     <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v2.2.2">
         <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v2.2.2-blue">
     </a>
 </p>
 
 English | [简体中文](README_zh.md)
-
 
 This is the Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), providing Go developers with a simple and effective way to use MaaFramework's features within their Go applications.
 
@@ -48,7 +47,7 @@ Then, you can use the functionalities provided by MaaFramework. For detailed usa
 >
 > 1. The program's working directory contains the MaaFramework dynamic libraries.
 > 2. Environment variables (such as LD_LIBRARY_PATH or PATH) are set to include the path to the dynamic libraries.
-> 
+>
 > Otherwise, the program may not run correctly.
 
 ## Documentation
@@ -77,42 +76,42 @@ Here is a basic example to get you started:
 package main
 
 import (
-	"fmt"
-	"github.com/MaaXYZ/maa-framework-go"
-	"os"
+    "fmt"
+    "github.com/MaaXYZ/maa-framework-go"
+    "os"
 )
 
 func main() {
-	toolkit := maa.NewToolkit()
-	toolkit.ConfigInitOption("./", "{}")
-	tasker := maa.NewTasker(nil)
-	defer tasker.Destroy()
+    toolkit := maa.NewToolkit()
+    toolkit.ConfigInitOption("./", "{}")
+    tasker := maa.NewTasker(nil)
+    defer tasker.Destroy()
 
-	device := toolkit.FindAdbDevices()[0]
-	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ScreencapMethod,
-		device.InputMethod,
-		device.Config,
-		"path/to/MaaAgentBinary",
-		nil,
-	)
-	defer ctrl.Destroy()
-	ctrl.PostConnect().Wait()
-	tasker.BindController(ctrl)
+    device := toolkit.FindAdbDevices()[0]
+    ctrl := maa.NewAdbController(
+        device.AdbPath,
+        device.Address,
+        device.ScreencapMethod,
+        device.InputMethod,
+        device.Config,
+        "path/to/MaaAgentBinary",
+        nil,
+    )
+    defer ctrl.Destroy()
+    ctrl.PostConnect().Wait()
+    tasker.BindController(ctrl)
 
-	res := maa.NewResource(nil)
-	defer res.Destroy()
-	res.PostPath("./resource").Wait()
-	tasker.BindResource(res)
-	if tasker.Initialized() {
-		fmt.Println("Failed to init MAA.")
-		os.Exit(1)
-	}
+    res := maa.NewResource(nil)
+    defer res.Destroy()
+    res.PostPath("./resource").Wait()
+    tasker.BindResource(res)
+    if tasker.Initialized() {
+        fmt.Println("Failed to init MAA.")
+        os.Exit(1)
+    }
 
-	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
-	fmt.Println(detail)
+    detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+    fmt.Println(detail)
 }
 
 ```
@@ -127,78 +126,78 @@ Here is a basic example to implement your custom recognition:
 package main
 
 import (
-	"fmt"
-	"github.com/MaaXYZ/maa-framework-go"
-	"os"
+    "fmt"
+    "github.com/MaaXYZ/maa-framework-go"
+    "os"
 )
 
 func main() {
-	toolkit := maa.NewToolkit()
-	toolkit.ConfigInitOption("./", "{}")
-	tasker := maa.NewTasker(nil)
-	defer tasker.Destroy()
+    toolkit := maa.NewToolkit()
+    toolkit.ConfigInitOption("./", "{}")
+    tasker := maa.NewTasker(nil)
+    defer tasker.Destroy()
 
-	device := toolkit.FindAdbDevices()[0]
-	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ScreencapMethod,
-		device.InputMethod,
-		device.Config,
-		"path/to/MaaAgentBinary",
-		nil,
-	)
-	defer ctrl.Destroy()
-	ctrl.PostConnect().Wait()
-	tasker.BindController(ctrl)
+    device := toolkit.FindAdbDevices()[0]
+    ctrl := maa.NewAdbController(
+        device.AdbPath,
+        device.Address,
+        device.ScreencapMethod,
+        device.InputMethod,
+        device.Config,
+        "path/to/MaaAgentBinary",
+        nil,
+    )
+    defer ctrl.Destroy()
+    ctrl.PostConnect().Wait()
+    tasker.BindController(ctrl)
 
-	res := maa.NewResource(nil)
-	defer res.Destroy()
-	res.PostPath("./resource").Wait()
-	tasker.BindResource(res)
-	if tasker.Initialized() {
-		fmt.Println("Failed to init MAA.")
-		os.Exit(1)
-	}
+    res := maa.NewResource(nil)
+    defer res.Destroy()
+    res.PostPath("./resource").Wait()
+    tasker.BindResource(res)
+    if tasker.Initialized() {
+        fmt.Println("Failed to init MAA.")
+        os.Exit(1)
+    }
 
-	res.RegisterCustomRecognition("MyRec", &MyRec{})
+    res.RegisterCustomRecognition("MyRec", &MyRec{})
 
-	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
-	fmt.Println(detail)
+    detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+    fmt.Println(detail)
 }
 
 type MyRec struct{}
 
 func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (maa.CustomRecognitionResult, bool) {
-	ctx.RunRecognition("MyCustomOCR", arg.Img, maa.J{
-		"MyCustomOCR": maa.J{
-			"roi": []int{100, 100, 200, 300},
-		},
-	})
+    ctx.RunRecognition("MyCustomOCR", arg.Img, maa.J{
+        "MyCustomOCR": maa.J{
+            "roi": []int{100, 100, 200, 300},
+        },
+    })
 
-	ctx.OverridePipeline(maa.J{
-		"MyCustomOCR": maa.J{
-			"roi": []int{1, 1, 114, 514},
-		},
-	})
+    ctx.OverridePipeline(maa.J{
+        "MyCustomOCR": maa.J{
+            "roi": []int{1, 1, 114, 514},
+        },
+    })
 
-	newContext := ctx.Clone()
-	newContext.OverridePipeline(maa.J{
-		"MyCustomOCR": maa.J{
-			"roi": []int{100, 200, 300, 400},
-		},
-	})
-	newContext.RunPipeline("MyCustomOCR", arg.Img)
+    newContext := ctx.Clone()
+    newContext.OverridePipeline(maa.J{
+        "MyCustomOCR": maa.J{
+            "roi": []int{100, 200, 300, 400},
+        },
+    })
+    newContext.RunPipeline("MyCustomOCR", arg.Img)
 
-	clickJob := ctx.GetTasker().GetController().PostClick(10, 20)
-	clickJob.Wait()
+    clickJob := ctx.GetTasker().GetController().PostClick(10, 20)
+    clickJob.Wait()
 
-	ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
+    ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
 
-	return maa.CustomRecognitionResult{
-		Box:    maa.Rect{0, 0, 100, 100},
-		Detail: "Hello World!",
-	}, true
+    return maa.CustomRecognitionResult{
+        Box:    maa.Rect{0, 0, 100, 100},
+        Detail: "Hello World!",
+    }, true
 }
 
 ```
@@ -213,50 +212,50 @@ Here is a basic example to implement your custom action:
 package main
 
 import (
-	"fmt"
-	"github.com/MaaXYZ/maa-framework-go"
-	"os"
+    "fmt"
+    "github.com/MaaXYZ/maa-framework-go"
+    "os"
 )
 
 func main() {
-	toolkit := maa.NewToolkit()
-	toolkit.ConfigInitOption("./", "{}")
-	tasker := maa.NewTasker(nil)
-	defer tasker.Destroy()
+    toolkit := maa.NewToolkit()
+    toolkit.ConfigInitOption("./", "{}")
+    tasker := maa.NewTasker(nil)
+    defer tasker.Destroy()
 
-	device := toolkit.FindAdbDevices()[0]
-	ctrl := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ScreencapMethod,
-		device.InputMethod,
-		device.Config,
-		"path/to/MaaAgentBinary",
-		nil,
-	)
-	defer ctrl.Destroy()
-	ctrl.PostConnect().Wait()
-	tasker.BindController(ctrl)
+    device := toolkit.FindAdbDevices()[0]
+    ctrl := maa.NewAdbController(
+        device.AdbPath,
+        device.Address,
+        device.ScreencapMethod,
+        device.InputMethod,
+        device.Config,
+        "path/to/MaaAgentBinary",
+        nil,
+    )
+    defer ctrl.Destroy()
+    ctrl.PostConnect().Wait()
+    tasker.BindController(ctrl)
 
-	res := maa.NewResource(nil)
-	defer res.Destroy()
-	res.PostPath("./resource").Wait()
-	tasker.BindResource(res)
-	if tasker.Initialized() {
-		fmt.Println("Failed to init MAA.")
-		os.Exit(1)
-	}
+    res := maa.NewResource(nil)
+    defer res.Destroy()
+    res.PostPath("./resource").Wait()
+    tasker.BindResource(res)
+    if tasker.Initialized() {
+        fmt.Println("Failed to init MAA.")
+        os.Exit(1)
+    }
 
-	res.RegisterCustomAction("MyAct", &MyAct{})
+    res.RegisterCustomAction("MyAct", &MyAct{})
 
-	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
-	fmt.Println(detail)
+    detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+    fmt.Println(detail)
 }
 
 type MyAct struct{}
 
 func (a *MyAct) Run(_ *maa.Context, _ *maa.CustomActionArg) bool {
-	return true
+    return true
 }
 
 ```
@@ -271,28 +270,28 @@ Here is a basic example of using PI CLI:
 package main
 
 import (
-	"github.com/MaaXYZ/maa-framework-go"
+    "github.com/MaaXYZ/maa-framework-go"
 )
 
 func main() {
-	toolkit := maa.NewToolkit()
-	toolkit.RegisterPICustomAction(0, "MyAct", &MyAct{})
-	toolkit.RunCli(0, "./resource", "./", false, nil)
+    toolkit := maa.NewToolkit()
+    toolkit.RegisterPICustomAction(0, "MyAct", &MyAct{})
+    toolkit.RunCli(0, "./resource", "./", false, nil)
 }
 
 type MyAct struct{}
 
 func (m MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
-	ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
+    ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
 
-	img := ctx.GetTasker().GetController().CacheImage()
-	ctx.GetTasker().GetController().PostClick(100, 100).Wait()
+    img := ctx.GetTasker().GetController().CacheImage()
+    ctx.GetTasker().GetController().PostClick(100, 100).Wait()
 
-	ctx.RunRecognition("Cat", img, maa.J{
-		"recognition": "OCR",
-		"expected":    "cat",
-	})
-	return true
+    ctx.RunRecognition("Cat", img, maa.J{
+        "recognition": "OCR",
+        "expected":    "cat",
+    })
+    return true
 }
 
 ```
