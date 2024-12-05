@@ -70,23 +70,53 @@ func (r *Resource) setOption(key maa.MaaResOption, value unsafe.Pointer, valSize
 	)
 }
 
-type InterfaceDevice int32
-
-// InterfaceDevice
-const (
-	InterfaceDeviceCPU  InterfaceDevice = -2
-	InterfaceDeviceAuto InterfaceDevice = -1
-	InterfaceDeviceGPU0 InterfaceDevice = 0
-	InterfaceDeviceGPU1 InterfaceDevice = 1
-	// and more gpu id...
-)
-
-func (r *Resource) SetInterfaceDevice(device InterfaceDevice) bool {
+func (r *Resource) setInferenceDevice(device maa.MaaInferenceDevice) bool {
 	return r.setOption(
-		maa.MaaResOption_InterfaceDevice,
+		maa.MaaResOption_InferenceDevice,
 		unsafe.Pointer(&device),
 		unsafe.Sizeof(device),
 	)
+}
+
+func (r *Resource) setInferenceExecutionProvider(ep maa.MaaInferenceExecutionProvider) bool {
+	return r.setOption(
+		maa.MaaResOption_InferenceExecutionProvider,
+		unsafe.Pointer(&ep),
+		unsafe.Sizeof(ep),
+	)
+}
+
+func (r *Resource) setInference(ep maa.MaaInferenceExecutionProvider, deviceID maa.MaaInferenceDevice) bool {
+	return r.setInferenceExecutionProvider(ep) && r.setInferenceDevice(deviceID)
+}
+
+// UseCPU
+func (r *Resource) UseCPU() bool {
+	return r.setInference(maa.MaaInferenceExecutionProvider_CPU, maa.MaaInferenceDevice_CPU)
+}
+
+type InterenceDevice = maa.MaaInferenceDevice
+
+const (
+	InterenceDeviceAuto int32 = -1
+	InferenceDevice0    int32 = 0
+	InferenceDevice1    int32 = 1
+	// and more gpu id or flag...
+)
+
+// UseDirectml
+func (r *Resource) UseDirectml(deviceID InterenceDevice) bool {
+	return r.setInference(maa.MaaInferenceExecutionProvider_DirectML, deviceID)
+}
+
+// UseCoreml
+func (r *Resource) UseCoreml(coremlFlag InterenceDevice) bool {
+	return r.setInference(maa.MaaInferenceExecutionProvider_CoreML, coremlFlag)
+}
+
+// UseAutoExecutionProvider
+func (r *Resource) UseAutoExecutionProvider() bool {
+	return r.setInference(maa.MaaInferenceExecutionProvider_Auto, maa.MaaInferenceDevice_Auto)
 }
 
 // RegisterCustomRecognition registers a custom recognition to the resource.
