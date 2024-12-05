@@ -108,8 +108,9 @@ func (t *Tasker) Running() bool {
 }
 
 // PostStop posts a stop signal to the tasker.
-func (t *Tasker) PostStop() bool {
-	return maa.MaaTaskerPostStop(t.handle)
+func (t *Tasker) PostStop() *TaskJob {
+	id := maa.MaaTaskerPostStop(t.handle)
+	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
 // GetResource returns the resource handle of the tasker.

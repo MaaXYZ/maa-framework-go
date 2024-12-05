@@ -25,7 +25,7 @@ var (
 	MaaTaskerStatus               func(tasker uintptr, id int64) int32
 	MaaTaskerWait                 func(tasker uintptr, id int64) int32
 	MaaTaskerRunning              func(tasker uintptr) bool
-	MaaTaskerPostStop             func(tasker uintptr) bool
+	MaaTaskerPostStop             func(tasker uintptr) int64
 	MaaTaskerGetResource          func(tasker uintptr) uintptr
 	MaaTaskerGetController        func(tasker uintptr) uintptr
 	MaaTaskerClearCache           func(tasker uintptr) bool
