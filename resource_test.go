@@ -39,7 +39,7 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 	got1 := res.RegisterCustomRecognition("TestRec", &testResourceTestRec{})
 	require.True(t, got1)
 
-	got2 := tasker.PostPipeline("TestResource_RegisterCustomRecognition", J{
+	got2 := tasker.PostTask("TestResource_RegisterCustomRecognition", J{
 		"TestResource_RegisterCustomRecognition": J{
 			"recognition":        "custom",
 			"custom_recognition": "TestRec",
@@ -64,7 +64,7 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 	got1 := res.RegisterCustomRecognition("TestRec", &testResourceTestRec{})
 	require.True(t, got1)
 
-	got2 := tasker.PostPipeline("TestResource_UnregisterCustomRecognition", J{
+	got2 := tasker.PostTask("TestResource_UnregisterCustomRecognition", J{
 		"TestResource_UnregisterCustomRecognition": J{
 			"recognition":        "custom",
 			"custom_recognition": "TestRec",
@@ -75,7 +75,7 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 	got3 := res.UnregisterCustomRecognition("TestRec")
 	require.True(t, got3)
 
-	got4 := tasker.PostPipeline("TestResource_UnregisterCustomRecognition", J{
+	got4 := tasker.PostTask("TestResource_UnregisterCustomRecognition", J{
 		"TestResource_UnregisterCustomRecognition": J{
 			"recognition":        "custom",
 			"custom_recognition": "TestRec",
@@ -102,14 +102,14 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 	got2 := res.RegisterCustomRecognition("TestRec2", &testResourceTestRec{})
 	require.True(t, got2)
 
-	got3 := tasker.PostPipeline("TestResource_ClearCustomRecognition", J{
+	got3 := tasker.PostTask("TestResource_ClearCustomRecognition", J{
 		"TestResource_ClearCustomRecognition": J{
 			"recognition":        "custom",
 			"custom_recognition": "TestRec1",
 		},
 	}).Wait().Success()
 	require.True(t, got3)
-	got4 := tasker.PostPipeline("TestResource_ClearCustomRecognition", J{
+	got4 := tasker.PostTask("TestResource_ClearCustomRecognition", J{
 		"TestResource_ClearCustomRecognition": J{
 			"recognition":        "custom",
 			"custom_recognition": "TestRec2",
@@ -120,14 +120,14 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 	got5 := res.ClearCustomRecognition()
 	require.True(t, got5)
 
-	got6 := tasker.PostPipeline("TestResource_ClearCustomRecognition", J{
+	got6 := tasker.PostTask("TestResource_ClearCustomRecognition", J{
 		"TestResource_ClearCustomRecognition": J{
 			"recognition":        "custom",
 			"custom_recognition": "TestRec1",
 		},
 	}).Wait().Failure()
 	require.True(t, got6)
-	got7 := tasker.PostPipeline("TestResource_ClearCustomRecognition", J{
+	got7 := tasker.PostTask("TestResource_ClearCustomRecognition", J{
 		"TestResource_ClearCustomRecognition": J{
 			"recognition":        "custom",
 			"custom_recognition": "TestRec2",
@@ -158,7 +158,7 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 	registered := res.RegisterCustomAction("TestAct", &testResourceTestAct{})
 	require.True(t, registered)
 
-	got := tasker.PostPipeline("TestResource_RegisterCustomAction", J{
+	got := tasker.PostTask("TestResource_RegisterCustomAction", J{
 		"TestResource_RegisterCustomAction": J{
 			"action":        "custom",
 			"custom_action": "TestAct",
@@ -183,7 +183,7 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 	registered := res.RegisterCustomAction("TestAct", &testResourceTestAct{})
 	require.True(t, registered)
 
-	got1 := tasker.PostPipeline("TestResource_RegisterCustomAction", J{
+	got1 := tasker.PostTask("TestResource_RegisterCustomAction", J{
 		"TestResource_RegisterCustomAction": J{
 			"action":        "custom",
 			"custom_action": "TestAct",
@@ -194,7 +194,7 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 	unregistered := res.UnregisterCustomAction("TestAct")
 	require.True(t, unregistered)
 
-	got2 := tasker.PostPipeline("TestResource_RegisterCustomAction", J{
+	got2 := tasker.PostTask("TestResource_RegisterCustomAction", J{
 		"TestResource_RegisterCustomAction": J{
 			"action":        "custom",
 			"custom_action": "TestAct",
@@ -221,14 +221,14 @@ func TestResource_ClearCustomAction(t *testing.T) {
 	registered2 := res.RegisterCustomAction("TestAct2", &testResourceTestAct{})
 	require.True(t, registered2)
 
-	got1 := tasker.PostPipeline("TestResource_RegisterCustomAction", J{
+	got1 := tasker.PostTask("TestResource_RegisterCustomAction", J{
 		"TestResource_RegisterCustomAction": J{
 			"action":        "custom",
 			"custom_action": "TestAct1",
 		},
 	}).Wait().Success()
 	require.True(t, got1)
-	got2 := tasker.PostPipeline("TestResource_RegisterCustomAction", J{
+	got2 := tasker.PostTask("TestResource_RegisterCustomAction", J{
 		"TestResource_RegisterCustomAction": J{
 			"action":        "custom",
 			"custom_action": "TestAct2",
@@ -239,14 +239,14 @@ func TestResource_ClearCustomAction(t *testing.T) {
 	cleared := res.ClearCustomAction()
 	require.True(t, cleared)
 
-	got3 := tasker.PostPipeline("TestResource_RegisterCustomAction", J{
+	got3 := tasker.PostTask("TestResource_RegisterCustomAction", J{
 		"TestResource_RegisterCustomAction": J{
 			"action":        "custom",
 			"custom_action": "TestAct1",
 		},
 	}).Wait().Failure()
 	require.True(t, got3)
-	got4 := tasker.PostPipeline("TestResource_RegisterCustomAction", J{
+	got4 := tasker.PostTask("TestResource_RegisterCustomAction", J{
 		"TestResource_RegisterCustomAction": J{
 			"action":        "custom",
 			"custom_action": "TestAct2",
@@ -259,7 +259,7 @@ func TestResource_PostPath(t *testing.T) {
 	res := createResource(t, nil)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostPath(resDir).Wait().Success()
+	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
 }
 
@@ -267,7 +267,7 @@ func TestResource_Clear(t *testing.T) {
 	res := createResource(t, nil)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostPath(resDir).Wait().Success()
+	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
 	cleared := res.Clear()
 	require.True(t, cleared)
@@ -277,7 +277,7 @@ func TestResource_Loaded(t *testing.T) {
 	res := createResource(t, nil)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostPath(resDir).Wait().Success()
+	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
 	loaded := res.Loaded()
 	require.True(t, loaded)
@@ -287,7 +287,7 @@ func TestResource_GetHash(t *testing.T) {
 	res := createResource(t, nil)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostPath(resDir).Wait().Success()
+	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
 	hash, ok := res.GetHash()
 	require.True(t, ok)
@@ -298,7 +298,7 @@ func TestResource_GetTaskList(t *testing.T) {
 	res := createResource(t, nil)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostPath(resDir).Wait().Success()
+	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
 	taskList, ok := res.GetTaskList()
 	require.True(t, ok)

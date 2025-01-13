@@ -221,10 +221,10 @@ func (r *Resource) ClearCustomAction() bool {
 	return maa.MaaResourceClearCustomAction(r.handle)
 }
 
-// PostPath adds a path to the resource loading paths.
+// PostBundle adds a path to the resource loading paths.
 // Return id of the resource.
-func (r *Resource) PostPath(path string) *Job {
-	id := maa.MaaResourcePostPath(r.handle, path)
+func (r *Resource) PostBundle(path string) *Job {
+	id := maa.MaaResourcePostBundle(r.handle, path)
 	return NewJob(id, r.status, r.wait)
 }
 

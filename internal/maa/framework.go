@@ -21,7 +21,7 @@ var (
 	MaaTaskerBindResource         func(tasker uintptr, res uintptr) bool
 	MaaTaskerBindController       func(tasker uintptr, ctrl uintptr) bool
 	MaaTaskerInited               func(tasker uintptr) bool
-	MaaTaskerPostPipeline         func(tasker uintptr, entry, pipelineOverride string) int64
+	MaaTaskerPostTask             func(tasker uintptr, entry, pipelineOverride string) int64
 	MaaTaskerStatus               func(tasker uintptr, id int64) int32
 	MaaTaskerWait                 func(tasker uintptr, id int64) int32
 	MaaTaskerRunning              func(tasker uintptr) bool
@@ -29,8 +29,8 @@ var (
 	MaaTaskerGetResource          func(tasker uintptr) uintptr
 	MaaTaskerGetController        func(tasker uintptr) uintptr
 	MaaTaskerClearCache           func(tasker uintptr) bool
-	MaaTaskerGetRecognitionDetail func(tasker uintptr, recoId int64, name uintptr, algorithm uintptr, hit *bool, box uintptr, detailJson uintptr, raw uintptr, draws uintptr) bool
-	MaaTaskerGetNodeDetail        func(tasker uintptr, nodeId int64, name uintptr, recoId *int64, completed *bool) bool
+	MaaTaskerGetRecognitionDetail func(tasker uintptr, recoId int64, nodeName uintptr, algorithm uintptr, hit *bool, box uintptr, detailJson uintptr, raw uintptr, draws uintptr) bool
+	MaaTaskerGetNodeDetail        func(tasker uintptr, nodeId int64, nodeName uintptr, recoId *int64, completed *bool) bool
 	MaaTaskerGetTaskDetail        func(tasker uintptr, taskId int64, entry uintptr, nodeIdList uintptr, nodeIdListSize *uint64, status *int32) bool
 	MaaTaskerGetLatestNode        func(tasker uintptr, taskName string, latestId *int64) bool
 )
@@ -104,7 +104,7 @@ var (
 	MaaResourceRegisterCustomAction        func(res uintptr, name string, action MaaCustomActionCallback, transArg uintptr) bool
 	MaaResourceUnregisterCustomAction      func(res uintptr, name string) bool
 	MaaResourceClearCustomAction           func(res uintptr) bool
-	MaaResourcePostPath                    func(res uintptr, path string) int64
+	MaaResourcePostBundle                  func(res uintptr, path string) int64
 	MaaResourceClear                       func(res uintptr) bool
 	MaaResourceStatus                      func(res uintptr, id int64) int32
 	MaaResourceWait                        func(res uintptr, id int64) int32
@@ -299,11 +299,11 @@ func MaaCustomControllerCallbacksCreate(
 }
 
 var (
-	MaaContextRunPipeline      func(context uintptr, entry, pipelineOverride string) int64
+	MaaContextRunTask          func(context uintptr, entry, pipelineOverride string) int64
 	MaaContextRunRecognition   func(context uintptr, entry, pipelineOverride string, image uintptr) int64
 	MaaContextRunAction        func(context uintptr, entry, pipelineOverride string, box uintptr, recoDetail string) int64
 	MaaContextOverridePipeline func(context uintptr, pipelineOverride string) bool
-	MaaContextOverrideNext     func(context uintptr, name string, nextList uintptr) bool
+	MaaContextOverrideNext     func(context uintptr, nodeName string, nextList uintptr) bool
 	MaaContextGetTaskId        func(context uintptr) int64
 	MaaContextGetTasker        func(context uintptr) uintptr
 	MaaContextClone            func(context uintptr) uintptr
@@ -411,7 +411,7 @@ func init() {
 	purego.RegisterLibFunc(&MaaTaskerBindResource, maaFramework, "MaaTaskerBindResource")
 	purego.RegisterLibFunc(&MaaTaskerBindController, maaFramework, "MaaTaskerBindController")
 	purego.RegisterLibFunc(&MaaTaskerInited, maaFramework, "MaaTaskerInited")
-	purego.RegisterLibFunc(&MaaTaskerPostPipeline, maaFramework, "MaaTaskerPostPipeline")
+	purego.RegisterLibFunc(&MaaTaskerPostTask, maaFramework, "MaaTaskerPostPipeline")
 	purego.RegisterLibFunc(&MaaTaskerStatus, maaFramework, "MaaTaskerStatus")
 	purego.RegisterLibFunc(&MaaTaskerWait, maaFramework, "MaaTaskerWait")
 	purego.RegisterLibFunc(&MaaTaskerRunning, maaFramework, "MaaTaskerRunning")
@@ -432,7 +432,7 @@ func init() {
 	purego.RegisterLibFunc(&MaaResourceRegisterCustomAction, maaFramework, "MaaResourceRegisterCustomAction")
 	purego.RegisterLibFunc(&MaaResourceUnregisterCustomAction, maaFramework, "MaaResourceUnregisterCustomAction")
 	purego.RegisterLibFunc(&MaaResourceClearCustomAction, maaFramework, "MaaResourceClearCustomAction")
-	purego.RegisterLibFunc(&MaaResourcePostPath, maaFramework, "MaaResourcePostPath")
+	purego.RegisterLibFunc(&MaaResourcePostBundle, maaFramework, "MaaResourcePostPath")
 	purego.RegisterLibFunc(&MaaResourceClear, maaFramework, "MaaResourceClear")
 	purego.RegisterLibFunc(&MaaResourceStatus, maaFramework, "MaaResourceStatus")
 	purego.RegisterLibFunc(&MaaResourceWait, maaFramework, "MaaResourceWait")
@@ -464,7 +464,7 @@ func init() {
 	purego.RegisterLibFunc(&MaaControllerCachedImage, maaFramework, "MaaControllerCachedImage")
 	purego.RegisterLibFunc(&MaaControllerGetUuid, maaFramework, "MaaControllerGetUuid")
 	// Context
-	purego.RegisterLibFunc(&MaaContextRunPipeline, maaFramework, "MaaContextRunPipeline")
+	purego.RegisterLibFunc(&MaaContextRunTask, maaFramework, "MaaContextRunPipeline")
 	purego.RegisterLibFunc(&MaaContextRunRecognition, maaFramework, "MaaContextRunRecognition")
 	purego.RegisterLibFunc(&MaaContextRunAction, maaFramework, "MaaContextRunAction")
 	purego.RegisterLibFunc(&MaaContextOverridePipeline, maaFramework, "MaaContextOverridePipeline")

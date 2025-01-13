@@ -75,7 +75,7 @@ func TestTasker_PostPipeline(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	taskJob := tasker.PostPipeline("TestTasker_PostPipeline", J{
+	taskJob := tasker.PostTask("TestTasker_PostPipeline", J{
 		"TestTasker_PostPipeline": J{
 			"action": "Click",
 			"target": []int{100, 200, 100, 100},
@@ -175,13 +175,13 @@ func TestTasker_GetLatestNode(t *testing.T) {
 	res := createResource(t, nil)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostPath(resDir).Wait().Success()
+	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
 
 	tasker := createTasker(t, nil)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
-	job := tasker.PostPipeline("Wilderness")
+	job := tasker.PostTask("Wilderness")
 	require.NotNil(t, job)
 	time.Sleep(2 * time.Second)
 	detail := tasker.GetLatestNode("Wilderness")

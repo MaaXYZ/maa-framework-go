@@ -25,8 +25,8 @@ func (ctx *Context) handleOverride(override ...any) string {
 	return str
 }
 
-func (ctx *Context) runPipeline(entry, override string) *TaskDetail {
-	taskId := maa.MaaContextRunPipeline(ctx.handle, entry, override)
+func (ctx *Context) runTask(entry, override string) *TaskDetail {
+	taskId := maa.MaaContextRunTask(ctx.handle, entry, override)
 	if taskId == 0 {
 		return nil
 	}
@@ -34,25 +34,25 @@ func (ctx *Context) runPipeline(entry, override string) *TaskDetail {
 	return tasker.getTaskDetail(taskId)
 }
 
-// RunPipeline runs a pipeline and returns its detail.
+// RunTask runs a task and returns its detail.
 // It accepts an entry string and an optional override parameter which can be
 // a JSON string or any data type that can be marshaled to JSON.
 // If multiple overrides are provided, only the first one will be used.
 //
 // Example 1:
 //
-//	ctx.RunPipeline("Task", `{"Task":{"action":"Click","target":[100, 200, 100, 100]}}`)
+//	ctx.RunTask("Task", `{"Task":{"action":"Click","target":[100, 200, 100, 100]}}`)
 //
 // Example 2:
 //
-//	ctx.RunPipeline("Task", map[string]interface{}{
+//	ctx.RunTask("Task", map[string]interface{}{
 //	    "Task": map[string]interface{}{
 //	        "action": "Click",
 //	        "target": []int{100, 200, 100, 100},
 //		}
 //	})
-func (ctx *Context) RunPipeline(entry string, override ...any) *TaskDetail {
-	return ctx.runPipeline(entry, ctx.handleOverride(override...))
+func (ctx *Context) RunTask(entry string, override ...any) *TaskDetail {
+	return ctx.runTask(entry, ctx.handleOverride(override...))
 }
 
 func (ctx *Context) runRecognition(entry, override string, img image.Image) *RecognitionDetail {

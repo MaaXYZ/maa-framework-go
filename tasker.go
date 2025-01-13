@@ -79,17 +79,17 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 	return postFunc(entry, str)
 }
 
-func (t *Tasker) postPipeline(entry, pipelineOverride string) *TaskJob {
-	id := maa.MaaTaskerPostPipeline(t.handle, entry, pipelineOverride)
+func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
+	id := maa.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
 	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
-// PostPipeline posts a task to the tasker.
+// PostTask posts a task to the tasker.
 // `override` is an optional parameter. If provided, it should be a single value
 // that can be a JSON string or any data type that can be marshaled to JSON.
 // If multiple values are provided, only the first one will be used.
-func (t *Tasker) PostPipeline(entry string, override ...any) *TaskJob {
-	return t.handleOverride(entry, t.postPipeline, override...)
+func (t *Tasker) PostTask(entry string, override ...any) *TaskJob {
+	return t.handleOverride(entry, t.postTask, override...)
 }
 
 // status returns the status of a task identified by the id.

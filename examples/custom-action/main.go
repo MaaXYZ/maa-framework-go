@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/MaaXYZ/maa-framework-go"
 	"os"
+
+	"github.com/MaaXYZ/maa-framework-go"
 )
 
 func main() {
@@ -28,7 +29,7 @@ func main() {
 
 	res := maa.NewResource(nil)
 	defer res.Destroy()
-	res.PostPath("./resource").Wait()
+	res.PostBundle("./resource").Wait()
 	tasker.BindResource(res)
 	if tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
@@ -37,7 +38,7 @@ func main() {
 
 	res.RegisterCustomAction("MyAct", &MyAct{})
 
-	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+	detail := tasker.PostTask("Startup").Wait().GetDetail()
 	fmt.Println(detail)
 }
 

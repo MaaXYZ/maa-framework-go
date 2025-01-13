@@ -1,9 +1,10 @@
 package test
 
 import (
+	"testing"
+
 	"github.com/MaaXYZ/maa-framework-go"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestPipelineSmoking(t *testing.T) {
@@ -20,7 +21,7 @@ func TestPipelineSmoking(t *testing.T) {
 	require.NotNil(t, res)
 	defer res.Destroy()
 	resDir := "./data_set/PipelineSmoking/resource"
-	isPathSet := res.PostPath(resDir).Wait().Success()
+	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
 
 	tasker := maa.NewTasker(nil)
@@ -34,6 +35,6 @@ func TestPipelineSmoking(t *testing.T) {
 	isInitialized := tasker.Initialized()
 	require.True(t, isInitialized)
 
-	got := tasker.PostPipeline("Wilderness").Wait().Success()
+	got := tasker.PostTask("Wilderness").Wait().Success()
 	require.True(t, got)
 }

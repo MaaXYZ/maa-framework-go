@@ -1,9 +1,10 @@
 package test
 
 import (
+	"testing"
+
 	"github.com/MaaXYZ/maa-framework-go"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestRunWithoutFile(t *testing.T) {
@@ -39,7 +40,7 @@ func TestRunWithoutFile(t *testing.T) {
 		},
 	}
 
-	got := tasker.PostPipeline("MyTask", taskParam).Wait().Success()
+	got := tasker.PostTask("MyTask", taskParam).Wait().Success()
 	require.True(t, got)
 }
 

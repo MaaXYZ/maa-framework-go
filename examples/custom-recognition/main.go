@@ -29,7 +29,7 @@ func main() {
 
 	res := maa.NewResource(nil)
 	defer res.Destroy()
-	res.PostPath("./resource").Wait()
+	res.PostBundle("./resource").Wait()
 	tasker.BindResource(res)
 	if tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
@@ -38,7 +38,7 @@ func main() {
 
 	res.RegisterCustomRecognition("MyRec", &MyRec{})
 
-	detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+	detail := tasker.PostTask("Startup").Wait().GetDetail()
 	fmt.Println(detail)
 }
 
@@ -63,7 +63,7 @@ func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*maa.Custo
 			"roi": []int{100, 200, 300, 400},
 		},
 	})
-	newContext.RunPipeline("MyCustomOCR", arg.Img)
+	newContext.RunTask("MyCustomOCR", arg.Img)
 
 	clickJob := ctx.GetTasker().GetController().PostClick(10, 20)
 	clickJob.Wait()

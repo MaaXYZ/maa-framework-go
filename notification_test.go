@@ -47,7 +47,7 @@ func TestNotificationHandler_OnRawNotification(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	got := tasker.PostPipeline("TestNotificationHandler_OnRawNotification", J{
+	got := tasker.PostTask("TestNotificationHandler_OnRawNotification", J{
 		"TestNotificationHandler_OnRawNotification": J{
 			"action": "Click",
 			"target": []int{100, 200, 100, 100},
