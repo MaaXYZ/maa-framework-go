@@ -77,8 +77,9 @@ package main
 
 import (
     "fmt"
-    "github.com/MaaXYZ/maa-framework-go"
     "os"
+
+    "github.com/MaaXYZ/maa-framework-go"
 )
 
 func main() {
@@ -103,14 +104,14 @@ func main() {
 
     res := maa.NewResource(nil)
     defer res.Destroy()
-    res.PostPath("./resource").Wait()
+    res.PostBundle("./resource").Wait()
     tasker.BindResource(res)
     if tasker.Initialized() {
         fmt.Println("Failed to init MAA.")
         os.Exit(1)
     }
 
-    detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+    detail := tasker.PostTask("Startup").Wait().GetDetail()
     fmt.Println(detail)
 }
 
@@ -127,8 +128,9 @@ package main
 
 import (
     "fmt"
-    "github.com/MaaXYZ/maa-framework-go"
     "os"
+
+    "github.com/MaaXYZ/maa-framework-go"
 )
 
 func main() {
@@ -153,7 +155,7 @@ func main() {
 
     res := maa.NewResource(nil)
     defer res.Destroy()
-    res.PostPath("./resource").Wait()
+    res.PostBundle("./resource").Wait()
     tasker.BindResource(res)
     if tasker.Initialized() {
         fmt.Println("Failed to init MAA.")
@@ -162,13 +164,13 @@ func main() {
 
     res.RegisterCustomRecognition("MyRec", &MyRec{})
 
-    detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+    detail := tasker.PostTask("Startup").Wait().GetDetail()
     fmt.Println(detail)
 }
 
 type MyRec struct{}
 
-func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (maa.CustomRecognitionResult, bool) {
+func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*maa.CustomRecognitionResult, bool) {
     ctx.RunRecognition("MyCustomOCR", arg.Img, maa.J{
         "MyCustomOCR": maa.J{
             "roi": []int{100, 100, 200, 300},
@@ -187,14 +189,14 @@ func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (maa.Custom
             "roi": []int{100, 200, 300, 400},
         },
     })
-    newContext.RunPipeline("MyCustomOCR", arg.Img)
+    newContext.RunTask("MyCustomOCR", arg.Img)
 
     clickJob := ctx.GetTasker().GetController().PostClick(10, 20)
     clickJob.Wait()
 
     ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
 
-    return maa.CustomRecognitionResult{
+    return &maa.CustomRecognitionResult{
         Box:    maa.Rect{0, 0, 100, 100},
         Detail: "Hello World!",
     }, true
@@ -213,8 +215,9 @@ package main
 
 import (
     "fmt"
-    "github.com/MaaXYZ/maa-framework-go"
     "os"
+
+    "github.com/MaaXYZ/maa-framework-go"
 )
 
 func main() {
@@ -239,7 +242,7 @@ func main() {
 
     res := maa.NewResource(nil)
     defer res.Destroy()
-    res.PostPath("./resource").Wait()
+    res.PostBundle("./resource").Wait()
     tasker.BindResource(res)
     if tasker.Initialized() {
         fmt.Println("Failed to init MAA.")
@@ -248,7 +251,7 @@ func main() {
 
     res.RegisterCustomAction("MyAct", &MyAct{})
 
-    detail := tasker.PostPipeline("Startup").Wait().GetDetail()
+    detail := tasker.PostTask("Startup").Wait().GetDetail()
     fmt.Println(detail)
 }
 
