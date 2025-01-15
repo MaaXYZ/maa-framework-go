@@ -58,19 +58,19 @@ type TaskerTaskDetail struct {
 	Hash   string `json:"hash"`
 }
 
-type TaskNextListDetail struct {
+type NodeNextListDetail struct {
 	TaskID   uint64   `json:"task_id"`
 	Name     string   `json:"name"`
 	NextList []string `json:"next_list"`
 }
 
-type TaskRecognitionDetail struct {
+type NodeRecognitionDetail struct {
 	TaskID uint64 `json:"task_id"`
 	RecID  uint64 `json:"reco_id"`
 	Name   string `json:"name"`
 }
 
-type TaskActionDetail struct {
+type NodeActionDetail struct {
 	TaskID uint64 `json:"task_id"`
 	NodeID uint64 `json:"node_id"`
 	Name   string `json:"name"`
@@ -80,9 +80,9 @@ type Notification interface {
 	OnResourceLoading(notifyType NotificationType, detail ResourceLoadingDetail)
 	OnControllerAction(notifyType NotificationType, detail ControllerActionDetail)
 	OnTaskerTask(notifyType NotificationType, detail TaskerTaskDetail)
-	OnTaskNextList(notifyType NotificationType, detail TaskNextListDetail)
-	OnTaskRecognition(notifyType NotificationType, detail TaskRecognitionDetail)
-	OnTaskAction(notifyType NotificationType, detail TaskActionDetail)
+	OnTaskNextList(notifyType NotificationType, detail NodeNextListDetail)
+	OnTaskRecognition(notifyType NotificationType, detail NodeRecognitionDetail)
+	OnTaskAction(notifyType NotificationType, detail NodeActionDetail)
 	OnUnknownNotification(msg, detailsJSON string)
 }
 
@@ -112,18 +112,18 @@ func (n *notificationHandler) OnRawNotification(msg, detailsJSON string) {
 		_ = formJSON([]byte(detailsJSON), &detail)
 		n.notify.OnTaskerTask(notifyType, detail)
 		return
-	case strings.HasPrefix(msg, "Task.NextList"):
-		var detail TaskNextListDetail
+	case strings.HasPrefix(msg, "Node.NextList"):
+		var detail NodeNextListDetail
 		_ = formJSON([]byte(detailsJSON), &detail)
 		n.notify.OnTaskNextList(notifyType, detail)
 		return
-	case strings.HasPrefix(msg, "Task.Recognition"):
-		var detail TaskRecognitionDetail
+	case strings.HasPrefix(msg, "Node.Recognition"):
+		var detail NodeRecognitionDetail
 		_ = formJSON([]byte(detailsJSON), &detail)
 		n.notify.OnTaskRecognition(notifyType, detail)
 		return
-	case strings.HasPrefix(msg, "Task.Action"):
-		var detail TaskActionDetail
+	case strings.HasPrefix(msg, "Node.Action"):
+		var detail NodeActionDetail
 		_ = formJSON([]byte(detailsJSON), &detail)
 		n.notify.OnTaskAction(notifyType, detail)
 		return

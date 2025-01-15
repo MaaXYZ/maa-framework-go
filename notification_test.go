@@ -15,13 +15,13 @@ func (t *testNotificationHandlerOnRawNotification) OnControllerAction(notifyType
 func (t *testNotificationHandlerOnRawNotification) OnResourceLoading(notifyType NotificationType, detail ResourceLoadingDetail) {
 }
 
-func (t *testNotificationHandlerOnRawNotification) OnTaskAction(notifyType NotificationType, detail TaskActionDetail) {
+func (t *testNotificationHandlerOnRawNotification) OnTaskAction(notifyType NotificationType, detail NodeActionDetail) {
 }
 
-func (t *testNotificationHandlerOnRawNotification) OnTaskNextList(notifyType NotificationType, detail TaskNextListDetail) {
+func (t *testNotificationHandlerOnRawNotification) OnTaskNextList(notifyType NotificationType, detail NodeNextListDetail) {
 }
 
-func (t *testNotificationHandlerOnRawNotification) OnTaskRecognition(notifyType NotificationType, detail TaskRecognitionDetail) {
+func (t *testNotificationHandlerOnRawNotification) OnTaskRecognition(notifyType NotificationType, detail NodeRecognitionDetail) {
 }
 
 func (t *testNotificationHandlerOnRawNotification) OnTaskerTask(notifyType NotificationType, detail TaskerTaskDetail) {
