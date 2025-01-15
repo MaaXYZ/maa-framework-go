@@ -259,12 +259,12 @@ func (r *Resource) GetHash() (string, bool) {
 	return hash.Get(), true
 }
 
-// GetTaskList returns the task list of the resource.
-func (r *Resource) GetTaskList() ([]string, bool) {
+// GetNodeList returns the node list of the resource.
+func (r *Resource) GetNodeList() ([]string, bool) {
 	taskList := buffer.NewStringListBuffer()
 	defer taskList.Destroy()
 
-	got := maa.MaaResourceGetTaskList(r.handle, uintptr(taskList.Handle()))
+	got := maa.MaaResourceGetNodeList(r.handle, uintptr(taskList.Handle()))
 	if !got {
 		return []string{}, false
 	}

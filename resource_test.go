@@ -294,13 +294,13 @@ func TestResource_GetHash(t *testing.T) {
 	require.NotEqual(t, "0", hash)
 }
 
-func TestResource_GetTaskList(t *testing.T) {
+func TestResource_GetNodeList(t *testing.T) {
 	res := createResource(t, nil)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
 	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
-	taskList, ok := res.GetTaskList()
+	taskList, ok := res.GetNodeList()
 	require.True(t, ok)
 	require.NotEmpty(t, taskList)
 }
