@@ -39,7 +39,7 @@ jobs:
         uses: robinraju/release-downloader@v1.10
         with:
           repository: MaaXYZ/MaaFramework
-          latest: true
+          tag: "v2.4.2"
           fileName: "MAA-win-${{ matrix.arch }}*"
           out-file-path: "${{ github.workspace }}/deps"
           extract: true
@@ -103,7 +103,7 @@ jobs:
         uses: robinraju/release-downloader@v1.10
         with:
           repository: MaaXYZ/MaaFramework
-          latest: true
+          tag: "v2.4.2"
           fileName: "MAA-linux-${{ matrix.arch }}*"
           out-file-path: "deps"
           extract: true
@@ -164,7 +164,7 @@ jobs:
         uses: robinraju/release-downloader@v1.10
         with:
           repository: MaaXYZ/MaaFramework
-          latest: true
+          tag: "v2.4.2"
           fileName: "MAA-macos-${{ matrix.arch }}*"
           out-file-path: "deps"
           extract: true
