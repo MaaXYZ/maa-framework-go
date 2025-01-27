@@ -1,9 +1,10 @@
 package test
 
 import (
-	"github.com/MaaXYZ/maa-framework-go"
 	"os"
 	"testing"
+
+	"github.com/MaaXYZ/maa-framework-go/v2"
 )
 
 func TestMain(m *testing.M) {

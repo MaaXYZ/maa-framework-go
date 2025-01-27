@@ -1,6 +1,6 @@
 package maa
 
-import "github.com/MaaXYZ/maa-framework-go/internal/maa"
+import "github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
 
 // Version returns the version of the maa framework.
 func Version() string {

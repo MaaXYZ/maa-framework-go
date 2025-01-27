@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/MaaXYZ/maa-framework-go"
+	"github.com/MaaXYZ/maa-framework-go/v2"
 )
 
 func main() {

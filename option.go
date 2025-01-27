@@ -3,7 +3,7 @@ package maa
 import (
 	"unsafe"
 
-	"github.com/MaaXYZ/maa-framework-go/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
 )
 
 func setGlobalOption(key maa.MaaGlobalOption, value unsafe.Pointer, valSize uintptr) bool {

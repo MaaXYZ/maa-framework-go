@@ -6,7 +6,7 @@ import (
 	"image/draw"
 	"unsafe"
 
-	"github.com/MaaXYZ/maa-framework-go/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
 )
 
 type ImageBuffer struct {
