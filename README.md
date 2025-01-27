@@ -9,7 +9,7 @@
     <a href="https://github.com/MaaXYZ/maa-framework-go/blob/main/LICENSE.md">
         <img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
     </a>
-    <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go">
+    <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v2">
         <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
     </a>
     <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v3.0.2">
