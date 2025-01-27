@@ -111,7 +111,7 @@ var (
 	MaaResourceLoaded                      func(res uintptr) bool
 	MaaResourceSetOption                   func(res uintptr, key MaaResOption, value unsafe.Pointer, valSize uint64) bool
 	MaaResourceGetHash                     func(res uintptr, buffer uintptr) bool
-	MaaResourceGetTaskList                 func(res uintptr, buffer uintptr) bool
+	MaaResourceGetNodeList                 func(res uintptr, buffer uintptr) bool
 )
 
 // MaaAdbScreencapMethod
@@ -439,7 +439,7 @@ func init() {
 	purego.RegisterLibFunc(&MaaResourceLoaded, maaFramework, "MaaResourceLoaded")
 	purego.RegisterLibFunc(&MaaResourceSetOption, maaFramework, "MaaResourceSetOption")
 	purego.RegisterLibFunc(&MaaResourceGetHash, maaFramework, "MaaResourceGetHash")
-	purego.RegisterLibFunc(&MaaResourceGetTaskList, maaFramework, "MaaResourceGetTaskList")
+	purego.RegisterLibFunc(&MaaResourceGetNodeList, maaFramework, "MaaResourceGetNodeList")
 	// Controller
 	purego.RegisterLibFunc(&MaaAdbControllerCreate, maaFramework, "MaaAdbControllerCreate")
 	purego.RegisterLibFunc(&MaaWin32ControllerCreate, maaFramework, "MaaWin32ControllerCreate")
