@@ -28,7 +28,7 @@
 要安装MaaFramework Go绑定，请在终端中运行以下命令：
 
 ```shell
-go get github.com/MaaXYZ/maa-framework-go
+go get github.com/MaaXYZ/maa-framework-go/v2
 ```
 
 此外，请下载MaaFramework的[Release 包](https://github.com/MaaXYZ/MaaFramework/releases)，以获取必要的动态库文件。
@@ -38,7 +38,7 @@ go get github.com/MaaXYZ/maa-framework-go
 要在您的Go项目中使用MaaFramework，请像导入其他Go包一样导入此包：
 
 ```go
-import "github.com/MaaXYZ/maa-framework-go"
+import "github.com/MaaXYZ/maa-framework-go/v2"
 ```
 
 然后，您可以使用MaaFramework提供的功能。有关详细用法，请参阅仓库中提供的 [文档](#文档) 和 [示例](#示例)。
@@ -79,7 +79,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/MaaXYZ/maa-framework-go"
+    "github.com/MaaXYZ/maa-framework-go/v2"
 )
 
 func main() {
@@ -130,7 +130,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/MaaXYZ/maa-framework-go"
+    "github.com/MaaXYZ/maa-framework-go/v2"
 )
 
 func main() {
@@ -217,7 +217,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/MaaXYZ/maa-framework-go"
+    "github.com/MaaXYZ/maa-framework-gov2"
 )
 
 func main() {
@@ -273,7 +273,7 @@ func (a *MyAct) Run(_ *maa.Context, _ *maa.CustomActionArg) bool {
 package main
 
 import (
-    "github.com/MaaXYZ/maa-framework-go"
+    "github.com/MaaXYZ/maa-framework-go/v2"
 )
 
 func main() {

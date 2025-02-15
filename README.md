@@ -28,7 +28,7 @@ This is the Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework
 To install the MaaFramework Go binding, run the following command in your terminal:
 
 ```shell
-go get github.com/MaaXYZ/maa-framework-go
+go get github.com/MaaXYZ/maa-framework-go/v2
 ```
 
 In addition, please download the [Release package](https://github.com/MaaXYZ/MaaFramework/releases) for MaaFramework to get the necessary dynamic library files.
@@ -38,7 +38,7 @@ In addition, please download the [Release package](https://github.com/MaaXYZ/Maa
 To use MaaFramework in your Go project, import the package as you would with any other Go package:
 
 ```go
-import "github.com/MaaXYZ/maa-framework-go"
+import "github.com/MaaXYZ/maa-framework-go/v2"
 ```
 
 Then, you can use the functionalities provided by MaaFramework. For detailed usage, refer to the [documentation](#documentation) and [examples](#examples) provided in the repository.
@@ -79,7 +79,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/MaaXYZ/maa-framework-go"
+    "github.com/MaaXYZ/maa-framework-go/v2"
 )
 
 func main() {
@@ -130,7 +130,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/MaaXYZ/maa-framework-go"
+    "github.com/MaaXYZ/maa-framework-go/v2"
 )
 
 func main() {
@@ -217,7 +217,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/MaaXYZ/maa-framework-go"
+    "github.com/MaaXYZ/maa-framework-go/v2"
 )
 
 func main() {
@@ -273,7 +273,7 @@ Here is a basic example of using PI CLI:
 package main
 
 import (
-    "github.com/MaaXYZ/maa-framework-go"
+    "github.com/MaaXYZ/maa-framework-go/v2"
 )
 
 func main() {
