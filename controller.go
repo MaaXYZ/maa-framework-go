@@ -1,7 +1,10 @@
 package maa
 
 import (
+	"fmt"
 	"image"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -74,6 +77,60 @@ const (
 	AdbScreencapMethodDefault = AdbScreencapMethodAll & (^AdbScreencapMethodRawByNetcat) & (^AdbScreencapMethodMinicapDirect) & (^AdbScreencapMethodMinicapStream)
 )
 
+func (m AdbScreencapMethod) String() string {
+	switch m {
+	case AdbScreencapMethodNone:
+		return ""
+	case AdbScreencapMethodEncodeToFileAndPull:
+		return AdbScreencapMethodEncodeToFileAndPullValue
+	case AdbScreencapMethodEncode:
+		return AdbScreencapMethodEncodeValue
+	case AdbScreencapMethodRawWithGzip:
+		return AdbScreencapMethodRawWithGzipValue
+	case AdbScreencapMethodRawByNetcat:
+		return AdbScreencapMethodRawByNetcatValue
+	case AdbScreencapMethodMinicapDirect:
+		return AdbScreencapMethodMinicapDirectValue
+	case AdbScreencapMethodMinicapStream:
+		return AdbScreencapMethodMinicapStreamValue
+	case AdbScreencapMethodEmulatorExtras:
+		return AdbScreencapMethodEmulatorExtrasValue
+	case AdbScreencapMethodAll:
+		return AdbScreencapMethodAllValue
+	case AdbScreencapMethodDefault:
+		return AdbScreencapMethodDefaultValue
+	}
+	return strconv.Itoa(int(m))
+}
+
+func ParseAdbScreencapMethod(methodStr string) (AdbScreencapMethod, error) {
+	switch {
+	case strings.EqualFold(methodStr, AdbScreencapMethodEncodeToFileAndPull.String()):
+		return AdbScreencapMethodEncodeToFileAndPull, nil
+	case strings.EqualFold(methodStr, AdbScreencapMethodEncode.String()):
+		return AdbScreencapMethodEncode, nil
+	case strings.EqualFold(methodStr, AdbScreencapMethodRawWithGzip.String()):
+		return AdbScreencapMethodRawWithGzip, nil
+	case strings.EqualFold(methodStr, AdbScreencapMethodRawByNetcat.String()):
+		return AdbScreencapMethodRawByNetcat, nil
+	case strings.EqualFold(methodStr, AdbScreencapMethodMinicapDirect.String()):
+		return AdbScreencapMethodMinicapDirect, nil
+	case strings.EqualFold(methodStr, AdbScreencapMethodMinicapStream.String()):
+		return AdbScreencapMethodMinicapStream, nil
+	case strings.EqualFold(methodStr, AdbScreencapMethodEmulatorExtras.String()):
+		return AdbScreencapMethodEmulatorExtras, nil
+	case strings.EqualFold(methodStr, AdbScreencapMethodAll.String()):
+		return AdbScreencapMethodAll, nil
+	case strings.EqualFold(methodStr, AdbScreencapMethodDefault.String()):
+		return AdbScreencapMethodDefault, nil
+	}
+	i, err := strconv.Atoi(methodStr)
+	if err != nil {
+		return AdbScreencapMethodNone, fmt.Errorf("unknown Adb Screencap Method String: '%s', defaulting to AdbScreencapMethodNone", methodStr)
+	}
+	return AdbScreencapMethod(i), nil
+}
+
 // AdbInputMethod
 //
 // Use bitwise OR to set the method you need,
@@ -92,6 +149,48 @@ const (
 	AdbInputMethodAll     = ^AdbInputMethodNone
 	AdbInputMethodDefault = AdbInputMethodAll & (^AdbInputMethodEmulatorExtras)
 )
+
+func (m AdbInputMethod) String() string {
+	switch m {
+	case AdbInputMethodNone:
+		return ""
+	case AdbInputMethodAdbShell:
+		return AdbInputMethodAdbShellValue
+	case AdbInputMethodMinitouchAndAdbKey:
+		return AdbInputMethodMinitouchAndAdbKeyValue
+	case AdbInputMethodMaatouch:
+		return AdbInputMethodMaatouchValue
+	case AdbInputMethodEmulatorExtras:
+		return AdbInputMethodEmulatorExtrasValue
+	case AdbInputMethodAll:
+		return AdbInputMethodAllValue
+	case AdbInputMethodDefault:
+		return AdbInputMethodDefaultValue
+	}
+	return strconv.Itoa(int(m))
+}
+
+func ParseAdbInputMethod(methodStr string) (AdbInputMethod, error) {
+	switch {
+	case strings.EqualFold(methodStr, AdbInputMethodAdbShell.String()):
+		return AdbInputMethodAdbShell, nil
+	case strings.EqualFold(methodStr, AdbInputMethodMinitouchAndAdbKey.String()):
+		return AdbInputMethodMinitouchAndAdbKey, nil
+	case strings.EqualFold(methodStr, AdbInputMethodMaatouch.String()):
+		return AdbInputMethodMaatouch, nil
+	case strings.EqualFold(methodStr, AdbInputMethodEmulatorExtras.String()):
+		return AdbInputMethodEmulatorExtras, nil
+	case strings.EqualFold(methodStr, AdbInputMethodAll.String()):
+		return AdbInputMethodAll, nil
+	case strings.EqualFold(methodStr, AdbInputMethodDefault.String()):
+		return AdbInputMethodDefault, nil
+	}
+	i, err := strconv.Atoi(methodStr)
+	if err != nil {
+		return AdbInputMethodNone, fmt.Errorf("unknown Adb Input Method String: '%s', defaulting to AdbInputMethodNone", methodStr)
+	}
+	return AdbInputMethod(i), nil
+}
 
 // NewAdbController creates an ADB controller instance.
 func NewAdbController(
@@ -140,6 +239,36 @@ const (
 	Win32ScreencapMethodDXGIDesktopDup Win32ScreencapMethod = 1 << 2
 )
 
+func (m Win32ScreencapMethod) String() string {
+	switch m {
+	case Win32ScreencapMethodNone:
+		return ""
+	case Win32ScreencapMethodGDI:
+		return Win32ScreencapMethodGDIValue
+	case Win32ScreencapMethodFramePool:
+		return Win32ScreencapMethodFramePoolValue
+	case Win32ScreencapMethodDXGIDesktopDup:
+		return Win32ScreencapMethodDXGIDesktopDupValue
+	}
+	return strconv.Itoa(int(m))
+}
+
+func ParseWin32ScreencapMethod(methodStr string) (Win32ScreencapMethod, error) {
+	switch {
+	case strings.EqualFold(methodStr, Win32ScreencapMethodGDI.String()):
+		return Win32ScreencapMethodGDI, nil
+	case strings.EqualFold(methodStr, Win32ScreencapMethodFramePool.String()):
+		return Win32ScreencapMethodFramePool, nil
+	case strings.EqualFold(methodStr, Win32ScreencapMethodDXGIDesktopDup.String()):
+		return Win32ScreencapMethodDXGIDesktopDup, nil
+	}
+	i, err := strconv.Atoi(methodStr)
+	if err != nil {
+		return Win32ScreencapMethodNone, fmt.Errorf("unknown Win32 Screencap Method String: '%s', defaulting to Win32ScreencapMethodNone", methodStr)
+	}
+	return Win32ScreencapMethod(i), nil
+}
+
 // Win32InputMethod
 //
 // No bitwise OR, just set it.
@@ -151,6 +280,32 @@ const (
 	Win32InputMethodSeize       Win32InputMethod = 1
 	Win32InputMethodSendMessage Win32InputMethod = 1 << 1
 )
+
+func (m Win32InputMethod) String() string {
+	switch m {
+	case Win32InputMethodNone:
+		return ""
+	case Win32InputMethodSeize:
+		return Win32InputMethodSeizeValue
+	case Win32InputMethodSendMessage:
+		return Win32InputMethodSendMessageValue
+	}
+	return strconv.Itoa(int(m))
+}
+
+func ParseWin32InputMethod(methodStr string) (Win32InputMethod, error) {
+	switch {
+	case strings.EqualFold(methodStr, Win32InputMethodSeize.String()):
+		return Win32InputMethodSeize, nil
+	case strings.EqualFold(methodStr, Win32InputMethodSendMessage.String()):
+		return Win32InputMethodSendMessage, nil
+	}
+	i, err := strconv.Atoi(methodStr)
+	if err != nil {
+		return Win32InputMethodNone, fmt.Errorf("unknown Win32 Input Method String: '%s', defaulting to Win32InputMethodNone", methodStr)
+	}
+	return Win32InputMethod(i), nil
+}
 
 // NewWin32Controller creates a win32 controller instance.
 func NewWin32Controller(
@@ -193,6 +348,32 @@ const (
 	DbgControllerTypeCarouselImage   DbgControllerType = 1
 	DbgControllerTypeReplayRecording DbgControllerType = 1 << 1
 )
+
+func (t DbgControllerType) String() string {
+	switch t {
+	case DbgControllerTypeNone:
+		return ""
+	case DbgControllerTypeCarouselImage:
+		return DbgControllerTypeCarouselImageValue
+	case DbgControllerTypeReplayRecording:
+		return DbgControllerTypeReplayRecordingValue
+	}
+	return strconv.Itoa(int(t))
+}
+
+func ParseDbgControllerType(typeStr string) (DbgControllerType, error) {
+	switch {
+	case strings.EqualFold(typeStr, DbgControllerTypeCarouselImage.String()):
+		return DbgControllerTypeCarouselImage, nil
+	case strings.EqualFold(typeStr, DbgControllerTypeReplayRecording.String()):
+		return DbgControllerTypeReplayRecording, nil
+	}
+	i, err := strconv.Atoi(typeStr)
+	if err != nil {
+		return DbgControllerTypeNone, fmt.Errorf("unknown DBG Controller Type String: '%s', defaulting to DbgControllerTypeNone", typeStr)
+	}
+	return DbgControllerType(i), nil
+}
 
 // NewDbgController creates a DBG controller instance.
 func NewDbgController(
