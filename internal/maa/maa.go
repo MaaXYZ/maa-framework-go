@@ -32,3 +32,16 @@ func getMaaToolkitLibrary() string {
 		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
 	}
 }
+
+func getMaaAgentServerLibrary() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "libMaaAgentServer.dylib"
+	case "linux":
+		return "MaaAgentServer.so"
+	case "windows":
+		return "MaaAgentServer.dll"
+	default:
+		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
+	}
+}
