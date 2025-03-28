@@ -1,10 +1,13 @@
 package maa
 
-import "github.com/ebitengine/purego"
+import (
+	"github.com/ebitengine/purego"
+	"unsafe"
+)
 
 var (
-	MaaAgentServerRegisterCustomRecognition func(name string, recognition MaaCustomRecognitionCallback, transArg uintptr) bool
-	MaaAgentServerRegisterCustomAction      func(name string, action MaaCustomActionCallback, transArg uintptr) bool
+	MaaAgentServerRegisterCustomRecognition func(name string, recognition MaaCustomRecognitionCallback, transArg unsafe.Pointer) bool
+	MaaAgentServerRegisterCustomAction      func(name string, action MaaCustomActionCallback, transArg unsafe.Pointer) bool
 	MaaAgentServerStartUp                   func(identifier string) bool
 	MaaAgentServerShutDown                  func()
 	MaaAgentServerJoin                      func()
