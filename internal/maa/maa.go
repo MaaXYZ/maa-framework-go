@@ -38,7 +38,7 @@ func getMaaAgentServerLibrary() string {
 	case "darwin":
 		return "libMaaAgentServer.dylib"
 	case "linux":
-		return "MaaAgentServer.so"
+		return "libMaaAgentServer.so"
 	case "windows":
 		return "MaaAgentServer.dll"
 	default:
@@ -51,7 +51,7 @@ func getMaaAgentClientLibrary() string {
 	case "darwin":
 		return "libMaaAgentClient.dylib"
 	case "linux":
-		return "MaaAgentClient.so"
+		return "libMaaAgentClient.so"
 	case "windows":
 		return "MaaAgentClient.dll"
 	default:
