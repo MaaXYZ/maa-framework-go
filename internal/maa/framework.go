@@ -26,6 +26,7 @@ var (
 	MaaTaskerWait                 func(tasker uintptr, id int64) int32
 	MaaTaskerRunning              func(tasker uintptr) bool
 	MaaTaskerPostStop             func(tasker uintptr) int64
+	MaaTaskerStopping             func(tasker uintptr) bool
 	MaaTaskerGetResource          func(tasker uintptr) uintptr
 	MaaTaskerGetController        func(tasker uintptr) uintptr
 	MaaTaskerClearCache           func(tasker uintptr) bool
@@ -412,6 +413,7 @@ func init() {
 	purego.RegisterLibFunc(&MaaTaskerBindController, maaFramework, "MaaTaskerBindController")
 	purego.RegisterLibFunc(&MaaTaskerInited, maaFramework, "MaaTaskerInited")
 	purego.RegisterLibFunc(&MaaTaskerPostTask, maaFramework, "MaaTaskerPostTask")
+	purego.RegisterLibFunc(&MaaTaskerStopping, maaFramework, "MaaTaskerStopping")
 	purego.RegisterLibFunc(&MaaTaskerStatus, maaFramework, "MaaTaskerStatus")
 	purego.RegisterLibFunc(&MaaTaskerWait, maaFramework, "MaaTaskerWait")
 	purego.RegisterLibFunc(&MaaTaskerRunning, maaFramework, "MaaTaskerRunning")

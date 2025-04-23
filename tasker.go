@@ -92,6 +92,11 @@ func (t *Tasker) PostTask(entry string, override ...any) *TaskJob {
 	return t.handleOverride(entry, t.postTask, override...)
 }
 
+// Stopping checks whether the tasker is stopping.
+func (t *Tasker) Stopping() bool {
+	return maa.MaaTaskerStopping(t.handle)
+}
+
 // status returns the status of a task identified by the id.
 func (t *Tasker) status(id int64) Status {
 	return Status(maa.MaaTaskerStatus(t.handle, id))
