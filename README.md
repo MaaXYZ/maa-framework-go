@@ -64,7 +64,6 @@ Here are some documents from the maa framework that might help you:
 - [Quirk Start](#quirk-start)
 - [Custom Recognition](#custom-recognition)
 - [Custom Action](#custom-action)
-- [PI CLI](#pi-cli)
 
 ### Quirk start
 
@@ -258,42 +257,6 @@ func main() {
 type MyAct struct{}
 
 func (a *MyAct) Run(_ *maa.Context, _ *maa.CustomActionArg) bool {
-    return true
-}
-
-```
-
-### PI CLI
-
-See [pi-cli](examples/pi-cli) for details.
-
-Here is a basic example of using PI CLI:
-
-```go
-package main
-
-import (
-    "github.com/MaaXYZ/maa-framework-go/v2"
-)
-
-func main() {
-    toolkit := maa.NewToolkit()
-    toolkit.RegisterPICustomAction(0, "MyAct", &MyAct{})
-    toolkit.RunCli(0, "./resource", "./", false, nil)
-}
-
-type MyAct struct{}
-
-func (m MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
-    ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
-
-    img := ctx.GetTasker().GetController().CacheImage()
-    ctx.GetTasker().GetController().PostClick(100, 100).Wait()
-
-    ctx.RunRecognition("Cat", img, maa.J{
-        "recognition": "OCR",
-        "expected":    "cat",
-    })
     return true
 }
 

@@ -64,7 +64,6 @@ import "github.com/MaaXYZ/maa-framework-go/v2"
 - [快速开始](#快速开始)
 - [自定义识别器](#自定义识别器)
 - [自定义动作](#自定义动作)
-- [PI CLI](#pi-cli)
 
 ### 快速开始
 
@@ -258,42 +257,6 @@ func main() {
 type MyAct struct{}
 
 func (a *MyAct) Run(_ *maa.Context, _ *maa.CustomActionArg) bool {
-    return true
-}
-
-```
-
-### PI CLI
-
-有关详细信息，请参阅 [pi-cli](examples/pi-cli)。
-
-以下是一个使用PI CLI的基本示例：
-
-```go
-package main
-
-import (
-    "github.com/MaaXYZ/maa-framework-go/v2"
-)
-
-func main() {
-    toolkit := maa.NewToolkit()
-    toolkit.RegisterPICustomAction(0, "MyAct", &MyAct{})
-    toolkit.RunCli(0, "./resource", "./", false, nil)
-}
-
-type MyAct struct{}
-
-func (m MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
-    ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
-
-    img := ctx.GetTasker().GetController().CacheImage()
-    ctx.GetTasker().GetController().PostClick(100, 100).Wait()
-
-    ctx.RunRecognition("Cat", img, maa.J{
-        "recognition": "OCR",
-        "expected":    "cat",
-    })
     return true
 }
 
