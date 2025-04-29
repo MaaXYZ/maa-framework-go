@@ -31,7 +31,7 @@ func main() {
 	defer res.Destroy()
 	res.PostBundle("./resource").Wait()
 	tasker.BindResource(res)
-	if tasker.Initialized() {
+	if !tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
 	}
