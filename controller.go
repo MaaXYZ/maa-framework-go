@@ -586,7 +586,7 @@ func (c *controller) CacheImage() image.Image {
 	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 
-	got := maa.MaaControllerCachedImage(c.handle, uintptr(imgBuffer.Handle()))
+	got := maa.MaaControllerCachedImage(c.handle, imgBuffer.Handle())
 	if !got {
 		return nil
 	}
@@ -600,7 +600,7 @@ func (c *controller) CacheImage() image.Image {
 func (c *controller) GetUUID() (string, bool) {
 	uuid := buffer.NewStringBuffer()
 	defer uuid.Destroy()
-	got := maa.MaaControllerGetUuid(c.handle, uintptr(uuid.Handle()))
+	got := maa.MaaControllerGetUuid(c.handle, uuid.Handle())
 	if !got {
 		return "", false
 	}

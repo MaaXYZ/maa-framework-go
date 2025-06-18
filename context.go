@@ -60,7 +60,7 @@ func (ctx *Context) runRecognition(entry, override string, img image.Image) *Rec
 	imgBuf.Set(img)
 	defer imgBuf.Destroy()
 
-	recId := maa.MaaContextRunRecognition(ctx.handle, entry, override, uintptr(imgBuf.Handle()))
+	recId := maa.MaaContextRunRecognition(ctx.handle, entry, override, imgBuf.Handle())
 	if recId == 0 {
 		return nil
 	}
@@ -94,7 +94,7 @@ func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetai
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
 
-	nodeId := maa.MaaContextRunAction(ctx.handle, entry, override, uintptr(rectBuf.Handle()), recognitionDetail)
+	nodeId := maa.MaaContextRunAction(ctx.handle, entry, override, rectBuf.Handle(), recognitionDetail)
 	if nodeId == 0 {
 		return nil
 	}
@@ -156,7 +156,7 @@ func (ctx *Context) OverrideNext(name string, nextList []string) bool {
 			item.Destroy()
 		}
 	}()
-	return maa.MaaContextOverrideNext(ctx.handle, name, uintptr(list.Handle()))
+	return maa.MaaContextOverrideNext(ctx.handle, name, list.Handle())
 }
 
 // GetNodeJSON gets the node JSON by name.

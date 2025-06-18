@@ -164,13 +164,13 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 	got := maa.MaaTaskerGetRecognitionDetail(
 		t.handle,
 		recId,
-		uintptr(name.Handle()),
-		uintptr(algorithm.Handle()),
+		name.Handle(),
+		algorithm.Handle(),
 		&hit,
-		uintptr(box.Handle()),
-		uintptr(detailJson.Handle()),
-		uintptr(raw.Handle()),
-		uintptr(draws.Handle()),
+		box.Handle(),
+		detailJson.Handle(),
+		raw.Handle(),
+		draws.Handle(),
 	)
 	if !got {
 		return nil

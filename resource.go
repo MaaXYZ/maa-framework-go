@@ -296,7 +296,7 @@ func (r *Resource) GetHash() (string, bool) {
 	hash := buffer.NewStringBuffer()
 	defer hash.Destroy()
 
-	got := maa.MaaResourceGetHash(r.handle, uintptr(hash.Handle()))
+	got := maa.MaaResourceGetHash(r.handle, hash.Handle())
 	if !got {
 		return "", false
 	}
@@ -308,7 +308,7 @@ func (r *Resource) GetNodeList() ([]string, bool) {
 	taskList := buffer.NewStringListBuffer()
 	defer taskList.Destroy()
 
-	got := maa.MaaResourceGetNodeList(r.handle, uintptr(taskList.Handle()))
+	got := maa.MaaResourceGetNodeList(r.handle, taskList.Handle())
 	if !got {
 		return []string{}, false
 	}
