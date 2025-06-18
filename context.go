@@ -159,6 +159,14 @@ func (ctx *Context) OverrideNext(name string, nextList []string) bool {
 	return maa.MaaContextOverrideNext(ctx.handle, name, uintptr(list.Handle()))
 }
 
+// GetNodeJSON gets the node JSON by name.
+func (ctx *Context) GetNodeJSON(name string) (bool, string) {
+	buf := buffer.NewStringBuffer()
+	defer buf.Destroy()
+	ok := maa.MaaResourceGetNodeData(ctx.handle, name, buf.Handle())
+	return ok, buf.Get()
+}
+
 // GetTaskJob returns current task job.
 func (ctx *Context) GetTaskJob() *TaskJob {
 	tasker := ctx.GetTasker()

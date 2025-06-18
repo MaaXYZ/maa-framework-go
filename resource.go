@@ -228,6 +228,50 @@ func (r *Resource) PostBundle(path string) *Job {
 	return NewJob(id, r.status, r.wait)
 }
 
+func (r *Resource) overridePipeline(override string) bool {
+	return maa.MaaResourceOverridePipeline(r.handle, override)
+}
+
+// OverridePipeline overrides pipeline.
+// The `override` parameter can be a JSON string or any data type that can be marshaled to JSON.
+func (r *Resource) OverridePipeline(override any) bool {
+	if str, ok := override.(string); ok {
+		return r.overridePipeline(str)
+	}
+	str, err := toJSON(override)
+	if err != nil {
+		return false
+	}
+	return r.overridePipeline(str)
+}
+
+// OverrideNext overrides the next list of task by name.
+func (r *Resource) OverrideNext(name string, nextList []string) bool {
+	list := buffer.NewStringListBuffer()
+	defer list.Destroy()
+	size := len(nextList)
+	items := make([]*buffer.StringBuffer, size)
+	for i := 0; i < size; i++ {
+		items[i] = buffer.NewStringBuffer()
+		items[i].Set(nextList[i])
+		list.Append(items[i])
+	}
+	defer func() {
+		for _, item := range items {
+			item.Destroy()
+		}
+	}()
+	return maa.MaaContextOverrideNext(r.handle, name, list.Handle())
+}
+
+// GetNodeJSON gets the node JSON by name.
+func (r *Resource) GetNodeJSON(name string) (bool, string) {
+	buf := buffer.NewStringBuffer()
+	defer buf.Destroy()
+	ok := maa.MaaResourceGetNodeData(r.handle, name, buf.Handle())
+	return ok, buf.Get()
+}
+
 // Clear clears the resource loading paths.
 func (r *Resource) Clear() bool {
 	return maa.MaaResourceClear(r.handle)
