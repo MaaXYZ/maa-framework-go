@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"sync"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
@@ -101,17 +102,25 @@ type piStoreValue struct {
 	CustomActionsCallbackID     map[string]uint64
 }
 
-var piStore = make(map[uint64]piStoreValue)
+var (
+	piStore      = make(map[uint64]piStoreValue)
+	piStoreMutex sync.RWMutex
+)
 
 // RegisterPICustomRecognition registers a custom recognizer.
 func (t *Toolkit) RegisterPICustomRecognition(instId uint64, name string, recognition CustomRecognition) {
 	id := registerCustomRecognition(recognition)
+
+	piStoreMutex.Lock()
+	defer piStoreMutex.Unlock()
+
 	if _, ok := piStore[instId]; !ok {
 		piStore[instId] = piStoreValue{
 			CustomRecognizersCallbackID: make(map[string]uint64),
 			CustomActionsCallbackID:     make(map[string]uint64),
 		}
 	}
+
 	piStore[instId].CustomRecognizersCallbackID[name] = id
 
 	maa.MaaToolkitProjectInterfaceRegisterCustomRecognition(
@@ -127,12 +136,17 @@ func (t *Toolkit) RegisterPICustomRecognition(instId uint64, name string, recogn
 // RegisterPICustomAction registers a custom action.
 func (t *Toolkit) RegisterPICustomAction(instId uint64, name string, action CustomAction) {
 	id := registerCustomAction(action)
+
+	piStoreMutex.Lock()
+	defer piStoreMutex.Unlock()
+
 	if _, ok := piStore[instId]; !ok {
 		piStore[instId] = piStoreValue{
 			CustomRecognizersCallbackID: make(map[string]uint64),
 			CustomActionsCallbackID:     make(map[string]uint64),
 		}
 	}
+
 	piStore[instId].CustomActionsCallbackID[name] = id
 
 	maa.MaaToolkitProjectInterfaceRegisterCustomAction(
@@ -147,7 +161,14 @@ func (t *Toolkit) RegisterPICustomAction(instId uint64, name string, action Cust
 
 // ClearPICustom unregisters all custom recognitions and actions for a given instance.
 func (t *Toolkit) ClearPICustom(instId uint64) {
-	value := piStore[instId]
+	piStoreMutex.Lock()
+	defer piStoreMutex.Unlock()
+
+	value, ok := piStore[instId]
+	if !ok {
+		return
+	}
+	
 	for _, id := range value.CustomRecognizersCallbackID {
 		unregisterCustomRecognition(id)
 	}
