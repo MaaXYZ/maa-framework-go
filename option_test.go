@@ -139,32 +139,6 @@ func TestSetStdoutLevel(t *testing.T) {
 	}
 }
 
-func TestSetShowHitDraw(t *testing.T) {
-	testCases := []struct {
-		name     string
-		enabled  bool
-		expected bool
-	}{
-		{
-			name:     "EnableShowHitDraw",
-			enabled:  true,
-			expected: true,
-		},
-		{
-			name:     "DisableShowHitDraw",
-			enabled:  false,
-			expected: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			result := SetShowHitDraw(tc.enabled)
-			require.Equal(t, tc.expected, result)
-		})
-	}
-}
-
 func TestSetDebugMode(t *testing.T) {
 	testCases := []struct {
 		name     string

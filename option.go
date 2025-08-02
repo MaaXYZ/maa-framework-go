@@ -47,11 +47,6 @@ func SetStdoutLevel(level LoggingLevel) bool {
 	return setGlobalOption(maa.MaaGlobalOption_StdoutLevel, unsafe.Pointer(&level), unsafe.Sizeof(level))
 }
 
-// SetShowHitDraw sets whether to show hit draw.
-func SetShowHitDraw(enabled bool) bool {
-	return setGlobalOption(maa.MaaGlobalOption_ShowHitDraw, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled))
-}
-
 // SetDebugMode sets whether to enable debug mode.
 func SetDebugMode(enabled bool) bool {
 	return setGlobalOption(maa.MaaGlobalOption_DebugMode, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled))
