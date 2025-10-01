@@ -48,8 +48,10 @@ type CustomController interface {
 	TouchDown(contact, x, y, pressure int32) bool
 	TouchMove(contact, x, y, pressure int32) bool
 	TouchUp(contact int32) bool
-	PressKey(keycode int32) bool
+	ClickKey(keycode int32) bool
 	InputText(text string) bool
+	KeyDown(keycode int32) bool
+	KeyUp(keycode int32) bool
 
 	Handle() uintptr
 }
@@ -71,8 +73,10 @@ func NewCustomControllerHandler() CustomControllerHandler {
 			_TouchDownAgent,
 			_TouchMoveAgent,
 			_TouchUpAgent,
-			_PressKey,
+			_ClickKey,
 			_InputText,
+			_KeyDown,
+			_KeyUp,
 		),
 	}
 }
@@ -254,7 +258,7 @@ func _TouchUpAgent(contact int32, handleArg uintptr) bool {
 	return ctrl.TouchUp(contact)
 }
 
-func _PressKey(key int32, handleArg uintptr) bool {
+func _ClickKey(key int32, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -267,7 +271,7 @@ func _PressKey(key int32, handleArg uintptr) bool {
 		return false
 	}
 
-	return ctrl.PressKey(key)
+	return ctrl.ClickKey(key)
 }
 
 func _InputText(text string, handleArg uintptr) bool {
@@ -284,4 +288,36 @@ func _InputText(text string, handleArg uintptr) bool {
 	}
 
 	return ctrl.InputText(text)
+}
+
+func _KeyDown(keycode int32, handleArg uintptr) bool {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(handleArg)
+
+	customControllerCallbacksAgentsMutex.RLock()
+	ctrl, exists := customControllerCallbacksAgents[id]
+	customControllerCallbacksAgentsMutex.RUnlock()
+
+	if !exists || ctrl == nil {
+		return false
+	}
+
+	return ctrl.KeyDown(keycode)
+}
+
+func _KeyUp(keycode int32, handleArg uintptr) bool {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(handleArg)
+
+	customControllerCallbacksAgentsMutex.RLock()
+	ctrl, exists := customControllerCallbacksAgents[id]
+	customControllerCallbacksAgentsMutex.RUnlock()
+
+	if !exists || ctrl == nil {
+		return false
+	}
+
+	return ctrl.KeyUp(keycode)
 }

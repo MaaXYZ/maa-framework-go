@@ -27,13 +27,15 @@ type Controller interface {
 	PostConnect() *Job
 	PostClick(x, y int32) *Job
 	PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job
-	PostPressKey(keycode int32) *Job
+	PostClickKey(keycode int32) *Job
 	PostInputText(text string) *Job
 	PostStartApp(intent string) *Job
 	PostStopApp(intent string) *Job
 	PostTouchDown(contact, x, y, pressure int32) *Job
 	PostTouchMove(contact, x, y, pressure int32) *Job
 	PostTouchUp(contact int32) *Job
+	PostKeyDown(keycode int32) *Job
+	PostKeyUp(keycode int32) *Job
 	PostScreencap() *Job
 
 	Connected() bool
@@ -519,9 +521,9 @@ func (c *controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Jo
 	return NewJob(id, c.status, c.wait)
 }
 
-// PostPressKey posts a press key.
-func (c *controller) PostPressKey(keycode int32) *Job {
-	id := maa.MaaControllerPostPressKey(c.handle, keycode)
+// PostPressKey posts a click key.
+func (c *controller) PostClickKey(keycode int32) *Job {
+	id := maa.MaaControllerPostClickKey(c.handle, keycode)
 	return NewJob(id, c.status, c.wait)
 }
 
@@ -558,6 +560,16 @@ func (c *controller) PostTouchMove(contact, x, y, pressure int32) *Job {
 // PostTouchUp posts a touch-up.
 func (c *controller) PostTouchUp(contact int32) *Job {
 	id := maa.MaaControllerPostTouchUp(c.handle, contact)
+	return NewJob(id, c.status, c.wait)
+}
+
+func (c *controller) PostKeyDown(keycode int32) *Job {
+	id := maa.MaaControllerPostKeyDown(c.handle, keycode)
+	return NewJob(id, c.status, c.wait)
+}
+
+func (c *controller) PostKeyUp(keycode int32) *Job {
+	id := maa.MaaControllerPostKeyUp(c.handle, keycode)
 	return NewJob(id, c.status, c.wait)
 }
 

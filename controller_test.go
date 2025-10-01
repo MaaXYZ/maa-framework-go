@@ -108,12 +108,12 @@ func TestController_PostSwipe(t *testing.T) {
 	require.True(t, swiped)
 }
 
-func TestController_PostPressKey(t *testing.T) {
+func TestController_PostClickKey(t *testing.T) {
 	ctrl := createDbgController(t, nil)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
-	pressed := ctrl.PostPressKey(4).Wait().Success()
+	pressed := ctrl.PostClickKey(4).Wait().Success()
 	require.True(t, pressed)
 }
 
@@ -174,6 +174,26 @@ func TestController_PostTouchUp(t *testing.T) {
 	moved := ctrl.PostTouchMove(0, 200, 300, 1000).Wait().Success()
 	require.True(t, moved)
 	upped := ctrl.PostTouchUp(0).Wait().Success()
+	require.True(t, upped)
+}
+
+func TestController_PostKeyDown(t *testing.T) {
+	ctrl := createDbgController(t, nil)
+	defer ctrl.Destroy()
+	isConnected := ctrl.PostConnect().Wait().Success()
+	require.True(t, isConnected)
+	downed := ctrl.PostKeyDown(4).Wait().Success()
+	require.True(t, downed)
+}
+
+func TestController_PostKeyUp(t *testing.T) {
+	ctrl := createDbgController(t, nil)
+	defer ctrl.Destroy()
+	isConnected := ctrl.PostConnect().Wait().Success()
+	require.True(t, isConnected)
+	downed := ctrl.PostKeyDown(4).Wait().Success()
+	require.True(t, downed)
+	upped := ctrl.PostKeyUp(4).Wait().Success()
 	require.True(t, upped)
 }
 

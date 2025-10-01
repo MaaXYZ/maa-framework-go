@@ -222,7 +222,7 @@ var (
 	MaaControllerPostConnection func(ctrl uintptr) int64
 	MaaControllerPostClick      func(ctrl uintptr, x, y int32) int64
 	MaaControllerPostSwipe      func(ctrl uintptr, x1, y1, x2, y2, duration int32) int64
-	MaaControllerPostPressKey   func(ctrl uintptr, keycode int32) int64
+	MaaControllerPostClickKey   func(ctrl uintptr, keycode int32) int64
 	MaaControllerPostInputText  func(ctrl uintptr, text string) int64
 	MaaControllerPostStartApp   func(ctrl uintptr, intent string) int64
 	MaaControllerPostStopApp    func(ctrl uintptr, intent string) int64
@@ -233,6 +233,8 @@ var (
 	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
 	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
 	MaaControllerPostTouchUp   func(ctrl uintptr, contact int32) int64
+	MaaControllerPostKeyDown   func(ctrl uintptr, keycode int32) int64
+	MaaControllerPostKeyUp     func(ctrl uintptr, keycode int32) int64
 	MaaControllerPostScreencap func(ctrl uintptr) int64
 	MaaControllerStatus        func(ctrl uintptr, id int64) int32
 	MaaControllerWait          func(ctrl uintptr, id int64) int32
@@ -252,8 +254,10 @@ type MaaCustomControllerCallbacks struct {
 	TouchDown   uintptr
 	TouchMove   uintptr
 	TouchUp     uintptr
-	PressKey    uintptr
+	ClickKey    uintptr
 	InputText   uintptr
+	KeyDown     uintptr
+	KeyUp       uintptr
 }
 
 type (
@@ -267,8 +271,10 @@ type (
 	TouchDownCallback   func(contact, x, y, pressure int32, transArg uintptr) bool
 	TouchMoveCallback   func(contact, x, y, pressure int32, transArg uintptr) bool
 	TouchUpCallback     func(contact int32, transArg uintptr) bool
-	PressKeyCallback    func(keycode int32, transArg uintptr) bool
+	ClickKeyCallback    func(keycode int32, transArg uintptr) bool
 	InputTextCallback   func(text string, transArg uintptr) bool
+	KeyDownCallback     func(keycode int32, transArg uintptr) bool
+	KeyUpCallback       func(keycode int32, transArg uintptr) bool
 )
 
 func MaaCustomControllerCallbacksCreate(
@@ -282,8 +288,10 @@ func MaaCustomControllerCallbacksCreate(
 	touchDown TouchDownCallback,
 	touchMove TouchMoveCallback,
 	touchUp TouchUpCallback,
-	pressKey PressKeyCallback,
+	clickKey ClickKeyCallback,
 	inputText InputTextCallback,
+	keyDown KeyDownCallback,
+	keyUp KeyUpCallback,
 ) uintptr {
 	callbacks := &MaaCustomControllerCallbacks{
 		Connect:     purego.NewCallback(connect),
@@ -296,8 +304,10 @@ func MaaCustomControllerCallbacksCreate(
 		TouchDown:   purego.NewCallback(touchDown),
 		TouchMove:   purego.NewCallback(touchMove),
 		TouchUp:     purego.NewCallback(touchUp),
-		PressKey:    purego.NewCallback(pressKey),
+		ClickKey:    purego.NewCallback(clickKey),
 		InputText:   purego.NewCallback(inputText),
+		KeyDown:     purego.NewCallback(keyDown),
+		KeyUp:       purego.NewCallback(keyUp),
 	}
 	return uintptr(unsafe.Pointer(callbacks))
 }
@@ -454,19 +464,22 @@ func init() {
 	purego.RegisterLibFunc(&MaaControllerPostConnection, maaFramework, "MaaControllerPostConnection")
 	purego.RegisterLibFunc(&MaaControllerPostClick, maaFramework, "MaaControllerPostClick")
 	purego.RegisterLibFunc(&MaaControllerPostSwipe, maaFramework, "MaaControllerPostSwipe")
-	purego.RegisterLibFunc(&MaaControllerPostPressKey, maaFramework, "MaaControllerPostPressKey")
+	purego.RegisterLibFunc(&MaaControllerPostClickKey, maaFramework, "MaaControllerPostClickKey")
 	purego.RegisterLibFunc(&MaaControllerPostInputText, maaFramework, "MaaControllerPostInputText")
 	purego.RegisterLibFunc(&MaaControllerPostStartApp, maaFramework, "MaaControllerPostStartApp")
 	purego.RegisterLibFunc(&MaaControllerPostStopApp, maaFramework, "MaaControllerPostStopApp")
 	purego.RegisterLibFunc(&MaaControllerPostTouchDown, maaFramework, "MaaControllerPostTouchDown")
 	purego.RegisterLibFunc(&MaaControllerPostTouchMove, maaFramework, "MaaControllerPostTouchMove")
 	purego.RegisterLibFunc(&MaaControllerPostTouchUp, maaFramework, "MaaControllerPostTouchUp")
+	purego.RegisterLibFunc(&MaaControllerPostKeyDown, maaFramework, "MaaControllerPostKeyDown")
+	purego.RegisterLibFunc(&MaaControllerPostKeyUp, maaFramework, "MaaControllerPostKeyUp")
 	purego.RegisterLibFunc(&MaaControllerPostScreencap, maaFramework, "MaaControllerPostScreencap")
 	purego.RegisterLibFunc(&MaaControllerStatus, maaFramework, "MaaControllerStatus")
 	purego.RegisterLibFunc(&MaaControllerWait, maaFramework, "MaaControllerWait")
 	purego.RegisterLibFunc(&MaaControllerConnected, maaFramework, "MaaControllerConnected")
 	purego.RegisterLibFunc(&MaaControllerCachedImage, maaFramework, "MaaControllerCachedImage")
 	purego.RegisterLibFunc(&MaaControllerGetUuid, maaFramework, "MaaControllerGetUuid")
+
 	// Context
 	purego.RegisterLibFunc(&MaaContextRunTask, maaFramework, "MaaContextRunTask")
 	purego.RegisterLibFunc(&MaaContextRunRecognition, maaFramework, "MaaContextRunRecognition")
