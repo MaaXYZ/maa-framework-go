@@ -23,11 +23,6 @@ func SetSaveDraw(enabled bool) bool {
 	return setGlobalOption(maa.MaaGlobalOption_SaveDraw, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled))
 }
 
-// SetRecording sets whether to dump all screenshots and actions.
-func SetRecording(enabled bool) bool {
-	return setGlobalOption(maa.MaaGlobalOption_Recording, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled))
-}
-
 type LoggingLevel int32
 
 // LoggingLevel

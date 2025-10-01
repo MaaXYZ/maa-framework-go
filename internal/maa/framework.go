@@ -383,12 +383,6 @@ const (
 	// value: bool, eg: true; val_size: sizeof(bool)
 	MaaGlobalOption_SaveDraw MaaGlobalOption = 2
 
-	// MaaGlobalOption_Recording Dump all screenshots and actions
-	//
-	// Recording will evaluate to true if any of this or MaaCtrlOptionEnum::MaaCtrlOption_Recording
-	// is true. value: bool, eg: true; val_size: sizeof(bool)
-	MaaGlobalOption_Recording MaaGlobalOption = 3
-
 	// MaaGlobalOption_StdoutLevel The level of log output to stdout
 	//
 	// value: MaaLoggingLevel, val_size: sizeof(MaaLoggingLevel)

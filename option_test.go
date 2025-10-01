@@ -1,8 +1,9 @@
 package maa
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetLogDir(t *testing.T) {
@@ -52,32 +53,6 @@ func TestSetSaveDraw(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := SetSaveDraw(tc.enabled)
-			require.Equal(t, tc.expected, result)
-		})
-	}
-}
-
-func TestSetRecording(t *testing.T) {
-	testCases := []struct {
-		name     string
-		enabled  bool
-		expected bool
-	}{
-		{
-			name:     "EnableRecording",
-			enabled:  true,
-			expected: true,
-		},
-		{
-			name:     "DisableRecording",
-			enabled:  false,
-			expected: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			result := SetRecording(tc.enabled)
 			require.Equal(t, tc.expected, result)
 		})
 	}
