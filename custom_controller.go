@@ -36,7 +36,7 @@ func unregisterCustomControllerCallbacks(id uint64) {
 // and provide implementations for the following methods:
 // Connect, RequestUUID, StartApp, StopApp,
 // Screencap, Click, Swipe, TouchDown, TouchMove, TouchUp,
-// PressKey and InputText.
+// ClickKey, InputText, KeyDown and KeyUp.
 type CustomController interface {
 	Connect() bool
 	RequestUUID() (string, bool)
