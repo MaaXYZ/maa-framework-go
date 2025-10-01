@@ -206,10 +206,6 @@ const (
 	// MaaCtrlOptionScreenshotUseRawSize specifies that the screenshot uses the raw size without scaling.
 	// Note that this option may cause incorrect coordinates on user devices with different resolutions if scaling is not performed.
 	MaaCtrlOption_ScreenshotUseRawSize MaaCtrlOption = 3
-
-	/// MaaCtrlOptionRecording indicates that all screenshots and actions should be dumped.
-	// Recording will evaluate to true if either this or MaaGlobalOptionEnum::MaaGlobalOption_Recording is true.
-	MaaCtrlOption_Recording MaaCtrlOption = 5
 )
 
 var (

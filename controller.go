@@ -22,7 +22,6 @@ type Controller interface {
 	SetScreenshotTargetLongSide(targetLongSide int32) bool
 	SetScreenshotTargetShortSide(targetShortSide int32) bool
 	SetScreenshotUseRawSize(enabled bool) bool
-	SetRecording(enabled bool) bool
 
 	PostConnect() *Job
 	PostClick(x, y int32) *Job
@@ -489,15 +488,6 @@ func (c *controller) SetScreenshotTargetShortSide(targetShortSide int32) bool {
 func (c *controller) SetScreenshotUseRawSize(enabled bool) bool {
 	return c.setOption(
 		maa.MaaCtrlOption_ScreenshotUseRawSize,
-		unsafe.Pointer(&enabled),
-		unsafe.Sizeof(enabled),
-	)
-}
-
-// SetRecording sets whether to dump all screenshots and actions.
-func (c *controller) SetRecording(enabled bool) bool {
-	return c.setOption(
-		maa.MaaCtrlOption_Recording,
 		unsafe.Pointer(&enabled),
 		unsafe.Sizeof(enabled),
 	)

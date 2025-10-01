@@ -67,13 +67,6 @@ func TestController_SetScreenshotUseRawSize(t *testing.T) {
 	}
 }
 
-func TestController_SetRecording(t *testing.T) {
-	ctrl := createDbgController(t, nil)
-	defer ctrl.Destroy()
-	got := ctrl.SetRecording(true)
-	require.True(t, got)
-}
-
 func TestController_PostConnect(t *testing.T) {
 	ctrl := createDbgController(t, nil)
 	defer ctrl.Destroy()
