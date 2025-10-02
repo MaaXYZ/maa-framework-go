@@ -10,8 +10,12 @@ type AgentClient struct {
 }
 
 // NewAgentClient creates and initializes a new Agent client instance
-func NewAgentClient() *AgentClient {
-	handle := maa.MaaAgentClientCreate()
+func NewAgentClient(identifier string) *AgentClient {
+	identifierStrBuf := buffer.NewStringBuffer()
+	defer identifierStrBuf.Destroy()
+	identifierStrBuf.Set(identifier)
+
+	handle := maa.MaaAgentClientCreateV2(identifierStrBuf.Handle())
 	if handle == 0 {
 		return nil
 	}
@@ -26,20 +30,20 @@ func (ac *AgentClient) Destroy() {
 	maa.MaaAgentClientDestroy(ac.handle)
 }
 
-// BindResource binds a resource object to the client
+// Identifier returns the identifier of the current agent client
+func (ac *AgentClient) Identifier() (string, bool) {
+	buf := buffer.NewStringBuffer()
+	defer buf.Destroy()
+	ok := maa.MaaAgentClientIdentifier(ac.handle, buf.Handle())
+	return buf.Get(), ok
+}
+
+// BindResource binds a resource object to the current client
 func (ac *AgentClient) BindResource(res *Resource) bool {
 	return maa.MaaAgentClientBindResource(ac.handle, res.handle)
 }
 
-// CreateSocket creates a socket connection with specified identifier
-func (ac *AgentClient) CreateSocket(identifier string) bool {
-	identifierStrBuf := buffer.NewStringBuffer()
-	defer identifierStrBuf.Destroy()
-	identifierStrBuf.Set(identifier)
-	return maa.MaaAgentClientCreateSocket(ac.handle, identifierStrBuf.Handle())
-}
-
-// Connect attempts to establish connection with Agent service
+// Connect attempts to establish connection with agent service
 func (ac *AgentClient) Connect() bool {
 	return maa.MaaAgentClientConnect(ac.handle)
 }
@@ -47,4 +51,19 @@ func (ac *AgentClient) Connect() bool {
 // Disconnect actively terminates current connection
 func (ac *AgentClient) Disconnect() bool {
 	return maa.MaaAgentClientDisconnect(ac.handle)
+}
+
+// Connected checks if the current agent client is in a connected state
+func (ac *AgentClient) Connected() bool {
+	return maa.MaaAgentClientConnected(ac.handle)
+}
+
+// Alive checks if the current agent client is in an alive state
+func (ac *AgentClient) Alive() bool {
+	return maa.MaaAgentClientAlive(ac.handle)
+}
+
+// SetTimeout sets the timeout duration for the current agent client
+func (ac *AgentClient) SetTimeout(milliseconds int64) bool {
+	return maa.MaaAgentClientSetTimeout(ac.handle, milliseconds)
 }
