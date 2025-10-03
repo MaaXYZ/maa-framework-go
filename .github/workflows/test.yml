@@ -138,9 +138,13 @@ jobs:
   macos:
     strategy:
       matrix:
-        arch: [aarch64, x86_64]
+        include:
+          - os: macos-latest-large
+            arch: x86_64
+          - os: macos-latest
+            arch: aarch64
       fail-fast: false
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
