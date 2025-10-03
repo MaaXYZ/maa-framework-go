@@ -136,15 +136,11 @@ jobs:
           path: "test/debug"
 
   macos:
+    runs-on: macos-latest
     strategy:
       matrix:
-        include:
-          - os: macos-latest-large
-            arch: x86_64
-          - os: macos-latest
-            arch: aarch64
+          arch: [ aarch64 ]
       fail-fast: false
-    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
