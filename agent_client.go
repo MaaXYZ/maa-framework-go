@@ -1,6 +1,8 @@
 package maa
 
 import (
+	"time"
+
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
 )
@@ -64,6 +66,12 @@ func (ac *AgentClient) Alive() bool {
 }
 
 // SetTimeout sets the timeout duration for the current agent client
-func (ac *AgentClient) SetTimeout(milliseconds int64) bool {
+func (ac *AgentClient) SetTimeout(duration time.Duration) bool {
+	if duration < 0 {
+		return false
+	}
+
+	milliseconds := duration.Milliseconds()
+
 	return maa.MaaAgentClientSetTimeout(ac.handle, milliseconds)
 }
