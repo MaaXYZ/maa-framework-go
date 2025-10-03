@@ -139,7 +139,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-          arch: [ aarch64 ]
+        arch: [ aarch64 ]
       fail-fast: false
 
     steps:
