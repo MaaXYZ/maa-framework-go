@@ -1,10 +1,12 @@
 package maa
 
 import (
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
 	"unsafe"
+
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
 )
 
+// AgentServerRegisterCustomRecognition registers a custom recognition with the agent server
 func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognition) bool {
 	id := registerCustomRecognition(recognition)
 
@@ -17,6 +19,7 @@ func AgentServerRegisterCustomRecognition(name string, recognition CustomRecogni
 	)
 }
 
+// AgentServerRegisterCustomAction registers a custom action with the agent server
 func AgentServerRegisterCustomAction(name string, action CustomAction) bool {
 	id := registerCustomAction(action)
 
@@ -29,18 +32,22 @@ func AgentServerRegisterCustomAction(name string, action CustomAction) bool {
 	)
 }
 
+// AgentServerStartUp starts up the agent server with the given identifier
 func AgentServerStartUp(identifier string) bool {
 	return maa.MaaAgentServerStartUp(identifier)
 }
 
+// AgentServerShutDown shuts down the Maa agent server
 func AgentServerShutDown() {
 	maa.MaaAgentServerShutDown()
 }
 
+// AgentServerJoin registers the agent server
 func AgentServerJoin() {
 	maa.MaaAgentServerJoin()
 }
 
+// AgentServerDetach unregisters the agent server
 func AgentServerDetach() {
 	maa.MaaAgentServerDetach()
 }
