@@ -265,11 +265,11 @@ func (r *Resource) OverrideNext(name string, nextList []string) bool {
 }
 
 // GetNodeJSON gets the node JSON by name.
-func (r *Resource) GetNodeJSON(name string) (bool, string) {
+func (r *Resource) GetNodeJSON(name string) (string, bool) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := maa.MaaResourceGetNodeData(r.handle, name, buf.Handle())
-	return ok, buf.Get()
+	return buf.Get(), ok
 }
 
 // Clear clears the resource loading paths.
