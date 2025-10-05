@@ -24,20 +24,13 @@ type DesktopWindow struct {
 	WindowName string
 }
 
-type Toolkit struct{}
-
-// NewToolkit creates a new toolkit instance.
-func NewToolkit() *Toolkit {
-	return &Toolkit{}
-}
-
 // ConfigInitOption inits the toolkit config option.
-func (t *Toolkit) ConfigInitOption(userPath, defaultJson string) bool {
+func ConfigInitOption(userPath, defaultJson string) bool {
 	return maa.MaaToolkitConfigInitOption(userPath, defaultJson)
 }
 
 // FindAdbDevices finds adb devices.
-func (t *Toolkit) FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
+func FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
 	listHandle := maa.MaaToolkitAdbDeviceListCreate()
 	defer maa.MaaToolkitAdbDeviceListDestroy(listHandle)
 	var got bool
@@ -73,7 +66,7 @@ func (t *Toolkit) FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
 }
 
 // FindDesktopWindows finds desktop windows.
-func (t *Toolkit) FindDesktopWindows() []*DesktopWindow {
+func FindDesktopWindows() []*DesktopWindow {
 	listHandle := maa.MaaToolkitDesktopWindowListCreate()
 	defer maa.MaaToolkitDesktopWindowListDestroy(listHandle)
 	got := maa.MaaToolkitDesktopWindowFindAll(listHandle)
@@ -107,8 +100,8 @@ var (
 	piStoreMutex sync.RWMutex
 )
 
-// RegisterPICustomRecognition registers a custom recognizer.
-func (t *Toolkit) RegisterPICustomRecognition(instId uint64, name string, recognition CustomRecognition) {
+// PIRegisterCustomRecognition registers a custom recognizer.
+func PIRegisterCustomRecognition(instId uint64, name string, recognition CustomRecognition) {
 	id := registerCustomRecognition(recognition)
 
 	piStoreMutex.Lock()
@@ -133,8 +126,8 @@ func (t *Toolkit) RegisterPICustomRecognition(instId uint64, name string, recogn
 	)
 }
 
-// RegisterPICustomAction registers a custom action.
-func (t *Toolkit) RegisterPICustomAction(instId uint64, name string, action CustomAction) {
+// PIRegisterCustomAction registers a custom action.
+func PIRegisterCustomAction(instId uint64, name string, action CustomAction) {
 	id := registerCustomAction(action)
 
 	piStoreMutex.Lock()
@@ -159,8 +152,8 @@ func (t *Toolkit) RegisterPICustomAction(instId uint64, name string, action Cust
 	)
 }
 
-// ClearPICustom unregisters all custom recognitions and actions for a given instance.
-func (t *Toolkit) ClearPICustom(instId uint64) {
+// PIClearCustom unregisters all custom recognitions and actions for a given instance.
+func PIClearCustom(instId uint64) {
 	piStoreMutex.Lock()
 	defer piStoreMutex.Unlock()
 
@@ -168,7 +161,7 @@ func (t *Toolkit) ClearPICustom(instId uint64) {
 	if !ok {
 		return
 	}
-	
+
 	for _, id := range value.CustomRecognizersCallbackID {
 		unregisterCustomRecognition(id)
 	}
@@ -177,8 +170,8 @@ func (t *Toolkit) ClearPICustom(instId uint64) {
 	}
 }
 
-// RunCli runs the PI CLI.
-func (t *Toolkit) RunCli(instId uint64, resourcePath, userPath string, directly bool, notify Notification) bool {
+// PIRunCli runs the PI CLI.
+func PIRunCli(instId uint64, resourcePath, userPath string, directly bool, notify Notification) bool {
 	id := registerNotificationCallback(notify)
 	got := maa.MaaToolkitProjectInterfaceRunCli(
 		instId,
