@@ -8,10 +8,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	loggingDir := "./debug"
-	maa.SetLogDir(loggingDir)
-	maa.SetSaveDraw(true)
-	maa.SetStdoutLevel(maa.LoggingLevelInfo)
+	maa.Init(
+		maa.WithLogDir("./debug"),
+		maa.WithSaveDraw(true),
+		maa.WithStdoutLevel(maa.LoggingLevelInfo),
+	)
 
 	os.Exit(m.Run())
 }

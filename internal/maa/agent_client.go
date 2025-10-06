@@ -1,8 +1,14 @@
 package maa
 
 import (
+	"fmt"
+	"path/filepath"
+	"runtime"
+
 	"github.com/ebitengine/purego"
 )
+
+var maaAgentClient uintptr
 
 var (
 	MaaAgentClientCreateV2     func(identifier uintptr) uintptr
@@ -16,12 +22,36 @@ var (
 	MaaAgentClientSetTimeout   func(client uintptr, milliseconds int64) bool
 )
 
-func init() {
-	maaAgentClient, err := openLibrary(getMaaAgentClientLibrary())
+func initClient(libDir string) error {
+	libName := getMaaAgentClientLibrary()
+	libPath := filepath.Join(libDir, libName)
+
+	handle, err := openLibrary(libPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
+	maaAgentClient = handle
+
+	registerClient()
+
+	return nil
+}
+
+func getMaaAgentClientLibrary() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "libMaaAgentClient.dylib"
+	case "linux":
+		return "libMaaAgentClient.so"
+	case "windows":
+		return "MaaAgentClient.dll"
+	default:
+		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
+	}
+}
+
+func registerClient() {
 	purego.RegisterLibFunc(&MaaAgentClientCreateV2, maaAgentClient, "MaaAgentClientCreateV2")
 	purego.RegisterLibFunc(&MaaAgentClientDestroy, maaAgentClient, "MaaAgentClientDestroy")
 	purego.RegisterLibFunc(&MaaAgentClientIdentifier, maaAgentClient, "MaaAgentClientIdentifier")

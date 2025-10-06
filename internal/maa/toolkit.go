@@ -1,10 +1,15 @@
 package maa
 
 import (
+	"fmt"
+	"path/filepath"
+	"runtime"
 	"unsafe"
 
 	"github.com/ebitengine/purego"
 )
+
+var maaToolkit uintptr
 
 var (
 	MaaToolkitProjectInterfaceRegisterCustomRecognition func(instId uint64, name string, recognition MaaCustomRecognitionCallback, transArg unsafe.Pointer)
@@ -40,11 +45,37 @@ var (
 	MaaToolkitDesktopWindowGetWindowName func(window uintptr) string
 )
 
-func init() {
-	maaToolkit, err := openLibrary(getMaaToolkitLibrary())
+func initToolkit(libDir string) error {
+
+	libName := getMaaToolkitLibrary()
+	libPath := filepath.Join(libDir, libName)
+
+	handle, err := openLibrary(libPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	maaToolkit = handle
+
+	registerToolkit()
+
+	return nil
+}
+
+func getMaaToolkitLibrary() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "libMaaToolkit.dylib"
+	case "linux":
+		return "libMaaToolkit.so"
+	case "windows":
+		return "MaaToolkit.dll"
+	default:
+		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
+	}
+}
+
+func registerToolkit() {
 	// ProjectInterface
 	purego.RegisterLibFunc(&MaaToolkitProjectInterfaceRegisterCustomRecognition, maaToolkit, "MaaToolkitProjectInterfaceRegisterCustomRecognition")
 	purego.RegisterLibFunc(&MaaToolkitProjectInterfaceRegisterCustomAction, maaToolkit, "MaaToolkitProjectInterfaceRegisterCustomAction")

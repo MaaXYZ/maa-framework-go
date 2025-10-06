@@ -6,10 +6,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	loggingDir := "./test/debug"
-	SetLogDir(loggingDir)
-	SetSaveDraw(true)
-	SetStdoutLevel(LoggingLevelInfo)
+	Init(
+		WithLogDir("./test/debug"),
+		WithSaveDraw(true),
+		WithStdoutLevel(LoggingLevelInfo),
+	)
 
 	os.Exit(m.Run())
 }

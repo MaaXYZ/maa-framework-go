@@ -1,10 +1,15 @@
 package maa
 
 import (
+	"fmt"
+	"path/filepath"
+	"runtime"
 	"unsafe"
 
 	"github.com/ebitengine/purego"
 )
+
+var maaFramework uintptr
 
 var (
 	MaaVersion func() string
@@ -397,12 +402,36 @@ const (
 
 var MaaSetGlobalOption func(key MaaGlobalOption, value unsafe.Pointer, valSize uint64) bool
 
-func init() {
-	maaFramework, err := openLibrary(getMaaFrameworkLibrary())
+func initFramework(libDir string) error {
+	libName := getMaaFrameworkLibrary()
+	libPath := filepath.Join(libDir, libName)
+
+	handle, err := openLibrary(libPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
+	maaFramework = handle
+
+	registerFramework()
+
+	return nil
+}
+
+func getMaaFrameworkLibrary() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "libMaaFramework.dylib"
+	case "linux":
+		return "libMaaFramework.so"
+	case "windows":
+		return "MaaFramework.dll"
+	default:
+		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
+	}
+}
+
+func registerFramework() {
 	purego.RegisterLibFunc(&MaaVersion, maaFramework, "MaaVersion")
 	// Tasker
 	purego.RegisterLibFunc(&MaaTaskerCreate, maaFramework, "MaaTaskerCreate")
@@ -469,7 +498,6 @@ func init() {
 	purego.RegisterLibFunc(&MaaControllerConnected, maaFramework, "MaaControllerConnected")
 	purego.RegisterLibFunc(&MaaControllerCachedImage, maaFramework, "MaaControllerCachedImage")
 	purego.RegisterLibFunc(&MaaControllerGetUuid, maaFramework, "MaaControllerGetUuid")
-
 	// Context
 	purego.RegisterLibFunc(&MaaContextRunTask, maaFramework, "MaaContextRunTask")
 	purego.RegisterLibFunc(&MaaContextRunRecognition, maaFramework, "MaaContextRunRecognition")
