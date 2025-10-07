@@ -21,3 +21,20 @@ func Init(libDir string) error {
 
 	return nil
 }
+
+func Release() error {
+	releaseFns := []func() error{
+		unregisterFramework,
+		unregisterToolkit,
+		unregisterServer,
+		unregisterClient,
+	}
+
+	for _, releaseFn := range releaseFns {
+		if err := releaseFn(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

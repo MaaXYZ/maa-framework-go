@@ -62,3 +62,7 @@ func registerClient() {
 	purego.RegisterLibFunc(&MaaAgentClientAlive, maaAgentClient, "MaaAgentClientAlive")
 	purego.RegisterLibFunc(&MaaAgentClientSetTimeout, maaAgentClient, "MaaAgentClientSetTimeout")
 }
+
+func unregisterClient() error {
+	return unloadLibrary(maaAgentClient)
+}

@@ -9,6 +9,7 @@ import (
 var (
 	inited                bool
 	ErrAlreadyInitialized = errors.New("maa framework already initialized")
+	ErrNotInitialized     = errors.New("maa framework not initialized")
 )
 
 type InitConfig struct {
@@ -83,6 +84,21 @@ func Init(opts ...InitOption) error {
 	SetDebugMode(cfg.DebugMode)
 
 	inited = true
+
+	return nil
+}
+
+func Release() error {
+
+	if !inited {
+		return ErrNotInitialized
+	}
+
+	if err := maa.Release(); err != nil {
+		return err
+	}
+
+	inited = false
 
 	return nil
 }

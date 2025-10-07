@@ -105,3 +105,7 @@ func registerToolkit() {
 	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetClassName, maaToolkit, "MaaToolkitDesktopWindowGetClassName")
 	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetWindowName, maaToolkit, "MaaToolkitDesktopWindowGetWindowName")
 }
+
+func unregisterToolkit() error {
+	return unloadLibrary(maaToolkit)
+}

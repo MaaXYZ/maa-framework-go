@@ -57,3 +57,7 @@ func registerServer() {
 	purego.RegisterLibFunc(&MaaAgentServerJoin, maaAgentServer, "MaaAgentServerJoin")
 	purego.RegisterLibFunc(&MaaAgentServerDetach, maaAgentServer, "MaaAgentServerDetach")
 }
+
+func unregisterServer() error {
+	return unloadLibrary(maaAgentServer)
+}

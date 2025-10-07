@@ -25,3 +25,8 @@ func openLibrary(name string) (uintptr, error) {
 	handle, err := syscall.LoadLibrary(name)
 	return uintptr(handle), err
 }
+
+func unloadLibrary(handle uintptr) error {
+	dllHandle := (syscall.Handle)(handle)
+	return syscall.FreeLibrary(dllHandle)
+}

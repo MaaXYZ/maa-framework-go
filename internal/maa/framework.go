@@ -553,3 +553,7 @@ func registerFramework() {
 	// Option
 	purego.RegisterLibFunc(&MaaSetGlobalOption, maaFramework, "MaaSetGlobalOption")
 }
+
+func unregisterFramework() error {
+	return unloadLibrary(maaFramework)
+}
