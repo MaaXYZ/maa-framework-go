@@ -46,7 +46,7 @@ var (
 )
 
 var (
-	MaaToolkitPluginSystemLoadLibrary  func(libraryName string, tasker, resource, controller uintptr) bool
+	MaaToolkitPluginSystemLoadLibrary   func(libraryName string, tasker, resource, controller uintptr) bool
 	MaaToolkitPluginSystemLoadDirectory func(directoryPath string, tasker, resource, controller uintptr) bool
 )
 
