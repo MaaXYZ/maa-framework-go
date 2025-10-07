@@ -40,6 +40,10 @@ type Controller interface {
 	Connected() bool
 	CacheImage() image.Image
 	GetUUID() (string, bool)
+
+	AddSink(notify Notification) bool
+	RemoveSink(notify Notification) bool
+	ClearSinks() bool
 }
 
 type controllerStoreValue struct {
@@ -607,4 +611,29 @@ func (c *controller) GetUUID() (string, bool) {
 		return "", false
 	}
 	return uuid.Get(), true
+}
+
+// AddSink adds a notification callback sink.
+func (c *controller) AddSink(notify Notification) bool {
+	id := registerNotificationCallback(notify)
+	return maa.MaaControllerAddSink(
+		c.handle,
+		_MaaNotificationCallbackAgent,
+		uintptr(id),
+	)
+}
+
+// RemoveSink removes a notification callback sink.
+func (c *controller) RemoveSink(notify Notification) bool {
+	id := registerNotificationCallback(notify)
+	defer unregisterNotificationCallback(id)
+	return maa.MaaControllerRemoveSink(
+		c.handle,
+		_MaaNotificationCallbackAgent,
+	)
+}
+
+// ClearSinks clears all notification callback sinks.
+func (c *controller) ClearSinks() bool {
+	return maa.MaaControllerClearSinks(c.handle)
 }
