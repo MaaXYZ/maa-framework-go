@@ -20,7 +20,7 @@ var (
 	MaaAgentServerDetach                    func()
 )
 
-func initServer(libDir string) error {
+func initAgentServer(libDir string) error {
 	libName := getMaaAgentServerLibrary()
 	libPath := filepath.Join(libDir, libName)
 
@@ -31,7 +31,7 @@ func initServer(libDir string) error {
 
 	maaAgentServer = handle
 
-	registerServer()
+	registerAgentServer()
 
 	return nil
 }
@@ -49,7 +49,7 @@ func getMaaAgentServerLibrary() string {
 	}
 }
 
-func registerServer() {
+func registerAgentServer() {
 	purego.RegisterLibFunc(&MaaAgentServerRegisterCustomRecognition, maaAgentServer, "MaaAgentServerRegisterCustomRecognition")
 	purego.RegisterLibFunc(&MaaAgentServerRegisterCustomAction, maaAgentServer, "MaaAgentServerRegisterCustomAction")
 	purego.RegisterLibFunc(&MaaAgentServerStartUp, maaAgentServer, "MaaAgentServerStartUp")
@@ -58,6 +58,6 @@ func registerServer() {
 	purego.RegisterLibFunc(&MaaAgentServerDetach, maaAgentServer, "MaaAgentServerDetach")
 }
 
-func unregisterServer() error {
+func unregisterAgentServer() error {
 	return unloadLibrary(maaAgentServer)
 }

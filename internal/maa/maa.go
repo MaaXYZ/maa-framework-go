@@ -9,8 +9,8 @@ func Init(libDir string) error {
 	initFns := []func(libDir string) error{
 		initFramework,
 		initToolkit,
-		initServer,
-		initClient,
+		initAgentServer,
+		initAgentClient,
 	}
 
 	for _, initFn := range initFns {
@@ -26,8 +26,8 @@ func Release() error {
 	releaseFns := []func() error{
 		unregisterFramework,
 		unregisterToolkit,
-		unregisterServer,
-		unregisterClient,
+		unregisterAgentServer,
+		unregisterAgentClient,
 	}
 
 	for _, releaseFn := range releaseFns {

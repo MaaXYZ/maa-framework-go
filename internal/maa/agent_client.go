@@ -22,7 +22,7 @@ var (
 	MaaAgentClientSetTimeout   func(client uintptr, milliseconds int64) bool
 )
 
-func initClient(libDir string) error {
+func initAgentClient(libDir string) error {
 	libName := getMaaAgentClientLibrary()
 	libPath := filepath.Join(libDir, libName)
 
@@ -33,7 +33,7 @@ func initClient(libDir string) error {
 
 	maaAgentClient = handle
 
-	registerClient()
+	registerAgentClient()
 
 	return nil
 }
@@ -51,7 +51,7 @@ func getMaaAgentClientLibrary() string {
 	}
 }
 
-func registerClient() {
+func registerAgentClient() {
 	purego.RegisterLibFunc(&MaaAgentClientCreateV2, maaAgentClient, "MaaAgentClientCreateV2")
 	purego.RegisterLibFunc(&MaaAgentClientDestroy, maaAgentClient, "MaaAgentClientDestroy")
 	purego.RegisterLibFunc(&MaaAgentClientIdentifier, maaAgentClient, "MaaAgentClientIdentifier")
@@ -63,6 +63,6 @@ func registerClient() {
 	purego.RegisterLibFunc(&MaaAgentClientSetTimeout, maaAgentClient, "MaaAgentClientSetTimeout")
 }
 
-func unregisterClient() error {
+func unregisterAgentClient() error {
 	return unloadLibrary(maaAgentClient)
 }
