@@ -22,6 +22,9 @@ type MaaTaskerOption int32
 var (
 	MaaTaskerCreate               func(notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
 	MaaTaskerDestroy              func(tasker uintptr)
+	MaaTaskerAddSink              func(tasker uintptr, notify MaaNotificationCallback, notifyTransArg uintptr) bool
+	MaaTaskerRemoveSink           func(tasker uintptr, notify MaaNotificationCallback) bool
+	MaaTaskerClearSinks           func(tasker uintptr) bool
 	MaaTaskerSetOption            func(tasker uintptr, key MaaTaskerOption, value unsafe.Pointer, valSize uint64) bool
 	MaaTaskerBindResource         func(tasker uintptr, res uintptr) bool
 	MaaTaskerBindController       func(tasker uintptr, ctrl uintptr) bool
@@ -104,6 +107,9 @@ const (
 var (
 	MaaResourceCreate                      func(notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
 	MaaResourceDestroy                     func(res uintptr)
+	MaaResourceAddSink                     func(res uintptr, notify MaaNotificationCallback, notifyTransArg uintptr) bool
+	MaaResourceRemoveSink                  func(res uintptr, notify MaaNotificationCallback) bool
+	MaaResourceClearSinks                  func(res uintptr) bool
 	MaaResourceRegisterCustomRecognition   func(res uintptr, name string, recognition MaaCustomRecognitionCallback, transArg uintptr) bool
 	MaaResourceUnregisterCustomRecognition func(res uintptr, name string) bool
 	MaaResourceClearCustomRecognition      func(res uintptr) bool
@@ -219,6 +225,9 @@ var (
 	MaaCustomControllerCreate   func(controller uintptr, controllerArg uintptr, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
 	MaaDbgControllerCreate      func(readPath, writePath string, dbgCtrlType MaaDbgControllerType, config string, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
 	MaaControllerDestroy        func(ctrl uintptr)
+	MaaControllerAddSink        func(ctrl uintptr, notify MaaNotificationCallback, notifyTransArg uintptr) bool
+	MaaControllerRemoveSink     func(ctrl uintptr, notify MaaNotificationCallback) bool
+	MaaControllerClearSinks     func(ctrl uintptr) bool
 	MaaControllerSetOption      func(ctrl uintptr, key MaaCtrlOption, value unsafe.Pointer, valSize uint64) bool
 	MaaControllerPostConnection func(ctrl uintptr) int64
 	MaaControllerPostClick      func(ctrl uintptr, x, y int32) int64
@@ -436,6 +445,9 @@ func registerFramework() {
 	// Tasker
 	purego.RegisterLibFunc(&MaaTaskerCreate, maaFramework, "MaaTaskerCreate")
 	purego.RegisterLibFunc(&MaaTaskerDestroy, maaFramework, "MaaTaskerDestroy")
+	purego.RegisterLibFunc(&MaaTaskerAddSink, maaFramework, "MaaTaskerAddSink")
+	purego.RegisterLibFunc(&MaaTaskerRemoveSink, maaFramework, "MaaTaskerRemoveSink")
+	purego.RegisterLibFunc(&MaaTaskerClearSinks, maaFramework, "MaaTaskerClearSinks")
 	purego.RegisterLibFunc(&MaaTaskerSetOption, maaFramework, "MaaTaskerSetOption")
 	purego.RegisterLibFunc(&MaaTaskerBindResource, maaFramework, "MaaTaskerBindResource")
 	purego.RegisterLibFunc(&MaaTaskerBindController, maaFramework, "MaaTaskerBindController")
@@ -456,6 +468,9 @@ func registerFramework() {
 	// Resource
 	purego.RegisterLibFunc(&MaaResourceCreate, maaFramework, "MaaResourceCreate")
 	purego.RegisterLibFunc(&MaaResourceDestroy, maaFramework, "MaaResourceDestroy")
+	purego.RegisterLibFunc(&MaaResourceAddSink, maaFramework, "MaaResourceAddSink")
+	purego.RegisterLibFunc(&MaaResourceRemoveSink, maaFramework, "MaaResourceRemoveSink")
+	purego.RegisterLibFunc(&MaaResourceClearSinks, maaFramework, "MaaResourceClearSinks")
 	purego.RegisterLibFunc(&MaaResourceRegisterCustomRecognition, maaFramework, "MaaResourceRegisterCustomRecognition")
 	purego.RegisterLibFunc(&MaaResourceUnregisterCustomRecognition, maaFramework, "MaaResourceUnregisterCustomRecognition")
 	purego.RegisterLibFunc(&MaaResourceClearCustomRecognition, maaFramework, "MaaResourceClearCustomRecognition")
@@ -479,6 +494,9 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaCustomControllerCreate, maaFramework, "MaaCustomControllerCreate")
 	purego.RegisterLibFunc(&MaaDbgControllerCreate, maaFramework, "MaaDbgControllerCreate")
 	purego.RegisterLibFunc(&MaaControllerDestroy, maaFramework, "MaaControllerDestroy")
+	purego.RegisterLibFunc(&MaaControllerAddSink, maaFramework, "MaaControllerAddSink")
+	purego.RegisterLibFunc(&MaaControllerRemoveSink, maaFramework, "MaaControllerRemoveSink")
+	purego.RegisterLibFunc(&MaaControllerClearSinks, maaFramework, "MaaControllerClearSinks")
 	purego.RegisterLibFunc(&MaaControllerSetOption, maaFramework, "MaaControllerSetOption")
 	purego.RegisterLibFunc(&MaaControllerPostConnection, maaFramework, "MaaControllerPostConnection")
 	purego.RegisterLibFunc(&MaaControllerPostClick, maaFramework, "MaaControllerPostClick")
