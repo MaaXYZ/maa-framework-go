@@ -1,14 +1,14 @@
 package maa
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
 )
 
 var (
 	inited                bool
-	ErrAlreadyInitialized = fmt.Errorf("maa Framework already initialized")
+	ErrAlreadyInitialized = errors.New("maa framework already initialized")
 )
 
 type InitConfig struct {
