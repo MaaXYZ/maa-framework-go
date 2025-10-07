@@ -299,3 +299,28 @@ func (t *Tasker) GetLatestNode(taskName string) *NodeDetail {
 	}
 	return t.getNodeDetail(nodeId)
 }
+
+// AddSink adds a notification callback sink.
+func (t *Tasker) AddSink(notify Notification) bool {
+	id := registerNotificationCallback(notify)
+	return maa.MaaTaskerAddSink(
+		t.handle,
+		_MaaNotificationCallbackAgent,
+		uintptr(id),
+	)
+}
+
+// RemoveSink removes a notification callback sink.
+func (t *Tasker) RemoveSink(notify Notification) bool {
+	id := registerNotificationCallback(notify)
+	defer unregisterNotificationCallback(id)
+	return maa.MaaTaskerRemoveSink(
+		t.handle,
+		_MaaNotificationCallbackAgent,
+	)
+}
+
+// ClearSinks clears all notification callback sinks.
+func (t *Tasker) ClearSinks() bool {
+	return maa.MaaTaskerClearSinks(t.handle)
+}
