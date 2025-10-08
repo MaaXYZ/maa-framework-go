@@ -62,6 +62,8 @@ func defaultInitConfig() InitConfig {
 	}
 }
 
+// Init loads the dynamic library related to the MAA framework and registers its related functions.
+// It must be called before invoking any other MAA-related functions.
 func Init(opts ...InitOption) error {
 
 	if inited {
@@ -88,6 +90,8 @@ func Init(opts ...InitOption) error {
 	return nil
 }
 
+// Release releases the dynamic library resources of the MAA framework and unregisters its related functions.
+// It must be called only after the framework has been initialized via Init.
 func Release() error {
 
 	if !inited {
