@@ -90,6 +90,11 @@ func Init(opts ...InitOption) error {
 	return nil
 }
 
+// IsInited checks if the MAA framework has been initialized.
+func IsInited() bool {
+	return inited
+}
+
 // Release releases the dynamic library resources of the MAA framework and unregisters its related functions.
 // It must be called only after the framework has been initialized via Init.
 func Release() error {
