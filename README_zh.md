@@ -82,12 +82,12 @@ import (
 )
 
 func main() {
-    toolkit := maa.NewToolkit()
-    toolkit.ConfigInitOption("./", "{}")
+    maa.Init()
+    maa.ConfigInitOption("./", "{}")
     tasker := maa.NewTasker(nil)
     defer tasker.Destroy()
 
-    device := toolkit.FindAdbDevices()[0]
+    device := maa.FindAdbDevices()[0]
     ctrl := maa.NewAdbController(
         device.AdbPath,
         device.Address,
@@ -133,12 +133,12 @@ import (
 )
 
 func main() {
-    toolkit := maa.NewToolkit()
-    toolkit.ConfigInitOption("./", "{}")
+    maa.Init()
+    maa.ConfigInitOption("./", "{}")
     tasker := maa.NewTasker(nil)
     defer tasker.Destroy()
 
-    device := toolkit.FindAdbDevices()[0]
+    device := maa.FindAdbDevices()[0]
     ctrl := maa.NewAdbController(
         device.AdbPath,
         device.Address,
@@ -216,16 +216,16 @@ import (
     "fmt"
     "os"
 
-    "github.com/MaaXYZ/maa-framework-gov2"
+    "github.com/MaaXYZ/maa-framework-go/v2"
 )
 
 func main() {
-    toolkit := maa.NewToolkit()
-    toolkit.ConfigInitOption("./", "{}")
+    maa.Init()
+    maa.ConfigInitOption("./", "{}")
     tasker := maa.NewTasker(nil)
     defer tasker.Destroy()
 
-    device := toolkit.FindAdbDevices()[0]
+    device := maa.FindAdbDevices()[0]
     ctrl := maa.NewAdbController(
         device.AdbPath,
         device.Address,

@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	maa.Init()
 	maa.ConfigInitOption("./", "{}")
 	tasker := maa.NewTasker(nil)
 	defer tasker.Destroy()
