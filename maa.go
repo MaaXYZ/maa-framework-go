@@ -22,30 +22,40 @@ type InitConfig struct {
 
 type InitOption func(*InitConfig)
 
+// WithLibDir returns an InitOption that sets the library directory path for the MAA framework.
+// The libDir parameter specifies the directory where the MAA dynamic library is located.
 func WithLibDir(libDir string) InitOption {
 	return func(ic *InitConfig) {
 		ic.LibDir = libDir
 	}
 }
 
+// WithLogDir returns an InitOption that sets the directory path for log files.
+// The logDir parameter specifies where the MAA framework should write its log files.
 func WithLogDir(logDir string) InitOption {
 	return func(ic *InitConfig) {
 		ic.LogDir = logDir
 	}
 }
 
+// WithSaveDraw returns an InitOption that configures whether to save drawing information.
+// When enabled is true, the framework will save drawing debug information.
 func WithSaveDraw(enabled bool) InitOption {
 	return func(ic *InitConfig) {
 		ic.SaveDraw = enabled
 	}
 }
 
+// WithStdoutLevel returns an InitOption that sets the logging level for standard output.
+// The level parameter determines the verbosity of logs written to stdout.
 func WithStdoutLevel(level LoggingLevel) InitOption {
 	return func(ic *InitConfig) {
 		ic.StdoutLevel = level
 	}
 }
 
+// WithDebugMode returns an InitOption that enables or disables debug mode.
+// When enabled is true, additional debug information will be collected and logged.
 func WithDebugMode(enabled bool) InitOption {
 	return func(ic *InitConfig) {
 		ic.DebugMode = enabled
@@ -64,6 +74,7 @@ func defaultInitConfig() InitConfig {
 
 // Init loads the dynamic library related to the MAA framework and registers its related functions.
 // It must be called before invoking any other MAA-related functions.
+// Note: If this function is not called before other MAA functions, it will trigger a null pointer panic.
 func Init(opts ...InitOption) error {
 
 	if inited {
