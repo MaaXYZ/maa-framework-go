@@ -185,3 +185,34 @@ func PIRunCli(instId uint64, resourcePath, userPath string, directly bool, notif
 	)
 	return got
 }
+
+// PluginSystemLoadLibrary loads a plugin library by name or path.
+// It will search in system directory and current directory if only name is provided.
+func PluginSystemLoadLibrary(libraryName string, tasker *Tasker, resource *Resource, controller Controller) bool {
+	var taskerHandle, resourceHandle, controllerHandle uintptr
+	if tasker != nil {
+		taskerHandle = tasker.handle
+	}
+	if resource != nil {
+		resourceHandle = resource.handle
+	}
+	if controller != nil {
+		controllerHandle = controller.Handle()
+	}
+	return maa.MaaToolkitPluginSystemLoadLibrary(libraryName, taskerHandle, resourceHandle, controllerHandle)
+}
+
+// PluginSystemLoadDirectory recursively loads all plugin libraries in a directory.
+func PluginSystemLoadDirectory(directoryPath string, tasker *Tasker, resource *Resource, controller Controller) bool {
+	var taskerHandle, resourceHandle, controllerHandle uintptr
+	if tasker != nil {
+		taskerHandle = tasker.handle
+	}
+	if resource != nil {
+		resourceHandle = resource.handle
+	}
+	if controller != nil {
+		controllerHandle = controller.Handle()
+	}
+	return maa.MaaToolkitPluginSystemLoadDirectory(directoryPath, taskerHandle, resourceHandle, controllerHandle)
+}

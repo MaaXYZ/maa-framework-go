@@ -316,3 +316,28 @@ func (r *Resource) GetNodeList() ([]string, bool) {
 
 	return taskListArr, true
 }
+
+// AddSink adds a notification callback sink.
+func (r *Resource) AddSink(notify Notification) bool {
+	id := registerNotificationCallback(notify)
+	return maa.MaaResourceAddSink(
+		r.handle,
+		_MaaNotificationCallbackAgent,
+		uintptr(id),
+	)
+}
+
+// RemoveSink removes a notification callback sink.
+func (r *Resource) RemoveSink(notify Notification) bool {
+	id := registerNotificationCallback(notify)
+	defer unregisterNotificationCallback(id)
+	return maa.MaaResourceRemoveSink(
+		r.handle,
+		_MaaNotificationCallbackAgent,
+	)
+}
+
+// ClearSinks clears all notification callback sinks.
+func (r *Resource) ClearSinks() bool {
+	return maa.MaaResourceClearSinks(r.handle)
+}
