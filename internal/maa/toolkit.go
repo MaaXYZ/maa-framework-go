@@ -39,11 +39,6 @@ var (
 	MaaToolkitDesktopWindowGetWindowName func(window uintptr) string
 )
 
-var (
-	MaaToolkitPluginSystemLoadLibrary   func(libraryName string, tasker, resource, controller uintptr) bool
-	MaaToolkitPluginSystemLoadDirectory func(directoryPath string, tasker, resource, controller uintptr) bool
-)
-
 func initToolkit(libDir string) error {
 
 	libName := getMaaToolkitLibrary()
@@ -99,7 +94,4 @@ func registerToolkit() {
 	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetHandle, maaToolkit, "MaaToolkitDesktopWindowGetHandle")
 	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetClassName, maaToolkit, "MaaToolkitDesktopWindowGetClassName")
 	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetWindowName, maaToolkit, "MaaToolkitDesktopWindowGetWindowName")
-	// PluginSystem
-	purego.RegisterLibFunc(&MaaToolkitPluginSystemLoadLibrary, maaToolkit, "MaaToolkitPluginSystemLoadLibrary")
-	purego.RegisterLibFunc(&MaaToolkitPluginSystemLoadDirectory, maaToolkit, "MaaToolkitPluginSystemLoadDirectory")
 }
