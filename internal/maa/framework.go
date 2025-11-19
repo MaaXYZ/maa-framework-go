@@ -419,7 +419,7 @@ const (
 	MaaGlobalOption_DebugMode MaaGlobalOption = 6
 )
 
-var MaaSetGlobalOption func(key MaaGlobalOption, value unsafe.Pointer, valSize uint64) bool
+var MaaGlobalSetOption func(key MaaGlobalOption, value unsafe.Pointer, valSize uint64) bool
 
 func initFramework(libDir string) error {
 	libName := getMaaFrameworkLibrary()
@@ -582,5 +582,5 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaRectGetH, maaFramework, "MaaRectGetH")
 	purego.RegisterLibFunc(&MaaRectSet, maaFramework, "MaaRectSet")
 	// Option
-	purego.RegisterLibFunc(&MaaSetGlobalOption, maaFramework, "MaaSetGlobalOption")
+	purego.RegisterLibFunc(&MaaGlobalSetOption, maaFramework, "MaaGlobalSetOption")
 }

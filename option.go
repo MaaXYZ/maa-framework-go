@@ -7,7 +7,7 @@ import (
 )
 
 func setGlobalOption(key maa.MaaGlobalOption, value unsafe.Pointer, valSize uintptr) bool {
-	return maa.MaaSetGlobalOption(key, value, uint64(valSize))
+	return maa.MaaGlobalSetOption(key, value, uint64(valSize))
 }
 
 // SetLogDir sets the log directory.
