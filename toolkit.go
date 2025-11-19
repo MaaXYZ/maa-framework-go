@@ -1,7 +1,6 @@
 package maa
 
 import (
-	"sync"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
@@ -88,102 +87,6 @@ func FindDesktopWindows() []*DesktopWindow {
 		}
 	}
 	return list
-}
-
-type piStoreValue struct {
-	CustomRecognizersCallbackID map[string]uint64
-	CustomActionsCallbackID     map[string]uint64
-}
-
-var (
-	piStore      = make(map[uint64]piStoreValue)
-	piStoreMutex sync.RWMutex
-)
-
-// PIRegisterCustomRecognition registers a custom recognizer.
-func PIRegisterCustomRecognition(instId uint64, name string, recognition CustomRecognition) {
-	id := registerCustomRecognition(recognition)
-
-	piStoreMutex.Lock()
-	defer piStoreMutex.Unlock()
-
-	if _, ok := piStore[instId]; !ok {
-		piStore[instId] = piStoreValue{
-			CustomRecognizersCallbackID: make(map[string]uint64),
-			CustomActionsCallbackID:     make(map[string]uint64),
-		}
-	}
-
-	piStore[instId].CustomRecognizersCallbackID[name] = id
-
-	maa.MaaToolkitProjectInterfaceRegisterCustomRecognition(
-		instId,
-		name,
-		_MaaCustomRecognitionCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
-	)
-}
-
-// PIRegisterCustomAction registers a custom action.
-func PIRegisterCustomAction(instId uint64, name string, action CustomAction) {
-	id := registerCustomAction(action)
-
-	piStoreMutex.Lock()
-	defer piStoreMutex.Unlock()
-
-	if _, ok := piStore[instId]; !ok {
-		piStore[instId] = piStoreValue{
-			CustomRecognizersCallbackID: make(map[string]uint64),
-			CustomActionsCallbackID:     make(map[string]uint64),
-		}
-	}
-
-	piStore[instId].CustomActionsCallbackID[name] = id
-
-	maa.MaaToolkitProjectInterfaceRegisterCustomAction(
-		instId,
-		name,
-		_MaaCustomActionCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
-	)
-}
-
-// PIClearCustom unregisters all custom recognitions and actions for a given instance.
-func PIClearCustom(instId uint64) {
-	piStoreMutex.Lock()
-	defer piStoreMutex.Unlock()
-
-	value, ok := piStore[instId]
-	if !ok {
-		return
-	}
-
-	for _, id := range value.CustomRecognizersCallbackID {
-		unregisterCustomRecognition(id)
-	}
-	for _, id := range value.CustomActionsCallbackID {
-		unregisterCustomAction(id)
-	}
-}
-
-// PIRunCli runs the PI CLI.
-func PIRunCli(instId uint64, resourcePath, userPath string, directly bool, notify Notification) bool {
-	id := registerNotificationCallback(notify)
-	got := maa.MaaToolkitProjectInterfaceRunCli(
-		instId,
-		resourcePath,
-		userPath,
-		directly,
-		_MaaNotificationCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
-	)
-	return got
 }
 
 // PluginSystemLoadLibrary loads a plugin library by name or path.

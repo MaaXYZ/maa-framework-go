@@ -11,12 +11,6 @@ import (
 
 var maaToolkit uintptr
 
-var (
-	MaaToolkitProjectInterfaceRegisterCustomRecognition func(instId uint64, name string, recognition MaaCustomRecognitionCallback, transArg unsafe.Pointer)
-	MaaToolkitProjectInterfaceRegisterCustomAction      func(instId uint64, name string, action MaaCustomActionCallback, transArg unsafe.Pointer)
-	MaaToolkitProjectInterfaceRunCli                    func(instId uint64, resourcePath, userPath string, directly bool, notify MaaNotificationCallback, notifyTransArg unsafe.Pointer) bool
-)
-
 var MaaToolkitConfigInitOption func(userPath, defaultJson string) bool
 
 var (
@@ -81,10 +75,6 @@ func getMaaToolkitLibrary() string {
 }
 
 func registerToolkit() {
-	// ProjectInterface
-	purego.RegisterLibFunc(&MaaToolkitProjectInterfaceRegisterCustomRecognition, maaToolkit, "MaaToolkitProjectInterfaceRegisterCustomRecognition")
-	purego.RegisterLibFunc(&MaaToolkitProjectInterfaceRegisterCustomAction, maaToolkit, "MaaToolkitProjectInterfaceRegisterCustomAction")
-	purego.RegisterLibFunc(&MaaToolkitProjectInterfaceRunCli, maaToolkit, "MaaToolkitProjectInterfaceRunCli")
 	// Config
 	purego.RegisterLibFunc(&MaaToolkitConfigInitOption, maaToolkit, "MaaToolkitConfigInitOption")
 	// AdbDevice

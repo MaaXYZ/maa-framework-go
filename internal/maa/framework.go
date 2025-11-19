@@ -15,16 +15,26 @@ var (
 	MaaVersion func() string
 )
 
+// Deprecated: use MaaEventCallback instead
 type MaaNotificationCallback func(message, detailsJson *byte, notifyTransArg uintptr) uintptr
+
+type MaaEventCallback func(handle uintptr, message, detailsJson *byte, transArg uintptr) uintptr
+
+type MaaSinkId = int64
+
+const MaaInvalidId MaaSinkId = 0
 
 type MaaTaskerOption int32
 
 var (
-	MaaTaskerCreate               func(notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
+	MaaTaskerCreate               func() uintptr
 	MaaTaskerDestroy              func(tasker uintptr)
-	MaaTaskerAddSink              func(tasker uintptr, notify MaaNotificationCallback, notifyTransArg uintptr) bool
-	MaaTaskerRemoveSink           func(tasker uintptr, notify MaaNotificationCallback) bool
-	MaaTaskerClearSinks           func(tasker uintptr) bool
+	MaaTaskerAddSink              func(tasker uintptr, sink MaaEventCallback, transArg uintptr) MaaSinkId
+	MaaTaskerRemoveSink           func(tasker uintptr, sinkId MaaSinkId)
+	MaaTaskerClearSinks           func(tasker uintptr)
+	MaaTaskerAddContextSink       func(tasker uintptr, sink MaaEventCallback, transArg uintptr) MaaSinkId
+	MaaTaskerRemoveContextSink    func(tasker uintptr, sinkId MaaSinkId)
+	MaaTaskerClearContextSinks    func(tasker uintptr)
 	MaaTaskerSetOption            func(tasker uintptr, key MaaTaskerOption, value unsafe.Pointer, valSize uint64) bool
 	MaaTaskerBindResource         func(tasker uintptr, res uintptr) bool
 	MaaTaskerBindController       func(tasker uintptr, ctrl uintptr) bool
@@ -105,11 +115,11 @@ const (
 )
 
 var (
-	MaaResourceCreate                      func(notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
+	MaaResourceCreate                      func() uintptr
 	MaaResourceDestroy                     func(res uintptr)
-	MaaResourceAddSink                     func(res uintptr, notify MaaNotificationCallback, notifyTransArg uintptr) bool
-	MaaResourceRemoveSink                  func(res uintptr, notify MaaNotificationCallback) bool
-	MaaResourceClearSinks                  func(res uintptr) bool
+	MaaResourceAddSink                     func(res uintptr, sink MaaEventCallback, transArg uintptr) MaaSinkId
+	MaaResourceRemoveSink                  func(res uintptr, sinkId MaaSinkId)
+	MaaResourceClearSinks                  func(res uintptr)
 	MaaResourceRegisterCustomRecognition   func(res uintptr, name string, recognition MaaCustomRecognitionCallback, transArg uintptr) bool
 	MaaResourceUnregisterCustomRecognition func(res uintptr, name string) bool
 	MaaResourceClearCustomRecognition      func(res uintptr) bool
@@ -220,14 +230,14 @@ const (
 )
 
 var (
-	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods MaaAdbScreencapMethod, inputMethods MaaAdbInputMethod, config, agentPath string, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
-	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods MaaWin32ScreencapMethod, inputMethods MaaWin32InputMethod, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
-	MaaCustomControllerCreate   func(controller uintptr, controllerArg uintptr, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
-	MaaDbgControllerCreate      func(readPath, writePath string, dbgCtrlType MaaDbgControllerType, config string, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
+	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods MaaAdbScreencapMethod, inputMethods MaaAdbInputMethod, config, agentPath string) uintptr
+	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods MaaWin32ScreencapMethod, inputMethods MaaWin32InputMethod) uintptr
+	MaaCustomControllerCreate   func(controller uintptr, controllerArg uintptr) uintptr
+	MaaDbgControllerCreate      func(readPath, writePath string, dbgCtrlType MaaDbgControllerType, config string) uintptr
 	MaaControllerDestroy        func(ctrl uintptr)
-	MaaControllerAddSink        func(ctrl uintptr, notify MaaNotificationCallback, notifyTransArg uintptr) bool
-	MaaControllerRemoveSink     func(ctrl uintptr, notify MaaNotificationCallback) bool
-	MaaControllerClearSinks     func(ctrl uintptr) bool
+	MaaControllerAddSink        func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) MaaSinkId
+	MaaControllerRemoveSink     func(ctrl uintptr, sinkId MaaSinkId)
+	MaaControllerClearSinks     func(ctrl uintptr)
 	MaaControllerSetOption      func(ctrl uintptr, key MaaCtrlOption, value unsafe.Pointer, valSize uint64) bool
 	MaaControllerPostConnection func(ctrl uintptr) int64
 	MaaControllerPostClick      func(ctrl uintptr, x, y int32) int64
@@ -448,6 +458,9 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaTaskerAddSink, maaFramework, "MaaTaskerAddSink")
 	purego.RegisterLibFunc(&MaaTaskerRemoveSink, maaFramework, "MaaTaskerRemoveSink")
 	purego.RegisterLibFunc(&MaaTaskerClearSinks, maaFramework, "MaaTaskerClearSinks")
+	purego.RegisterLibFunc(&MaaTaskerAddContextSink, maaFramework, "MaaTaskerAddContextSink")
+	purego.RegisterLibFunc(&MaaTaskerRemoveContextSink, maaFramework, "MaaTaskerRemoveContextSink")
+	purego.RegisterLibFunc(&MaaTaskerClearContextSinks, maaFramework, "MaaTaskerClearContextSinks")
 	purego.RegisterLibFunc(&MaaTaskerSetOption, maaFramework, "MaaTaskerSetOption")
 	purego.RegisterLibFunc(&MaaTaskerBindResource, maaFramework, "MaaTaskerBindResource")
 	purego.RegisterLibFunc(&MaaTaskerBindController, maaFramework, "MaaTaskerBindController")

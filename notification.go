@@ -145,10 +145,29 @@ func (n *notificationHandler) notificationType(msg string) NotificationType {
 	}
 }
 
+// Deprecated: use _MaaEventCallbackAgent instead
 func _MaaNotificationCallbackAgent(message, detailsJson *byte, notifyTransArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(notifyTransArg)
+
+	notificationCallbackAgentsMutex.RLock()
+	notify, exists := notificationCallbackAgents[id]
+	notificationCallbackAgentsMutex.RUnlock()
+
+	if !exists || notify == nil {
+		return 0
+	}
+
+	handler := &notificationHandler{notify: notify}
+	handler.OnRawNotification(bytePtrToString(message), bytePtrToString(detailsJson))
+	return 0
+}
+
+func _MaaEventCallbackAgent(handle uintptr, message, detailsJson *byte, transArg uintptr) uintptr {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(transArg)
 
 	notificationCallbackAgentsMutex.RLock()
 	notify, exists := notificationCallbackAgents[id]

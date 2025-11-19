@@ -41,13 +41,12 @@ type Controller interface {
 	CacheImage() image.Image
 	GetUUID() (string, bool)
 
-	AddSink(notify Notification) bool
-	RemoveSink(notify Notification) bool
-	ClearSinks() bool
+	AddSink(notify Notification) maa.MaaSinkId
+	RemoveSink(sinkId maa.MaaSinkId)
+	ClearSinks()
 }
 
 type controllerStoreValue struct {
-	NotificationCallbackID      uint64
 	CustomControllerCallbacksID uint64
 }
 
@@ -198,6 +197,8 @@ func ParseAdbInputMethod(methodStr string) (AdbInputMethod, error) {
 }
 
 // NewAdbController creates an ADB controller instance.
+// Deprecated: use NewAdbControllerV2 instead, which doesn't require a notification callback.
+// To add callbacks, use AddSink after creation.
 func NewAdbController(
 	adbPath, address string,
 	screencapMethod AdbScreencapMethod,
@@ -205,7 +206,21 @@ func NewAdbController(
 	config, agentPath string,
 	notify Notification,
 ) Controller {
-	id := registerNotificationCallback(notify)
+	ctrl := NewAdbControllerV2(adbPath, address, screencapMethod, inputMethod, config, agentPath)
+	if ctrl != nil && notify != nil {
+		ctrl.AddSink(notify)
+	}
+	return ctrl
+}
+
+// NewAdbControllerV2 creates a new ADB controller without a notification callback.
+// Use AddSink to add notification callbacks after creation.
+func NewAdbControllerV2(
+	adbPath, address string,
+	screencapMethod AdbScreencapMethod,
+	inputMethod AdbInputMethod,
+	config, agentPath string,
+) Controller {
 	handle := maa.MaaAdbControllerCreate(
 		adbPath,
 		address,
@@ -213,19 +228,13 @@ func NewAdbController(
 		maa.MaaAdbInputMethod(inputMethod),
 		config,
 		agentPath,
-		_MaaNotificationCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		uintptr(id),
 	)
 	if handle == 0 {
 		return nil
 	}
 
 	controllerStoreMutex.Lock()
-	controllerStore.Set(handle, controllerStoreValue{
-		NotificationCallbackID: id,
-	})
+	controllerStore.Set(handle, controllerStoreValue{})
 	controllerStoreMutex.Unlock()
 
 	return &controller{handle: handle}
@@ -313,30 +322,39 @@ func ParseWin32InputMethod(methodStr string) (Win32InputMethod, error) {
 }
 
 // NewWin32Controller creates a win32 controller instance.
+// Deprecated: use NewWin32ControllerV2 instead, which doesn't require a notification callback.
+// To add callbacks, use AddSink after creation.
 func NewWin32Controller(
 	hWnd unsafe.Pointer,
 	screencapMethod Win32ScreencapMethod,
 	inputMethod Win32InputMethod,
 	notify Notification,
 ) Controller {
-	id := registerNotificationCallback(notify)
+	ctrl := NewWin32ControllerV2(hWnd, screencapMethod, inputMethod)
+	if ctrl != nil && notify != nil {
+		ctrl.AddSink(notify)
+	}
+	return ctrl
+}
+
+// NewWin32ControllerV2 creates a win32 controller instance without a notification callback.
+// Use AddSink to add notification callbacks after creation.
+func NewWin32ControllerV2(
+	hWnd unsafe.Pointer,
+	screencapMethod Win32ScreencapMethod,
+	inputMethod Win32InputMethod,
+) Controller {
 	handle := maa.MaaWin32ControllerCreate(
 		hWnd,
 		maa.MaaWin32ScreencapMethod(screencapMethod),
 		maa.MaaWin32InputMethod(inputMethod),
-		_MaaNotificationCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		uintptr(id),
 	)
 	if handle == 0 {
 		return nil
 	}
 
 	controllerStoreMutex.Lock()
-	controllerStore.Set(handle, controllerStoreValue{
-		NotificationCallbackID: id,
-	})
+	controllerStore.Set(handle, controllerStoreValue{})
 	controllerStoreMutex.Unlock()
 
 	return &controller{handle: handle}
@@ -381,52 +399,70 @@ func ParseDbgControllerType(typeStr string) (DbgControllerType, error) {
 }
 
 // NewDbgController creates a DBG controller instance.
+// Deprecated: use NewDbgControllerV2 instead, which doesn't require a notification callback.
+// To add callbacks, use AddSink after creation.
 func NewDbgController(
 	readPath, writePath string,
 	dbgCtrlType DbgControllerType,
 	config string,
 	notify Notification,
 ) Controller {
-	id := registerNotificationCallback(notify)
+	ctrl := NewDbgControllerV2(readPath, writePath, dbgCtrlType, config)
+	if ctrl != nil && notify != nil {
+		ctrl.AddSink(notify)
+	}
+	return ctrl
+}
+
+// NewDbgControllerV2 creates a DBG controller instance without a notification callback.
+// Use AddSink to add notification callbacks after creation.
+func NewDbgControllerV2(
+	readPath, writePath string,
+	dbgCtrlType DbgControllerType,
+	config string,
+) Controller {
 	handle := maa.MaaDbgControllerCreate(
 		readPath,
 		writePath,
 		maa.MaaDbgControllerType(dbgCtrlType),
 		config,
-		_MaaNotificationCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		uintptr(id),
 	)
 	if handle == 0 {
 		return nil
 	}
 
 	controllerStoreMutex.Lock()
-	controllerStore.Set(handle, controllerStoreValue{
-		NotificationCallbackID: id,
-	})
+	controllerStore.Set(handle, controllerStoreValue{})
 	controllerStoreMutex.Unlock()
 
 	return &controller{handle: handle}
 }
 
 // NewCustomController creates a custom controller instance.
+// Deprecated: use NewCustomControllerV2 instead, which doesn't require a notification callback.
+// To add callbacks, use AddSink after creation.
 func NewCustomController(
 	ctrl CustomController,
 	notify Notification,
 ) Controller {
+	c := NewCustomControllerV2(ctrl)
+	if c != nil && notify != nil {
+		c.AddSink(notify)
+	}
+	return c
+}
+
+// NewCustomControllerV2 creates a custom controller instance without a notification callback.
+// Use AddSink to add notification callbacks after creation.
+func NewCustomControllerV2(
+	ctrl CustomController,
+) Controller {
 	ctrlID := registerCustomControllerCallbacks(ctrl)
-	notifyID := registerNotificationCallback(notify)
 	handle := maa.MaaCustomControllerCreate(
 		uintptr(ctrl.Handle()),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		uintptr(ctrlID),
-		_MaaNotificationCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		uintptr(notifyID),
 	)
 	if handle == 0 {
 		return nil
@@ -434,7 +470,6 @@ func NewCustomController(
 
 	controllerStoreMutex.Lock()
 	controllerStore.Set(handle, controllerStoreValue{
-		NotificationCallbackID:      notifyID,
 		CustomControllerCallbacksID: ctrlID,
 	})
 	controllerStoreMutex.Unlock()
@@ -446,7 +481,6 @@ func NewCustomController(
 func (c *controller) Destroy() {
 	controllerStoreMutex.Lock()
 	value := controllerStore.Get(c.handle)
-	unregisterNotificationCallback(value.NotificationCallbackID)
 	unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
 	controllerStore.Del(c.handle)
 	controllerStoreMutex.Unlock()
@@ -613,27 +647,27 @@ func (c *controller) GetUUID() (string, bool) {
 	return uuid.Get(), true
 }
 
-// AddSink adds a notification callback sink.
-func (c *controller) AddSink(notify Notification) bool {
+// AddSink adds a notification callback sink and returns the sink ID.
+// The sink ID can be used to remove the sink later.
+func (c *controller) AddSink(notify Notification) maa.MaaSinkId {
 	id := registerNotificationCallback(notify)
-	return maa.MaaControllerAddSink(
+	sinkId := maa.MaaControllerAddSink(
 		c.handle,
-		_MaaNotificationCallbackAgent,
+		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
+	if sinkId == maa.MaaInvalidId {
+		unregisterNotificationCallback(id)
+	}
+	return sinkId
 }
 
-// RemoveSink removes a notification callback sink.
-func (c *controller) RemoveSink(notify Notification) bool {
-	id := registerNotificationCallback(notify)
-	defer unregisterNotificationCallback(id)
-	return maa.MaaControllerRemoveSink(
-		c.handle,
-		_MaaNotificationCallbackAgent,
-	)
+// RemoveSink removes a notification callback sink by sink ID.
+func (c *controller) RemoveSink(sinkId maa.MaaSinkId) {
+	maa.MaaControllerRemoveSink(c.handle, sinkId)
 }
 
 // ClearSinks clears all notification callback sinks.
-func (c *controller) ClearSinks() bool {
-	return maa.MaaControllerClearSinks(c.handle)
+func (c *controller) ClearSinks() {
+	maa.MaaControllerClearSinks(c.handle)
 }

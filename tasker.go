@@ -20,33 +20,29 @@ type Tasker struct {
 }
 
 // NewTasker creates an new tasker.
+// Deprecated: use NewTaskerV2 instead, which doesn't require a notification callback.
+// To add callbacks, use AddSink after creation.
 func NewTasker(notify Notification) *Tasker {
-	id := registerNotificationCallback(notify)
-	handle := maa.MaaTaskerCreate(
-		_MaaNotificationCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		uintptr(id),
-	)
+	tasker := NewTaskerV2()
+	if tasker != nil && notify != nil {
+		tasker.AddSink(notify)
+	}
+	return tasker
+}
+
+// NewTaskerV2 creates a new tasker without a notification callback.
+// Use AddSink to add notification callbacks after creation.
+func NewTaskerV2() *Tasker {
+	handle := maa.MaaTaskerCreate()
 	if handle == 0 {
 		return nil
 	}
-
-	taskerStoreMutex.Lock()
-	taskerStore.Set(handle, id)
-	taskerStoreMutex.Unlock()
 
 	return &Tasker{handle: handle}
 }
 
 // Destroy free the tasker.
 func (t *Tasker) Destroy() {
-	taskerStoreMutex.Lock()
-	id := taskerStore.Get(t.handle)
-	unregisterNotificationCallback(id)
-	taskerStore.Del(t.handle)
-	taskerStoreMutex.Unlock()
-
 	maa.MaaTaskerDestroy(t.handle)
 }
 
@@ -300,27 +296,51 @@ func (t *Tasker) GetLatestNode(taskName string) *NodeDetail {
 	return t.getNodeDetail(nodeId)
 }
 
-// AddSink adds a notification callback sink.
-func (t *Tasker) AddSink(notify Notification) bool {
+// AddSink adds a notification callback sink and returns the sink ID.
+// The sink ID can be used to remove the sink later.
+func (t *Tasker) AddSink(notify Notification) maa.MaaSinkId {
 	id := registerNotificationCallback(notify)
-	return maa.MaaTaskerAddSink(
+	sinkId := maa.MaaTaskerAddSink(
 		t.handle,
-		_MaaNotificationCallbackAgent,
+		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
+	if sinkId == maa.MaaInvalidId {
+		unregisterNotificationCallback(id)
+	}
+	return sinkId
 }
 
-// RemoveSink removes a notification callback sink.
-func (t *Tasker) RemoveSink(notify Notification) bool {
-	id := registerNotificationCallback(notify)
-	defer unregisterNotificationCallback(id)
-	return maa.MaaTaskerRemoveSink(
-		t.handle,
-		_MaaNotificationCallbackAgent,
-	)
+// RemoveSink removes a notification callback sink by sink ID.
+func (t *Tasker) RemoveSink(sinkId maa.MaaSinkId) {
+	maa.MaaTaskerRemoveSink(t.handle, sinkId)
 }
 
 // ClearSinks clears all notification callback sinks.
-func (t *Tasker) ClearSinks() bool {
-	return maa.MaaTaskerClearSinks(t.handle)
+func (t *Tasker) ClearSinks() {
+	maa.MaaTaskerClearSinks(t.handle)
+}
+
+// AddContextSink adds a context notification callback sink and returns the sink ID.
+func (t *Tasker) AddContextSink(notify Notification) maa.MaaSinkId {
+	id := registerNotificationCallback(notify)
+	sinkId := maa.MaaTaskerAddContextSink(
+		t.handle,
+		_MaaEventCallbackAgent,
+		uintptr(id),
+	)
+	if sinkId == maa.MaaInvalidId {
+		unregisterNotificationCallback(id)
+	}
+	return sinkId
+}
+
+// RemoveContextSink removes a context notification callback sink by sink ID.
+func (t *Tasker) RemoveContextSink(sinkId maa.MaaSinkId) {
+	maa.MaaTaskerRemoveContextSink(t.handle, sinkId)
+}
+
+// ClearContextSinks clears all context notification callback sinks.
+func (t *Tasker) ClearContextSinks() {
+	maa.MaaTaskerClearContextSinks(t.handle)
 }

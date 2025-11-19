@@ -10,7 +10,6 @@ import (
 )
 
 type resourceStoreValue struct {
-	NotificationCallbackID      uint64
 	CustomRecognizersCallbackID map[string]uint64
 	CustomActionsCallbackID     map[string]uint64
 }
@@ -25,21 +24,26 @@ type Resource struct {
 }
 
 // NewResource creates a new resource.
+// Deprecated: use NewResourceV2 instead, which doesn't require a notification callback.
+// To add callbacks, use AddSink after creation.
 func NewResource(notify Notification) *Resource {
-	id := registerNotificationCallback(notify)
-	handle := maa.MaaResourceCreate(
-		_MaaNotificationCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		uintptr(id),
-	)
+	res := NewResourceV2()
+	if res != nil && notify != nil {
+		res.AddSink(notify)
+	}
+	return res
+}
+
+// NewResourceV2 creates a new resource without a notification callback.
+// Use AddSink to add notification callbacks after creation.
+func NewResourceV2() *Resource {
+	handle := maa.MaaResourceCreate()
 	if handle == 0 {
 		return nil
 	}
 
 	resourceStoreMutex.Lock()
 	resourceStore.Set(handle, resourceStoreValue{
-		NotificationCallbackID:      id,
 		CustomRecognizersCallbackID: make(map[string]uint64),
 		CustomActionsCallbackID:     make(map[string]uint64),
 	})
@@ -53,8 +57,6 @@ func NewResource(notify Notification) *Resource {
 // Destroy frees the resource.
 func (r *Resource) Destroy() {
 	resourceStoreMutex.Lock()
-	value := resourceStore.Get(r.handle)
-	unregisterNotificationCallback(value.NotificationCallbackID)
 	resourceStore.Del(r.handle)
 	resourceStoreMutex.Unlock()
 
@@ -317,27 +319,27 @@ func (r *Resource) GetNodeList() ([]string, bool) {
 	return taskListArr, true
 }
 
-// AddSink adds a notification callback sink.
-func (r *Resource) AddSink(notify Notification) bool {
+// AddSink adds a notification callback sink and returns the sink ID.
+// The sink ID can be used to remove the sink later.
+func (r *Resource) AddSink(notify Notification) maa.MaaSinkId {
 	id := registerNotificationCallback(notify)
-	return maa.MaaResourceAddSink(
+	sinkId := maa.MaaResourceAddSink(
 		r.handle,
-		_MaaNotificationCallbackAgent,
+		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
+	if sinkId == maa.MaaInvalidId {
+		unregisterNotificationCallback(id)
+	}
+	return sinkId
 }
 
-// RemoveSink removes a notification callback sink.
-func (r *Resource) RemoveSink(notify Notification) bool {
-	id := registerNotificationCallback(notify)
-	defer unregisterNotificationCallback(id)
-	return maa.MaaResourceRemoveSink(
-		r.handle,
-		_MaaNotificationCallbackAgent,
-	)
+// RemoveSink removes a notification callback sink by sink ID.
+func (r *Resource) RemoveSink(sinkId maa.MaaSinkId) {
+	maa.MaaResourceRemoveSink(r.handle, sinkId)
 }
 
 // ClearSinks clears all notification callback sinks.
-func (r *Resource) ClearSinks() bool {
-	return maa.MaaResourceClearSinks(r.handle)
+func (r *Resource) ClearSinks() {
+	maa.MaaResourceClearSinks(r.handle)
 }
