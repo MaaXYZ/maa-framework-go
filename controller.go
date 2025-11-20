@@ -280,9 +280,12 @@ type Win32InputMethod uint64
 
 // Win32InputMethod
 const (
-	Win32InputMethodNone        Win32InputMethod = 0
-	Win32InputMethodSeize       Win32InputMethod = 1
-	Win32InputMethodSendMessage Win32InputMethod = 1 << 1
+	Win32InputMethodNone              Win32InputMethod = 0
+	Win32InputMethodSeize             Win32InputMethod = 1
+	Win32InputMethodSendMessage       Win32InputMethod = 1 << 1
+	Win32InputMethodPostMessage       Win32InputMethod = 1 << 2
+	Win32InputMethodLegacyEvent       Win32InputMethod = 1 << 3
+	Win32InputMethodPostThreadMessage Win32InputMethod = 1 << 4
 )
 
 func (m Win32InputMethod) String() string {

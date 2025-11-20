@@ -190,9 +190,12 @@ const (
 type MaaWin32InputMethod uint64
 
 const (
-	MaaWin32InputMethod_None        MaaWin32ScreencapMethod = 0
-	MaaWin32InputMethod_Seize       MaaWin32ScreencapMethod = 1
-	MaaWin32InputMethod_SendMessage MaaWin32ScreencapMethod = 1 << 1
+	MaaWin32InputMethod_None              MaaWin32ScreencapMethod = 0
+	MaaWin32InputMethod_Seize             MaaWin32ScreencapMethod = 1
+	MaaWin32InputMethod_SendMessage       MaaWin32ScreencapMethod = 1 << 1
+	MaaWin32InputMethod_PostMessage       MaaWin32ScreencapMethod = 1 << 2
+	MaaWin32InputMethod_LegacyEvent       MaaWin32ScreencapMethod = 1 << 3
+	MaaWin32InputMethod_PostThreadMessage MaaWin32ScreencapMethod = 1 << 4
 )
 
 // DbgControllerType
