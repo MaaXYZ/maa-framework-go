@@ -198,10 +198,54 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 	}
 }
 
+type ActionDetail struct {
+	ID         int64
+	Name       string
+	Action     string
+	Box        Rect
+	Success    bool
+	DetailJson string
+}
+
+func (t *Tasker) getActionDetail(actionId int64) *ActionDetail {
+	name := buffer.NewStringBuffer()
+	defer name.Destroy()
+	action := buffer.NewStringBuffer()
+	defer action.Destroy()
+	box := buffer.NewRectBuffer()
+	defer box.Destroy()
+	var success bool
+	detailJson := buffer.NewStringBuffer()
+	defer detailJson.Destroy()
+	got := maa.MaaTaskerGetActionDetail(
+		t.handle,
+		actionId,
+		name.Handle(),
+		action.Handle(),
+		box.Handle(),
+		&success,
+		detailJson.Handle(),
+	)
+
+	if !got {
+		return nil
+	}
+
+	return &ActionDetail{
+		ID:         actionId,
+		Name:       name.Get(),
+		Action:     action.Get(),
+		Box:        box.Get(),
+		Success:    success,
+		DetailJson: detailJson.Get(),
+	}
+}
+
 type NodeDetail struct {
 	ID           int64
 	Name         string
 	Recognition  *RecognitionDetail
+	Action       *ActionDetail
 	RunCompleted bool
 }
 
@@ -209,13 +253,14 @@ type NodeDetail struct {
 func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
-	var recId int64
+	var recId, actionId int64
 	var runCompleted bool
 	got := maa.MaaTaskerGetNodeDetail(
 		t.handle,
 		nodeId,
-		uintptr(name.Handle()),
+		name.Handle(),
 		&recId,
+		&actionId,
 		&runCompleted,
 	)
 	if !got {
@@ -227,10 +272,16 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 		return nil
 	}
 
+	actionDetail := t.getActionDetail(actionId)
+	if actionDetail == nil {
+		return nil
+	}
+
 	return &NodeDetail{
 		ID:           nodeId,
 		Name:         name.Get(),
 		Recognition:  recognitionDetail,
+		Action:       actionDetail,
 		RunCompleted: runCompleted,
 	}
 }
