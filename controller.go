@@ -41,13 +41,23 @@ type Controller interface {
 	CacheImage() image.Image
 	GetUUID() (string, bool)
 
-	AddSink(notify Notification) maa.MaaSinkId
-	RemoveSink(sinkId maa.MaaSinkId)
+	AddSink(sink ControllerEventSink) int64
+	RemoveSink(sinkId int64)
 	ClearSinks()
 }
 
 type controllerStoreValue struct {
-	CustomControllerCallbacksID uint64
+	sinkIDToEventCallbackID     map[int64]uint64
+	customControllerCallbacksID uint64
+}
+
+func initControllerStore(handle uintptr) {
+	controllerStoreMutex.Lock()
+	controllerStore.Set(handle, controllerStoreValue{
+		sinkIDToEventCallbackID:     make(map[int64]uint64),
+		customControllerCallbacksID: 0,
+	})
+	controllerStoreMutex.Unlock()
 }
 
 var (
@@ -196,26 +206,8 @@ func ParseAdbInputMethod(methodStr string) (AdbInputMethod, error) {
 	return AdbInputMethod(i), nil
 }
 
-// NewAdbController creates an ADB controller instance.
-// Deprecated: use NewAdbControllerV2 instead, which doesn't require a notification callback.
-// To add callbacks, use AddSink after creation.
+// NewAdbController creates a new ADB controller.
 func NewAdbController(
-	adbPath, address string,
-	screencapMethod AdbScreencapMethod,
-	inputMethod AdbInputMethod,
-	config, agentPath string,
-	notify Notification,
-) Controller {
-	ctrl := NewAdbControllerV2(adbPath, address, screencapMethod, inputMethod, config, agentPath)
-	if ctrl != nil && notify != nil {
-		ctrl.AddSink(notify)
-	}
-	return ctrl
-}
-
-// NewAdbControllerV2 creates a new ADB controller without a notification callback.
-// Use AddSink to add notification callbacks after creation.
-func NewAdbControllerV2(
 	adbPath, address string,
 	screencapMethod AdbScreencapMethod,
 	inputMethod AdbInputMethod,
@@ -233,9 +225,7 @@ func NewAdbControllerV2(
 		return nil
 	}
 
-	controllerStoreMutex.Lock()
-	controllerStore.Set(handle, controllerStoreValue{})
-	controllerStoreMutex.Unlock()
+	initControllerStore(handle)
 
 	return &controller{handle: handle}
 }
@@ -322,24 +312,7 @@ func ParseWin32InputMethod(methodStr string) (Win32InputMethod, error) {
 }
 
 // NewWin32Controller creates a win32 controller instance.
-// Deprecated: use NewWin32ControllerV2 instead, which doesn't require a notification callback.
-// To add callbacks, use AddSink after creation.
 func NewWin32Controller(
-	hWnd unsafe.Pointer,
-	screencapMethod Win32ScreencapMethod,
-	inputMethod Win32InputMethod,
-	notify Notification,
-) Controller {
-	ctrl := NewWin32ControllerV2(hWnd, screencapMethod, inputMethod)
-	if ctrl != nil && notify != nil {
-		ctrl.AddSink(notify)
-	}
-	return ctrl
-}
-
-// NewWin32ControllerV2 creates a win32 controller instance without a notification callback.
-// Use AddSink to add notification callbacks after creation.
-func NewWin32ControllerV2(
 	hWnd unsafe.Pointer,
 	screencapMethod Win32ScreencapMethod,
 	inputMethod Win32InputMethod,
@@ -353,9 +326,7 @@ func NewWin32ControllerV2(
 		return nil
 	}
 
-	controllerStoreMutex.Lock()
-	controllerStore.Set(handle, controllerStoreValue{})
-	controllerStoreMutex.Unlock()
+	initControllerStore(handle)
 
 	return &controller{handle: handle}
 }
@@ -399,24 +370,7 @@ func ParseDbgControllerType(typeStr string) (DbgControllerType, error) {
 }
 
 // NewDbgController creates a DBG controller instance.
-// Deprecated: use NewDbgControllerV2 instead, which doesn't require a notification callback.
-// To add callbacks, use AddSink after creation.
 func NewDbgController(
-	readPath, writePath string,
-	dbgCtrlType DbgControllerType,
-	config string,
-	notify Notification,
-) Controller {
-	ctrl := NewDbgControllerV2(readPath, writePath, dbgCtrlType, config)
-	if ctrl != nil && notify != nil {
-		ctrl.AddSink(notify)
-	}
-	return ctrl
-}
-
-// NewDbgControllerV2 creates a DBG controller instance without a notification callback.
-// Use AddSink to add notification callbacks after creation.
-func NewDbgControllerV2(
 	readPath, writePath string,
 	dbgCtrlType DbgControllerType,
 	config string,
@@ -431,30 +385,13 @@ func NewDbgControllerV2(
 		return nil
 	}
 
-	controllerStoreMutex.Lock()
-	controllerStore.Set(handle, controllerStoreValue{})
-	controllerStoreMutex.Unlock()
+	initControllerStore(handle)
 
 	return &controller{handle: handle}
 }
 
 // NewCustomController creates a custom controller instance.
-// Deprecated: use NewCustomControllerV2 instead, which doesn't require a notification callback.
-// To add callbacks, use AddSink after creation.
 func NewCustomController(
-	ctrl CustomController,
-	notify Notification,
-) Controller {
-	c := NewCustomControllerV2(ctrl)
-	if c != nil && notify != nil {
-		c.AddSink(notify)
-	}
-	return c
-}
-
-// NewCustomControllerV2 creates a custom controller instance without a notification callback.
-// Use AddSink to add notification callbacks after creation.
-func NewCustomControllerV2(
 	ctrl CustomController,
 ) Controller {
 	ctrlID := registerCustomControllerCallbacks(ctrl)
@@ -470,7 +407,8 @@ func NewCustomControllerV2(
 
 	controllerStoreMutex.Lock()
 	controllerStore.Set(handle, controllerStoreValue{
-		CustomControllerCallbacksID: ctrlID,
+		sinkIDToEventCallbackID:     make(map[int64]uint64),
+		customControllerCallbacksID: ctrlID,
 	})
 	controllerStoreMutex.Unlock()
 
@@ -481,7 +419,10 @@ func NewCustomControllerV2(
 func (c *controller) Destroy() {
 	controllerStoreMutex.Lock()
 	value := controllerStore.Get(c.handle)
-	unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
+	unregisterCustomControllerCallbacks(value.customControllerCallbacksID)
+	for _, cbID := range value.sinkIDToEventCallbackID {
+		unregisterEventCallback(cbID)
+	}
 	controllerStore.Del(c.handle)
 	controllerStoreMutex.Unlock()
 
@@ -647,27 +588,24 @@ func (c *controller) GetUUID() (string, bool) {
 	return uuid.Get(), true
 }
 
-// AddSink adds a notification callback sink and returns the sink ID.
+// AddSink adds a event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
-func (c *controller) AddSink(notify Notification) maa.MaaSinkId {
-	id := registerNotificationCallback(notify)
+func (c *controller) AddSink(sink ControllerEventSink) int64 {
+	id := registerEventCallback(sink)
 	sinkId := maa.MaaControllerAddSink(
 		c.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
-	if sinkId == maa.MaaInvalidId {
-		unregisterNotificationCallback(id)
-	}
 	return sinkId
 }
 
-// RemoveSink removes a notification callback sink by sink ID.
-func (c *controller) RemoveSink(sinkId maa.MaaSinkId) {
+// RemoveSink removes a event callback sink by sink ID.
+func (c *controller) RemoveSink(sinkId int64) {
 	maa.MaaControllerRemoveSink(c.handle, sinkId)
 }
 
-// ClearSinks clears all notification callback sinks.
+// ClearSinks clears all event callback sinks.
 func (c *controller) ClearSinks() {
 	maa.MaaControllerClearSinks(c.handle)
 }

@@ -14,6 +14,10 @@ var maaAgentServer uintptr
 var (
 	MaaAgentServerRegisterCustomRecognition func(name string, recognition MaaCustomRecognitionCallback, transArg unsafe.Pointer) bool
 	MaaAgentServerRegisterCustomAction      func(name string, action MaaCustomActionCallback, transArg unsafe.Pointer) bool
+	MaaAgentServerAddResourceSink           func(sink MaaEventCallback, transArg unsafe.Pointer) int64
+	MaaAgentServerAddControllerSink         func(sink MaaEventCallback, transArg unsafe.Pointer) int64
+	MaaAgentServerAddTaskerSink             func(sink MaaEventCallback, transArg unsafe.Pointer) int64
+	MaaAgentServerAddContextSink            func(sink MaaEventCallback, transArg unsafe.Pointer) int64
 	MaaAgentServerStartUp                   func(identifier string) bool
 	MaaAgentServerShutDown                  func()
 	MaaAgentServerJoin                      func()
@@ -52,6 +56,10 @@ func getMaaAgentServerLibrary() string {
 func registerServer() {
 	purego.RegisterLibFunc(&MaaAgentServerRegisterCustomRecognition, maaAgentServer, "MaaAgentServerRegisterCustomRecognition")
 	purego.RegisterLibFunc(&MaaAgentServerRegisterCustomAction, maaAgentServer, "MaaAgentServerRegisterCustomAction")
+	purego.RegisterLibFunc(&MaaAgentServerAddResourceSink, maaAgentServer, "MaaAgentServerAddResourceSink")
+	purego.RegisterLibFunc(&MaaAgentServerAddControllerSink, maaAgentServer, "MaaAgentServerAddControllerSink")
+	purego.RegisterLibFunc(&MaaAgentServerAddTaskerSink, maaAgentServer, "MaaAgentServerAddTaskerSink")
+	purego.RegisterLibFunc(&MaaAgentServerAddContextSink, maaAgentServer, "MaaAgentServerAddContextSink")
 	purego.RegisterLibFunc(&MaaAgentServerStartUp, maaAgentServer, "MaaAgentServerStartUp")
 	purego.RegisterLibFunc(&MaaAgentServerShutDown, maaAgentServer, "MaaAgentServerShutDown")
 	purego.RegisterLibFunc(&MaaAgentServerJoin, maaAgentServer, "MaaAgentServerJoin")

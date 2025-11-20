@@ -11,20 +11,20 @@ func TestPipelineSmoking(t *testing.T) {
 	testingPath := "./data_set/PipelineSmoking/MaaRecording.txt"
 	resultPath := "./data_set/debug"
 
-	ctrl := maa.NewDbgController(testingPath, resultPath, maa.DbgControllerTypeReplayRecording, "{}", nil)
+	ctrl := maa.NewDbgController(testingPath, resultPath, maa.DbgControllerTypeReplayRecording, "{}")
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := maa.NewResource(nil)
+	res := maa.NewResource()
 	require.NotNil(t, res)
 	defer res.Destroy()
 	resDir := "./data_set/PipelineSmoking/resource"
 	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
 
-	tasker := maa.NewTasker(nil)
+	tasker := maa.NewTasker()
 	require.NotNil(t, tasker)
 	defer tasker.Destroy()
 	isResBound := tasker.BindResource(res)

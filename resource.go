@@ -10,6 +10,7 @@ import (
 )
 
 type resourceStoreValue struct {
+	sinkIDToEventCallbackID     map[int64]uint64
 	CustomRecognizersCallbackID map[string]uint64
 	CustomActionsCallbackID     map[string]uint64
 }
@@ -24,19 +25,7 @@ type Resource struct {
 }
 
 // NewResource creates a new resource.
-// Deprecated: use NewResourceV2 instead, which doesn't require a notification callback.
-// To add callbacks, use AddSink after creation.
-func NewResource(notify Notification) *Resource {
-	res := NewResourceV2()
-	if res != nil && notify != nil {
-		res.AddSink(notify)
-	}
-	return res
-}
-
-// NewResourceV2 creates a new resource without a notification callback.
-// Use AddSink to add notification callbacks after creation.
-func NewResourceV2() *Resource {
+func NewResource() *Resource {
 	handle := maa.MaaResourceCreate()
 	if handle == 0 {
 		return nil
@@ -44,6 +33,7 @@ func NewResourceV2() *Resource {
 
 	resourceStoreMutex.Lock()
 	resourceStore.Set(handle, resourceStoreValue{
+		sinkIDToEventCallbackID:     make(map[int64]uint64),
 		CustomRecognizersCallbackID: make(map[string]uint64),
 		CustomActionsCallbackID:     make(map[string]uint64),
 	})
@@ -57,6 +47,16 @@ func NewResourceV2() *Resource {
 // Destroy frees the resource.
 func (r *Resource) Destroy() {
 	resourceStoreMutex.Lock()
+	value := resourceStore.Get(r.handle)
+	for _, id := range value.sinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
+	for _, id := range value.CustomRecognizersCallbackID {
+		unregisterCustomRecognition(id)
+	}
+	for _, id := range value.CustomActionsCallbackID {
+		unregisterCustomAction(id)
+	}
 	resourceStore.Del(r.handle)
 	resourceStoreMutex.Unlock()
 
@@ -319,27 +319,47 @@ func (r *Resource) GetNodeList() ([]string, bool) {
 	return taskListArr, true
 }
 
-// AddSink adds a notification callback sink and returns the sink ID.
+// AddSink adds a event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
-func (r *Resource) AddSink(notify Notification) maa.MaaSinkId {
-	id := registerNotificationCallback(notify)
+func (r *Resource) AddSink(sink ResourceEventSink) int64 {
+	id := registerEventCallback(sink)
 	sinkId := maa.MaaResourceAddSink(
 		r.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
-	if sinkId == maa.MaaInvalidId {
-		unregisterNotificationCallback(id)
-	}
+
+	resourceStoreMutex.Lock()
+	value := resourceStore.Get(r.handle)
+	value.sinkIDToEventCallbackID[sinkId] = id
+	resourceStore.Set(r.handle, value)
+	resourceStoreMutex.Unlock()
+
 	return sinkId
 }
 
-// RemoveSink removes a notification callback sink by sink ID.
-func (r *Resource) RemoveSink(sinkId maa.MaaSinkId) {
+// RemoveSink removes a event callback sink by sink ID.
+func (r *Resource) RemoveSink(sinkId int64) {
+	resourceStoreMutex.Lock()
+	value := resourceStore.Get(r.handle)
+	unregisterEventCallback(value.sinkIDToEventCallbackID[sinkId])
+	delete(value.sinkIDToEventCallbackID, sinkId)
+	resourceStore.Set(r.handle, value)
+	resourceStoreMutex.Unlock()
+
 	maa.MaaResourceRemoveSink(r.handle, sinkId)
 }
 
-// ClearSinks clears all notification callback sinks.
+// ClearSinks clears all event callback sinks.
 func (r *Resource) ClearSinks() {
+	resourceStoreMutex.Lock()
+	value := resourceStore.Get(r.handle)
+	for _, id := range value.sinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
+	value.sinkIDToEventCallbackID = make(map[int64]uint64)
+	resourceStore.Set(r.handle, value)
+	resourceStoreMutex.Unlock()
+
 	maa.MaaResourceClearSinks(r.handle)
 }

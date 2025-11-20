@@ -10,8 +10,13 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/store"
 )
 
+type taskerStoreValue struct {
+	sinkIDToEventCallbackID        map[int64]uint64
+	contextSinkIDToEventCallbackID map[int64]uint64
+}
+
 var (
-	taskerStore      = store.New[uint64]()
+	taskerStore      = store.New[taskerStoreValue]()
 	taskerStoreMutex sync.RWMutex
 )
 
@@ -19,30 +24,36 @@ type Tasker struct {
 	handle uintptr
 }
 
-// NewTasker creates an new tasker.
-// Deprecated: use NewTaskerV2 instead, which doesn't require a notification callback.
-// To add callbacks, use AddSink after creation.
-func NewTasker(notify Notification) *Tasker {
-	tasker := NewTaskerV2()
-	if tasker != nil && notify != nil {
-		tasker.AddSink(notify)
-	}
-	return tasker
-}
-
-// NewTaskerV2 creates a new tasker without a notification callback.
-// Use AddSink to add notification callbacks after creation.
-func NewTaskerV2() *Tasker {
+// NewTasker creates a new tasker.
+func NewTasker() *Tasker {
 	handle := maa.MaaTaskerCreate()
 	if handle == 0 {
 		return nil
 	}
+
+	taskerStoreMutex.Lock()
+	taskerStore.Set(handle, taskerStoreValue{
+		sinkIDToEventCallbackID:        make(map[int64]uint64),
+		contextSinkIDToEventCallbackID: make(map[int64]uint64),
+	})
+	taskerStoreMutex.Unlock()
 
 	return &Tasker{handle: handle}
 }
 
 // Destroy free the tasker.
 func (t *Tasker) Destroy() {
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	for _, id := range value.sinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
+	for _, id := range value.contextSinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
+	taskerStore.Del(t.handle)
+	taskerStoreMutex.Unlock()
+
 	maa.MaaTaskerDestroy(t.handle)
 }
 
@@ -296,51 +307,91 @@ func (t *Tasker) GetLatestNode(taskName string) *NodeDetail {
 	return t.getNodeDetail(nodeId)
 }
 
-// AddSink adds a notification callback sink and returns the sink ID.
+// AddSink adds a event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
-func (t *Tasker) AddSink(notify Notification) maa.MaaSinkId {
-	id := registerNotificationCallback(notify)
+func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
+	id := registerEventCallback(sink)
 	sinkId := maa.MaaTaskerAddSink(
 		t.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
-	if sinkId == maa.MaaInvalidId {
-		unregisterNotificationCallback(id)
-	}
+
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	value.sinkIDToEventCallbackID[sinkId] = id
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
 	return sinkId
 }
 
-// RemoveSink removes a notification callback sink by sink ID.
-func (t *Tasker) RemoveSink(sinkId maa.MaaSinkId) {
+// RemoveSink removes a event callback sink by sink ID.
+func (t *Tasker) RemoveSink(sinkId int64) {
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	unregisterEventCallback(value.sinkIDToEventCallbackID[sinkId])
+	delete(value.sinkIDToEventCallbackID, sinkId)
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
 	maa.MaaTaskerRemoveSink(t.handle, sinkId)
 }
 
-// ClearSinks clears all notification callback sinks.
+// ClearSinks clears all event callback sinks.
 func (t *Tasker) ClearSinks() {
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	for _, id := range value.sinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
+	value.sinkIDToEventCallbackID = make(map[int64]uint64)
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
 	maa.MaaTaskerClearSinks(t.handle)
 }
 
-// AddContextSink adds a context notification callback sink and returns the sink ID.
-func (t *Tasker) AddContextSink(notify Notification) maa.MaaSinkId {
-	id := registerNotificationCallback(notify)
+// AddContextSink adds a context event callback sink and returns the sink ID.
+func (t *Tasker) AddContextSink(sink TaskerEventSink) int64 {
+	id := registerEventCallback(sink)
 	sinkId := maa.MaaTaskerAddContextSink(
 		t.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
-	if sinkId == maa.MaaInvalidId {
-		unregisterNotificationCallback(id)
-	}
+
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	value.contextSinkIDToEventCallbackID[sinkId] = id
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
 	return sinkId
 }
 
-// RemoveContextSink removes a context notification callback sink by sink ID.
-func (t *Tasker) RemoveContextSink(sinkId maa.MaaSinkId) {
+// RemoveContextSink removes a context event callback sink by sink ID.
+func (t *Tasker) RemoveContextSink(sinkId int64) {
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	unregisterEventCallback(value.contextSinkIDToEventCallbackID[sinkId])
+	delete(value.contextSinkIDToEventCallbackID, sinkId)
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
 	maa.MaaTaskerRemoveContextSink(t.handle, sinkId)
 }
 
-// ClearContextSinks clears all context notification callback sinks.
+// ClearContextSinks clears all context event callback sinks.
 func (t *Tasker) ClearContextSinks() {
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	for _, id := range value.contextSinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
+	value.contextSinkIDToEventCallbackID = make(map[int64]uint64)
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
 	maa.MaaTaskerClearContextSinks(t.handle)
 }

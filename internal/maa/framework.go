@@ -15,25 +15,18 @@ var (
 	MaaVersion func() string
 )
 
-// Deprecated: use MaaEventCallback instead
-type MaaNotificationCallback func(message, detailsJson *byte, notifyTransArg uintptr) uintptr
-
 type MaaEventCallback func(handle uintptr, message, detailsJson *byte, transArg uintptr) uintptr
-
-type MaaSinkId = int64
-
-const MaaInvalidId MaaSinkId = 0
 
 type MaaTaskerOption int32
 
 var (
 	MaaTaskerCreate               func() uintptr
 	MaaTaskerDestroy              func(tasker uintptr)
-	MaaTaskerAddSink              func(tasker uintptr, sink MaaEventCallback, transArg uintptr) MaaSinkId
-	MaaTaskerRemoveSink           func(tasker uintptr, sinkId MaaSinkId)
+	MaaTaskerAddSink              func(tasker uintptr, sink MaaEventCallback, transArg uintptr) int64
+	MaaTaskerRemoveSink           func(tasker uintptr, sinkId int64)
 	MaaTaskerClearSinks           func(tasker uintptr)
-	MaaTaskerAddContextSink       func(tasker uintptr, sink MaaEventCallback, transArg uintptr) MaaSinkId
-	MaaTaskerRemoveContextSink    func(tasker uintptr, sinkId MaaSinkId)
+	MaaTaskerAddContextSink       func(tasker uintptr, sink MaaEventCallback, transArg uintptr) int64
+	MaaTaskerRemoveContextSink    func(tasker uintptr, sinkId int64)
 	MaaTaskerClearContextSinks    func(tasker uintptr)
 	MaaTaskerSetOption            func(tasker uintptr, key MaaTaskerOption, value unsafe.Pointer, valSize uint64) bool
 	MaaTaskerBindResource         func(tasker uintptr, res uintptr) bool
@@ -117,8 +110,8 @@ const (
 var (
 	MaaResourceCreate                      func() uintptr
 	MaaResourceDestroy                     func(res uintptr)
-	MaaResourceAddSink                     func(res uintptr, sink MaaEventCallback, transArg uintptr) MaaSinkId
-	MaaResourceRemoveSink                  func(res uintptr, sinkId MaaSinkId)
+	MaaResourceAddSink                     func(res uintptr, sink MaaEventCallback, transArg uintptr) int64
+	MaaResourceRemoveSink                  func(res uintptr, sinkId int64)
 	MaaResourceClearSinks                  func(res uintptr)
 	MaaResourceRegisterCustomRecognition   func(res uintptr, name string, recognition MaaCustomRecognitionCallback, transArg uintptr) bool
 	MaaResourceUnregisterCustomRecognition func(res uintptr, name string) bool
@@ -235,8 +228,8 @@ var (
 	MaaCustomControllerCreate   func(controller uintptr, controllerArg uintptr) uintptr
 	MaaDbgControllerCreate      func(readPath, writePath string, dbgCtrlType MaaDbgControllerType, config string) uintptr
 	MaaControllerDestroy        func(ctrl uintptr)
-	MaaControllerAddSink        func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) MaaSinkId
-	MaaControllerRemoveSink     func(ctrl uintptr, sinkId MaaSinkId)
+	MaaControllerAddSink        func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64
+	MaaControllerRemoveSink     func(ctrl uintptr, sinkId int64)
 	MaaControllerClearSinks     func(ctrl uintptr)
 	MaaControllerSetOption      func(ctrl uintptr, key MaaCtrlOption, value unsafe.Pointer, valSize uint64) bool
 	MaaControllerPostConnection func(ctrl uintptr) int64

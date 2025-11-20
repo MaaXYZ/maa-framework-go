@@ -6,14 +6,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createResource(t *testing.T, notify Notification) *Resource {
-	res := NewResource(notify)
+func createResource(t *testing.T) *Resource {
+	res := NewResource()
 	require.NotNil(t, res)
 	return res
 }
 
 func TestNewResource(t *testing.T) {
-	res := createResource(t, nil)
+	res := createResource(t)
 	res.Destroy()
 }
 
@@ -24,15 +24,15 @@ func (t *testResourceTestRec) Run(_ *Context, _ *CustomRecognitionArg) (*CustomR
 }
 
 func TestResource_RegisterCustomRecognition(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -49,15 +49,15 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 }
 
 func TestResource_UnregisterCustomRecognition(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -85,15 +85,15 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 }
 
 func TestResource_ClearCustomRecognition(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -143,15 +143,15 @@ func (t *testResourceTestAct) Run(_ *Context, _ *CustomActionArg) bool {
 }
 
 func TestResource_RegisterCustomAction(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -168,15 +168,15 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 }
 
 func TestResource_UnregisterCustomAction(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -204,15 +204,15 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 }
 
 func TestResource_ClearCustomAction(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -256,7 +256,7 @@ func TestResource_ClearCustomAction(t *testing.T) {
 }
 
 func TestResource_PostPath(t *testing.T) {
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
 	isPathSet := res.PostBundle(resDir).Wait().Success()
@@ -264,7 +264,7 @@ func TestResource_PostPath(t *testing.T) {
 }
 
 func TestResource_Clear(t *testing.T) {
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
 	isPathSet := res.PostBundle(resDir).Wait().Success()
@@ -274,7 +274,7 @@ func TestResource_Clear(t *testing.T) {
 }
 
 func TestResource_Loaded(t *testing.T) {
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
 	isPathSet := res.PostBundle(resDir).Wait().Success()
@@ -284,7 +284,7 @@ func TestResource_Loaded(t *testing.T) {
 }
 
 func TestResource_GetHash(t *testing.T) {
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
 	isPathSet := res.PostBundle(resDir).Wait().Success()
@@ -295,7 +295,7 @@ func TestResource_GetHash(t *testing.T) {
 }
 
 func TestResource_GetNodeList(t *testing.T) {
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
 	isPathSet := res.PostBundle(resDir).Wait().Success()

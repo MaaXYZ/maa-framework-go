@@ -45,6 +45,18 @@ func (ac *AgentClient) BindResource(res *Resource) bool {
 	return maa.MaaAgentClientBindResource(ac.handle, res.handle)
 }
 
+func (ac *AgentClient) RegisterResourceSink(res *Resource) bool {
+	return maa.MaaAgentClientRegisterResourceSink(ac.handle, res.handle)
+}
+
+func (ac *AgentClient) RegisterControllerSink(ctrl Controller) bool {
+	return maa.MaaAgentClientRegisterControllerSink(ac.handle, ctrl.Handle())
+}
+
+func (ac *AgentClient) RegisterTaskerSink(tasker Tasker) bool {
+	return maa.MaaAgentClientRegisterTaskerSink(ac.handle, tasker.handle)
+}
+
 // Connect attempts to establish connection with agent service
 func (ac *AgentClient) Connect() bool {
 	return maa.MaaAgentClientConnect(ac.handle)

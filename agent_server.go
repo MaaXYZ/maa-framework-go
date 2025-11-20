@@ -32,6 +32,54 @@ func AgentServerRegisterCustomAction(name string, action CustomAction) bool {
 	)
 }
 
+// AgentServerAddResourceSink adds a resource event sink to the agent server
+func AgentServerAddResourceSink(sink ResourceEventSink) int64 {
+	id := registerEventCallback(sink)
+
+	return maa.MaaAgentServerAddResourceSink(
+		_MaaEventCallbackAgent,
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		unsafe.Pointer(uintptr(id)),
+	)
+}
+
+// AgentServerAddControllerSink adds a controller event sink to the agent server
+func AgentServerAddControllerSink(sink ControllerEventSink) int64 {
+	id := registerEventCallback(sink)
+
+	return maa.MaaAgentServerAddControllerSink(
+		_MaaEventCallbackAgent,
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		unsafe.Pointer(uintptr(id)),
+	)
+}
+
+// AgentServerAddTaskerSink adds a tasker event sink to the agent server
+func AgentServerAddTaskerSink(sink TaskerEventSink) int64 {
+	id := registerEventCallback(sink)
+
+	return maa.MaaAgentServerAddTaskerSink(
+		_MaaEventCallbackAgent,
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		unsafe.Pointer(uintptr(id)),
+	)
+}
+
+// AgentServerAddContextSink adds a context event sink to the agent server
+func AgentServerAddContextSink(sink ContextEventSink) int64 {
+	id := registerEventCallback(sink)
+
+	return maa.MaaAgentServerAddContextSink(
+		_MaaEventCallbackAgent,
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		unsafe.Pointer(uintptr(id)),
+	)
+}
+
 // AgentServerStartUp starts up the agent server with the given identifier
 func AgentServerStartUp(identifier string) bool {
 	return maa.MaaAgentServerStartUp(identifier)
