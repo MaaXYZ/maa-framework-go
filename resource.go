@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"image"
 	"sync"
 	"unsafe"
 
@@ -264,6 +265,13 @@ func (r *Resource) OverrideNext(name string, nextList []string) bool {
 		}
 	}()
 	return maa.MaaContextOverrideNext(r.handle, name, list.Handle())
+}
+
+func (r *Resource) OverriderImage(imageName string, image image.Image) bool {
+	img := buffer.NewImageBuffer()
+	defer img.Destroy()
+	img.Set(image)
+	return maa.MaaResourceOverrideImage(r.handle, imageName, img.Handle())
 }
 
 // GetNodeJSON gets the node JSON by name.

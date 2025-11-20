@@ -122,6 +122,7 @@ var (
 	MaaResourcePostBundle                  func(res uintptr, path string) int64
 	MaaResourceOverridePipeline            func(res uintptr, pipelineOverride string) bool
 	MaaResourceOverrideNext                func(res uintptr, nodeName string, nextList uintptr) bool
+	MaaResourceOverrideImage               func(res uintptr, imageName string, image uintptr) bool
 	MaaResourceGetNodeData                 func(res uintptr, nodeName string, buffer uintptr) bool
 	MaaResourceClear                       func(res uintptr) bool
 	MaaResourceStatus                      func(res uintptr, id int64) int32
@@ -489,6 +490,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaResourcePostBundle, maaFramework, "MaaResourcePostBundle")
 	purego.RegisterLibFunc(&MaaResourceOverridePipeline, maaFramework, "MaaResourceOverridePipeline")
 	purego.RegisterLibFunc(&MaaResourceOverrideNext, maaFramework, "MaaResourceOverrideNext")
+	purego.RegisterLibFunc(&MaaResourceOverrideImage, maaFramework, "MaaResourceOverrideImage")
 	purego.RegisterLibFunc(&MaaResourceGetNodeData, maaFramework, "MaaResourceGetNodeData")
 	purego.RegisterLibFunc(&MaaResourceClear, maaFramework, "MaaResourceClear")
 	purego.RegisterLibFunc(&MaaResourceStatus, maaFramework, "MaaResourceStatus")
