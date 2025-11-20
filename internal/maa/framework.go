@@ -229,7 +229,7 @@ const (
 
 var (
 	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods MaaAdbScreencapMethod, inputMethods MaaAdbInputMethod, config, agentPath string) uintptr
-	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods MaaWin32ScreencapMethod, inputMethods MaaWin32InputMethod) uintptr
+	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods MaaWin32ScreencapMethod, mouseMethod, keyboardMethod MaaWin32InputMethod) uintptr
 	MaaCustomControllerCreate   func(controller uintptr, controllerArg uintptr) uintptr
 	MaaDbgControllerCreate      func(readPath, writePath string, dbgCtrlType MaaDbgControllerType, config string) uintptr
 	MaaControllerDestroy        func(ctrl uintptr)

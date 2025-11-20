@@ -22,8 +22,11 @@ const (
 	Win32ScreencapMethodFramePoolValue      = "FramePool"
 	Win32ScreencapMethodDXGIDesktopDupValue = "DXGIDesktopDup"
 
-	Win32InputMethodSeizeValue       = "Seize"
-	Win32InputMethodSendMessageValue = "SendMessage"
+	Win32InputMethodSeizeValue             = "Seize"
+	Win32InputMethodSendMessageValue       = "SendMessage"
+	Win32InputMethodPostMessageValue       = "PostMessage"
+	Win32InputMethodLegacyEventValue       = "LegacyEvent"
+	Win32InputMethodPostThreadMessageValue = "PostThreadMessage"
 
 	DbgControllerTypeCarouselImageValue   = "CarouselImage"
 	DbgControllerTypeReplayRecordingValue = "ReplayRecording"

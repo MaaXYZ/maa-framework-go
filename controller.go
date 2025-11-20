@@ -296,6 +296,12 @@ func (m Win32InputMethod) String() string {
 		return Win32InputMethodSeizeValue
 	case Win32InputMethodSendMessage:
 		return Win32InputMethodSendMessageValue
+	case Win32InputMethodPostMessage:
+		return Win32InputMethodPostMessageValue
+	case Win32InputMethodLegacyEvent:
+		return Win32InputMethodLegacyEventValue
+	case Win32InputMethodPostThreadMessage:
+		return Win32InputMethodPostThreadMessageValue
 	}
 	return strconv.Itoa(int(m))
 }
@@ -318,12 +324,14 @@ func ParseWin32InputMethod(methodStr string) (Win32InputMethod, error) {
 func NewWin32Controller(
 	hWnd unsafe.Pointer,
 	screencapMethod Win32ScreencapMethod,
-	inputMethod Win32InputMethod,
+	mouseMethod Win32InputMethod,
+	keyboardMethod Win32InputMethod,
 ) Controller {
 	handle := maa.MaaWin32ControllerCreate(
 		hWnd,
 		maa.MaaWin32ScreencapMethod(screencapMethod),
-		maa.MaaWin32InputMethod(inputMethod),
+		maa.MaaWin32InputMethod(mouseMethod),
+		maa.MaaWin32InputMethod(keyboardMethod),
 	)
 	if handle == 0 {
 		return nil
