@@ -159,6 +159,13 @@ func (ctx *Context) OverrideNext(name string, nextList []string) bool {
 	return maa.MaaContextOverrideNext(ctx.handle, name, list.Handle())
 }
 
+func (ctx *Context) OverrideImage(imageName string, image image.Image) bool {
+	img := buffer.NewImageBuffer()
+	defer img.Destroy()
+	img.Set(image)
+	return maa.MaaContextOverrideImage(ctx.handle, imageName, img.Handle())
+}
+
 // GetNodeJSON gets the node JSON by name.
 func (ctx *Context) GetNodeJSON(name string) (bool, string) {
 	buf := buffer.NewStringBuffer()

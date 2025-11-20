@@ -332,6 +332,7 @@ var (
 	MaaContextRunAction        func(context uintptr, entry, pipelineOverride string, box uintptr, recoDetail string) int64
 	MaaContextOverridePipeline func(context uintptr, pipelineOverride string) bool
 	MaaContextOverrideNext     func(context uintptr, nodeName string, nextList uintptr) bool
+	MaaContextOverrideImage    func(context uintptr, imageName string, image uintptr) bool
 	MaaContextGetNodeData      func(context uintptr, nodeName string, buffer uintptr) bool
 	MaaContextGetTaskId        func(context uintptr) int64
 	MaaContextGetTasker        func(context uintptr) uintptr
@@ -533,6 +534,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaContextRunAction, maaFramework, "MaaContextRunAction")
 	purego.RegisterLibFunc(&MaaContextOverridePipeline, maaFramework, "MaaContextOverridePipeline")
 	purego.RegisterLibFunc(&MaaContextOverrideNext, maaFramework, "MaaContextOverrideNext")
+	purego.RegisterLibFunc(&MaaContextOverrideImage, maaFramework, "MaaContextOverrideImage")
 	purego.RegisterLibFunc(&MaaContextGetNodeData, maaFramework, "MaaContextGetNodeData")
 	purego.RegisterLibFunc(&MaaContextGetTaskId, maaFramework, "MaaContextGetTaskId")
 	purego.RegisterLibFunc(&MaaContextGetTasker, maaFramework, "MaaContextGetTasker")
