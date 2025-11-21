@@ -40,6 +40,7 @@ func unregisterCustomControllerCallbacks(id uint64) {
 type CustomController interface {
 	Connect() bool
 	RequestUUID() (string, bool)
+	GetFeature() ControllerFeature
 	StartApp(intent string) bool
 	StopApp(intent string) bool
 	Screencap() (image.Image, bool)
@@ -65,6 +66,7 @@ func NewCustomControllerHandler() CustomControllerHandler {
 		handle: maa.MaaCustomControllerCallbacksCreate(
 			_ConnectAgent,
 			_RequestUUIDAgent,
+			_GetFeatureAgent,
 			_StartAppAgent,
 			_StopAppAgent,
 			_ScreencapAgent,
@@ -121,6 +123,30 @@ func _RequestUUIDAgent(handleArg uintptr, uuidBuffer uintptr) bool {
 		return true
 	}
 	return false
+}
+
+type ControllerFeature = maa.MaaControllerFeature
+
+const (
+	MaaControllerFeatureNone                               = maa.MaaControllerFeature_None
+	MaaControllerFeatureUseMouseDownAndUpInsteadOfClick    = maa.MaaControllerFeature_UseMouseDownAndUpInsteadOfClick
+	MaaControllerFeatureUseKeyboardDownAndUpInsteadOfClick = maa.MaaControllerFeature_UseKeyboardDownAndUpInsteadOfClick
+)
+
+func _GetFeatureAgent(handleArg uintptr) ControllerFeature {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(handleArg)
+
+	customControllerCallbacksAgentsMutex.RLock()
+	ctrl, exists := customControllerCallbacksAgents[id]
+	customControllerCallbacksAgentsMutex.RUnlock()
+
+	if !exists || ctrl == nil {
+		return MaaControllerFeatureNone
+	}
+
+	return ctrl.GetFeature()
 }
 
 func _StartAppAgent(intent string, handleArg uintptr) bool {

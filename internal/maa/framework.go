@@ -209,6 +209,14 @@ const (
 	MaaDbgControllerType_ReplayRecording MaaDbgControllerType = 1 << 1
 )
 
+type MaaControllerFeature uint64
+
+const (
+	MaaControllerFeature_None                               MaaControllerFeature = 0
+	MaaControllerFeature_UseMouseDownAndUpInsteadOfClick    MaaControllerFeature = 1
+	MaaControllerFeature_UseKeyboardDownAndUpInsteadOfClick MaaControllerFeature = 1 << 1
+)
+
 type MaaCtrlOption int32
 
 const (
@@ -264,6 +272,7 @@ var (
 type MaaCustomControllerCallbacks struct {
 	Connect     uintptr
 	RequestUUID uintptr
+	GetFeature  uintptr
 	StartApp    uintptr
 	StopApp     uintptr
 	Screencap   uintptr
@@ -281,6 +290,7 @@ type MaaCustomControllerCallbacks struct {
 type (
 	ConnectCallback     func(transArg uintptr) bool
 	RequestUUIDCallback func(transArg uintptr, buffer uintptr) bool
+	GetFeatureCallback  func(transArg uintptr) MaaControllerFeature
 	StartAppCallback    func(intent string, transArg uintptr) bool
 	StopAppCallback     func(intent string, transArg uintptr) bool
 	ScreencapCallback   func(transArg uintptr, buffer uintptr) bool
@@ -298,6 +308,7 @@ type (
 func MaaCustomControllerCallbacksCreate(
 	connect ConnectCallback,
 	requestUUID RequestUUIDCallback,
+	getFeature GetFeatureCallback,
 	startApp StartAppCallback,
 	stopApp StopAppCallback,
 	screencap ScreencapCallback,
@@ -314,6 +325,7 @@ func MaaCustomControllerCallbacksCreate(
 	callbacks := &MaaCustomControllerCallbacks{
 		Connect:     purego.NewCallback(connect),
 		RequestUUID: purego.NewCallback(requestUUID),
+		GetFeature:  purego.NewCallback(getFeature),
 		StartApp:    purego.NewCallback(startApp),
 		StopApp:     purego.NewCallback(stopApp),
 		Screencap:   purego.NewCallback(screencap),
