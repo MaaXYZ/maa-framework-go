@@ -290,8 +290,8 @@ type (
 	ConnectCallback     func(transArg uintptr) bool
 	RequestUUIDCallback func(transArg uintptr, buffer uintptr) bool
 	GetFeatureCallback  func(transArg uintptr) MaaControllerFeature
-	StartAppCallback    func(intent string, transArg uintptr) bool
-	StopAppCallback     func(intent string, transArg uintptr) bool
+	StartAppCallback    func(intent *byte, transArg uintptr) bool
+	StopAppCallback     func(intent *byte, transArg uintptr) bool
 	ScreencapCallback   func(transArg uintptr, buffer uintptr) bool
 	ClickCallback       func(x, y int32, transArg uintptr) bool
 	SwipeCallback       func(x1, y1, x2, y2, duration int32, transArg uintptr) bool
@@ -299,7 +299,7 @@ type (
 	TouchMoveCallback   func(contact, x, y, pressure int32, transArg uintptr) bool
 	TouchUpCallback     func(contact int32, transArg uintptr) bool
 	ClickKeyCallback    func(keycode int32, transArg uintptr) bool
-	InputTextCallback   func(text string, transArg uintptr) bool
+	InputTextCallback   func(text *byte, transArg uintptr) bool
 	KeyDownCallback     func(keycode int32, transArg uintptr) bool
 	KeyUpCallback       func(keycode int32, transArg uintptr) bool
 )

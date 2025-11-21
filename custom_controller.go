@@ -137,7 +137,7 @@ func _GetFeatureAgent(handleArg uintptr) ControllerFeature {
 	return ctrl.GetFeature()
 }
 
-func _StartAppAgent(intent string, handleArg uintptr) bool {
+func _StartAppAgent(intent *byte, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -150,10 +150,10 @@ func _StartAppAgent(intent string, handleArg uintptr) bool {
 		return false
 	}
 
-	return ctrl.StartApp(intent)
+	return ctrl.StartApp(bytePtrToString(intent))
 }
 
-func _StopAppAgent(intent string, handleArg uintptr) bool {
+func _StopAppAgent(intent *byte, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -166,7 +166,7 @@ func _StopAppAgent(intent string, handleArg uintptr) bool {
 		return false
 	}
 
-	return ctrl.StopApp(intent)
+	return ctrl.StopApp(bytePtrToString(intent))
 }
 
 func _ScreencapAgent(handleArg uintptr, imgBuffer uintptr) bool {
@@ -288,7 +288,7 @@ func _ClickKey(key int32, handleArg uintptr) bool {
 	return ctrl.ClickKey(key)
 }
 
-func _InputText(text string, handleArg uintptr) bool {
+func _InputText(text *byte, handleArg uintptr) bool {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -301,7 +301,7 @@ func _InputText(text string, handleArg uintptr) bool {
 		return false
 	}
 
-	return ctrl.InputText(text)
+	return ctrl.InputText(bytePtrToString(text))
 }
 
 func _KeyDown(keycode int32, handleArg uintptr) bool {
