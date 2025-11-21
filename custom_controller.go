@@ -53,38 +53,26 @@ type CustomController interface {
 	InputText(text string) bool
 	KeyDown(keycode int32) bool
 	KeyUp(keycode int32) bool
-
-	Handle() uintptr
 }
 
-type CustomControllerHandler struct {
-	handle uintptr
-}
-
-func NewCustomControllerHandler() CustomControllerHandler {
-	return CustomControllerHandler{
-		handle: maa.MaaCustomControllerCallbacksCreate(
-			_ConnectAgent,
-			_RequestUUIDAgent,
-			_GetFeatureAgent,
-			_StartAppAgent,
-			_StopAppAgent,
-			_ScreencapAgent,
-			_ClickAgent,
-			_SwipeAgent,
-			_TouchDownAgent,
-			_TouchMoveAgent,
-			_TouchUpAgent,
-			_ClickKey,
-			_InputText,
-			_KeyDown,
-			_KeyUp,
-		),
-	}
-}
-
-func (c CustomControllerHandler) Handle() uintptr {
-	return c.handle
+func _CustomControllerAgent() uintptr {
+	return maa.MaaCustomControllerCallbacksCreate(
+		_ConnectAgent,
+		_RequestUUIDAgent,
+		_GetFeatureAgent,
+		_StartAppAgent,
+		_StopAppAgent,
+		_ScreencapAgent,
+		_ClickAgent,
+		_SwipeAgent,
+		_TouchDownAgent,
+		_TouchMoveAgent,
+		_TouchUpAgent,
+		_ClickKey,
+		_InputText,
+		_KeyDown,
+		_KeyUp,
+	)
 }
 
 func _ConnectAgent(handleArg uintptr) bool {
@@ -128,9 +116,9 @@ func _RequestUUIDAgent(handleArg uintptr, uuidBuffer uintptr) bool {
 type ControllerFeature = maa.MaaControllerFeature
 
 const (
-	MaaControllerFeatureNone                               = maa.MaaControllerFeature_None
-	MaaControllerFeatureUseMouseDownAndUpInsteadOfClick    = maa.MaaControllerFeature_UseMouseDownAndUpInsteadOfClick
-	MaaControllerFeatureUseKeyboardDownAndUpInsteadOfClick = maa.MaaControllerFeature_UseKeyboardDownAndUpInsteadOfClick
+	ControllerFeatureNone                               = maa.MaaControllerFeature_None
+	ControllerFeatureUseMouseDownAndUpInsteadOfClick    = maa.MaaControllerFeature_UseMouseDownAndUpInsteadOfClick
+	ControllerFeatureUseKeyboardDownAndUpInsteadOfClick = maa.MaaControllerFeature_UseKeyboardDownAndUpInsteadOfClick
 )
 
 func _GetFeatureAgent(handleArg uintptr) ControllerFeature {
@@ -143,7 +131,7 @@ func _GetFeatureAgent(handleArg uintptr) ControllerFeature {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return MaaControllerFeatureNone
+		return ControllerFeatureNone
 	}
 
 	return ctrl.GetFeature()

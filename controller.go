@@ -357,7 +357,7 @@ func NewCustomController(
 ) *Controller {
 	ctrlID := registerCustomControllerCallbacks(ctrl)
 	handle := maa.MaaCustomControllerCreate(
-		uintptr(ctrl.Handle()),
+		_CustomControllerAgent(),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		uintptr(ctrlID),

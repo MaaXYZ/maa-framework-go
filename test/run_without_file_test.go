@@ -9,9 +9,8 @@ import (
 
 func TestRunWithoutFile(t *testing.T) {
 	testingPath := "./data_set/PipelineSmoking/Screenshot"
-	resultPath := "./data_set/debug"
 
-	ctrl := maa.NewDbgController(testingPath, resultPath, maa.DbgControllerTypeCarouselImage, "{}")
+	ctrl := maa.NewDbgController(testingPath)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
