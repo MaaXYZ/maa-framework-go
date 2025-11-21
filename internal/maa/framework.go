@@ -239,7 +239,6 @@ var (
 	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods MaaAdbScreencapMethod, inputMethods MaaAdbInputMethod, config, agentPath string) uintptr
 	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods MaaWin32ScreencapMethod, mouseMethod, keyboardMethod MaaWin32InputMethod) uintptr
 	MaaCustomControllerCreate   func(controller uintptr, controllerArg uintptr) uintptr
-	MaaDbgControllerCreate      func(readPath, writePath string, dbgCtrlType MaaDbgControllerType, config string) uintptr
 	MaaControllerDestroy        func(ctrl uintptr)
 	MaaControllerAddSink        func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64
 	MaaControllerRemoveSink     func(ctrl uintptr, sinkId int64)
@@ -521,7 +520,6 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaAdbControllerCreate, maaFramework, "MaaAdbControllerCreate")
 	purego.RegisterLibFunc(&MaaWin32ControllerCreate, maaFramework, "MaaWin32ControllerCreate")
 	purego.RegisterLibFunc(&MaaCustomControllerCreate, maaFramework, "MaaCustomControllerCreate")
-	purego.RegisterLibFunc(&MaaDbgControllerCreate, maaFramework, "MaaDbgControllerCreate")
 	purego.RegisterLibFunc(&MaaControllerDestroy, maaFramework, "MaaControllerDestroy")
 	purego.RegisterLibFunc(&MaaControllerAddSink, maaFramework, "MaaControllerAddSink")
 	purego.RegisterLibFunc(&MaaControllerRemoveSink, maaFramework, "MaaControllerRemoveSink")

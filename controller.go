@@ -351,29 +351,6 @@ func ParseDbgControllerType(typeStr string) (DbgControllerType, error) {
 	return DbgControllerType(i), nil
 }
 
-// NewDbgController creates a DBG controller instance.
-func NewDbgController(
-	readPath, writePath string,
-	dbgCtrlType DbgControllerType,
-	config string,
-) *Controller {
-	handle := maa.MaaDbgControllerCreate(
-		readPath,
-		writePath,
-		maa.MaaDbgControllerType(dbgCtrlType),
-		config,
-	)
-	if handle == 0 {
-		return nil
-	}
-
-	initControllerStore(handle)
-
-	return &Controller{
-		handle: handle,
-	}
-}
-
 // NewCustomController creates a custom controller instance.
 func NewCustomController(
 	ctrl CustomController,
