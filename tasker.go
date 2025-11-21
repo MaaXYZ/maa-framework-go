@@ -63,8 +63,8 @@ func (t *Tasker) BindResource(res *Resource) bool {
 }
 
 // BindController binds the tasker to an initialized controller.
-func (t *Tasker) BindController(ctrl Controller) bool {
-	return maa.MaaTaskerBindController(t.handle, ctrl.Handle())
+func (t *Tasker) BindController(ctrl *Controller) bool {
+	return maa.MaaTaskerBindController(t.handle, ctrl.handle)
 }
 
 // Initialized checks if the tasker is initialized.
@@ -132,9 +132,9 @@ func (t *Tasker) GetResource() *Resource {
 }
 
 // GetController returns the controller handle of the tasker.
-func (t *Tasker) GetController() Controller {
+func (t *Tasker) GetController() *Controller {
 	handle := maa.MaaTaskerGetController(t.handle)
-	return &controller{handle: handle}
+	return &Controller{handle: handle}
 }
 
 // ClearCache clears runtime cache.

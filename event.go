@@ -131,7 +131,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 		case ContextEventSink:
 			s.OnResourceLoading(&Context{handle: handle}, eventType, detail)
 		case ControllerEventSink:
-			s.OnResourceLoading(&controller{handle: handle}, eventType, detail)
+			s.OnResourceLoading(&Controller{handle: handle}, eventType, detail)
 		}
 		return
 
@@ -146,7 +146,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 		case ContextEventSink:
 			s.OnControllerAction(&Context{handle: handle}, eventType, detail)
 		case ControllerEventSink:
-			s.OnControllerAction(&controller{handle: handle}, eventType, detail)
+			s.OnControllerAction(&Controller{handle: handle}, eventType, detail)
 		}
 		return
 
@@ -161,7 +161,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 		case ContextEventSink:
 			s.OnTaskerTask(&Context{handle: handle}, eventType, detail)
 		case ControllerEventSink:
-			s.OnTaskerTask(&controller{handle: handle}, eventType, detail)
+			s.OnTaskerTask(&Controller{handle: handle}, eventType, detail)
 		}
 		return
 
@@ -176,7 +176,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 		case ContextEventSink:
 			s.OnNodePipelineNode(&Context{handle: handle}, eventType, detail)
 		case ControllerEventSink:
-			s.OnNodePipelineNode(&controller{handle: handle}, eventType, detail)
+			s.OnNodePipelineNode(&Controller{handle: handle}, eventType, detail)
 		}
 		return
 
@@ -191,7 +191,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 		case ContextEventSink:
 			s.OnNodeRecognitionNode(&Context{handle: handle}, eventType, detail)
 		case ControllerEventSink:
-			s.OnNodeRecognitionNode(&controller{handle: handle}, eventType, detail)
+			s.OnNodeRecognitionNode(&Controller{handle: handle}, eventType, detail)
 		}
 		return
 
@@ -206,7 +206,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 		case ContextEventSink:
 			s.OnNodeActionNode(&Context{handle: handle}, eventType, detail)
 		case ControllerEventSink:
-			s.OnNodeActionNode(&controller{handle: handle}, eventType, detail)
+			s.OnNodeActionNode(&Controller{handle: handle}, eventType, detail)
 		}
 		return
 
@@ -221,7 +221,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 		case ContextEventSink:
 			s.OnTaskNextList(&Context{handle: handle}, eventType, detail)
 		case ControllerEventSink:
-			s.OnTaskNextList(&controller{handle: handle}, eventType, detail)
+			s.OnTaskNextList(&Controller{handle: handle}, eventType, detail)
 		}
 		return
 
@@ -236,7 +236,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 		case ContextEventSink:
 			s.OnTaskRecognition(&Context{handle: handle}, eventType, detail)
 		case ControllerEventSink:
-			s.OnTaskRecognition(&controller{handle: handle}, eventType, detail)
+			s.OnTaskRecognition(&Controller{handle: handle}, eventType, detail)
 		}
 		return
 
@@ -251,7 +251,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 		case ContextEventSink:
 			s.OnTaskAction(&Context{handle: handle}, eventType, detail)
 		case ControllerEventSink:
-			s.OnTaskAction(&controller{handle: handle}, eventType, detail)
+			s.OnTaskAction(&Controller{handle: handle}, eventType, detail)
 		}
 		return
 
@@ -264,7 +264,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 		case ContextEventSink:
 			s.OnUnknownNotification(&Context{handle: handle}, msg, detailsJSON)
 		case ControllerEventSink:
-			s.OnUnknownNotification(&controller{handle: handle}, msg, detailsJSON)
+			s.OnUnknownNotification(&Controller{handle: handle}, msg, detailsJSON)
 		}
 	}
 }

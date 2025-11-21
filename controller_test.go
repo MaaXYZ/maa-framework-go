@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createDbgController(t *testing.T) Controller {
+func createDbgController(t *testing.T) *Controller {
 	testingPath := "./test/data_set/PipelineSmoking/Screenshot"
 	resultPath := "./test/data_set/debug"
 

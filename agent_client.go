@@ -50,7 +50,7 @@ func (ac *AgentClient) RegisterResourceSink(res *Resource) bool {
 }
 
 func (ac *AgentClient) RegisterControllerSink(ctrl Controller) bool {
-	return maa.MaaAgentClientRegisterControllerSink(ac.handle, ctrl.Handle())
+	return maa.MaaAgentClientRegisterControllerSink(ac.handle, ctrl.handle)
 }
 
 func (ac *AgentClient) RegisterTaskerSink(tasker Tasker) bool {

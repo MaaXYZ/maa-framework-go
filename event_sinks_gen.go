@@ -42,14 +42,14 @@ type ContextEventSink interface {
 }
 
 type ControllerEventSink interface {
-	OnResourceLoading(handle Controller, event EventType, detail ResourceLoadingDetail)
-	OnControllerAction(handle Controller, event EventType, detail ControllerActionDetail)
-	OnTaskerTask(handle Controller, event EventType, detail TaskerTaskDetail)
-	OnNodePipelineNode(handle Controller, event EventType, detail NodePipelineNodeDetail)
-	OnNodeRecognitionNode(handle Controller, event EventType, detail NodeRecognitionNodeDetail)
-	OnNodeActionNode(handle Controller, event EventType, detail NodeActionNodeDetail)
-	OnTaskNextList(handle Controller, event EventType, detail NodeNextListDetail)
-	OnTaskRecognition(handle Controller, event EventType, detail NodeRecognitionDetail)
-	OnTaskAction(handle Controller, event EventType, detail NodeActionDetail)
-	OnUnknownNotification(handle Controller, msg, detailsJSON string)
+	OnResourceLoading(handle *Controller, event EventType, detail ResourceLoadingDetail)
+	OnControllerAction(handle *Controller, event EventType, detail ControllerActionDetail)
+	OnTaskerTask(handle *Controller, event EventType, detail TaskerTaskDetail)
+	OnNodePipelineNode(handle *Controller, event EventType, detail NodePipelineNodeDetail)
+	OnNodeRecognitionNode(handle *Controller, event EventType, detail NodeRecognitionNodeDetail)
+	OnNodeActionNode(handle *Controller, event EventType, detail NodeActionNodeDetail)
+	OnTaskNextList(handle *Controller, event EventType, detail NodeNextListDetail)
+	OnTaskRecognition(handle *Controller, event EventType, detail NodeRecognitionDetail)
+	OnTaskAction(handle *Controller, event EventType, detail NodeActionDetail)
+	OnUnknownNotification(handle *Controller, msg, detailsJSON string)
 }

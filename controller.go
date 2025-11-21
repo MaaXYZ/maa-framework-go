@@ -14,38 +14,6 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/store"
 )
 
-// Controller is an interface that defines various methods for MAA controller.
-type Controller interface {
-	Destroy()
-	Handle() uintptr
-
-	SetScreenshotTargetLongSide(targetLongSide int32) bool
-	SetScreenshotTargetShortSide(targetShortSide int32) bool
-	SetScreenshotUseRawSize(enabled bool) bool
-
-	PostConnect() *Job
-	PostClick(x, y int32) *Job
-	PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job
-	PostClickKey(keycode int32) *Job
-	PostInputText(text string) *Job
-	PostStartApp(intent string) *Job
-	PostStopApp(intent string) *Job
-	PostTouchDown(contact, x, y, pressure int32) *Job
-	PostTouchMove(contact, x, y, pressure int32) *Job
-	PostTouchUp(contact int32) *Job
-	PostKeyDown(keycode int32) *Job
-	PostKeyUp(keycode int32) *Job
-	PostScreencap() *Job
-
-	Connected() bool
-	CacheImage() image.Image
-	GetUUID() (string, bool)
-
-	AddSink(sink ControllerEventSink) int64
-	RemoveSink(sinkId int64)
-	ClearSinks()
-}
-
 type controllerStoreValue struct {
 	sinkIDToEventCallbackID     map[int64]uint64
 	customControllerCallbacksID uint64
@@ -65,8 +33,7 @@ var (
 	controllerStoreMutex sync.RWMutex
 )
 
-// controller is a concrete implementation of the Controller interface.
-type controller struct {
+type Controller struct {
 	handle uintptr
 }
 
@@ -212,7 +179,7 @@ func NewAdbController(
 	screencapMethod AdbScreencapMethod,
 	inputMethod AdbInputMethod,
 	config, agentPath string,
-) Controller {
+) *Controller {
 	handle := maa.MaaAdbControllerCreate(
 		adbPath,
 		address,
@@ -227,7 +194,9 @@ func NewAdbController(
 
 	initControllerStore(handle)
 
-	return &controller{handle: handle}
+	return &Controller{
+		handle: handle,
+	}
 }
 
 // Win32ScreencapMethod
@@ -326,7 +295,7 @@ func NewWin32Controller(
 	screencapMethod Win32ScreencapMethod,
 	mouseMethod Win32InputMethod,
 	keyboardMethod Win32InputMethod,
-) Controller {
+) *Controller {
 	handle := maa.MaaWin32ControllerCreate(
 		hWnd,
 		maa.MaaWin32ScreencapMethod(screencapMethod),
@@ -339,7 +308,9 @@ func NewWin32Controller(
 
 	initControllerStore(handle)
 
-	return &controller{handle: handle}
+	return &Controller{
+		handle: handle,
+	}
 }
 
 // DbgControllerType
@@ -385,7 +356,7 @@ func NewDbgController(
 	readPath, writePath string,
 	dbgCtrlType DbgControllerType,
 	config string,
-) Controller {
+) *Controller {
 	handle := maa.MaaDbgControllerCreate(
 		readPath,
 		writePath,
@@ -398,13 +369,15 @@ func NewDbgController(
 
 	initControllerStore(handle)
 
-	return &controller{handle: handle}
+	return &Controller{
+		handle: handle,
+	}
 }
 
 // NewCustomController creates a custom controller instance.
 func NewCustomController(
 	ctrl CustomController,
-) Controller {
+) *Controller {
 	ctrlID := registerCustomControllerCallbacks(ctrl)
 	handle := maa.MaaCustomControllerCreate(
 		uintptr(ctrl.Handle()),
@@ -423,11 +396,13 @@ func NewCustomController(
 	})
 	controllerStoreMutex.Unlock()
 
-	return &controller{handle: handle}
+	return &Controller{
+		handle: handle,
+	}
 }
 
 // Destroy frees the controller instance.
-func (c *controller) Destroy() {
+func (c *Controller) Destroy() {
 	controllerStoreMutex.Lock()
 	value := controllerStore.Get(c.handle)
 	unregisterCustomControllerCallbacks(value.customControllerCallbacksID)
@@ -440,13 +415,8 @@ func (c *controller) Destroy() {
 	maa.MaaControllerDestroy(c.handle)
 }
 
-// Handle returns controller handle.
-func (c *controller) Handle() uintptr {
-	return c.handle
-}
-
 // setOption sets options for controller instance.
-func (c *controller) setOption(key maa.MaaCtrlOption, value unsafe.Pointer, valSize uintptr) bool {
+func (c *Controller) setOption(key maa.MaaCtrlOption, value unsafe.Pointer, valSize uintptr) bool {
 	return maa.MaaControllerSetOption(c.handle, key, value, uint64(valSize))
 }
 
@@ -454,7 +424,7 @@ func (c *controller) setOption(key maa.MaaCtrlOption, value unsafe.Pointer, valS
 // Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
 //
 // eg: 1280
-func (c *controller) SetScreenshotTargetLongSide(targetLongSide int32) bool {
+func (c *Controller) SetScreenshotTargetLongSide(targetLongSide int32) bool {
 	return c.setOption(
 		maa.MaaCtrlOption_ScreenshotTargetLongSide,
 		unsafe.Pointer(&targetLongSide),
@@ -466,7 +436,7 @@ func (c *controller) SetScreenshotTargetLongSide(targetLongSide int32) bool {
 // Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
 //
 // eg: 720
-func (c *controller) SetScreenshotTargetShortSide(targetShortSide int32) bool {
+func (c *Controller) SetScreenshotTargetShortSide(targetShortSide int32) bool {
 	return c.setOption(
 		maa.MaaCtrlOption_ScreenshotTargetShortSide,
 		unsafe.Pointer(&targetShortSide),
@@ -475,7 +445,7 @@ func (c *controller) SetScreenshotTargetShortSide(targetShortSide int32) bool {
 }
 
 // SetScreenshotUseRawSize sets whether the screenshot uses the raw size without scaling.
-func (c *controller) SetScreenshotUseRawSize(enabled bool) bool {
+func (c *Controller) SetScreenshotUseRawSize(enabled bool) bool {
 	return c.setOption(
 		maa.MaaCtrlOption_ScreenshotUseRawSize,
 		unsafe.Pointer(&enabled),
@@ -484,97 +454,97 @@ func (c *controller) SetScreenshotUseRawSize(enabled bool) bool {
 }
 
 // PostConnect posts a connection.
-func (c *controller) PostConnect() *Job {
+func (c *Controller) PostConnect() *Job {
 	id := maa.MaaControllerPostConnection(c.handle)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostClick posts a click.
-func (c *controller) PostClick(x, y int32) *Job {
+func (c *Controller) PostClick(x, y int32) *Job {
 	id := maa.MaaControllerPostClick(c.handle, x, y)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostSwipe posts a swipe.
-func (c *controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job {
+func (c *Controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job {
 	id := maa.MaaControllerPostSwipe(c.handle, x1, y1, x2, y2, int32(duration.Milliseconds()))
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostPressKey posts a click key.
-func (c *controller) PostClickKey(keycode int32) *Job {
+func (c *Controller) PostClickKey(keycode int32) *Job {
 	id := maa.MaaControllerPostClickKey(c.handle, keycode)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostInputText posts an input text.
-func (c *controller) PostInputText(text string) *Job {
+func (c *Controller) PostInputText(text string) *Job {
 	id := maa.MaaControllerPostInputText(c.handle, text)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostStartApp posts a start app.
-func (c *controller) PostStartApp(intent string) *Job {
+func (c *Controller) PostStartApp(intent string) *Job {
 	id := maa.MaaControllerPostStartApp(c.handle, intent)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostStopApp posts a stop app.
-func (c *controller) PostStopApp(intent string) *Job {
+func (c *Controller) PostStopApp(intent string) *Job {
 	id := maa.MaaControllerPostStopApp(c.handle, intent)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostTouchDown posts a touch-down.
-func (c *controller) PostTouchDown(contact, x, y, pressure int32) *Job {
+func (c *Controller) PostTouchDown(contact, x, y, pressure int32) *Job {
 	id := maa.MaaControllerPostTouchDown(c.handle, contact, x, y, pressure)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostTouchMove posts a touch-move.
-func (c *controller) PostTouchMove(contact, x, y, pressure int32) *Job {
+func (c *Controller) PostTouchMove(contact, x, y, pressure int32) *Job {
 	id := maa.MaaControllerPostTouchMove(c.handle, contact, x, y, pressure)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostTouchUp posts a touch-up.
-func (c *controller) PostTouchUp(contact int32) *Job {
+func (c *Controller) PostTouchUp(contact int32) *Job {
 	id := maa.MaaControllerPostTouchUp(c.handle, contact)
 	return NewJob(id, c.status, c.wait)
 }
 
-func (c *controller) PostKeyDown(keycode int32) *Job {
+func (c *Controller) PostKeyDown(keycode int32) *Job {
 	id := maa.MaaControllerPostKeyDown(c.handle, keycode)
 	return NewJob(id, c.status, c.wait)
 }
 
-func (c *controller) PostKeyUp(keycode int32) *Job {
+func (c *Controller) PostKeyUp(keycode int32) *Job {
 	id := maa.MaaControllerPostKeyUp(c.handle, keycode)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostScreencap posts a screencap.
-func (c *controller) PostScreencap() *Job {
+func (c *Controller) PostScreencap() *Job {
 	id := maa.MaaControllerPostScreencap(c.handle)
 	return NewJob(id, c.status, c.wait)
 }
 
 // status gets the status of a request identified by the given id.
-func (c *controller) status(id int64) Status {
+func (c *Controller) status(id int64) Status {
 	return Status(maa.MaaControllerStatus(c.handle, id))
 }
 
-func (c *controller) wait(id int64) Status {
+func (c *Controller) wait(id int64) Status {
 	return Status(maa.MaaControllerWait(c.handle, id))
 }
 
 // Connected checks if the controller is connected.
-func (c *controller) Connected() bool {
+func (c *Controller) Connected() bool {
 	return maa.MaaControllerConnected(c.handle)
 }
 
 // CacheImage gets the image buffer of the last screencap request.
-func (c *controller) CacheImage() image.Image {
+func (c *Controller) CacheImage() image.Image {
 	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 
@@ -589,7 +559,7 @@ func (c *controller) CacheImage() image.Image {
 }
 
 // GetUUID gets the UUID of the controller.
-func (c *controller) GetUUID() (string, bool) {
+func (c *Controller) GetUUID() (string, bool) {
 	uuid := buffer.NewStringBuffer()
 	defer uuid.Destroy()
 	got := maa.MaaControllerGetUuid(c.handle, uuid.Handle())
@@ -601,7 +571,7 @@ func (c *controller) GetUUID() (string, bool) {
 
 // AddSink adds a event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
-func (c *controller) AddSink(sink ControllerEventSink) int64 {
+func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 	id := registerEventCallback(sink)
 	sinkId := maa.MaaControllerAddSink(
 		c.handle,
@@ -612,11 +582,11 @@ func (c *controller) AddSink(sink ControllerEventSink) int64 {
 }
 
 // RemoveSink removes a event callback sink by sink ID.
-func (c *controller) RemoveSink(sinkId int64) {
+func (c *Controller) RemoveSink(sinkId int64) {
 	maa.MaaControllerRemoveSink(c.handle, sinkId)
 }
 
 // ClearSinks clears all event callback sinks.
-func (c *controller) ClearSinks() {
+func (c *Controller) ClearSinks() {
 	maa.MaaControllerClearSinks(c.handle)
 }

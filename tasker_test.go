@@ -13,7 +13,7 @@ func createTasker(t *testing.T) *Tasker {
 	return tasker
 }
 
-func taskerBind(t *testing.T, tasker *Tasker, ctrl Controller, res *Resource) {
+func taskerBind(t *testing.T, tasker *Tasker, ctrl *Controller, res *Resource) {
 	isResBound := tasker.BindResource(res)
 	require.True(t, isResBound)
 	isCtrlBound := tasker.BindController(ctrl)
@@ -146,7 +146,7 @@ func TestTasker_GetController(t *testing.T) {
 
 	ctrl2 := tasker.GetController()
 	require.NotNil(t, ctrl2)
-	require.Equal(t, ctrl1.Handle(), ctrl2.Handle())
+	require.Equal(t, ctrl1.handle, ctrl2.handle)
 }
 
 func TestTasker_ClearCache(t *testing.T) {
