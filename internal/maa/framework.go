@@ -287,21 +287,21 @@ type MaaCustomControllerCallbacks struct {
 }
 
 type (
-	ConnectCallback     func(transArg uintptr) bool
-	RequestUUIDCallback func(transArg uintptr, buffer uintptr) bool
+	ConnectCallback     func(transArg uintptr) uintptr
+	RequestUUIDCallback func(transArg uintptr, buffer uintptr) uintptr
 	GetFeatureCallback  func(transArg uintptr) MaaControllerFeature
-	StartAppCallback    func(intent *byte, transArg uintptr) bool
-	StopAppCallback     func(intent *byte, transArg uintptr) bool
-	ScreencapCallback   func(transArg uintptr, buffer uintptr) bool
-	ClickCallback       func(x, y int32, transArg uintptr) bool
-	SwipeCallback       func(x1, y1, x2, y2, duration int32, transArg uintptr) bool
-	TouchDownCallback   func(contact, x, y, pressure int32, transArg uintptr) bool
-	TouchMoveCallback   func(contact, x, y, pressure int32, transArg uintptr) bool
-	TouchUpCallback     func(contact int32, transArg uintptr) bool
-	ClickKeyCallback    func(keycode int32, transArg uintptr) bool
-	InputTextCallback   func(text *byte, transArg uintptr) bool
-	KeyDownCallback     func(keycode int32, transArg uintptr) bool
-	KeyUpCallback       func(keycode int32, transArg uintptr) bool
+	StartAppCallback    func(intent *byte, transArg uintptr) uintptr
+	StopAppCallback     func(intent *byte, transArg uintptr) uintptr
+	ScreencapCallback   func(transArg uintptr, buffer uintptr) uintptr
+	ClickCallback       func(x, y int32, transArg uintptr) uintptr
+	SwipeCallback       func(x1, y1, x2, y2, duration int32, transArg uintptr) uintptr
+	TouchDownCallback   func(contact, x, y, pressure int32, transArg uintptr) uintptr
+	TouchMoveCallback   func(contact, x, y, pressure int32, transArg uintptr) uintptr
+	TouchUpCallback     func(contact int32, transArg uintptr) uintptr
+	ClickKeyCallback    func(keycode int32, transArg uintptr) uintptr
+	InputTextCallback   func(text *byte, transArg uintptr) uintptr
+	KeyDownCallback     func(keycode int32, transArg uintptr) uintptr
+	KeyUpCallback       func(keycode int32, transArg uintptr) uintptr
 )
 
 func MaaCustomControllerCallbacksCreate(
