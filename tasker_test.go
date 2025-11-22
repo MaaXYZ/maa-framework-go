@@ -7,13 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createTasker(t *testing.T, notify Notification) *Tasker {
-	tasker := NewTasker(notify)
+func createTasker(t *testing.T) *Tasker {
+	tasker := NewTasker()
 	require.NotNil(t, tasker)
 	return tasker
 }
 
-func taskerBind(t *testing.T, tasker *Tasker, ctrl Controller, res *Resource) {
+func taskerBind(t *testing.T, tasker *Tasker, ctrl *Controller, res *Resource) {
 	isResBound := tasker.BindResource(res)
 	require.True(t, isResBound)
 	isCtrlBound := tasker.BindController(ctrl)
@@ -21,40 +21,40 @@ func taskerBind(t *testing.T, tasker *Tasker, ctrl Controller, res *Resource) {
 }
 
 func TestNewTasker(t *testing.T) {
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	tasker.Destroy()
 }
 
 func TestTasker_BindResource(t *testing.T) {
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	bound := tasker.BindResource(res)
 	require.True(t, bound)
 }
 
 func TestTasker_BindController(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	bound := tasker.BindController(ctrl)
 	require.True(t, bound)
 }
 
 func TestTasker_Initialized(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	connected := ctrl.PostConnect().Wait().Success()
 	require.True(t, connected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -63,15 +63,15 @@ func TestTasker_Initialized(t *testing.T) {
 }
 
 func TestTasker_PostPipeline(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -88,15 +88,15 @@ func TestTasker_PostPipeline(t *testing.T) {
 }
 
 func TestTasker_Running(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -105,15 +105,15 @@ func TestTasker_Running(t *testing.T) {
 }
 
 func TestTasker_PostStop(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -122,10 +122,10 @@ func TestTasker_PostStop(t *testing.T) {
 }
 
 func TestTasker_GetResource(t *testing.T) {
-	res1 := createResource(t, nil)
+	res1 := createResource(t)
 	defer res1.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	bound := tasker.BindResource(res1)
 	require.True(t, bound)
@@ -136,29 +136,29 @@ func TestTasker_GetResource(t *testing.T) {
 }
 
 func TestTasker_GetController(t *testing.T) {
-	ctrl1 := createDbgController(t, nil)
+	ctrl1 := createDbgController(t)
 	defer ctrl1.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	bound := tasker.BindController(ctrl1)
 	require.True(t, bound)
 
 	ctrl2 := tasker.GetController()
 	require.NotNil(t, ctrl2)
-	require.Equal(t, ctrl1.Handle(), ctrl2.Handle())
+	require.Equal(t, ctrl1.handle, ctrl2.handle)
 }
 
 func TestTasker_ClearCache(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -167,18 +167,18 @@ func TestTasker_ClearCache(t *testing.T) {
 }
 
 func TestTasker_GetLatestNode(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
 	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 	job := tasker.PostTask("Wilderness")

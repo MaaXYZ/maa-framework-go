@@ -9,19 +9,18 @@ import (
 
 func TestRunWithoutFile(t *testing.T) {
 	testingPath := "./data_set/PipelineSmoking/Screenshot"
-	resultPath := "./data_set/debug"
 
-	ctrl := maa.NewDbgController(testingPath, resultPath, maa.DbgControllerTypeCarouselImage, "{}", nil)
+	ctrl := maa.NewDbgController(testingPath)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := maa.NewResource(nil)
+	res := maa.NewResource()
 	require.NotNil(t, res)
 	defer res.Destroy()
 
-	tasker := maa.NewTasker(nil)
+	tasker := maa.NewTasker()
 	require.NotNil(t, tasker)
 	defer tasker.Destroy()
 	isResBound := tasker.BindResource(res)

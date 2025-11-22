@@ -15,13 +15,19 @@ var (
 	MaaVersion func() string
 )
 
-type MaaNotificationCallback func(message, detailsJson *byte, notifyTransArg uintptr) uintptr
+type MaaEventCallback func(handle uintptr, message, detailsJson *byte, transArg uintptr) uintptr
 
 type MaaTaskerOption int32
 
 var (
-	MaaTaskerCreate               func(notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
+	MaaTaskerCreate               func() uintptr
 	MaaTaskerDestroy              func(tasker uintptr)
+	MaaTaskerAddSink              func(tasker uintptr, sink MaaEventCallback, transArg uintptr) int64
+	MaaTaskerRemoveSink           func(tasker uintptr, sinkId int64)
+	MaaTaskerClearSinks           func(tasker uintptr)
+	MaaTaskerAddContextSink       func(tasker uintptr, sink MaaEventCallback, transArg uintptr) int64
+	MaaTaskerRemoveContextSink    func(tasker uintptr, sinkId int64)
+	MaaTaskerClearContextSinks    func(tasker uintptr)
 	MaaTaskerSetOption            func(tasker uintptr, key MaaTaskerOption, value unsafe.Pointer, valSize uint64) bool
 	MaaTaskerBindResource         func(tasker uintptr, res uintptr) bool
 	MaaTaskerBindController       func(tasker uintptr, ctrl uintptr) bool
@@ -36,7 +42,8 @@ var (
 	MaaTaskerGetController        func(tasker uintptr) uintptr
 	MaaTaskerClearCache           func(tasker uintptr) bool
 	MaaTaskerGetRecognitionDetail func(tasker uintptr, recoId int64, nodeName uintptr, algorithm uintptr, hit *bool, box uintptr, detailJson uintptr, raw uintptr, draws uintptr) bool
-	MaaTaskerGetNodeDetail        func(tasker uintptr, nodeId int64, nodeName uintptr, recoId *int64, completed *bool) bool
+	MaaTaskerGetActionDetail      func(tasker uintptr, actionId int64, nodeName uintptr, action uintptr, box uintptr, success *bool, detailJson uintptr) bool
+	MaaTaskerGetNodeDetail        func(tasker uintptr, nodeId int64, nodeName uintptr, recoId *int64, actionId *int64, completed *bool) bool
 	MaaTaskerGetTaskDetail        func(tasker uintptr, taskId int64, entry uintptr, nodeIdList uintptr, nodeIdListSize *uint64, status *int32) bool
 	MaaTaskerGetLatestNode        func(tasker uintptr, taskName string, latestId *int64) bool
 )
@@ -102,8 +109,11 @@ const (
 )
 
 var (
-	MaaResourceCreate                      func(notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
+	MaaResourceCreate                      func() uintptr
 	MaaResourceDestroy                     func(res uintptr)
+	MaaResourceAddSink                     func(res uintptr, sink MaaEventCallback, transArg uintptr) int64
+	MaaResourceRemoveSink                  func(res uintptr, sinkId int64)
+	MaaResourceClearSinks                  func(res uintptr)
 	MaaResourceRegisterCustomRecognition   func(res uintptr, name string, recognition MaaCustomRecognitionCallback, transArg uintptr) bool
 	MaaResourceUnregisterCustomRecognition func(res uintptr, name string) bool
 	MaaResourceClearCustomRecognition      func(res uintptr) bool
@@ -113,6 +123,7 @@ var (
 	MaaResourcePostBundle                  func(res uintptr, path string) int64
 	MaaResourceOverridePipeline            func(res uintptr, pipelineOverride string) bool
 	MaaResourceOverrideNext                func(res uintptr, nodeName string, nextList uintptr) bool
+	MaaResourceOverrideImage               func(res uintptr, imageName string, image uintptr) bool
 	MaaResourceGetNodeData                 func(res uintptr, nodeName string, buffer uintptr) bool
 	MaaResourceClear                       func(res uintptr) bool
 	MaaResourceStatus                      func(res uintptr, id int64) int32
@@ -179,9 +190,12 @@ const (
 type MaaWin32InputMethod uint64
 
 const (
-	MaaWin32InputMethod_None        MaaWin32ScreencapMethod = 0
-	MaaWin32InputMethod_Seize       MaaWin32ScreencapMethod = 1
-	MaaWin32InputMethod_SendMessage MaaWin32ScreencapMethod = 1 << 1
+	MaaWin32InputMethod_None              MaaWin32ScreencapMethod = 0
+	MaaWin32InputMethod_Seize             MaaWin32ScreencapMethod = 1
+	MaaWin32InputMethod_SendMessage       MaaWin32ScreencapMethod = 1 << 1
+	MaaWin32InputMethod_PostMessage       MaaWin32ScreencapMethod = 1 << 2
+	MaaWin32InputMethod_LegacyEvent       MaaWin32ScreencapMethod = 1 << 3
+	MaaWin32InputMethod_PostThreadMessage MaaWin32ScreencapMethod = 1 << 4
 )
 
 // DbgControllerType
@@ -193,6 +207,14 @@ const (
 	MaaDbgControllerType_None            MaaDbgControllerType = 0
 	MaaDbgControllerType_CarouselImage   MaaDbgControllerType = 1
 	MaaDbgControllerType_ReplayRecording MaaDbgControllerType = 1 << 1
+)
+
+type MaaControllerFeature uint64
+
+const (
+	MaaControllerFeature_None                               MaaControllerFeature = 0
+	MaaControllerFeature_UseMouseDownAndUpInsteadOfClick    MaaControllerFeature = 1
+	MaaControllerFeature_UseKeyboardDownAndUpInsteadOfClick MaaControllerFeature = 1 << 1
 )
 
 type MaaCtrlOption int32
@@ -214,11 +236,13 @@ const (
 )
 
 var (
-	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods MaaAdbScreencapMethod, inputMethods MaaAdbInputMethod, config, agentPath string, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
-	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods MaaWin32ScreencapMethod, inputMethods MaaWin32InputMethod, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
-	MaaCustomControllerCreate   func(controller uintptr, controllerArg uintptr, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
-	MaaDbgControllerCreate      func(readPath, writePath string, dbgCtrlType MaaDbgControllerType, config string, notify MaaNotificationCallback, notifyTransArg uintptr) uintptr
+	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods MaaAdbScreencapMethod, inputMethods MaaAdbInputMethod, config, agentPath string) uintptr
+	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods MaaWin32ScreencapMethod, mouseMethod, keyboardMethod MaaWin32InputMethod) uintptr
+	MaaCustomControllerCreate   func(controller uintptr, controllerArg uintptr) uintptr
 	MaaControllerDestroy        func(ctrl uintptr)
+	MaaControllerAddSink        func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64
+	MaaControllerRemoveSink     func(ctrl uintptr, sinkId int64)
+	MaaControllerClearSinks     func(ctrl uintptr)
 	MaaControllerSetOption      func(ctrl uintptr, key MaaCtrlOption, value unsafe.Pointer, valSize uint64) bool
 	MaaControllerPostConnection func(ctrl uintptr) int64
 	MaaControllerPostClick      func(ctrl uintptr, x, y int32) int64
@@ -244,81 +268,13 @@ var (
 	MaaControllerGetUuid       func(ctrl uintptr, buffer uintptr) bool
 )
 
-type MaaCustomControllerCallbacks struct {
-	Connect     uintptr
-	RequestUUID uintptr
-	StartApp    uintptr
-	StopApp     uintptr
-	Screencap   uintptr
-	Click       uintptr
-	Swipe       uintptr
-	TouchDown   uintptr
-	TouchMove   uintptr
-	TouchUp     uintptr
-	ClickKey    uintptr
-	InputText   uintptr
-	KeyDown     uintptr
-	KeyUp       uintptr
-}
-
-type (
-	ConnectCallback     func(transArg uintptr) bool
-	RequestUUIDCallback func(transArg uintptr, buffer uintptr) bool
-	StartAppCallback    func(intent string, transArg uintptr) bool
-	StopAppCallback     func(intent string, transArg uintptr) bool
-	ScreencapCallback   func(transArg uintptr, buffer uintptr) bool
-	ClickCallback       func(x, y int32, transArg uintptr) bool
-	SwipeCallback       func(x1, y1, x2, y2, duration int32, transArg uintptr) bool
-	TouchDownCallback   func(contact, x, y, pressure int32, transArg uintptr) bool
-	TouchMoveCallback   func(contact, x, y, pressure int32, transArg uintptr) bool
-	TouchUpCallback     func(contact int32, transArg uintptr) bool
-	ClickKeyCallback    func(keycode int32, transArg uintptr) bool
-	InputTextCallback   func(text string, transArg uintptr) bool
-	KeyDownCallback     func(keycode int32, transArg uintptr) bool
-	KeyUpCallback       func(keycode int32, transArg uintptr) bool
-)
-
-func MaaCustomControllerCallbacksCreate(
-	connect ConnectCallback,
-	requestUUID RequestUUIDCallback,
-	startApp StartAppCallback,
-	stopApp StopAppCallback,
-	screencap ScreencapCallback,
-	click ClickCallback,
-	swipe SwipeCallback,
-	touchDown TouchDownCallback,
-	touchMove TouchMoveCallback,
-	touchUp TouchUpCallback,
-	clickKey ClickKeyCallback,
-	inputText InputTextCallback,
-	keyDown KeyDownCallback,
-	keyUp KeyUpCallback,
-) uintptr {
-	callbacks := &MaaCustomControllerCallbacks{
-		Connect:     purego.NewCallback(connect),
-		RequestUUID: purego.NewCallback(requestUUID),
-		StartApp:    purego.NewCallback(startApp),
-		StopApp:     purego.NewCallback(stopApp),
-		Screencap:   purego.NewCallback(screencap),
-		Click:       purego.NewCallback(click),
-		Swipe:       purego.NewCallback(swipe),
-		TouchDown:   purego.NewCallback(touchDown),
-		TouchMove:   purego.NewCallback(touchMove),
-		TouchUp:     purego.NewCallback(touchUp),
-		ClickKey:    purego.NewCallback(clickKey),
-		InputText:   purego.NewCallback(inputText),
-		KeyDown:     purego.NewCallback(keyDown),
-		KeyUp:       purego.NewCallback(keyUp),
-	}
-	return uintptr(unsafe.Pointer(callbacks))
-}
-
 var (
 	MaaContextRunTask          func(context uintptr, entry, pipelineOverride string) int64
 	MaaContextRunRecognition   func(context uintptr, entry, pipelineOverride string, image uintptr) int64
 	MaaContextRunAction        func(context uintptr, entry, pipelineOverride string, box uintptr, recoDetail string) int64
 	MaaContextOverridePipeline func(context uintptr, pipelineOverride string) bool
 	MaaContextOverrideNext     func(context uintptr, nodeName string, nextList uintptr) bool
+	MaaContextOverrideImage    func(context uintptr, imageName string, image uintptr) bool
 	MaaContextGetNodeData      func(context uintptr, nodeName string, buffer uintptr) bool
 	MaaContextGetTaskId        func(context uintptr) int64
 	MaaContextGetTasker        func(context uintptr) uintptr
@@ -400,7 +356,10 @@ const (
 	MaaGlobalOption_DebugMode MaaGlobalOption = 6
 )
 
-var MaaSetGlobalOption func(key MaaGlobalOption, value unsafe.Pointer, valSize uint64) bool
+var (
+	MaaGlobalSetOption  func(key MaaGlobalOption, value unsafe.Pointer, valSize uint64) bool
+	MaaGlobalLoadPlugin func(path string) bool
+)
 
 func initFramework(libDir string) error {
 	libName := getMaaFrameworkLibrary()
@@ -436,6 +395,12 @@ func registerFramework() {
 	// Tasker
 	purego.RegisterLibFunc(&MaaTaskerCreate, maaFramework, "MaaTaskerCreate")
 	purego.RegisterLibFunc(&MaaTaskerDestroy, maaFramework, "MaaTaskerDestroy")
+	purego.RegisterLibFunc(&MaaTaskerAddSink, maaFramework, "MaaTaskerAddSink")
+	purego.RegisterLibFunc(&MaaTaskerRemoveSink, maaFramework, "MaaTaskerRemoveSink")
+	purego.RegisterLibFunc(&MaaTaskerClearSinks, maaFramework, "MaaTaskerClearSinks")
+	purego.RegisterLibFunc(&MaaTaskerAddContextSink, maaFramework, "MaaTaskerAddContextSink")
+	purego.RegisterLibFunc(&MaaTaskerRemoveContextSink, maaFramework, "MaaTaskerRemoveContextSink")
+	purego.RegisterLibFunc(&MaaTaskerClearContextSinks, maaFramework, "MaaTaskerClearContextSinks")
 	purego.RegisterLibFunc(&MaaTaskerSetOption, maaFramework, "MaaTaskerSetOption")
 	purego.RegisterLibFunc(&MaaTaskerBindResource, maaFramework, "MaaTaskerBindResource")
 	purego.RegisterLibFunc(&MaaTaskerBindController, maaFramework, "MaaTaskerBindController")
@@ -450,12 +415,16 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaTaskerGetController, maaFramework, "MaaTaskerGetController")
 	purego.RegisterLibFunc(&MaaTaskerClearCache, maaFramework, "MaaTaskerClearCache")
 	purego.RegisterLibFunc(&MaaTaskerGetRecognitionDetail, maaFramework, "MaaTaskerGetRecognitionDetail")
+	purego.RegisterLibFunc(&MaaTaskerGetActionDetail, maaFramework, "MaaTaskerGetActionDetail")
 	purego.RegisterLibFunc(&MaaTaskerGetNodeDetail, maaFramework, "MaaTaskerGetNodeDetail")
 	purego.RegisterLibFunc(&MaaTaskerGetTaskDetail, maaFramework, "MaaTaskerGetTaskDetail")
 	purego.RegisterLibFunc(&MaaTaskerGetLatestNode, maaFramework, "MaaTaskerGetLatestNode")
 	// Resource
 	purego.RegisterLibFunc(&MaaResourceCreate, maaFramework, "MaaResourceCreate")
 	purego.RegisterLibFunc(&MaaResourceDestroy, maaFramework, "MaaResourceDestroy")
+	purego.RegisterLibFunc(&MaaResourceAddSink, maaFramework, "MaaResourceAddSink")
+	purego.RegisterLibFunc(&MaaResourceRemoveSink, maaFramework, "MaaResourceRemoveSink")
+	purego.RegisterLibFunc(&MaaResourceClearSinks, maaFramework, "MaaResourceClearSinks")
 	purego.RegisterLibFunc(&MaaResourceRegisterCustomRecognition, maaFramework, "MaaResourceRegisterCustomRecognition")
 	purego.RegisterLibFunc(&MaaResourceUnregisterCustomRecognition, maaFramework, "MaaResourceUnregisterCustomRecognition")
 	purego.RegisterLibFunc(&MaaResourceClearCustomRecognition, maaFramework, "MaaResourceClearCustomRecognition")
@@ -465,6 +434,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaResourcePostBundle, maaFramework, "MaaResourcePostBundle")
 	purego.RegisterLibFunc(&MaaResourceOverridePipeline, maaFramework, "MaaResourceOverridePipeline")
 	purego.RegisterLibFunc(&MaaResourceOverrideNext, maaFramework, "MaaResourceOverrideNext")
+	purego.RegisterLibFunc(&MaaResourceOverrideImage, maaFramework, "MaaResourceOverrideImage")
 	purego.RegisterLibFunc(&MaaResourceGetNodeData, maaFramework, "MaaResourceGetNodeData")
 	purego.RegisterLibFunc(&MaaResourceClear, maaFramework, "MaaResourceClear")
 	purego.RegisterLibFunc(&MaaResourceStatus, maaFramework, "MaaResourceStatus")
@@ -477,8 +447,10 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaAdbControllerCreate, maaFramework, "MaaAdbControllerCreate")
 	purego.RegisterLibFunc(&MaaWin32ControllerCreate, maaFramework, "MaaWin32ControllerCreate")
 	purego.RegisterLibFunc(&MaaCustomControllerCreate, maaFramework, "MaaCustomControllerCreate")
-	purego.RegisterLibFunc(&MaaDbgControllerCreate, maaFramework, "MaaDbgControllerCreate")
 	purego.RegisterLibFunc(&MaaControllerDestroy, maaFramework, "MaaControllerDestroy")
+	purego.RegisterLibFunc(&MaaControllerAddSink, maaFramework, "MaaControllerAddSink")
+	purego.RegisterLibFunc(&MaaControllerRemoveSink, maaFramework, "MaaControllerRemoveSink")
+	purego.RegisterLibFunc(&MaaControllerClearSinks, maaFramework, "MaaControllerClearSinks")
 	purego.RegisterLibFunc(&MaaControllerSetOption, maaFramework, "MaaControllerSetOption")
 	purego.RegisterLibFunc(&MaaControllerPostConnection, maaFramework, "MaaControllerPostConnection")
 	purego.RegisterLibFunc(&MaaControllerPostClick, maaFramework, "MaaControllerPostClick")
@@ -504,6 +476,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaContextRunAction, maaFramework, "MaaContextRunAction")
 	purego.RegisterLibFunc(&MaaContextOverridePipeline, maaFramework, "MaaContextOverridePipeline")
 	purego.RegisterLibFunc(&MaaContextOverrideNext, maaFramework, "MaaContextOverrideNext")
+	purego.RegisterLibFunc(&MaaContextOverrideImage, maaFramework, "MaaContextOverrideImage")
 	purego.RegisterLibFunc(&MaaContextGetNodeData, maaFramework, "MaaContextGetNodeData")
 	purego.RegisterLibFunc(&MaaContextGetTaskId, maaFramework, "MaaContextGetTaskId")
 	purego.RegisterLibFunc(&MaaContextGetTasker, maaFramework, "MaaContextGetTasker")
@@ -550,8 +523,9 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaRectGetW, maaFramework, "MaaRectGetW")
 	purego.RegisterLibFunc(&MaaRectGetH, maaFramework, "MaaRectGetH")
 	purego.RegisterLibFunc(&MaaRectSet, maaFramework, "MaaRectSet")
-	// Option
-	purego.RegisterLibFunc(&MaaSetGlobalOption, maaFramework, "MaaSetGlobalOption")
+	// Global
+	purego.RegisterLibFunc(&MaaGlobalSetOption, maaFramework, "MaaGlobalSetOption")
+	purego.RegisterLibFunc(&MaaGlobalLoadPlugin, maaFramework, "MaaGlobalLoadPlugin")
 }
 
 func unregisterFramework() error {

@@ -10,8 +10,13 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/store"
 )
 
+type taskerStoreValue struct {
+	sinkIDToEventCallbackID        map[int64]uint64
+	contextSinkIDToEventCallbackID map[int64]uint64
+}
+
 var (
-	taskerStore      = store.New[uint64]()
+	taskerStore      = store.New[taskerStoreValue]()
 	taskerStoreMutex sync.RWMutex
 )
 
@@ -19,21 +24,18 @@ type Tasker struct {
 	handle uintptr
 }
 
-// NewTasker creates an new tasker.
-func NewTasker(notify Notification) *Tasker {
-	id := registerNotificationCallback(notify)
-	handle := maa.MaaTaskerCreate(
-		_MaaNotificationCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		uintptr(id),
-	)
+// NewTasker creates a new tasker.
+func NewTasker() *Tasker {
+	handle := maa.MaaTaskerCreate()
 	if handle == 0 {
 		return nil
 	}
 
 	taskerStoreMutex.Lock()
-	taskerStore.Set(handle, id)
+	taskerStore.Set(handle, taskerStoreValue{
+		sinkIDToEventCallbackID:        make(map[int64]uint64),
+		contextSinkIDToEventCallbackID: make(map[int64]uint64),
+	})
 	taskerStoreMutex.Unlock()
 
 	return &Tasker{handle: handle}
@@ -42,8 +44,13 @@ func NewTasker(notify Notification) *Tasker {
 // Destroy free the tasker.
 func (t *Tasker) Destroy() {
 	taskerStoreMutex.Lock()
-	id := taskerStore.Get(t.handle)
-	unregisterNotificationCallback(id)
+	value := taskerStore.Get(t.handle)
+	for _, id := range value.sinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
+	for _, id := range value.contextSinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
 	taskerStore.Del(t.handle)
 	taskerStoreMutex.Unlock()
 
@@ -56,8 +63,8 @@ func (t *Tasker) BindResource(res *Resource) bool {
 }
 
 // BindController binds the tasker to an initialized controller.
-func (t *Tasker) BindController(ctrl Controller) bool {
-	return maa.MaaTaskerBindController(t.handle, ctrl.Handle())
+func (t *Tasker) BindController(ctrl *Controller) bool {
+	return maa.MaaTaskerBindController(t.handle, ctrl.handle)
 }
 
 // Initialized checks if the tasker is initialized.
@@ -125,9 +132,9 @@ func (t *Tasker) GetResource() *Resource {
 }
 
 // GetController returns the controller handle of the tasker.
-func (t *Tasker) GetController() Controller {
+func (t *Tasker) GetController() *Controller {
 	handle := maa.MaaTaskerGetController(t.handle)
-	return &controller{handle: handle}
+	return &Controller{handle: handle}
 }
 
 // ClearCache clears runtime cache.
@@ -191,10 +198,54 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 	}
 }
 
+type ActionDetail struct {
+	ID         int64
+	Name       string
+	Action     string
+	Box        Rect
+	Success    bool
+	DetailJson string
+}
+
+func (t *Tasker) getActionDetail(actionId int64) *ActionDetail {
+	name := buffer.NewStringBuffer()
+	defer name.Destroy()
+	action := buffer.NewStringBuffer()
+	defer action.Destroy()
+	box := buffer.NewRectBuffer()
+	defer box.Destroy()
+	var success bool
+	detailJson := buffer.NewStringBuffer()
+	defer detailJson.Destroy()
+	got := maa.MaaTaskerGetActionDetail(
+		t.handle,
+		actionId,
+		name.Handle(),
+		action.Handle(),
+		box.Handle(),
+		&success,
+		detailJson.Handle(),
+	)
+
+	if !got {
+		return nil
+	}
+
+	return &ActionDetail{
+		ID:         actionId,
+		Name:       name.Get(),
+		Action:     action.Get(),
+		Box:        box.Get(),
+		Success:    success,
+		DetailJson: detailJson.Get(),
+	}
+}
+
 type NodeDetail struct {
 	ID           int64
 	Name         string
 	Recognition  *RecognitionDetail
+	Action       *ActionDetail
 	RunCompleted bool
 }
 
@@ -202,13 +253,14 @@ type NodeDetail struct {
 func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
-	var recId int64
+	var recId, actionId int64
 	var runCompleted bool
 	got := maa.MaaTaskerGetNodeDetail(
 		t.handle,
 		nodeId,
-		uintptr(name.Handle()),
+		name.Handle(),
 		&recId,
+		&actionId,
 		&runCompleted,
 	)
 	if !got {
@@ -220,10 +272,16 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 		return nil
 	}
 
+	actionDetail := t.getActionDetail(actionId)
+	if actionDetail == nil {
+		return nil
+	}
+
 	return &NodeDetail{
 		ID:           nodeId,
 		Name:         name.Get(),
 		Recognition:  recognitionDetail,
+		Action:       actionDetail,
 		RunCompleted: runCompleted,
 	}
 }
@@ -298,4 +356,93 @@ func (t *Tasker) GetLatestNode(taskName string) *NodeDetail {
 		return nil
 	}
 	return t.getNodeDetail(nodeId)
+}
+
+// AddSink adds a event callback sink and returns the sink ID.
+// The sink ID can be used to remove the sink later.
+func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
+	id := registerEventCallback(sink)
+	sinkId := maa.MaaTaskerAddSink(
+		t.handle,
+		_MaaEventCallbackAgent,
+		uintptr(id),
+	)
+
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	value.sinkIDToEventCallbackID[sinkId] = id
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
+	return sinkId
+}
+
+// RemoveSink removes a event callback sink by sink ID.
+func (t *Tasker) RemoveSink(sinkId int64) {
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	unregisterEventCallback(value.sinkIDToEventCallbackID[sinkId])
+	delete(value.sinkIDToEventCallbackID, sinkId)
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
+	maa.MaaTaskerRemoveSink(t.handle, sinkId)
+}
+
+// ClearSinks clears all event callback sinks.
+func (t *Tasker) ClearSinks() {
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	for _, id := range value.sinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
+	value.sinkIDToEventCallbackID = make(map[int64]uint64)
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
+	maa.MaaTaskerClearSinks(t.handle)
+}
+
+// AddContextSink adds a context event callback sink and returns the sink ID.
+func (t *Tasker) AddContextSink(sink TaskerEventSink) int64 {
+	id := registerEventCallback(sink)
+	sinkId := maa.MaaTaskerAddContextSink(
+		t.handle,
+		_MaaEventCallbackAgent,
+		uintptr(id),
+	)
+
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	value.contextSinkIDToEventCallbackID[sinkId] = id
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
+	return sinkId
+}
+
+// RemoveContextSink removes a context event callback sink by sink ID.
+func (t *Tasker) RemoveContextSink(sinkId int64) {
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	unregisterEventCallback(value.contextSinkIDToEventCallbackID[sinkId])
+	delete(value.contextSinkIDToEventCallbackID, sinkId)
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
+	maa.MaaTaskerRemoveContextSink(t.handle, sinkId)
+}
+
+// ClearContextSinks clears all context event callback sinks.
+func (t *Tasker) ClearContextSinks() {
+	taskerStoreMutex.Lock()
+	value := taskerStore.Get(t.handle)
+	for _, id := range value.contextSinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
+	value.contextSinkIDToEventCallbackID = make(map[int64]uint64)
+	taskerStore.Set(t.handle, value)
+	taskerStoreMutex.Unlock()
+
+	maa.MaaTaskerClearContextSinks(t.handle)
 }

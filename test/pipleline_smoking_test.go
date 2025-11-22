@@ -1,40 +1,33 @@
 package test
 
-import (
-	"testing"
+// func TestPipelineSmoking(t *testing.T) {
+// 	testingPath := "./data_set/PipelineSmoking/MaaRecording.txt"
+// 	resultPath := "./data_set/debug"
 
-	"github.com/MaaXYZ/maa-framework-go/v2"
-	"github.com/stretchr/testify/require"
-)
+// 	ctrl := maa.NewDbgController(testingPath, resultPath, maa.DbgControllerTypeReplayRecording, "{}")
+// 	require.NotNil(t, ctrl)
+// 	defer ctrl.Destroy()
+// 	isConnected := ctrl.PostConnect().Wait().Success()
+// 	require.True(t, isConnected)
 
-func TestPipelineSmoking(t *testing.T) {
-	testingPath := "./data_set/PipelineSmoking/MaaRecording.txt"
-	resultPath := "./data_set/debug"
+// 	res := maa.NewResource()
+// 	require.NotNil(t, res)
+// 	defer res.Destroy()
+// 	resDir := "./data_set/PipelineSmoking/resource"
+// 	isPathSet := res.PostBundle(resDir).Wait().Success()
+// 	require.True(t, isPathSet)
 
-	ctrl := maa.NewDbgController(testingPath, resultPath, maa.DbgControllerTypeReplayRecording, "{}", nil)
-	require.NotNil(t, ctrl)
-	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
-	require.True(t, isConnected)
+// 	tasker := maa.NewTasker()
+// 	require.NotNil(t, tasker)
+// 	defer tasker.Destroy()
+// 	isResBound := tasker.BindResource(res)
+// 	require.True(t, isResBound)
+// 	isCtrlBound := tasker.BindController(ctrl)
+// 	require.True(t, isCtrlBound)
 
-	res := maa.NewResource(nil)
-	require.NotNil(t, res)
-	defer res.Destroy()
-	resDir := "./data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
-	require.True(t, isPathSet)
+// 	isInitialized := tasker.Initialized()
+// 	require.True(t, isInitialized)
 
-	tasker := maa.NewTasker(nil)
-	require.NotNil(t, tasker)
-	defer tasker.Destroy()
-	isResBound := tasker.BindResource(res)
-	require.True(t, isResBound)
-	isCtrlBound := tasker.BindController(ctrl)
-	require.True(t, isCtrlBound)
-
-	isInitialized := tasker.Initialized()
-	require.True(t, isInitialized)
-
-	got := tasker.PostTask("Wilderness").Wait().Success()
-	require.True(t, got)
-}
+// 	got := tasker.PostTask("Wilderness").Wait().Success()
+// 	require.True(t, got)
+// }

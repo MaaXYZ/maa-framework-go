@@ -11,15 +11,18 @@ import (
 var maaAgentClient uintptr
 
 var (
-	MaaAgentClientCreateV2     func(identifier uintptr) uintptr
-	MaaAgentClientDestroy      func(client uintptr)
-	MaaAgentClientIdentifier   func(client uintptr, identifier uintptr) bool
-	MaaAgentClientBindResource func(client uintptr, res uintptr) bool
-	MaaAgentClientConnect      func(client uintptr) bool
-	MaaAgentClientDisconnect   func(client uintptr) bool
-	MaaAgentClientConnected    func(client uintptr) bool
-	MaaAgentClientAlive        func(client uintptr) bool
-	MaaAgentClientSetTimeout   func(client uintptr, milliseconds int64) bool
+	MaaAgentClientCreateV2               func(identifier uintptr) uintptr
+	MaaAgentClientDestroy                func(client uintptr)
+	MaaAgentClientIdentifier             func(client uintptr, identifier uintptr) bool
+	MaaAgentClientBindResource           func(client uintptr, res uintptr) bool
+	MaaAgentClientRegisterResourceSink   func(client uintptr, res uintptr) bool
+	MaaAgentClientRegisterControllerSink func(client uintptr, ctrl uintptr) bool
+	MaaAgentClientRegisterTaskerSink     func(client uintptr, tasker uintptr) bool
+	MaaAgentClientConnect                func(client uintptr) bool
+	MaaAgentClientDisconnect             func(client uintptr) bool
+	MaaAgentClientConnected              func(client uintptr) bool
+	MaaAgentClientAlive                  func(client uintptr) bool
+	MaaAgentClientSetTimeout             func(client uintptr, milliseconds int64) bool
 )
 
 func initAgentClient(libDir string) error {
@@ -56,6 +59,9 @@ func registerAgentClient() {
 	purego.RegisterLibFunc(&MaaAgentClientDestroy, maaAgentClient, "MaaAgentClientDestroy")
 	purego.RegisterLibFunc(&MaaAgentClientIdentifier, maaAgentClient, "MaaAgentClientIdentifier")
 	purego.RegisterLibFunc(&MaaAgentClientBindResource, maaAgentClient, "MaaAgentClientBindResource")
+	purego.RegisterLibFunc(&MaaAgentClientRegisterResourceSink, maaAgentClient, "MaaAgentClientRegisterResourceSink")
+	purego.RegisterLibFunc(&MaaAgentClientRegisterControllerSink, maaAgentClient, "MaaAgentClientRegisterControllerSink")
+	purego.RegisterLibFunc(&MaaAgentClientRegisterTaskerSink, maaAgentClient, "MaaAgentClientRegisterTaskerSink")
 	purego.RegisterLibFunc(&MaaAgentClientConnect, maaAgentClient, "MaaAgentClientConnect")
 	purego.RegisterLibFunc(&MaaAgentClientDisconnect, maaAgentClient, "MaaAgentClientDisconnect")
 	purego.RegisterLibFunc(&MaaAgentClientConnected, maaAgentClient, "MaaAgentClientConnected")

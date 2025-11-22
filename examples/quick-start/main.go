@@ -10,7 +10,7 @@ import (
 func main() {
 	maa.Init()
 	maa.ConfigInitOption("./", "{}")
-	tasker := maa.NewTasker(nil)
+	tasker := maa.NewTasker()
 	defer tasker.Destroy()
 
 	device := maa.FindAdbDevices()[0]
@@ -21,13 +21,12 @@ func main() {
 		device.InputMethod,
 		device.Config,
 		"path/to/MaaAgentBinary",
-		nil,
 	)
 	defer ctrl.Destroy()
 	ctrl.PostConnect().Wait()
 	tasker.BindController(ctrl)
 
-	res := maa.NewResource(nil)
+	res := maa.NewResource()
 	defer res.Destroy()
 	res.PostBundle("./resource").Wait()
 	tasker.BindResource(res)

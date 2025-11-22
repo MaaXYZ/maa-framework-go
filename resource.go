@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"image"
 	"sync"
 	"unsafe"
 
@@ -10,7 +11,7 @@ import (
 )
 
 type resourceStoreValue struct {
-	NotificationCallbackID      uint64
+	sinkIDToEventCallbackID     map[int64]uint64
 	CustomRecognizersCallbackID map[string]uint64
 	CustomActionsCallbackID     map[string]uint64
 }
@@ -25,21 +26,15 @@ type Resource struct {
 }
 
 // NewResource creates a new resource.
-func NewResource(notify Notification) *Resource {
-	id := registerNotificationCallback(notify)
-	handle := maa.MaaResourceCreate(
-		_MaaNotificationCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		uintptr(id),
-	)
+func NewResource() *Resource {
+	handle := maa.MaaResourceCreate()
 	if handle == 0 {
 		return nil
 	}
 
 	resourceStoreMutex.Lock()
 	resourceStore.Set(handle, resourceStoreValue{
-		NotificationCallbackID:      id,
+		sinkIDToEventCallbackID:     make(map[int64]uint64),
 		CustomRecognizersCallbackID: make(map[string]uint64),
 		CustomActionsCallbackID:     make(map[string]uint64),
 	})
@@ -54,7 +49,15 @@ func NewResource(notify Notification) *Resource {
 func (r *Resource) Destroy() {
 	resourceStoreMutex.Lock()
 	value := resourceStore.Get(r.handle)
-	unregisterNotificationCallback(value.NotificationCallbackID)
+	for _, id := range value.sinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
+	for _, id := range value.CustomRecognizersCallbackID {
+		unregisterCustomRecognition(id)
+	}
+	for _, id := range value.CustomActionsCallbackID {
+		unregisterCustomAction(id)
+	}
 	resourceStore.Del(r.handle)
 	resourceStoreMutex.Unlock()
 
@@ -264,6 +267,13 @@ func (r *Resource) OverrideNext(name string, nextList []string) bool {
 	return maa.MaaContextOverrideNext(r.handle, name, list.Handle())
 }
 
+func (r *Resource) OverriderImage(imageName string, image image.Image) bool {
+	img := buffer.NewImageBuffer()
+	defer img.Destroy()
+	img.Set(image)
+	return maa.MaaResourceOverrideImage(r.handle, imageName, img.Handle())
+}
+
 // GetNodeJSON gets the node JSON by name.
 func (r *Resource) GetNodeJSON(name string) (string, bool) {
 	buf := buffer.NewStringBuffer()
@@ -315,4 +325,49 @@ func (r *Resource) GetNodeList() ([]string, bool) {
 	taskListArr := taskList.GetAll()
 
 	return taskListArr, true
+}
+
+// AddSink adds a event callback sink and returns the sink ID.
+// The sink ID can be used to remove the sink later.
+func (r *Resource) AddSink(sink ResourceEventSink) int64 {
+	id := registerEventCallback(sink)
+	sinkId := maa.MaaResourceAddSink(
+		r.handle,
+		_MaaEventCallbackAgent,
+		uintptr(id),
+	)
+
+	resourceStoreMutex.Lock()
+	value := resourceStore.Get(r.handle)
+	value.sinkIDToEventCallbackID[sinkId] = id
+	resourceStore.Set(r.handle, value)
+	resourceStoreMutex.Unlock()
+
+	return sinkId
+}
+
+// RemoveSink removes a event callback sink by sink ID.
+func (r *Resource) RemoveSink(sinkId int64) {
+	resourceStoreMutex.Lock()
+	value := resourceStore.Get(r.handle)
+	unregisterEventCallback(value.sinkIDToEventCallbackID[sinkId])
+	delete(value.sinkIDToEventCallbackID, sinkId)
+	resourceStore.Set(r.handle, value)
+	resourceStoreMutex.Unlock()
+
+	maa.MaaResourceRemoveSink(r.handle, sinkId)
+}
+
+// ClearSinks clears all event callback sinks.
+func (r *Resource) ClearSinks() {
+	resourceStoreMutex.Lock()
+	value := resourceStore.Get(r.handle)
+	for _, id := range value.sinkIDToEventCallbackID {
+		unregisterEventCallback(id)
+	}
+	value.sinkIDToEventCallbackID = make(map[int64]uint64)
+	resourceStore.Set(r.handle, value)
+	resourceStoreMutex.Unlock()
+
+	maa.MaaResourceClearSinks(r.handle)
 }

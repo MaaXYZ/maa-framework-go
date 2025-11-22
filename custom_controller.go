@@ -1,12 +1,12 @@
 package maa
 
 import (
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/ebitengine/purego"
 	"image"
 	"sync"
 	"sync/atomic"
-
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
 )
 
 var (
@@ -40,6 +40,7 @@ func unregisterCustomControllerCallbacks(id uint64) {
 type CustomController interface {
 	Connect() bool
 	RequestUUID() (string, bool)
+	GetFeature() ControllerFeature
 	StartApp(intent string) bool
 	StopApp(intent string) bool
 	Screencap() (image.Image, bool)
@@ -52,40 +53,65 @@ type CustomController interface {
 	InputText(text string) bool
 	KeyDown(keycode int32) bool
 	KeyUp(keycode int32) bool
-
-	Handle() uintptr
 }
 
-type CustomControllerHandler struct {
-	handle uintptr
+type MaaCustomControllerCallbacks struct {
+	Connect     uintptr
+	RequestUUID uintptr
+	GetFeature  uintptr
+	StartApp    uintptr
+	StopApp     uintptr
+	Screencap   uintptr
+	Click       uintptr
+	Swipe       uintptr
+	TouchDown   uintptr
+	TouchMove   uintptr
+	TouchUp     uintptr
+	ClickKey    uintptr
+	InputText   uintptr
+	KeyDown     uintptr
+	KeyUp       uintptr
 }
 
-func NewCustomControllerHandler() CustomControllerHandler {
-	return CustomControllerHandler{
-		handle: maa.MaaCustomControllerCallbacksCreate(
-			_ConnectAgent,
-			_RequestUUIDAgent,
-			_StartAppAgent,
-			_StopAppAgent,
-			_ScreencapAgent,
-			_ClickAgent,
-			_SwipeAgent,
-			_TouchDownAgent,
-			_TouchMoveAgent,
-			_TouchUpAgent,
-			_ClickKey,
-			_InputText,
-			_KeyDown,
-			_KeyUp,
-		),
-	}
+type (
+	ConnectCallback     func(transArg uintptr) uintptr
+	RequestUUIDCallback func(transArg uintptr, buffer uintptr) uintptr
+	GetFeatureCallback  func(transArg uintptr) ControllerFeature
+	StartAppCallback    func(intent *byte, transArg uintptr) uintptr
+	StopAppCallback     func(intent *byte, transArg uintptr) uintptr
+	ScreencapCallback   func(transArg uintptr, buffer uintptr) uintptr
+	ClickCallback       func(x, y int32, transArg uintptr) uintptr
+	SwipeCallback       func(x1, y1, x2, y2, duration int32, transArg uintptr) uintptr
+	TouchDownCallback   func(contact, x, y, pressure int32, transArg uintptr) uintptr
+	TouchMoveCallback   func(contact, x, y, pressure int32, transArg uintptr) uintptr
+	TouchUpCallback     func(contact int32, transArg uintptr) uintptr
+	ClickKeyCallback    func(keycode int32, transArg uintptr) uintptr
+	InputTextCallback   func(text *byte, transArg uintptr) uintptr
+	KeyDownCallback     func(keycode int32, transArg uintptr) uintptr
+	KeyUpCallback       func(keycode int32, transArg uintptr) uintptr
+)
+
+var customControllerCallbacksHandle = new(MaaCustomControllerCallbacks)
+
+func init() {
+	customControllerCallbacksHandle.Connect = purego.NewCallback(_ConnectAgent)
+	customControllerCallbacksHandle.RequestUUID = purego.NewCallback(_RequestUUIDAgent)
+	customControllerCallbacksHandle.GetFeature = purego.NewCallback(_GetFeatureAgent)
+	customControllerCallbacksHandle.StartApp = purego.NewCallback(_StartAppAgent)
+	customControllerCallbacksHandle.StopApp = purego.NewCallback(_StopAppAgent)
+	customControllerCallbacksHandle.Screencap = purego.NewCallback(_ScreencapAgent)
+	customControllerCallbacksHandle.Click = purego.NewCallback(_ClickAgent)
+	customControllerCallbacksHandle.Swipe = purego.NewCallback(_SwipeAgent)
+	customControllerCallbacksHandle.TouchDown = purego.NewCallback(_TouchDownAgent)
+	customControllerCallbacksHandle.TouchMove = purego.NewCallback(_TouchMoveAgent)
+	customControllerCallbacksHandle.TouchUp = purego.NewCallback(_TouchUpAgent)
+	customControllerCallbacksHandle.ClickKey = purego.NewCallback(_ClickKey)
+	customControllerCallbacksHandle.InputText = purego.NewCallback(_InputText)
+	customControllerCallbacksHandle.KeyDown = purego.NewCallback(_KeyDown)
+	customControllerCallbacksHandle.KeyUp = purego.NewCallback(_KeyUp)
 }
 
-func (c CustomControllerHandler) Handle() uintptr {
-	return c.handle
-}
-
-func _ConnectAgent(handleArg uintptr) bool {
+func _ConnectAgent(handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -95,13 +121,16 @@ func _ConnectAgent(handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
-	return ctrl.Connect()
+	if ctrl.Connect() {
+		return uintptr(1)
+	}
+	return uintptr(0)
 }
 
-func _RequestUUIDAgent(handleArg uintptr, uuidBuffer uintptr) bool {
+func _RequestUUIDAgent(handleArg uintptr, uuidBuffer uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -111,19 +140,27 @@ func _RequestUUIDAgent(handleArg uintptr, uuidBuffer uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
 	uuid, ok := ctrl.RequestUUID()
 	if ok {
 		uuidStrBuffer := buffer.NewStringBufferByHandle(uuidBuffer)
 		uuidStrBuffer.Set(uuid)
-		return true
+		return uintptr(1)
 	}
-	return false
+	return uintptr(0)
 }
 
-func _StartAppAgent(intent string, handleArg uintptr) bool {
+type ControllerFeature = maa.MaaControllerFeature
+
+const (
+	ControllerFeatureNone                               = maa.MaaControllerFeature_None
+	ControllerFeatureUseMouseDownAndUpInsteadOfClick    = maa.MaaControllerFeature_UseMouseDownAndUpInsteadOfClick
+	ControllerFeatureUseKeyboardDownAndUpInsteadOfClick = maa.MaaControllerFeature_UseKeyboardDownAndUpInsteadOfClick
+)
+
+func _GetFeatureAgent(handleArg uintptr) ControllerFeature {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -133,13 +170,13 @@ func _StartAppAgent(intent string, handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return ControllerFeatureNone
 	}
 
-	return ctrl.StartApp(intent)
+	return ctrl.GetFeature()
 }
 
-func _StopAppAgent(intent string, handleArg uintptr) bool {
+func _StartAppAgent(intent *byte, handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -149,13 +186,16 @@ func _StopAppAgent(intent string, handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
-	return ctrl.StopApp(intent)
+	if ctrl.StartApp(bytePtrToString(intent)) {
+		return uintptr(1)
+	}
+	return uintptr(0)
 }
 
-func _ScreencapAgent(handleArg uintptr, imgBuffer uintptr) bool {
+func _StopAppAgent(intent *byte, handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -165,20 +205,39 @@ func _ScreencapAgent(handleArg uintptr, imgBuffer uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
+	}
+
+	if ctrl.StopApp(bytePtrToString(intent)) {
+		return uintptr(1)
+	}
+	return uintptr(0)
+}
+
+func _ScreencapAgent(handleArg uintptr, imgBuffer uintptr) uintptr {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(handleArg)
+
+	customControllerCallbacksAgentsMutex.RLock()
+	ctrl, exists := customControllerCallbacksAgents[id]
+	customControllerCallbacksAgentsMutex.RUnlock()
+
+	if !exists || ctrl == nil {
+		return uintptr(0)
 	}
 
 	img, captured := ctrl.Screencap()
 	if captured {
 		imgImgBuffer := buffer.NewImageBufferByHandle(imgBuffer)
 		if ok := imgImgBuffer.Set(img); ok {
-			return true
+			return uintptr(1)
 		}
 	}
-	return false
+	return uintptr(0)
 }
 
-func _ClickAgent(x, y int32, handleArg uintptr) bool {
+func _ClickAgent(x, y int32, handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -188,13 +247,16 @@ func _ClickAgent(x, y int32, handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
-	return ctrl.Click(x, y)
+	if ctrl.Click(x, y) {
+		return uintptr(1)
+	}
+	return uintptr(0)
 }
 
-func _SwipeAgent(x1, y1, x2, y2, duration int32, handleArg uintptr) bool {
+func _SwipeAgent(x1, y1, x2, y2, duration int32, handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -204,13 +266,16 @@ func _SwipeAgent(x1, y1, x2, y2, duration int32, handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
-	return ctrl.Swipe(x1, y1, x2, y2, duration)
+	if ctrl.Swipe(x1, y1, x2, y2, duration) {
+		return uintptr(1)
+	}
+	return uintptr(0)
 }
 
-func _TouchDownAgent(contact, x, y, pressure int32, handleArg uintptr) bool {
+func _TouchDownAgent(contact, x, y, pressure int32, handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -220,13 +285,16 @@ func _TouchDownAgent(contact, x, y, pressure int32, handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
-	return ctrl.TouchDown(contact, x, y, pressure)
+	if ctrl.TouchDown(contact, x, y, pressure) {
+		return uintptr(1)
+	}
+	return uintptr(0)
 }
 
-func _TouchMoveAgent(contact, x, y, pressure int32, handleArg uintptr) bool {
+func _TouchMoveAgent(contact, x, y, pressure int32, handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -236,13 +304,16 @@ func _TouchMoveAgent(contact, x, y, pressure int32, handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
-	return ctrl.TouchMove(contact, x, y, pressure)
+	if ctrl.TouchMove(contact, x, y, pressure) {
+		return uintptr(1)
+	}
+	return uintptr(0)
 }
 
-func _TouchUpAgent(contact int32, handleArg uintptr) bool {
+func _TouchUpAgent(contact int32, handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -252,13 +323,16 @@ func _TouchUpAgent(contact int32, handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
-	return ctrl.TouchUp(contact)
+	if ctrl.TouchUp(contact) {
+		return uintptr(1)
+	}
+	return uintptr(0)
 }
 
-func _ClickKey(key int32, handleArg uintptr) bool {
+func _ClickKey(key int32, handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -268,13 +342,16 @@ func _ClickKey(key int32, handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
-	return ctrl.ClickKey(key)
+	if ctrl.ClickKey(key) {
+		return uintptr(1)
+	}
+	return uintptr(0)
 }
 
-func _InputText(text string, handleArg uintptr) bool {
+func _InputText(text *byte, handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -284,13 +361,16 @@ func _InputText(text string, handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
-	return ctrl.InputText(text)
+	if ctrl.InputText(bytePtrToString(text)) {
+		return uintptr(1)
+	}
+	return uintptr(0)
 }
 
-func _KeyDown(keycode int32, handleArg uintptr) bool {
+func _KeyDown(keycode int32, handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -300,13 +380,16 @@ func _KeyDown(keycode int32, handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
-	return ctrl.KeyDown(keycode)
+	if ctrl.KeyDown(keycode) {
+		return uintptr(1)
+	}
+	return uintptr(0)
 }
 
-func _KeyUp(keycode int32, handleArg uintptr) bool {
+func _KeyUp(keycode int32, handleArg uintptr) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
@@ -316,8 +399,11 @@ func _KeyUp(keycode int32, handleArg uintptr) bool {
 	customControllerCallbacksAgentsMutex.RUnlock()
 
 	if !exists || ctrl == nil {
-		return false
+		return uintptr(0)
 	}
 
-	return ctrl.KeyUp(keycode)
+	if ctrl.KeyUp(keycode) {
+		return uintptr(1)
+	}
+	return uintptr(0)
 }

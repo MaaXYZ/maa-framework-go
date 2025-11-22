@@ -22,15 +22,15 @@ func (t *testContextRunTaskAct) Run(ctx *Context, _ *CustomActionArg) bool {
 }
 
 func TestContext_RunTask(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -63,15 +63,15 @@ func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) boo
 }
 
 func TestContext_RunRecognition(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -110,15 +110,15 @@ func (a testContextRunActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
 }
 
 func TestContext_RunAction(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -160,15 +160,15 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 }
 
 func TestContext_OverridePipeline(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -207,15 +207,15 @@ func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool 
 }
 
 func TestContext_OverrideNext(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -242,15 +242,15 @@ func (t *testContextGetTaskJobAct) Run(ctx *Context, _ *CustomActionArg) bool {
 }
 
 func TestContext_GetTaskJob(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -277,15 +277,15 @@ func (t testContextGetTaskerAct) Run(ctx *Context, _ *CustomActionArg) bool {
 }
 
 func TestContext_GetTasker(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
@@ -312,15 +312,15 @@ func (t testContextCloneAct) Run(ctx *Context, _ *CustomActionArg) bool {
 }
 
 func TestContext_Clone(t *testing.T) {
-	ctrl := createDbgController(t, nil)
+	ctrl := createDbgController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := createResource(t, nil)
+	res := createResource(t)
 	defer res.Destroy()
 
-	tasker := createTasker(t, nil)
+	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
