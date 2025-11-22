@@ -1,12 +1,12 @@
 package maa
 
 import (
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/ebitengine/purego"
 	"image"
 	"sync"
 	"sync/atomic"
-
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
 )
 
 var (
@@ -55,24 +55,60 @@ type CustomController interface {
 	KeyUp(keycode int32) bool
 }
 
-func _CustomControllerAgent() uintptr {
-	return maa.MaaCustomControllerCallbacksCreate(
-		_ConnectAgent,
-		_RequestUUIDAgent,
-		_GetFeatureAgent,
-		_StartAppAgent,
-		_StopAppAgent,
-		_ScreencapAgent,
-		_ClickAgent,
-		_SwipeAgent,
-		_TouchDownAgent,
-		_TouchMoveAgent,
-		_TouchUpAgent,
-		_ClickKey,
-		_InputText,
-		_KeyDown,
-		_KeyUp,
-	)
+type MaaCustomControllerCallbacks struct {
+	Connect     uintptr
+	RequestUUID uintptr
+	GetFeature  uintptr
+	StartApp    uintptr
+	StopApp     uintptr
+	Screencap   uintptr
+	Click       uintptr
+	Swipe       uintptr
+	TouchDown   uintptr
+	TouchMove   uintptr
+	TouchUp     uintptr
+	ClickKey    uintptr
+	InputText   uintptr
+	KeyDown     uintptr
+	KeyUp       uintptr
+}
+
+type (
+	ConnectCallback     func(transArg uintptr) uintptr
+	RequestUUIDCallback func(transArg uintptr, buffer uintptr) uintptr
+	GetFeatureCallback  func(transArg uintptr) ControllerFeature
+	StartAppCallback    func(intent *byte, transArg uintptr) uintptr
+	StopAppCallback     func(intent *byte, transArg uintptr) uintptr
+	ScreencapCallback   func(transArg uintptr, buffer uintptr) uintptr
+	ClickCallback       func(x, y int32, transArg uintptr) uintptr
+	SwipeCallback       func(x1, y1, x2, y2, duration int32, transArg uintptr) uintptr
+	TouchDownCallback   func(contact, x, y, pressure int32, transArg uintptr) uintptr
+	TouchMoveCallback   func(contact, x, y, pressure int32, transArg uintptr) uintptr
+	TouchUpCallback     func(contact int32, transArg uintptr) uintptr
+	ClickKeyCallback    func(keycode int32, transArg uintptr) uintptr
+	InputTextCallback   func(text *byte, transArg uintptr) uintptr
+	KeyDownCallback     func(keycode int32, transArg uintptr) uintptr
+	KeyUpCallback       func(keycode int32, transArg uintptr) uintptr
+)
+
+var customControllerCallbacksHandle = new(MaaCustomControllerCallbacks)
+
+func init() {
+	customControllerCallbacksHandle.Connect = purego.NewCallback(_ConnectAgent)
+	customControllerCallbacksHandle.RequestUUID = purego.NewCallback(_RequestUUIDAgent)
+	customControllerCallbacksHandle.GetFeature = purego.NewCallback(_GetFeatureAgent)
+	customControllerCallbacksHandle.StartApp = purego.NewCallback(_StartAppAgent)
+	customControllerCallbacksHandle.StopApp = purego.NewCallback(_StopAppAgent)
+	customControllerCallbacksHandle.Screencap = purego.NewCallback(_ScreencapAgent)
+	customControllerCallbacksHandle.Click = purego.NewCallback(_ClickAgent)
+	customControllerCallbacksHandle.Swipe = purego.NewCallback(_SwipeAgent)
+	customControllerCallbacksHandle.TouchDown = purego.NewCallback(_TouchDownAgent)
+	customControllerCallbacksHandle.TouchMove = purego.NewCallback(_TouchMoveAgent)
+	customControllerCallbacksHandle.TouchUp = purego.NewCallback(_TouchUpAgent)
+	customControllerCallbacksHandle.ClickKey = purego.NewCallback(_ClickKey)
+	customControllerCallbacksHandle.InputText = purego.NewCallback(_InputText)
+	customControllerCallbacksHandle.KeyDown = purego.NewCallback(_KeyDown)
+	customControllerCallbacksHandle.KeyUp = purego.NewCallback(_KeyUp)
 }
 
 func _ConnectAgent(handleArg uintptr) uintptr {
