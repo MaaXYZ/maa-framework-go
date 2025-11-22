@@ -89,17 +89,17 @@ func (ctx *Context) RunRecognition(entry string, img image.Image, override ...an
 	return ctx.runRecognition(entry, ctx.handleOverride(override...), img)
 }
 
-func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetail string) *NodeDetail {
+func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetail string) *ActionDetail {
 	rectBuf := buffer.NewRectBuffer()
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
 
-	nodeId := maa.MaaContextRunAction(ctx.handle, entry, override, rectBuf.Handle(), recognitionDetail)
-	if nodeId == 0 {
+	actId := maa.MaaContextRunAction(ctx.handle, entry, override, rectBuf.Handle(), recognitionDetail)
+	if actId == 0 {
 		return nil
 	}
 	tasker := ctx.GetTasker()
-	return tasker.getNodeDetail(nodeId)
+	return tasker.getActionDetail(actId)
 }
 
 // RunAction run an action and return its detail.
@@ -119,7 +119,7 @@ func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetai
 //	        "target": []int{100, 200, 100, 100},
 //		}
 //	})
-func (ctx *Context) RunAction(entry string, box Rect, recognitionDetail string, override ...any) *NodeDetail {
+func (ctx *Context) RunAction(entry string, box Rect, recognitionDetail string, override ...any) *ActionDetail {
 	return ctx.runAction(entry, ctx.handleOverride(override...), box, recognitionDetail)
 }
 
