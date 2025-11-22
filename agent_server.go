@@ -3,7 +3,7 @@ package maa
 import (
 	"unsafe"
 
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
+	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
 // AgentServerRegisterCustomRecognition registers a custom recognition with the agent server

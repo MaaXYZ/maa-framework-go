@@ -3,7 +3,7 @@ package maa
 import (
 	"unsafe"
 
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
+	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
 // AdbDevice represents a single ADB device with various properties about its information.

@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/MaaXYZ/maa-framework-go/v2"
+	"github.com/MaaXYZ/maa-framework-go/v3"
 )
 
 func TestMain(m *testing.M) {

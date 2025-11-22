@@ -3,8 +3,8 @@ package maa
 import (
 	"image"
 
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
+	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
 type Context struct {

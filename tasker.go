@@ -5,9 +5,9 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/store"
+	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
+	"github.com/MaaXYZ/maa-framework-go/v3/internal/store"
 )
 
 type taskerStoreValue struct {

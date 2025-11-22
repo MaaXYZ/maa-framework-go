@@ -3,7 +3,7 @@ package buffer
 import (
 	"image"
 
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
+	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
 type ImageListBuffer struct {

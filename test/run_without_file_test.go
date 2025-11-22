@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	"github.com/MaaXYZ/maa-framework-go/v2"
+	"github.com/MaaXYZ/maa-framework-go/v3"
 	"github.com/stretchr/testify/require"
 )
 

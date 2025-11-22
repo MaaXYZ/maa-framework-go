@@ -1,4 +1,4 @@
-module github.com/MaaXYZ/maa-framework-go/v2
+module github.com/MaaXYZ/maa-framework-go/v3
 
 go 1.21
 
