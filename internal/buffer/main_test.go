@@ -4,11 +4,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 )
 
 func TestMain(m *testing.M) {
-	maa.Init("")
+	native.Init("")
 
 	os.Exit(m.Run())
 }

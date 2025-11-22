@@ -3,7 +3,7 @@ package maa
 import (
 	"unsafe"
 
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 )
 
 // AdbDevice represents a single ADB device with various properties about its information.
@@ -25,33 +25,33 @@ type DesktopWindow struct {
 
 // ConfigInitOption inits the toolkit config option.
 func ConfigInitOption(userPath, defaultJson string) bool {
-	return maa.MaaToolkitConfigInitOption(userPath, defaultJson)
+	return native.MaaToolkitConfigInitOption(userPath, defaultJson)
 }
 
 // FindAdbDevices finds adb devices.
 func FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
-	listHandle := maa.MaaToolkitAdbDeviceListCreate()
-	defer maa.MaaToolkitAdbDeviceListDestroy(listHandle)
+	listHandle := native.MaaToolkitAdbDeviceListCreate()
+	defer native.MaaToolkitAdbDeviceListDestroy(listHandle)
 	var got bool
 	if len(specifiedAdb) > 0 {
-		got = maa.MaaToolkitAdbDeviceFindSpecified(specifiedAdb[0], listHandle)
+		got = native.MaaToolkitAdbDeviceFindSpecified(specifiedAdb[0], listHandle)
 	} else {
-		got = maa.MaaToolkitAdbDeviceFind(listHandle)
+		got = native.MaaToolkitAdbDeviceFind(listHandle)
 	}
 	if !got {
 		return nil
 	}
 
-	size := maa.MaaToolkitAdbDeviceListSize(listHandle)
+	size := native.MaaToolkitAdbDeviceListSize(listHandle)
 	list := make([]*AdbDevice, size)
 	for i := uint64(0); i < size; i++ {
-		deviceHandle := maa.MaaToolkitAdbDeviceListAt(listHandle, i)
-		name := maa.MaaToolkitAdbDeviceGetName(deviceHandle)
-		adbPath := maa.MaaToolkitAdbDeviceGetAdbPath(deviceHandle)
-		address := maa.MaaToolkitAdbDeviceGetAddress(deviceHandle)
-		screencapMethod := AdbScreencapMethod(maa.MaaToolkitAdbDeviceGetScreencapMethods(deviceHandle))
-		inputMethod := AdbInputMethod(maa.MaaToolkitAdbDeviceGetInputMethods(deviceHandle))
-		config := maa.MaaToolkitAdbDeviceGetConfig(deviceHandle)
+		deviceHandle := native.MaaToolkitAdbDeviceListAt(listHandle, i)
+		name := native.MaaToolkitAdbDeviceGetName(deviceHandle)
+		adbPath := native.MaaToolkitAdbDeviceGetAdbPath(deviceHandle)
+		address := native.MaaToolkitAdbDeviceGetAddress(deviceHandle)
+		screencapMethod := AdbScreencapMethod(native.MaaToolkitAdbDeviceGetScreencapMethods(deviceHandle))
+		inputMethod := AdbInputMethod(native.MaaToolkitAdbDeviceGetInputMethods(deviceHandle))
+		config := native.MaaToolkitAdbDeviceGetConfig(deviceHandle)
 		list[i] = &AdbDevice{
 			Name:            name,
 			AdbPath:         adbPath,
@@ -66,20 +66,20 @@ func FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
 
 // FindDesktopWindows finds desktop windows.
 func FindDesktopWindows() []*DesktopWindow {
-	listHandle := maa.MaaToolkitDesktopWindowListCreate()
-	defer maa.MaaToolkitDesktopWindowListDestroy(listHandle)
-	got := maa.MaaToolkitDesktopWindowFindAll(listHandle)
+	listHandle := native.MaaToolkitDesktopWindowListCreate()
+	defer native.MaaToolkitDesktopWindowListDestroy(listHandle)
+	got := native.MaaToolkitDesktopWindowFindAll(listHandle)
 	if !got {
 		return nil
 	}
 
-	size := maa.MaaToolkitDesktopWindowListSize(listHandle)
+	size := native.MaaToolkitDesktopWindowListSize(listHandle)
 	list := make([]*DesktopWindow, size)
 	for i := uint64(0); i < size; i++ {
-		windowHandle := maa.MaaToolkitDesktopWindowListAt(listHandle, i)
-		handle := maa.MaaToolkitDesktopWindowGetHandle(windowHandle)
-		className := maa.MaaToolkitDesktopWindowGetClassName(windowHandle)
-		windowName := maa.MaaToolkitDesktopWindowGetWindowName(windowHandle)
+		windowHandle := native.MaaToolkitDesktopWindowListAt(listHandle, i)
+		handle := native.MaaToolkitDesktopWindowGetHandle(windowHandle)
+		className := native.MaaToolkitDesktopWindowGetClassName(windowHandle)
+		windowName := native.MaaToolkitDesktopWindowGetWindowName(windowHandle)
 		list[i] = &DesktopWindow{
 			Handle:     handle,
 			ClassName:  className,

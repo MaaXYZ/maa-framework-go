@@ -1,12 +1,13 @@
 package maa
 
 import (
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
-	"github.com/ebitengine/purego"
 	"image"
 	"sync"
 	"sync/atomic"
+
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
+	"github.com/ebitengine/purego"
 )
 
 var (
@@ -152,12 +153,12 @@ func _RequestUUIDAgent(handleArg uintptr, uuidBuffer uintptr) uintptr {
 	return uintptr(0)
 }
 
-type ControllerFeature = maa.MaaControllerFeature
+type ControllerFeature = native.MaaControllerFeature
 
 const (
-	ControllerFeatureNone                               = maa.MaaControllerFeature_None
-	ControllerFeatureUseMouseDownAndUpInsteadOfClick    = maa.MaaControllerFeature_UseMouseDownAndUpInsteadOfClick
-	ControllerFeatureUseKeyboardDownAndUpInsteadOfClick = maa.MaaControllerFeature_UseKeyboardDownAndUpInsteadOfClick
+	ControllerFeatureNone                               = native.MaaControllerFeature_None
+	ControllerFeatureUseMouseDownAndUpInsteadOfClick    = native.MaaControllerFeature_UseMouseDownAndUpInsteadOfClick
+	ControllerFeatureUseKeyboardDownAndUpInsteadOfClick = native.MaaControllerFeature_UseKeyboardDownAndUpInsteadOfClick
 )
 
 func _GetFeatureAgent(handleArg uintptr) ControllerFeature {

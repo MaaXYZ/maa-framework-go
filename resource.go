@@ -6,7 +6,7 @@ import (
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/store"
 )
 
@@ -27,7 +27,7 @@ type Resource struct {
 
 // NewResource creates a new resource.
 func NewResource() *Resource {
-	handle := maa.MaaResourceCreate()
+	handle := native.MaaResourceCreate()
 	if handle == 0 {
 		return nil
 	}
@@ -61,11 +61,11 @@ func (r *Resource) Destroy() {
 	resourceStore.Del(r.handle)
 	resourceStoreMutex.Unlock()
 
-	maa.MaaResourceDestroy(r.handle)
+	native.MaaResourceDestroy(r.handle)
 }
 
-func (r *Resource) setOption(key maa.MaaResOption, value unsafe.Pointer, valSize uintptr) bool {
-	return maa.MaaResourceSetOption(
+func (r *Resource) setOption(key native.MaaResOption, value unsafe.Pointer, valSize uintptr) bool {
+	return native.MaaResourceSetOption(
 		r.handle,
 		key,
 		value,
@@ -73,32 +73,32 @@ func (r *Resource) setOption(key maa.MaaResOption, value unsafe.Pointer, valSize
 	)
 }
 
-func (r *Resource) setInferenceDevice(device maa.MaaInferenceDevice) bool {
+func (r *Resource) setInferenceDevice(device native.MaaInferenceDevice) bool {
 	return r.setOption(
-		maa.MaaResOption_InferenceDevice,
+		native.MaaResOption_InferenceDevice,
 		unsafe.Pointer(&device),
 		unsafe.Sizeof(device),
 	)
 }
 
-func (r *Resource) setInferenceExecutionProvider(ep maa.MaaInferenceExecutionProvider) bool {
+func (r *Resource) setInferenceExecutionProvider(ep native.MaaInferenceExecutionProvider) bool {
 	return r.setOption(
-		maa.MaaResOption_InferenceExecutionProvider,
+		native.MaaResOption_InferenceExecutionProvider,
 		unsafe.Pointer(&ep),
 		unsafe.Sizeof(ep),
 	)
 }
 
-func (r *Resource) setInference(ep maa.MaaInferenceExecutionProvider, deviceID maa.MaaInferenceDevice) bool {
+func (r *Resource) setInference(ep native.MaaInferenceExecutionProvider, deviceID native.MaaInferenceDevice) bool {
 	return r.setInferenceExecutionProvider(ep) && r.setInferenceDevice(deviceID)
 }
 
 // UseCPU
 func (r *Resource) UseCPU() bool {
-	return r.setInference(maa.MaaInferenceExecutionProvider_CPU, maa.MaaInferenceDevice_CPU)
+	return r.setInference(native.MaaInferenceExecutionProvider_CPU, native.MaaInferenceDevice_CPU)
 }
 
-type InterenceDevice = maa.MaaInferenceDevice
+type InterenceDevice = native.MaaInferenceDevice
 
 const (
 	InterenceDeviceAuto int32 = -1
@@ -109,17 +109,17 @@ const (
 
 // UseDirectml
 func (r *Resource) UseDirectml(deviceID InterenceDevice) bool {
-	return r.setInference(maa.MaaInferenceExecutionProvider_DirectML, deviceID)
+	return r.setInference(native.MaaInferenceExecutionProvider_DirectML, deviceID)
 }
 
 // UseCoreml
 func (r *Resource) UseCoreml(coremlFlag InterenceDevice) bool {
-	return r.setInference(maa.MaaInferenceExecutionProvider_CoreML, coremlFlag)
+	return r.setInference(native.MaaInferenceExecutionProvider_CoreML, coremlFlag)
 }
 
 // UseAutoExecutionProvider
 func (r *Resource) UseAutoExecutionProvider() bool {
-	return r.setInference(maa.MaaInferenceExecutionProvider_Auto, maa.MaaInferenceDevice_Auto)
+	return r.setInference(native.MaaInferenceExecutionProvider_Auto, native.MaaInferenceDevice_Auto)
 }
 
 // RegisterCustomRecognition registers a custom recognition to the resource.
@@ -135,7 +135,7 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 	resourceStore.Set(r.handle, value)
 	resourceStoreMutex.Unlock()
 
-	return maa.MaaResourceRegisterCustomRecognition(
+	return native.MaaResourceRegisterCustomRecognition(
 		r.handle,
 		name,
 		_MaaCustomRecognitionCallbackAgent,
@@ -157,7 +157,7 @@ func (r *Resource) UnregisterCustomRecognition(name string) bool {
 		return false
 	}
 
-	return maa.MaaResourceUnregisterCustomRecognition(r.handle, name)
+	return native.MaaResourceUnregisterCustomRecognition(r.handle, name)
 }
 
 // ClearCustomRecognition clears all custom recognitions registered from the resource.
@@ -170,7 +170,7 @@ func (r *Resource) ClearCustomRecognition() bool {
 		unregisterCustomRecognition(id)
 	}
 
-	return maa.MaaResourceClearCustomRecognition(r.handle)
+	return native.MaaResourceClearCustomRecognition(r.handle)
 }
 
 // RegisterCustomAction registers a custom action to the resource.
@@ -186,7 +186,7 @@ func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
 	resourceStore.Set(r.handle, value)
 	resourceStoreMutex.Unlock()
 
-	return maa.MaaResourceRegisterCustomAction(
+	return native.MaaResourceRegisterCustomAction(
 		r.handle,
 		name,
 		_MaaCustomActionCallbackAgent,
@@ -208,7 +208,7 @@ func (r *Resource) UnregisterCustomAction(name string) bool {
 		return false
 	}
 
-	return maa.MaaResourceUnregisterCustomAction(r.handle, name)
+	return native.MaaResourceUnregisterCustomAction(r.handle, name)
 }
 
 // ClearCustomAction clears all custom actions registered from the resource.
@@ -221,18 +221,18 @@ func (r *Resource) ClearCustomAction() bool {
 		unregisterCustomAction(id)
 	}
 
-	return maa.MaaResourceClearCustomAction(r.handle)
+	return native.MaaResourceClearCustomAction(r.handle)
 }
 
 // PostBundle adds a path to the resource loading paths.
 // Return id of the resource.
 func (r *Resource) PostBundle(path string) *Job {
-	id := maa.MaaResourcePostBundle(r.handle, path)
+	id := native.MaaResourcePostBundle(r.handle, path)
 	return NewJob(id, r.status, r.wait)
 }
 
 func (r *Resource) overridePipeline(override string) bool {
-	return maa.MaaResourceOverridePipeline(r.handle, override)
+	return native.MaaResourceOverridePipeline(r.handle, override)
 }
 
 // OverridePipeline overrides pipeline.
@@ -264,41 +264,41 @@ func (r *Resource) OverrideNext(name string, nextList []string) bool {
 			item.Destroy()
 		}
 	}()
-	return maa.MaaContextOverrideNext(r.handle, name, list.Handle())
+	return native.MaaContextOverrideNext(r.handle, name, list.Handle())
 }
 
 func (r *Resource) OverriderImage(imageName string, image image.Image) bool {
 	img := buffer.NewImageBuffer()
 	defer img.Destroy()
 	img.Set(image)
-	return maa.MaaResourceOverrideImage(r.handle, imageName, img.Handle())
+	return native.MaaResourceOverrideImage(r.handle, imageName, img.Handle())
 }
 
 // GetNodeJSON gets the node JSON by name.
 func (r *Resource) GetNodeJSON(name string) (string, bool) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
-	ok := maa.MaaResourceGetNodeData(r.handle, name, buf.Handle())
+	ok := native.MaaResourceGetNodeData(r.handle, name, buf.Handle())
 	return buf.Get(), ok
 }
 
 // Clear clears the resource loading paths.
 func (r *Resource) Clear() bool {
-	return maa.MaaResourceClear(r.handle)
+	return native.MaaResourceClear(r.handle)
 }
 
 // status returns the loading status of a resource identified by id.
 func (r *Resource) status(resId int64) Status {
-	return Status(maa.MaaResourceStatus(r.handle, resId))
+	return Status(native.MaaResourceStatus(r.handle, resId))
 }
 
 func (r *Resource) wait(resId int64) Status {
-	return Status(maa.MaaResourceWait(r.handle, resId))
+	return Status(native.MaaResourceWait(r.handle, resId))
 }
 
 // Loaded checks if resources are loaded.
 func (r *Resource) Loaded() bool {
-	return maa.MaaResourceLoaded(r.handle)
+	return native.MaaResourceLoaded(r.handle)
 }
 
 // GetHash returns the hash of the resource.
@@ -306,7 +306,7 @@ func (r *Resource) GetHash() (string, bool) {
 	hash := buffer.NewStringBuffer()
 	defer hash.Destroy()
 
-	got := maa.MaaResourceGetHash(r.handle, hash.Handle())
+	got := native.MaaResourceGetHash(r.handle, hash.Handle())
 	if !got {
 		return "", false
 	}
@@ -318,7 +318,7 @@ func (r *Resource) GetNodeList() ([]string, bool) {
 	taskList := buffer.NewStringListBuffer()
 	defer taskList.Destroy()
 
-	got := maa.MaaResourceGetNodeList(r.handle, taskList.Handle())
+	got := native.MaaResourceGetNodeList(r.handle, taskList.Handle())
 	if !got {
 		return []string{}, false
 	}
@@ -331,7 +331,7 @@ func (r *Resource) GetNodeList() ([]string, bool) {
 // The sink ID can be used to remove the sink later.
 func (r *Resource) AddSink(sink ResourceEventSink) int64 {
 	id := registerEventCallback(sink)
-	sinkId := maa.MaaResourceAddSink(
+	sinkId := native.MaaResourceAddSink(
 		r.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
@@ -355,7 +355,7 @@ func (r *Resource) RemoveSink(sinkId int64) {
 	resourceStore.Set(r.handle, value)
 	resourceStoreMutex.Unlock()
 
-	maa.MaaResourceRemoveSink(r.handle, sinkId)
+	native.MaaResourceRemoveSink(r.handle, sinkId)
 }
 
 // ClearSinks clears all event callback sinks.
@@ -369,5 +369,5 @@ func (r *Resource) ClearSinks() {
 	resourceStore.Set(r.handle, value)
 	resourceStoreMutex.Unlock()
 
-	maa.MaaResourceClearSinks(r.handle)
+	native.MaaResourceClearSinks(r.handle)
 }

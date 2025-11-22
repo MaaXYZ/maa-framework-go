@@ -1,6 +1,6 @@
 //go:build darwin || linux
 
-package maa
+package native
 
 import "github.com/ebitengine/purego"
 

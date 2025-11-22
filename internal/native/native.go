@@ -1,6 +1,6 @@
 //go:build (darwin || linux || windows) && (amd64 || arm64)
 
-package maa
+package native
 
 func Init(libDir string) error {
 

@@ -6,7 +6,7 @@ import (
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/store"
 )
 
@@ -26,7 +26,7 @@ type Tasker struct {
 
 // NewTasker creates a new tasker.
 func NewTasker() *Tasker {
-	handle := maa.MaaTaskerCreate()
+	handle := native.MaaTaskerCreate()
 	if handle == 0 {
 		return nil
 	}
@@ -54,22 +54,22 @@ func (t *Tasker) Destroy() {
 	taskerStore.Del(t.handle)
 	taskerStoreMutex.Unlock()
 
-	maa.MaaTaskerDestroy(t.handle)
+	native.MaaTaskerDestroy(t.handle)
 }
 
 // BindResource binds the tasker to an initialized resource.
 func (t *Tasker) BindResource(res *Resource) bool {
-	return maa.MaaTaskerBindResource(t.handle, res.handle)
+	return native.MaaTaskerBindResource(t.handle, res.handle)
 }
 
 // BindController binds the tasker to an initialized controller.
 func (t *Tasker) BindController(ctrl *Controller) bool {
-	return maa.MaaTaskerBindController(t.handle, ctrl.handle)
+	return native.MaaTaskerBindController(t.handle, ctrl.handle)
 }
 
 // Initialized checks if the tasker is initialized.
 func (t *Tasker) Initialized() bool {
-	return maa.MaaTaskerInited(t.handle)
+	return native.MaaTaskerInited(t.handle)
 }
 
 func (t *Tasker) handleOverride(entry string, postFunc func(entry, override string) *TaskJob, override ...any) *TaskJob {
@@ -87,7 +87,7 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 }
 
 func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
-	id := maa.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
+	id := native.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
 	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
@@ -101,45 +101,45 @@ func (t *Tasker) PostTask(entry string, override ...any) *TaskJob {
 
 // Stopping checks whether the tasker is stopping.
 func (t *Tasker) Stopping() bool {
-	return maa.MaaTaskerStopping(t.handle)
+	return native.MaaTaskerStopping(t.handle)
 }
 
 // status returns the status of a task identified by the id.
 func (t *Tasker) status(id int64) Status {
-	return Status(maa.MaaTaskerStatus(t.handle, id))
+	return Status(native.MaaTaskerStatus(t.handle, id))
 }
 
 // wait waits until the task is complete and returns the status of the completed task identified by the id.
 func (t *Tasker) wait(id int64) Status {
-	return Status(maa.MaaTaskerWait(t.handle, id))
+	return Status(native.MaaTaskerWait(t.handle, id))
 }
 
 // Running checks if the instance running.
 func (t *Tasker) Running() bool {
-	return maa.MaaTaskerRunning(t.handle)
+	return native.MaaTaskerRunning(t.handle)
 }
 
 // PostStop posts a stop signal to the tasker.
 func (t *Tasker) PostStop() *TaskJob {
-	id := maa.MaaTaskerPostStop(t.handle)
+	id := native.MaaTaskerPostStop(t.handle)
 	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
 // GetResource returns the resource handle of the tasker.
 func (t *Tasker) GetResource() *Resource {
-	handle := maa.MaaTaskerGetResource(t.handle)
+	handle := native.MaaTaskerGetResource(t.handle)
 	return &Resource{handle: handle}
 }
 
 // GetController returns the controller handle of the tasker.
 func (t *Tasker) GetController() *Controller {
-	handle := maa.MaaTaskerGetController(t.handle)
+	handle := native.MaaTaskerGetController(t.handle)
 	return &Controller{handle: handle}
 }
 
 // ClearCache clears runtime cache.
 func (t *Tasker) ClearCache() bool {
-	return maa.MaaTaskerClearCache(t.handle)
+	return native.MaaTaskerClearCache(t.handle)
 }
 
 type RecognitionDetail struct {
@@ -168,7 +168,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 	defer raw.Destroy()
 	draws := buffer.NewImageListBuffer()
 	defer draws.Destroy()
-	got := maa.MaaTaskerGetRecognitionDetail(
+	got := native.MaaTaskerGetRecognitionDetail(
 		t.handle,
 		recId,
 		name.Handle(),
@@ -217,7 +217,7 @@ func (t *Tasker) getActionDetail(actionId int64) *ActionDetail {
 	var success bool
 	detailJson := buffer.NewStringBuffer()
 	defer detailJson.Destroy()
-	got := maa.MaaTaskerGetActionDetail(
+	got := native.MaaTaskerGetActionDetail(
 		t.handle,
 		actionId,
 		name.Handle(),
@@ -255,7 +255,7 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 	defer name.Destroy()
 	var recId, actionId int64
 	var runCompleted bool
-	got := maa.MaaTaskerGetNodeDetail(
+	got := native.MaaTaskerGetNodeDetail(
 		t.handle,
 		nodeId,
 		name.Handle(),
@@ -298,7 +298,7 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
-	got := maa.MaaTaskerGetTaskDetail(
+	got := native.MaaTaskerGetTaskDetail(
 		t.handle,
 		taskId,
 		0,
@@ -318,7 +318,7 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 	}
 	nodeIdList := make([]int64, size)
 	var status Status
-	got = maa.MaaTaskerGetTaskDetail(
+	got = native.MaaTaskerGetTaskDetail(
 		t.handle,
 		taskId,
 		uintptr(entry.Handle()),
@@ -351,7 +351,7 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 func (t *Tasker) GetLatestNode(taskName string) *NodeDetail {
 	var nodeId int64
 
-	got := maa.MaaTaskerGetLatestNode(t.handle, taskName, &nodeId)
+	got := native.MaaTaskerGetLatestNode(t.handle, taskName, &nodeId)
 	if !got {
 		return nil
 	}
@@ -362,7 +362,7 @@ func (t *Tasker) GetLatestNode(taskName string) *NodeDetail {
 // The sink ID can be used to remove the sink later.
 func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
 	id := registerEventCallback(sink)
-	sinkId := maa.MaaTaskerAddSink(
+	sinkId := native.MaaTaskerAddSink(
 		t.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
@@ -386,7 +386,7 @@ func (t *Tasker) RemoveSink(sinkId int64) {
 	taskerStore.Set(t.handle, value)
 	taskerStoreMutex.Unlock()
 
-	maa.MaaTaskerRemoveSink(t.handle, sinkId)
+	native.MaaTaskerRemoveSink(t.handle, sinkId)
 }
 
 // ClearSinks clears all event callback sinks.
@@ -400,13 +400,13 @@ func (t *Tasker) ClearSinks() {
 	taskerStore.Set(t.handle, value)
 	taskerStoreMutex.Unlock()
 
-	maa.MaaTaskerClearSinks(t.handle)
+	native.MaaTaskerClearSinks(t.handle)
 }
 
 // AddContextSink adds a context event callback sink and returns the sink ID.
 func (t *Tasker) AddContextSink(sink TaskerEventSink) int64 {
 	id := registerEventCallback(sink)
-	sinkId := maa.MaaTaskerAddContextSink(
+	sinkId := native.MaaTaskerAddContextSink(
 		t.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
@@ -430,7 +430,7 @@ func (t *Tasker) RemoveContextSink(sinkId int64) {
 	taskerStore.Set(t.handle, value)
 	taskerStoreMutex.Unlock()
 
-	maa.MaaTaskerRemoveContextSink(t.handle, sinkId)
+	native.MaaTaskerRemoveContextSink(t.handle, sinkId)
 }
 
 // ClearContextSinks clears all context event callback sinks.
@@ -444,5 +444,5 @@ func (t *Tasker) ClearContextSinks() {
 	taskerStore.Set(t.handle, value)
 	taskerStoreMutex.Unlock()
 
-	maa.MaaTaskerClearContextSinks(t.handle)
+	native.MaaTaskerClearContextSinks(t.handle)
 }

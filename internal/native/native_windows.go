@@ -1,6 +1,6 @@
 //go:build windows
 
-package maa
+package native
 
 import (
 	"syscall"

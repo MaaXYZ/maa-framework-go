@@ -1,7 +1,7 @@
 package buffer
 
 import (
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 )
 
 type Rect struct {
@@ -17,7 +17,7 @@ type RectBuffer struct {
 }
 
 func NewRectBuffer() *RectBuffer {
-	handle := maa.MaaRectCreate()
+	handle := native.MaaRectCreate()
 	if handle == 0 {
 		return nil
 	}
@@ -33,7 +33,7 @@ func NewRectBufferByHandle(handle uintptr) *RectBuffer {
 }
 
 func (r *RectBuffer) Destroy() {
-	maa.MaaRectDestroy(r.handle)
+	native.MaaRectDestroy(r.handle)
 }
 
 func (r *RectBuffer) Handle() uintptr {
@@ -45,21 +45,21 @@ func (r *RectBuffer) Get() Rect {
 }
 
 func (r *RectBuffer) GetX() int32 {
-	return maa.MaaRectGetX(r.handle)
+	return native.MaaRectGetX(r.handle)
 }
 
 func (r *RectBuffer) GetY() int32 {
-	return maa.MaaRectGetY(r.handle)
+	return native.MaaRectGetY(r.handle)
 }
 
 func (r *RectBuffer) GetW() int32 {
-	return maa.MaaRectGetW(r.handle)
+	return native.MaaRectGetW(r.handle)
 }
 
 func (r *RectBuffer) GetH() int32 {
-	return maa.MaaRectGetH(r.handle)
+	return native.MaaRectGetH(r.handle)
 }
 
 func (r *RectBuffer) Set(rect Rect) bool {
-	return maa.MaaRectSet(r.handle, rect.X, rect.Y, rect.W, rect.H)
+	return native.MaaRectSet(r.handle, rect.X, rect.Y, rect.W, rect.H)
 }

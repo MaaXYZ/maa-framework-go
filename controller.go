@@ -10,7 +10,7 @@ import (
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/store"
 )
 
@@ -180,11 +180,11 @@ func NewAdbController(
 	inputMethod AdbInputMethod,
 	config, agentPath string,
 ) *Controller {
-	handle := maa.MaaAdbControllerCreate(
+	handle := native.MaaAdbControllerCreate(
 		adbPath,
 		address,
-		maa.MaaAdbScreencapMethod(screencapMethod),
-		maa.MaaAdbInputMethod(inputMethod),
+		native.MaaAdbScreencapMethod(screencapMethod),
+		native.MaaAdbInputMethod(inputMethod),
 		config,
 		agentPath,
 	)
@@ -296,11 +296,11 @@ func NewWin32Controller(
 	mouseMethod Win32InputMethod,
 	keyboardMethod Win32InputMethod,
 ) *Controller {
-	handle := maa.MaaWin32ControllerCreate(
+	handle := native.MaaWin32ControllerCreate(
 		hWnd,
-		maa.MaaWin32ScreencapMethod(screencapMethod),
-		maa.MaaWin32InputMethod(mouseMethod),
-		maa.MaaWin32InputMethod(keyboardMethod),
+		native.MaaWin32ScreencapMethod(screencapMethod),
+		native.MaaWin32InputMethod(mouseMethod),
+		native.MaaWin32InputMethod(keyboardMethod),
 	)
 	if handle == 0 {
 		return nil
@@ -356,7 +356,7 @@ func NewCustomController(
 	ctrl CustomController,
 ) *Controller {
 	ctrlID := registerCustomControllerCallbacks(ctrl)
-	handle := maa.MaaCustomControllerCreate(
+	handle := native.MaaCustomControllerCreate(
 		unsafe.Pointer(customControllerCallbacksHandle),
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
@@ -389,12 +389,12 @@ func (c *Controller) Destroy() {
 	controllerStore.Del(c.handle)
 	controllerStoreMutex.Unlock()
 
-	maa.MaaControllerDestroy(c.handle)
+	native.MaaControllerDestroy(c.handle)
 }
 
 // setOption sets options for controller instance.
-func (c *Controller) setOption(key maa.MaaCtrlOption, value unsafe.Pointer, valSize uintptr) bool {
-	return maa.MaaControllerSetOption(c.handle, key, value, uint64(valSize))
+func (c *Controller) setOption(key native.MaaCtrlOption, value unsafe.Pointer, valSize uintptr) bool {
+	return native.MaaControllerSetOption(c.handle, key, value, uint64(valSize))
 }
 
 // SetScreenshotTargetLongSide sets screenshot target long side.
@@ -403,7 +403,7 @@ func (c *Controller) setOption(key maa.MaaCtrlOption, value unsafe.Pointer, valS
 // eg: 1280
 func (c *Controller) SetScreenshotTargetLongSide(targetLongSide int32) bool {
 	return c.setOption(
-		maa.MaaCtrlOption_ScreenshotTargetLongSide,
+		native.MaaCtrlOption_ScreenshotTargetLongSide,
 		unsafe.Pointer(&targetLongSide),
 		unsafe.Sizeof(targetLongSide),
 	)
@@ -415,7 +415,7 @@ func (c *Controller) SetScreenshotTargetLongSide(targetLongSide int32) bool {
 // eg: 720
 func (c *Controller) SetScreenshotTargetShortSide(targetShortSide int32) bool {
 	return c.setOption(
-		maa.MaaCtrlOption_ScreenshotTargetShortSide,
+		native.MaaCtrlOption_ScreenshotTargetShortSide,
 		unsafe.Pointer(&targetShortSide),
 		unsafe.Sizeof(targetShortSide),
 	)
@@ -424,7 +424,7 @@ func (c *Controller) SetScreenshotTargetShortSide(targetShortSide int32) bool {
 // SetScreenshotUseRawSize sets whether the screenshot uses the raw size without scaling.
 func (c *Controller) SetScreenshotUseRawSize(enabled bool) bool {
 	return c.setOption(
-		maa.MaaCtrlOption_ScreenshotUseRawSize,
+		native.MaaCtrlOption_ScreenshotUseRawSize,
 		unsafe.Pointer(&enabled),
 		unsafe.Sizeof(enabled),
 	)
@@ -432,92 +432,92 @@ func (c *Controller) SetScreenshotUseRawSize(enabled bool) bool {
 
 // PostConnect posts a connection.
 func (c *Controller) PostConnect() *Job {
-	id := maa.MaaControllerPostConnection(c.handle)
+	id := native.MaaControllerPostConnection(c.handle)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostClick posts a click.
 func (c *Controller) PostClick(x, y int32) *Job {
-	id := maa.MaaControllerPostClick(c.handle, x, y)
+	id := native.MaaControllerPostClick(c.handle, x, y)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostSwipe posts a swipe.
 func (c *Controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job {
-	id := maa.MaaControllerPostSwipe(c.handle, x1, y1, x2, y2, int32(duration.Milliseconds()))
+	id := native.MaaControllerPostSwipe(c.handle, x1, y1, x2, y2, int32(duration.Milliseconds()))
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostPressKey posts a click key.
 func (c *Controller) PostClickKey(keycode int32) *Job {
-	id := maa.MaaControllerPostClickKey(c.handle, keycode)
+	id := native.MaaControllerPostClickKey(c.handle, keycode)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostInputText posts an input text.
 func (c *Controller) PostInputText(text string) *Job {
-	id := maa.MaaControllerPostInputText(c.handle, text)
+	id := native.MaaControllerPostInputText(c.handle, text)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostStartApp posts a start app.
 func (c *Controller) PostStartApp(intent string) *Job {
-	id := maa.MaaControllerPostStartApp(c.handle, intent)
+	id := native.MaaControllerPostStartApp(c.handle, intent)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostStopApp posts a stop app.
 func (c *Controller) PostStopApp(intent string) *Job {
-	id := maa.MaaControllerPostStopApp(c.handle, intent)
+	id := native.MaaControllerPostStopApp(c.handle, intent)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostTouchDown posts a touch-down.
 func (c *Controller) PostTouchDown(contact, x, y, pressure int32) *Job {
-	id := maa.MaaControllerPostTouchDown(c.handle, contact, x, y, pressure)
+	id := native.MaaControllerPostTouchDown(c.handle, contact, x, y, pressure)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostTouchMove posts a touch-move.
 func (c *Controller) PostTouchMove(contact, x, y, pressure int32) *Job {
-	id := maa.MaaControllerPostTouchMove(c.handle, contact, x, y, pressure)
+	id := native.MaaControllerPostTouchMove(c.handle, contact, x, y, pressure)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostTouchUp posts a touch-up.
 func (c *Controller) PostTouchUp(contact int32) *Job {
-	id := maa.MaaControllerPostTouchUp(c.handle, contact)
+	id := native.MaaControllerPostTouchUp(c.handle, contact)
 	return NewJob(id, c.status, c.wait)
 }
 
 func (c *Controller) PostKeyDown(keycode int32) *Job {
-	id := maa.MaaControllerPostKeyDown(c.handle, keycode)
+	id := native.MaaControllerPostKeyDown(c.handle, keycode)
 	return NewJob(id, c.status, c.wait)
 }
 
 func (c *Controller) PostKeyUp(keycode int32) *Job {
-	id := maa.MaaControllerPostKeyUp(c.handle, keycode)
+	id := native.MaaControllerPostKeyUp(c.handle, keycode)
 	return NewJob(id, c.status, c.wait)
 }
 
 // PostScreencap posts a screencap.
 func (c *Controller) PostScreencap() *Job {
-	id := maa.MaaControllerPostScreencap(c.handle)
+	id := native.MaaControllerPostScreencap(c.handle)
 	return NewJob(id, c.status, c.wait)
 }
 
 // status gets the status of a request identified by the given id.
 func (c *Controller) status(id int64) Status {
-	return Status(maa.MaaControllerStatus(c.handle, id))
+	return Status(native.MaaControllerStatus(c.handle, id))
 }
 
 func (c *Controller) wait(id int64) Status {
-	return Status(maa.MaaControllerWait(c.handle, id))
+	return Status(native.MaaControllerWait(c.handle, id))
 }
 
 // Connected checks if the controller is connected.
 func (c *Controller) Connected() bool {
-	return maa.MaaControllerConnected(c.handle)
+	return native.MaaControllerConnected(c.handle)
 }
 
 // CacheImage gets the image buffer of the last screencap request.
@@ -525,7 +525,7 @@ func (c *Controller) CacheImage() image.Image {
 	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 
-	got := maa.MaaControllerCachedImage(c.handle, imgBuffer.Handle())
+	got := native.MaaControllerCachedImage(c.handle, imgBuffer.Handle())
 	if !got {
 		return nil
 	}
@@ -539,7 +539,7 @@ func (c *Controller) CacheImage() image.Image {
 func (c *Controller) GetUUID() (string, bool) {
 	uuid := buffer.NewStringBuffer()
 	defer uuid.Destroy()
-	got := maa.MaaControllerGetUuid(c.handle, uuid.Handle())
+	got := native.MaaControllerGetUuid(c.handle, uuid.Handle())
 	if !got {
 		return "", false
 	}
@@ -550,7 +550,7 @@ func (c *Controller) GetUUID() (string, bool) {
 // The sink ID can be used to remove the sink later.
 func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 	id := registerEventCallback(sink)
-	sinkId := maa.MaaControllerAddSink(
+	sinkId := native.MaaControllerAddSink(
 		c.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
@@ -560,10 +560,10 @@ func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 
 // RemoveSink removes a event callback sink by sink ID.
 func (c *Controller) RemoveSink(sinkId int64) {
-	maa.MaaControllerRemoveSink(c.handle, sinkId)
+	native.MaaControllerRemoveSink(c.handle, sinkId)
 }
 
 // ClearSinks clears all event callback sinks.
 func (c *Controller) ClearSinks() {
-	maa.MaaControllerClearSinks(c.handle)
+	native.MaaControllerClearSinks(c.handle)
 }

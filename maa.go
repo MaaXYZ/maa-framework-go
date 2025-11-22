@@ -3,7 +3,7 @@ package maa
 import (
 	"errors"
 
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 )
 
 var (
@@ -87,7 +87,7 @@ func Init(opts ...InitOption) error {
 		opt(&cfg)
 	}
 
-	if err := maa.Init(cfg.LibDir); err != nil {
+	if err := native.Init(cfg.LibDir); err != nil {
 		return err
 	}
 
@@ -114,7 +114,7 @@ func Release() error {
 		return ErrNotInitialized
 	}
 
-	if err := maa.Release(); err != nil {
+	if err := native.Release(); err != nil {
 		return err
 	}
 

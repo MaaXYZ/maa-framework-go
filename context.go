@@ -4,7 +4,7 @@ import (
 	"image"
 
 	"github.com/MaaXYZ/maa-framework-go/v2/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 )
 
 type Context struct {
@@ -26,7 +26,7 @@ func (ctx *Context) handleOverride(override ...any) string {
 }
 
 func (ctx *Context) runTask(entry, override string) *TaskDetail {
-	taskId := maa.MaaContextRunTask(ctx.handle, entry, override)
+	taskId := native.MaaContextRunTask(ctx.handle, entry, override)
 	if taskId == 0 {
 		return nil
 	}
@@ -60,7 +60,7 @@ func (ctx *Context) runRecognition(entry, override string, img image.Image) *Rec
 	imgBuf.Set(img)
 	defer imgBuf.Destroy()
 
-	recId := maa.MaaContextRunRecognition(ctx.handle, entry, override, imgBuf.Handle())
+	recId := native.MaaContextRunRecognition(ctx.handle, entry, override, imgBuf.Handle())
 	if recId == 0 {
 		return nil
 	}
@@ -94,7 +94,7 @@ func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetai
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
 
-	actId := maa.MaaContextRunAction(ctx.handle, entry, override, rectBuf.Handle(), recognitionDetail)
+	actId := native.MaaContextRunAction(ctx.handle, entry, override, rectBuf.Handle(), recognitionDetail)
 	if actId == 0 {
 		return nil
 	}
@@ -124,7 +124,7 @@ func (ctx *Context) RunAction(entry string, box Rect, recognitionDetail string, 
 }
 
 func (ctx *Context) overridePipeline(override string) bool {
-	return maa.MaaContextOverridePipeline(ctx.handle, override)
+	return native.MaaContextOverridePipeline(ctx.handle, override)
 }
 
 // OverridePipeline overrides pipeline.
@@ -156,39 +156,39 @@ func (ctx *Context) OverrideNext(name string, nextList []string) bool {
 			item.Destroy()
 		}
 	}()
-	return maa.MaaContextOverrideNext(ctx.handle, name, list.Handle())
+	return native.MaaContextOverrideNext(ctx.handle, name, list.Handle())
 }
 
 func (ctx *Context) OverrideImage(imageName string, image image.Image) bool {
 	img := buffer.NewImageBuffer()
 	defer img.Destroy()
 	img.Set(image)
-	return maa.MaaContextOverrideImage(ctx.handle, imageName, img.Handle())
+	return native.MaaContextOverrideImage(ctx.handle, imageName, img.Handle())
 }
 
 // GetNodeJSON gets the node JSON by name.
 func (ctx *Context) GetNodeJSON(name string) (bool, string) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
-	ok := maa.MaaResourceGetNodeData(ctx.handle, name, buf.Handle())
+	ok := native.MaaResourceGetNodeData(ctx.handle, name, buf.Handle())
 	return ok, buf.Get()
 }
 
 // GetTaskJob returns current task job.
 func (ctx *Context) GetTaskJob() *TaskJob {
 	tasker := ctx.GetTasker()
-	taskId := maa.MaaContextGetTaskId(ctx.handle)
+	taskId := native.MaaContextGetTaskId(ctx.handle)
 	return NewTaskJob(taskId, tasker.status, tasker.wait, tasker.getTaskDetail)
 }
 
 // GetTasker return current Tasker.
 func (ctx *Context) GetTasker() *Tasker {
-	handle := maa.MaaContextGetTasker(ctx.handle)
+	handle := native.MaaContextGetTasker(ctx.handle)
 	return &Tasker{handle: handle}
 }
 
 // Clone clones current Context.
 func (ctx *Context) Clone() *Context {
-	handle := maa.MaaContextClone(ctx.handle)
+	handle := native.MaaContextClone(ctx.handle)
 	return &Context{handle: handle}
 }

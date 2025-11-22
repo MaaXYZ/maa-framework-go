@@ -1,7 +1,7 @@
 package maa
 
-import "github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+import "github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 
 func LoadPlugin(path string) bool {
-	return maa.MaaGlobalLoadPlugin(path)
+	return native.MaaGlobalLoadPlugin(path)
 }

@@ -1,7 +1,7 @@
 package buffer
 
 import (
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 )
 
 type StringListBuffer struct {
@@ -9,7 +9,7 @@ type StringListBuffer struct {
 }
 
 func NewStringListBuffer() *StringListBuffer {
-	handle := maa.MaaStringListBufferCreate()
+	handle := native.MaaStringListBufferCreate()
 	if handle == 0 {
 		return nil
 	}
@@ -25,7 +25,7 @@ func NewStringListBufferByHandle(handle uintptr) *StringListBuffer {
 }
 
 func (sl *StringListBuffer) Destroy() {
-	maa.MaaStringListBufferDestroy(sl.handle)
+	native.MaaStringListBufferDestroy(sl.handle)
 }
 
 func (sl *StringListBuffer) Handle() uintptr {
@@ -33,19 +33,19 @@ func (sl *StringListBuffer) Handle() uintptr {
 }
 
 func (sl *StringListBuffer) IsEmpty() bool {
-	return maa.MaaStringListBufferIsEmpty(sl.handle)
+	return native.MaaStringListBufferIsEmpty(sl.handle)
 }
 
 func (sl *StringListBuffer) Clear() bool {
-	return maa.MaaStringListBufferClear(sl.handle)
+	return native.MaaStringListBufferClear(sl.handle)
 }
 
 func (sl *StringListBuffer) Size() uint64 {
-	return maa.MaaStringListBufferSize(sl.handle)
+	return native.MaaStringListBufferSize(sl.handle)
 }
 
 func (sl *StringListBuffer) Get(index uint64) string {
-	handle := maa.MaaStringListBufferAt(sl.handle, index)
+	handle := native.MaaStringListBufferAt(sl.handle, index)
 	str := &StringBuffer{handle: handle}
 	return str.Get()
 }
@@ -60,9 +60,9 @@ func (sl *StringListBuffer) GetAll() []string {
 }
 
 func (sl *StringListBuffer) Append(value *StringBuffer) bool {
-	return maa.MaaStringListBufferAppend(sl.handle, value.handle)
+	return native.MaaStringListBufferAppend(sl.handle, value.handle)
 }
 
 func (sl *StringListBuffer) Remove(index uint64) bool {
-	return maa.MaaStringListBufferRemove(sl.handle, index)
+	return native.MaaStringListBufferRemove(sl.handle, index)
 }

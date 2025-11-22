@@ -1,4 +1,4 @@
-package maa
+package native
 
 import (
 	"fmt"

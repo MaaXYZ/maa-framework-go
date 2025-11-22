@@ -1,7 +1,7 @@
 package buffer
 
 import (
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 )
 
 type StringBuffer struct {
@@ -9,7 +9,7 @@ type StringBuffer struct {
 }
 
 func NewStringBuffer() *StringBuffer {
-	handle := maa.MaaStringBufferCreate()
+	handle := native.MaaStringBufferCreate()
 	if handle == 0 {
 		return nil
 	}
@@ -25,7 +25,7 @@ func NewStringBufferByHandle(handle uintptr) *StringBuffer {
 }
 
 func (s *StringBuffer) Destroy() {
-	maa.MaaStringBufferDestroy(s.handle)
+	native.MaaStringBufferDestroy(s.handle)
 }
 
 func (s *StringBuffer) Handle() uintptr {
@@ -33,25 +33,25 @@ func (s *StringBuffer) Handle() uintptr {
 }
 
 func (s *StringBuffer) IsEmpty() bool {
-	return maa.MaaStringBufferIsEmpty(s.handle)
+	return native.MaaStringBufferIsEmpty(s.handle)
 }
 
 func (s *StringBuffer) Clear() bool {
-	return maa.MaaStringBufferClear(s.handle)
+	return native.MaaStringBufferClear(s.handle)
 }
 
 func (s *StringBuffer) Get() string {
-	return maa.MaaStringBufferGet(s.handle)
+	return native.MaaStringBufferGet(s.handle)
 }
 
 func (s *StringBuffer) Size() uint64 {
-	return maa.MaaStringBufferSize(s.handle)
+	return native.MaaStringBufferSize(s.handle)
 }
 
 func (s *StringBuffer) Set(str string) bool {
-	return maa.MaaStringBufferSet(s.handle, str)
+	return native.MaaStringBufferSet(s.handle, str)
 }
 
 func (s *StringBuffer) SetWithSize(str string, size uint64) bool {
-	return maa.MaaStringBufferSetEx(s.handle, str, size)
+	return native.MaaStringBufferSetEx(s.handle, str, size)
 }

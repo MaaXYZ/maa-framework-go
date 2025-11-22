@@ -3,14 +3,14 @@ package maa
 import (
 	"unsafe"
 
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 )
 
 // AgentServerRegisterCustomRecognition registers a custom recognition with the agent server
 func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognition) bool {
 	id := registerCustomRecognition(recognition)
 
-	return maa.MaaAgentServerRegisterCustomRecognition(
+	return native.MaaAgentServerRegisterCustomRecognition(
 		name,
 		_MaaCustomRecognitionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
@@ -23,7 +23,7 @@ func AgentServerRegisterCustomRecognition(name string, recognition CustomRecogni
 func AgentServerRegisterCustomAction(name string, action CustomAction) bool {
 	id := registerCustomAction(action)
 
-	return maa.MaaAgentServerRegisterCustomAction(
+	return native.MaaAgentServerRegisterCustomAction(
 		name,
 		_MaaCustomActionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
@@ -36,7 +36,7 @@ func AgentServerRegisterCustomAction(name string, action CustomAction) bool {
 func AgentServerAddResourceSink(sink ResourceEventSink) int64 {
 	id := registerEventCallback(sink)
 
-	return maa.MaaAgentServerAddResourceSink(
+	return native.MaaAgentServerAddResourceSink(
 		_MaaEventCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
@@ -48,7 +48,7 @@ func AgentServerAddResourceSink(sink ResourceEventSink) int64 {
 func AgentServerAddControllerSink(sink ControllerEventSink) int64 {
 	id := registerEventCallback(sink)
 
-	return maa.MaaAgentServerAddControllerSink(
+	return native.MaaAgentServerAddControllerSink(
 		_MaaEventCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
@@ -60,7 +60,7 @@ func AgentServerAddControllerSink(sink ControllerEventSink) int64 {
 func AgentServerAddTaskerSink(sink TaskerEventSink) int64 {
 	id := registerEventCallback(sink)
 
-	return maa.MaaAgentServerAddTaskerSink(
+	return native.MaaAgentServerAddTaskerSink(
 		_MaaEventCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
@@ -72,7 +72,7 @@ func AgentServerAddTaskerSink(sink TaskerEventSink) int64 {
 func AgentServerAddContextSink(sink ContextEventSink) int64 {
 	id := registerEventCallback(sink)
 
-	return maa.MaaAgentServerAddContextSink(
+	return native.MaaAgentServerAddContextSink(
 		_MaaEventCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
@@ -82,20 +82,20 @@ func AgentServerAddContextSink(sink ContextEventSink) int64 {
 
 // AgentServerStartUp starts up the agent server with the given identifier
 func AgentServerStartUp(identifier string) bool {
-	return maa.MaaAgentServerStartUp(identifier)
+	return native.MaaAgentServerStartUp(identifier)
 }
 
 // AgentServerShutDown shuts down the Maa agent server
 func AgentServerShutDown() {
-	maa.MaaAgentServerShutDown()
+	native.MaaAgentServerShutDown()
 }
 
 // AgentServerJoin registers the agent server
 func AgentServerJoin() {
-	maa.MaaAgentServerJoin()
+	native.MaaAgentServerJoin()
 }
 
 // AgentServerDetach unregisters the agent server
 func AgentServerDetach() {
-	maa.MaaAgentServerDetach()
+	native.MaaAgentServerDetach()
 }

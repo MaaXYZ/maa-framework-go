@@ -3,7 +3,7 @@ package buffer
 import (
 	"image"
 
-	"github.com/MaaXYZ/maa-framework-go/v2/internal/maa"
+	"github.com/MaaXYZ/maa-framework-go/v2/internal/native"
 )
 
 type ImageListBuffer struct {
@@ -11,7 +11,7 @@ type ImageListBuffer struct {
 }
 
 func NewImageListBuffer() *ImageListBuffer {
-	handle := maa.MaaImageListBufferCreate()
+	handle := native.MaaImageListBufferCreate()
 	if handle == 0 {
 		return nil
 	}
@@ -27,7 +27,7 @@ func NewImageListBufferByHandle(handle uintptr) *ImageListBuffer {
 }
 
 func (il *ImageListBuffer) Destroy() {
-	maa.MaaImageListBufferDestroy(il.handle)
+	native.MaaImageListBufferDestroy(il.handle)
 }
 
 func (il *ImageListBuffer) Handle() uintptr {
@@ -35,19 +35,19 @@ func (il *ImageListBuffer) Handle() uintptr {
 }
 
 func (il *ImageListBuffer) IsEmpty() bool {
-	return maa.MaaImageListBufferIsEmpty(il.handle)
+	return native.MaaImageListBufferIsEmpty(il.handle)
 }
 
 func (il *ImageListBuffer) Clear() bool {
-	return maa.MaaImageListBufferClear(il.handle)
+	return native.MaaImageListBufferClear(il.handle)
 }
 
 func (il *ImageListBuffer) Size() uint64 {
-	return maa.MaaImageListBufferSize(il.handle)
+	return native.MaaImageListBufferSize(il.handle)
 }
 
 func (il *ImageListBuffer) Get(index uint64) image.Image {
-	handle := maa.MaaImageListBufferAt(il.handle, index)
+	handle := native.MaaImageListBufferAt(il.handle, index)
 	img := &ImageBuffer{
 		handle: handle,
 	}
@@ -65,9 +65,9 @@ func (il *ImageListBuffer) GetAll() []image.Image {
 }
 
 func (il *ImageListBuffer) Append(value *ImageBuffer) bool {
-	return maa.MaaImageListBufferAppend(il.handle, value.handle)
+	return native.MaaImageListBufferAppend(il.handle, value.handle)
 }
 
 func (il *ImageListBuffer) Remove(index uint64) bool {
-	return maa.MaaImageListBufferRemove(il.handle, index)
+	return native.MaaImageListBufferRemove(il.handle, index)
 }
