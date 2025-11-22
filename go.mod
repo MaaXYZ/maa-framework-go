@@ -3,8 +3,8 @@ module github.com/MaaXYZ/maa-framework-go/v2
 go 1.21
 
 require (
-	github.com/ebitengine/purego v0.8.4
-	github.com/stretchr/testify v1.10.0
+	github.com/ebitengine/purego v0.9.1
+	github.com/stretchr/testify v1.11.1
 )
 
 require (
