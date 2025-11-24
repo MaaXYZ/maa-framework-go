@@ -41,7 +41,7 @@ To use MaaFramework in your Go project, import the package as you would with any
 import "github.com/MaaXYZ/maa-framework-go/v3"
 ```
 
-Then, you can use the functionalities provided by MaaFramework. For detailed usage, refer to the [documentation](#documentation) and [examples](#examples) provided in the repository.
+Then, you can use the functionalities provided by MaaFramework. For detailed usage, refer to the [documentation](#documentation) provided in the repository.
 
 > Note: Programs built with maa-framework-go rely on the dynamic libraries of MaaFramework. Please ensure one of the following conditions is met:
 >

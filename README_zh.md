@@ -41,7 +41,7 @@ go get github.com/MaaXYZ/maa-framework-go/v3
 import "github.com/MaaXYZ/maa-framework-go/v3"
 ```
 
-然后，您可以使用MaaFramework提供的功能。有关详细用法，请参阅仓库中提供的 [文档](#文档) 和 [示例](#示例)。
+然后，您可以使用MaaFramework提供的功能。有关详细用法，请参阅仓库中提供的 [文档](#文档)。
 
 > 注意: 使用 maa-framework-go 构建的程序依赖于 MaaFramework 的动态库运行。请确保以下条件之一满足：
 >
