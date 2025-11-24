@@ -12,14 +12,33 @@ var (
 	ErrNotInitialized     = errors.New("maa framework not initialized")
 )
 
+// InitConfig contains configuration options for initializing the MAA framework.
+// It specifies various settings that control the framework's behavior,
+// logging, debugging, and resource locations.
 type InitConfig struct {
-	LibDir      string
-	LogDir      string
-	SaveDraw    bool
+	// LibDir specifies the directory path where MAA dynamic libraries are located.
+	// If empty, the framework will attempt to locate libraries in default paths.
+	LibDir string
+
+	// LogDir specifies the directory where log files will be written.
+	// Defaults to "./debug" if not specified.
+	LogDir string
+
+	// SaveDraw controls whether to save recognition results to LogDir/vision.
+	// When enabled, RecoDetail will be able to retrieve draws for debugging purposes.
+	SaveDraw bool
+
+	// StdoutLevel sets the logging verbosity level for standard output.
+	// Controls which log messages are displayed on the console.
 	StdoutLevel LoggingLevel
-	DebugMode   bool
+
+	// DebugMode enables or disables comprehensive debug mode.
+	// When enabled, additional debug information is collected and logged.
+	DebugMode bool
 }
 
+// InitOption defines a function type for configuring InitConfig through functional options.
+// Each InitOption function modifies the InitConfig to set specific initialization parameters.
 type InitOption func(*InitConfig)
 
 // WithLibDir returns an InitOption that sets the library directory path for the MAA framework.
@@ -39,7 +58,8 @@ func WithLogDir(logDir string) InitOption {
 }
 
 // WithSaveDraw returns an InitOption that configures whether to save drawing information.
-// When enabled is true, the framework will save drawing debug information.
+// When enabled is true, recognition results will be saved to LogDir/vision directory
+// and RecoDetail will be able to retrieve draws for debugging.
 func WithSaveDraw(enabled bool) InitOption {
 	return func(ic *InitConfig) {
 		ic.SaveDraw = enabled
