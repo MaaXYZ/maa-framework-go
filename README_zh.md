@@ -9,11 +9,11 @@
     <a href="https://github.com/MaaXYZ/maa-framework-go/blob/main/LICENSE.md">
         <img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
     </a>
-    <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v2">
+    <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v3">
         <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
     </a>
-    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v3.0.4">
-        <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v3.0.4-blue">
+    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.0.5">
+        <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.0.5-blue">
     </a>
 </p>
 
@@ -28,7 +28,7 @@
 要安装MaaFramework Go绑定，请在终端中运行以下命令：
 
 ```shell
-go get github.com/MaaXYZ/maa-framework-go/v2
+go get github.com/MaaXYZ/maa-framework-go/v3
 ```
 
 此外，请下载MaaFramework的[Release 包](https://github.com/MaaXYZ/MaaFramework/releases)，以获取必要的动态库文件。
@@ -38,7 +38,7 @@ go get github.com/MaaXYZ/maa-framework-go/v2
 要在您的Go项目中使用MaaFramework，请像导入其他Go包一样导入此包：
 
 ```go
-import "github.com/MaaXYZ/maa-framework-go/v2"
+import "github.com/MaaXYZ/maa-framework-go/v3"
 ```
 
 然后，您可以使用MaaFramework提供的功能。有关详细用法，请参阅仓库中提供的 [文档](#文档) 和 [示例](#示例)。
@@ -58,209 +58,6 @@ import "github.com/MaaXYZ/maa-framework-go/v2"
 
 - [快速开始](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md)
 - [任务流水线协议](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.1-%E4%BB%BB%E5%8A%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%8D%8F%E8%AE%AE.md)
-
-## 示例
-
-- [快速开始](#快速开始)
-- [自定义识别器](#自定义识别器)
-- [自定义动作](#自定义动作)
-
-### 快速开始
-
-有关详细信息，请参阅 [quick-start](examples/quick-start)。
-
-以下是一个基本示例，帮助您快速入门：
-
-```go
-package main
-
-import (
-    "fmt"
-    "os"
-
-    "github.com/MaaXYZ/maa-framework-go/v2"
-)
-
-func main() {
-    maa.Init()
-    maa.ConfigInitOption("./", "{}")
-    tasker := maa.NewTasker(nil)
-    defer tasker.Destroy()
-
-    device := maa.FindAdbDevices()[0]
-    ctrl := maa.NewAdbController(
-        device.AdbPath,
-        device.Address,
-        device.ScreencapMethod,
-        device.InputMethod,
-        device.Config,
-        "path/to/MaaAgentBinary",
-        nil,
-    )
-    defer ctrl.Destroy()
-    ctrl.PostConnect().Wait()
-    tasker.BindController(ctrl)
-
-    res := maa.NewResource(nil)
-    defer res.Destroy()
-    res.PostBundle("./resource").Wait()
-    tasker.BindResource(res)
-    if !tasker.Initialized() {
-        fmt.Println("Failed to init MAA.")
-        os.Exit(1)
-    }
-
-    detail := tasker.PostTask("Startup").Wait().GetDetail()
-    fmt.Println(detail)
-}
-
-```
-
-### 自定义识别器
-
-有关详细信息，请参阅 [custom-recognition](examples/custom-recognition)。
-
-以下是一个实现自定义识别器的基本示例：
-
-```go
-package main
-
-import (
-    "fmt"
-    "os"
-
-    "github.com/MaaXYZ/maa-framework-go/v2"
-)
-
-func main() {
-    maa.Init()
-    maa.ConfigInitOption("./", "{}")
-    tasker := maa.NewTasker(nil)
-    defer tasker.Destroy()
-
-    device := maa.FindAdbDevices()[0]
-    ctrl := maa.NewAdbController(
-        device.AdbPath,
-        device.Address,
-        device.ScreencapMethod,
-        device.InputMethod,
-        device.Config,
-        "path/to/MaaAgentBinary",
-        nil,
-    )
-    defer ctrl.Destroy()
-    ctrl.PostConnect().Wait()
-    tasker.BindController(ctrl)
-
-    res := maa.NewResource(nil)
-    defer res.Destroy()
-    res.PostBundle("./resource").Wait()
-    tasker.BindResource(res)
-    if !tasker.Initialized() {
-        fmt.Println("Failed to init MAA.")
-        os.Exit(1)
-    }
-
-    res.RegisterCustomRecognition("MyRec", &MyRec{})
-
-    detail := tasker.PostTask("Startup").Wait().GetDetail()
-    fmt.Println(detail)
-}
-
-type MyRec struct{}
-
-func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*maa.CustomRecognitionResult, bool) {
-    ctx.RunRecognition("MyCustomOCR", arg.Img, maa.J{
-        "MyCustomOCR": maa.J{
-            "roi": []int{100, 100, 200, 300},
-        },
-    })
-
-    ctx.OverridePipeline(maa.J{
-        "MyCustomOCR": maa.J{
-            "roi": []int{1, 1, 114, 514},
-        },
-    })
-
-    newContext := ctx.Clone()
-    newContext.OverridePipeline(maa.J{
-        "MyCustomOCR": maa.J{
-            "roi": []int{100, 200, 300, 400},
-        },
-    })
-    newContext.RunTask("MyCustomOCR", arg.Img)
-
-    clickJob := ctx.GetTasker().GetController().PostClick(10, 20)
-    clickJob.Wait()
-
-    ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
-
-    return &maa.CustomRecognitionResult{
-        Box:    maa.Rect{0, 0, 100, 100},
-        Detail: "Hello World!",
-    }, true
-}
-
-```
-
-### 自定义动作
-
-有关详细信息，请参阅 [custom-action](examples/custom-action)。
-
-以下是一个实现自定义动作的基本示例：
-
-```go
-package main
-
-import (
-    "fmt"
-    "os"
-
-    "github.com/MaaXYZ/maa-framework-go/v2"
-)
-
-func main() {
-    maa.Init()
-    maa.ConfigInitOption("./", "{}")
-    tasker := maa.NewTasker(nil)
-    defer tasker.Destroy()
-
-    device := maa.FindAdbDevices()[0]
-    ctrl := maa.NewAdbController(
-        device.AdbPath,
-        device.Address,
-        device.ScreencapMethod,
-        device.InputMethod,
-        device.Config,
-        "path/to/MaaAgentBinary",
-        nil,
-    )
-    defer ctrl.Destroy()
-    ctrl.PostConnect().Wait()
-    tasker.BindController(ctrl)
-
-    res := maa.NewResource(nil)
-    defer res.Destroy()
-    res.PostBundle("./resource").Wait()
-    tasker.BindResource(res)
-    if !tasker.Initialized() {
-        fmt.Println("Failed to init MAA.")
-        os.Exit(1)
-    }
-
-    res.RegisterCustomAction("MyAct", &MyAct{})
-
-    detail := tasker.PostTask("Startup").Wait().GetDetail()
-    fmt.Println(detail)
-}
-
-type MyAct struct{}
-
-func (a *MyAct) Run(_ *maa.Context, _ *maa.CustomActionArg) bool {
-    return true
-}
-
-```
 
 ## 贡献
 

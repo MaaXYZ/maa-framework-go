@@ -9,11 +9,11 @@
     <a href="https://github.com/MaaXYZ/maa-framework-go/blob/main/LICENSE.md">
         <img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
     </a>
-    <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v2">
+    <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v3">
         <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
     </a>
-    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v3.0.4">
-        <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v3.0.4-blue">
+    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.0.5">
+        <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.0.5-blue">
     </a>
 </p>
 
@@ -28,7 +28,7 @@ This is the Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework
 To install the MaaFramework Go binding, run the following command in your terminal:
 
 ```shell
-go get github.com/MaaXYZ/maa-framework-go/v2
+go get github.com/MaaXYZ/maa-framework-go/v3
 ```
 
 In addition, please download the [Release package](https://github.com/MaaXYZ/MaaFramework/releases) for MaaFramework to get the necessary dynamic library files.
@@ -38,7 +38,7 @@ In addition, please download the [Release package](https://github.com/MaaXYZ/Maa
 To use MaaFramework in your Go project, import the package as you would with any other Go package:
 
 ```go
-import "github.com/MaaXYZ/maa-framework-go/v2"
+import "github.com/MaaXYZ/maa-framework-go/v3"
 ```
 
 Then, you can use the functionalities provided by MaaFramework. For detailed usage, refer to the [documentation](#documentation) and [examples](#examples) provided in the repository.
@@ -58,209 +58,6 @@ Here are some documents from the maa framework that might help you:
 
 - [QuickStarted](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/1.1-QuickStarted.md)
 - [PipelineProtocol](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md)
-
-## Examples
-
-- [Quirk Start](#quirk-start)
-- [Custom Recognition](#custom-recognition)
-- [Custom Action](#custom-action)
-
-### Quirk start
-
-See [quirk-start](examples/quick-start) for details.
-
-Here is a basic example to get you started:
-
-```go
-package main
-
-import (
-    "fmt"
-    "os"
-
-    "github.com/MaaXYZ/maa-framework-go/v2"
-)
-
-func main() {
-    maa.Init()
-    maa.ConfigInitOption("./", "{}")
-    tasker := maa.NewTasker(nil)
-    defer tasker.Destroy()
-
-    device := maa.FindAdbDevices()[0]
-    ctrl := maa.NewAdbController(
-        device.AdbPath,
-        device.Address,
-        device.ScreencapMethod,
-        device.InputMethod,
-        device.Config,
-        "path/to/MaaAgentBinary",
-        nil,
-    )
-    defer ctrl.Destroy()
-    ctrl.PostConnect().Wait()
-    tasker.BindController(ctrl)
-
-    res := maa.NewResource(nil)
-    defer res.Destroy()
-    res.PostBundle("./resource").Wait()
-    tasker.BindResource(res)
-    if !tasker.Initialized() {
-        fmt.Println("Failed to init MAA.")
-        os.Exit(1)
-    }
-
-    detail := tasker.PostTask("Startup").Wait().GetDetail()
-    fmt.Println(detail)
-}
-
-```
-
-### Custom Recognition
-
-See [custom-recognition](examples/custom-recognition) for details.
-
-Here is a basic example to implement your custom recognition:
-
-```go
-package main
-
-import (
-    "fmt"
-    "os"
-
-    "github.com/MaaXYZ/maa-framework-go/v2"
-)
-
-func main() {
-    maa.Init()
-    maa.ConfigInitOption("./", "{}")
-    tasker := maa.NewTasker(nil)
-    defer tasker.Destroy()
-
-    device := maa.FindAdbDevices()[0]
-    ctrl := maa.NewAdbController(
-        device.AdbPath,
-        device.Address,
-        device.ScreencapMethod,
-        device.InputMethod,
-        device.Config,
-        "path/to/MaaAgentBinary",
-        nil,
-    )
-    defer ctrl.Destroy()
-    ctrl.PostConnect().Wait()
-    tasker.BindController(ctrl)
-
-    res := maa.NewResource(nil)
-    defer res.Destroy()
-    res.PostBundle("./resource").Wait()
-    tasker.BindResource(res)
-    if !tasker.Initialized() {
-        fmt.Println("Failed to init MAA.")
-        os.Exit(1)
-    }
-
-    res.RegisterCustomRecognition("MyRec", &MyRec{})
-
-    detail := tasker.PostTask("Startup").Wait().GetDetail()
-    fmt.Println(detail)
-}
-
-type MyRec struct{}
-
-func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*maa.CustomRecognitionResult, bool) {
-    ctx.RunRecognition("MyCustomOCR", arg.Img, maa.J{
-        "MyCustomOCR": maa.J{
-            "roi": []int{100, 100, 200, 300},
-        },
-    })
-
-    ctx.OverridePipeline(maa.J{
-        "MyCustomOCR": maa.J{
-            "roi": []int{1, 1, 114, 514},
-        },
-    })
-
-    newContext := ctx.Clone()
-    newContext.OverridePipeline(maa.J{
-        "MyCustomOCR": maa.J{
-            "roi": []int{100, 200, 300, 400},
-        },
-    })
-    newContext.RunTask("MyCustomOCR", arg.Img)
-
-    clickJob := ctx.GetTasker().GetController().PostClick(10, 20)
-    clickJob.Wait()
-
-    ctx.OverrideNext(arg.CurrentTaskName, []string{"TaskA", "TaskB"})
-
-    return &maa.CustomRecognitionResult{
-        Box:    maa.Rect{0, 0, 100, 100},
-        Detail: "Hello World!",
-    }, true
-}
-
-```
-
-### Custom Action
-
-See [custom-action](examples/custom-action) for details.
-
-Here is a basic example to implement your custom action:
-
-```go
-package main
-
-import (
-    "fmt"
-    "os"
-
-    "github.com/MaaXYZ/maa-framework-go/v2"
-)
-
-func main() {
-    maa.Init()
-    maa.ConfigInitOption("./", "{}")
-    tasker := maa.NewTasker(nil)
-    defer tasker.Destroy()
-
-    device := maa.FindAdbDevices()[0]
-    ctrl := maa.NewAdbController(
-        device.AdbPath,
-        device.Address,
-        device.ScreencapMethod,
-        device.InputMethod,
-        device.Config,
-        "path/to/MaaAgentBinary",
-        nil,
-    )
-    defer ctrl.Destroy()
-    ctrl.PostConnect().Wait()
-    tasker.BindController(ctrl)
-
-    res := maa.NewResource(nil)
-    defer res.Destroy()
-    res.PostBundle("./resource").Wait()
-    tasker.BindResource(res)
-    if !tasker.Initialized() {
-        fmt.Println("Failed to init MAA.")
-        os.Exit(1)
-    }
-
-    res.RegisterCustomAction("MyAct", &MyAct{})
-
-    detail := tasker.PostTask("Startup").Wait().GetDetail()
-    fmt.Println(detail)
-}
-
-type MyAct struct{}
-
-func (a *MyAct) Run(_ *maa.Context, _ *maa.CustomActionArg) bool {
-    return true
-}
-
-```
 
 ## Contributing
 
