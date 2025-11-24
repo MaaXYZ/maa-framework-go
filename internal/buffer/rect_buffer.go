@@ -4,10 +4,15 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
+// Rect represents a 2D rectangle area
+// X, Y coordinates represent the top-left corner position
+// W, H represent the width and height of the rectangle respectively
 type Rect struct {
 	X, Y, W, H int32
 }
 
+// ToInts converts the rectangle to an array of 4 int32 values
+// Returns array in format: [X, Y, Width, Height]
 func (r Rect) ToInts() [4]int32 {
 	return [4]int32{r.X, r.Y, r.W, r.H}
 }
