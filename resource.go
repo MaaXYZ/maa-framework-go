@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"encoding/json"
 	"image"
 	"sync"
 	"unsafe"
@@ -238,14 +239,18 @@ func (r *Resource) overridePipeline(override string) bool {
 // OverridePipeline overrides pipeline.
 // The `override` parameter can be a JSON string or any data type that can be marshaled to JSON.
 func (r *Resource) OverridePipeline(override any) bool {
-	if str, ok := override.(string); ok {
-		return r.overridePipeline(str)
+	switch v := override.(type) {
+	case string:
+		return r.overridePipeline(v)
+	case []byte:
+		return r.overridePipeline(string(v))
+	default:
+		jsonBytes, err := json.Marshal(v)
+		if err != nil {
+			return false
+		}
+		return r.overridePipeline(string(jsonBytes))
 	}
-	str, err := toJSON(override)
-	if err != nil {
-		return false
-	}
-	return r.overridePipeline(str)
 }
 
 // OverrideNext overrides the next list of task by name.

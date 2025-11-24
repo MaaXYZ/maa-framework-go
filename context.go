@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"encoding/json"
 	"image"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
@@ -18,11 +19,11 @@ func (ctx *Context) handleOverride(override ...any) string {
 	if str, ok := override[0].(string); ok {
 		return str
 	}
-	str, err := toJSON(override[0])
+	str, err := json.Marshal(override[0])
 	if err != nil {
-		str = "{}"
+		str = []byte("{}")
 	}
-	return str
+	return string(str)
 }
 
 func (ctx *Context) runTask(entry, override string) *TaskDetail {
@@ -130,14 +131,18 @@ func (ctx *Context) overridePipeline(override string) bool {
 // OverridePipeline overrides pipeline.
 // The `override` parameter can be a JSON string or any data type that can be marshaled to JSON.
 func (ctx *Context) OverridePipeline(override any) bool {
-	if str, ok := override.(string); ok {
-		return ctx.overridePipeline(str)
+	switch v := override.(type) {
+	case string:
+		return ctx.overridePipeline(v)
+	case []byte:
+		return ctx.overridePipeline(string(v))
+	default:
+		jsonBytes, err := json.Marshal(v)
+		if err != nil {
+			return false
+		}
+		return ctx.overridePipeline(string(jsonBytes))
 	}
-	str, err := toJSON(override)
-	if err != nil {
-		return false
-	}
-	return ctx.overridePipeline(str)
 }
 
 // OverrideNext overrides the next list of task by name.

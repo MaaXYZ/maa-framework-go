@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"encoding/json"
 	"image"
 	"sync"
 	"unsafe"
@@ -76,14 +77,20 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 	if len(override) == 0 {
 		return postFunc(entry, "{}")
 	}
-	if str, ok := override[0].(string); ok {
-		return postFunc(entry, str)
+
+	overrideValue := override[0]
+	switch v := overrideValue.(type) {
+	case string:
+		return postFunc(entry, v)
+	case []byte:
+		return postFunc(entry, string(v))
+	default:
+		jsonBytes, err := json.Marshal(v)
+		if err != nil {
+			return postFunc(entry, "{}")
+		}
+		return postFunc(entry, string(jsonBytes))
 	}
-	str, err := toJSON(override[0])
-	if err != nil {
-		str = "{}"
-	}
-	return postFunc(entry, str)
 }
 
 func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {

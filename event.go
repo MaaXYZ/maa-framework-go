@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"encoding/json"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -122,7 +123,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 	switch {
 	case strings.HasPrefix(msg, "Resource.Loading"):
 		var detail ResourceLoadingDetail
-		_ = formJSON([]byte(detailsJSON), &detail)
+		_ = json.Unmarshal([]byte(detailsJSON), &detail)
 		switch s := n.sink.(type) {
 		case TaskerEventSink:
 			s.OnResourceLoading(&Tasker{handle: handle}, eventType, detail)
@@ -137,7 +138,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 
 	case strings.HasPrefix(msg, "Controller.Action"):
 		var detail ControllerActionDetail
-		_ = formJSON([]byte(detailsJSON), &detail)
+		_ = json.Unmarshal([]byte(detailsJSON), &detail)
 		switch s := n.sink.(type) {
 		case TaskerEventSink:
 			s.OnControllerAction(&Tasker{handle: handle}, eventType, detail)
@@ -152,7 +153,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 
 	case strings.HasPrefix(msg, "Tasker.Task"):
 		var detail TaskerTaskDetail
-		_ = formJSON([]byte(detailsJSON), &detail)
+		_ = json.Unmarshal([]byte(detailsJSON), &detail)
 		switch s := n.sink.(type) {
 		case TaskerEventSink:
 			s.OnTaskerTask(&Tasker{handle: handle}, eventType, detail)
@@ -167,7 +168,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 
 	case strings.HasPrefix(msg, "Node.PipelineNode"):
 		var detail NodePipelineNodeDetail
-		_ = formJSON([]byte(detailsJSON), &detail)
+		_ = json.Unmarshal([]byte(detailsJSON), &detail)
 		switch s := n.sink.(type) {
 		case TaskerEventSink:
 			s.OnNodePipelineNode(&Tasker{handle: handle}, eventType, detail)
@@ -182,7 +183,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 
 	case strings.HasPrefix(msg, "Node.RecognitionNode"):
 		var detail NodeRecognitionNodeDetail
-		_ = formJSON([]byte(detailsJSON), &detail)
+		_ = json.Unmarshal([]byte(detailsJSON), &detail)
 		switch s := n.sink.(type) {
 		case TaskerEventSink:
 			s.OnNodeRecognitionNode(&Tasker{handle: handle}, eventType, detail)
@@ -197,7 +198,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 
 	case strings.HasPrefix(msg, "Node.ActionNode"):
 		var detail NodeActionNodeDetail
-		_ = formJSON([]byte(detailsJSON), &detail)
+		_ = json.Unmarshal([]byte(detailsJSON), &detail)
 		switch s := n.sink.(type) {
 		case TaskerEventSink:
 			s.OnNodeActionNode(&Tasker{handle: handle}, eventType, detail)
@@ -212,7 +213,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 
 	case strings.HasPrefix(msg, "Node.NextList"):
 		var detail NodeNextListDetail
-		_ = formJSON([]byte(detailsJSON), &detail)
+		_ = json.Unmarshal([]byte(detailsJSON), &detail)
 		switch s := n.sink.(type) {
 		case TaskerEventSink:
 			s.OnTaskNextList(&Tasker{handle: handle}, eventType, detail)
@@ -227,7 +228,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 
 	case strings.HasPrefix(msg, "Node.Recognition"):
 		var detail NodeRecognitionDetail
-		_ = formJSON([]byte(detailsJSON), &detail)
+		_ = json.Unmarshal([]byte(detailsJSON), &detail)
 		switch s := n.sink.(type) {
 		case TaskerEventSink:
 			s.OnTaskRecognition(&Tasker{handle: handle}, eventType, detail)
@@ -242,7 +243,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 
 	case strings.HasPrefix(msg, "Node.Action"):
 		var detail NodeActionDetail
-		_ = formJSON([]byte(detailsJSON), &detail)
+		_ = json.Unmarshal([]byte(detailsJSON), &detail)
 		switch s := n.sink.(type) {
 		case TaskerEventSink:
 			s.OnTaskAction(&Tasker{handle: handle}, eventType, detail)
