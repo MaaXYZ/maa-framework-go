@@ -37,14 +37,14 @@ func unregisterEventCallback(id uint64) {
 	eventCallbacksMutex.Unlock()
 }
 
-type EventType int
+type EventStatus int
 
-// EventType
+// EventStatus
 const (
-	EventTypeUnknown EventType = iota
-	EventTypeStarting
-	EventTypeSucceeded
-	EventTypeFailed
+	EventStatusUnknown EventStatus = iota
+	EventStatusStarting
+	EventStatusSucceeded
+	EventStatusFailed
 )
 
 type ResourceLoadingDetail struct {
@@ -118,7 +118,7 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 		return
 	}
 
-	eventType := n.getEventType(msg)
+	eventType := n.getEventStatus(msg)
 	switch {
 	case strings.HasPrefix(msg, "Resource.Loading"):
 		var detail ResourceLoadingDetail
@@ -258,27 +258,27 @@ func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
 	default:
 		switch s := n.sink.(type) {
 		case TaskerEventSink:
-			s.OnUnknownNotification(&Tasker{handle: handle}, msg, detailsJSON)
+			s.OnUnknownEvent(&Tasker{handle: handle}, msg, detailsJSON)
 		case ResourceEventSink:
-			s.OnUnknownNotification(&Resource{handle: handle}, msg, detailsJSON)
+			s.OnUnknownEvent(&Resource{handle: handle}, msg, detailsJSON)
 		case ContextEventSink:
-			s.OnUnknownNotification(&Context{handle: handle}, msg, detailsJSON)
+			s.OnUnknownEvent(&Context{handle: handle}, msg, detailsJSON)
 		case ControllerEventSink:
-			s.OnUnknownNotification(&Controller{handle: handle}, msg, detailsJSON)
+			s.OnUnknownEvent(&Controller{handle: handle}, msg, detailsJSON)
 		}
 	}
 }
 
-func (n *eventHandler) getEventType(msg string) EventType {
+func (n *eventHandler) getEventStatus(msg string) EventStatus {
 	switch {
 	case strings.HasSuffix(msg, ".Starting"):
-		return EventTypeStarting
+		return EventStatusStarting
 	case strings.HasSuffix(msg, ".Succeeded"):
-		return EventTypeSucceeded
+		return EventStatusSucceeded
 	case strings.HasSuffix(msg, ".Failed"):
-		return EventTypeFailed
+		return EventStatusFailed
 	default:
-		return EventTypeUnknown
+		return EventStatusUnknown
 	}
 }
 

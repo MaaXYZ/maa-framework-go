@@ -404,7 +404,7 @@ func (t *Tasker) ClearSinks() {
 }
 
 // AddContextSink adds a context event callback sink and returns the sink ID.
-func (t *Tasker) AddContextSink(sink TaskerEventSink) int64 {
+func (t *Tasker) AddContextSink(sink ContextEventSink) int64 {
 	id := registerEventCallback(sink)
 	sinkId := native.MaaTaskerAddContextSink(
 		t.handle,
