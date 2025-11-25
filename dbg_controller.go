@@ -157,4 +157,83 @@ func (c *CarouselImageController) TouchUp(contact int32) bool {
 	return true
 }
 
-var _ CustomController = (*CarouselImageController)(nil)
+type BlankController struct{}
+
+func NewBlankController() *Controller {
+	return NewCustomController(&BlankController{})
+}
+
+// Click implements CustomController.
+func (c *BlankController) Click(x int32, y int32) bool {
+	return true
+}
+
+// ClickKey implements CustomController.
+func (c *BlankController) ClickKey(keycode int32) bool {
+	return true
+}
+
+// Connect implements CustomController.
+func (c *BlankController) Connect() bool {
+	return true
+}
+
+// GetFeature implements CustomController.
+func (c *BlankController) GetFeature() ControllerFeature {
+	return ControllerFeatureNone
+}
+
+// InputText implements CustomController.
+func (c *BlankController) InputText(text string) bool {
+	return true
+}
+
+// KeyDown implements CustomController.
+func (c *BlankController) KeyDown(keycode int32) bool {
+	return true
+}
+
+// KeyUp implements CustomController.
+func (c *BlankController) KeyUp(keycode int32) bool {
+	return true
+}
+
+// RequestUUID implements CustomController.
+func (c *BlankController) RequestUUID() (string, bool) {
+	return "blank-controller", true
+}
+
+// Screencap implements CustomController.
+func (c *BlankController) Screencap() (image.Image, bool) {
+	return image.NewRGBA(image.Rect(0, 0, 1280, 720)), true
+}
+
+// StartApp implements CustomController.
+func (c *BlankController) StartApp(intent string) bool {
+	return true
+}
+
+// StopApp implements CustomController.
+func (c *BlankController) StopApp(intent string) bool {
+	return true
+}
+
+// Swipe implements CustomController.
+func (c *BlankController) Swipe(x1 int32, y1 int32, x2 int32, y2 int32, duration int32) bool {
+	return true
+}
+
+// TouchDown implements CustomController.
+func (c *BlankController) TouchDown(contact int32, x int32, y int32, pressure int32) bool {
+	return true
+}
+
+// TouchMove implements CustomController.
+func (c *BlankController) TouchMove(contact int32, x int32, y int32, pressure int32) bool {
+	return true
+}
+
+// TouchUp implements CustomController.
+func (c *BlankController) TouchUp(contact int32) bool {
+	return true
+}
