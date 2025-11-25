@@ -313,44 +313,6 @@ func NewWin32Controller(
 	}
 }
 
-// DbgControllerType
-//
-// No bitwise OR, just set it.
-type DbgControllerType uint64
-
-// DbgControllerType
-const (
-	DbgControllerTypeNone            DbgControllerType = 0
-	DbgControllerTypeCarouselImage   DbgControllerType = 1
-	DbgControllerTypeReplayRecording DbgControllerType = 1 << 1
-)
-
-func (t DbgControllerType) String() string {
-	switch t {
-	case DbgControllerTypeNone:
-		return ""
-	case DbgControllerTypeCarouselImage:
-		return DbgControllerTypeCarouselImageValue
-	case DbgControllerTypeReplayRecording:
-		return DbgControllerTypeReplayRecordingValue
-	}
-	return strconv.Itoa(int(t))
-}
-
-func ParseDbgControllerType(typeStr string) (DbgControllerType, error) {
-	switch {
-	case strings.EqualFold(typeStr, DbgControllerTypeCarouselImage.String()):
-		return DbgControllerTypeCarouselImage, nil
-	case strings.EqualFold(typeStr, DbgControllerTypeReplayRecording.String()):
-		return DbgControllerTypeReplayRecording, nil
-	}
-	i, err := strconv.Atoi(typeStr)
-	if err != nil {
-		return DbgControllerTypeNone, fmt.Errorf("unknown DBG Controller Type String: '%s', defaulting to DbgControllerTypeNone", typeStr)
-	}
-	return DbgControllerType(i), nil
-}
-
 // NewCustomController creates a custom controller instance.
 func NewCustomController(
 	ctrl CustomController,
