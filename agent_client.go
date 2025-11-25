@@ -11,7 +11,8 @@ type AgentClient struct {
 	handle uintptr
 }
 
-// NewAgentClient creates and initializes a new Agent client instance
+// NewAgentClient creates an Agent client instance
+// If identifier is empty, it will be automatically generated
 func NewAgentClient(identifier string) *AgentClient {
 	identifierStrBuf := buffer.NewStringBuffer()
 	defer identifierStrBuf.Destroy()
@@ -40,44 +41,47 @@ func (ac *AgentClient) Identifier() (string, bool) {
 	return buf.Get(), ok
 }
 
-// BindResource binds a resource object to the current client
+// BindResource links the Agent client to the specified resource
 func (ac *AgentClient) BindResource(res *Resource) bool {
 	return native.MaaAgentClientBindResource(ac.handle, res.handle)
 }
 
+// RegisterResourceSink registers resource events to resource
 func (ac *AgentClient) RegisterResourceSink(res *Resource) bool {
 	return native.MaaAgentClientRegisterResourceSink(ac.handle, res.handle)
 }
 
+// RegisterControllerSink registers controller events to controller
 func (ac *AgentClient) RegisterControllerSink(ctrl Controller) bool {
 	return native.MaaAgentClientRegisterControllerSink(ac.handle, ctrl.handle)
 }
 
+// RegisterTaskerSink registers tasker events to tasker
 func (ac *AgentClient) RegisterTaskerSink(tasker Tasker) bool {
 	return native.MaaAgentClientRegisterTaskerSink(ac.handle, tasker.handle)
 }
 
-// Connect attempts to establish connection with agent service
+// Connect connects to the Agent server
 func (ac *AgentClient) Connect() bool {
 	return native.MaaAgentClientConnect(ac.handle)
 }
 
-// Disconnect actively terminates current connection
+// Disconnect disconnects from the Agent server
 func (ac *AgentClient) Disconnect() bool {
 	return native.MaaAgentClientDisconnect(ac.handle)
 }
 
-// Connected checks if the current agent client is in a connected state
+// Connected checks if the client is connected to the Agent server
 func (ac *AgentClient) Connected() bool {
 	return native.MaaAgentClientConnected(ac.handle)
 }
 
-// Alive checks if the current agent client is in an alive state
+// Alive checks if the Agent server is still responsive
 func (ac *AgentClient) Alive() bool {
 	return native.MaaAgentClientAlive(ac.handle)
 }
 
-// SetTimeout sets the timeout duration for the current agent client
+// SetTimeout sets the timeout duration for the Agent server
 func (ac *AgentClient) SetTimeout(duration time.Duration) bool {
 	if duration < 0 {
 		return false

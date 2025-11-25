@@ -6,7 +6,7 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
-// AgentServerRegisterCustomRecognition registers a custom recognition with the agent server
+// AgentServerRegisterCustomRecognition registers a custom recognition with the given name.
 func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognition) bool {
 	id := registerCustomRecognition(recognition)
 
@@ -19,7 +19,7 @@ func AgentServerRegisterCustomRecognition(name string, recognition CustomRecogni
 	)
 }
 
-// AgentServerRegisterCustomAction registers a custom action with the agent server
+// AgentServerRegisterCustomAction registers a custom action with the given name.
 func AgentServerRegisterCustomAction(name string, action CustomAction) bool {
 	id := registerCustomAction(action)
 
@@ -32,7 +32,7 @@ func AgentServerRegisterCustomAction(name string, action CustomAction) bool {
 	)
 }
 
-// AgentServerAddResourceSink adds a resource event sink to the agent server
+// AgentServerAddResourceSink adds a resource event callback sink and returns the sink ID.
 func AgentServerAddResourceSink(sink ResourceEventSink) int64 {
 	id := registerEventCallback(sink)
 
@@ -44,7 +44,7 @@ func AgentServerAddResourceSink(sink ResourceEventSink) int64 {
 	)
 }
 
-// AgentServerAddControllerSink adds a controller event sink to the agent server
+// AgentServerAddControllerSink adds a controller event callback sink and returns the sink ID.
 func AgentServerAddControllerSink(sink ControllerEventSink) int64 {
 	id := registerEventCallback(sink)
 
@@ -56,7 +56,7 @@ func AgentServerAddControllerSink(sink ControllerEventSink) int64 {
 	)
 }
 
-// AgentServerAddTaskerSink adds a tasker event sink to the agent server
+// AgentServerAddTaskerSink adds a tasker event callback sink and returns the sink ID.
 func AgentServerAddTaskerSink(sink TaskerEventSink) int64 {
 	id := registerEventCallback(sink)
 
@@ -68,7 +68,7 @@ func AgentServerAddTaskerSink(sink TaskerEventSink) int64 {
 	)
 }
 
-// AgentServerAddContextSink adds a context event sink to the agent server
+// AgentServerAddContextSink adds a context event callback sink and returns the sink ID.
 func AgentServerAddContextSink(sink ContextEventSink) int64 {
 	id := registerEventCallback(sink)
 
@@ -80,22 +80,22 @@ func AgentServerAddContextSink(sink ContextEventSink) int64 {
 	)
 }
 
-// AgentServerStartUp starts up the agent server with the given identifier
+// AgentServerStartUp starts the MAA Agent Server with the given identifier.
 func AgentServerStartUp(identifier string) bool {
 	return native.MaaAgentServerStartUp(identifier)
 }
 
-// AgentServerShutDown shuts down the Maa agent server
+// AgentServerShutDown shuts down the MAA Agent Server.
 func AgentServerShutDown() {
 	native.MaaAgentServerShutDown()
 }
 
-// AgentServerJoin registers the agent server
+// AgentServerJoin waits synchronously for the service thread to finish
 func AgentServerJoin() {
 	native.MaaAgentServerJoin()
 }
 
-// AgentServerDetach unregisters the agent server
+// AgentServerDetach detaches the service thread to run independently
 func AgentServerDetach() {
 	native.MaaAgentServerDetach()
 }
