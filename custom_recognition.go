@@ -44,13 +44,13 @@ type CustomRecognitionArg struct {
 	Roi                    Rect
 }
 
-type CustomRecognition interface {
-	Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool)
-}
-
 type CustomRecognitionResult struct {
 	Box    Rect
 	Detail string
+}
+
+type CustomRecognition interface {
+	Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool)
 }
 
 func _MaaCustomRecognitionCallbackAgent(
