@@ -9,9 +9,7 @@ import (
 
 func createDbgController(t *testing.T) *Controller {
 	testingPath := "./test/data_set/PipelineSmoking/Screenshot"
-
-	// ctrl := NewDbgController(testingPath, resultPath, DbgControllerTypeCarouselImage, "{}")
-	ctrl := NewDbgController(testingPath)
+	ctrl := NewCarouselImageController(testingPath)
 	require.NotNil(t, ctrl)
 	return ctrl
 }
