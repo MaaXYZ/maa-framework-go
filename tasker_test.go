@@ -36,7 +36,7 @@ func TestTasker_BindResource(t *testing.T) {
 }
 
 func TestTasker_BindController(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 
 	tasker := createTasker(t)
@@ -46,7 +46,7 @@ func TestTasker_BindController(t *testing.T) {
 }
 
 func TestTasker_Initialized(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	connected := ctrl.PostConnect().Wait().Success()
 	require.True(t, connected)
@@ -63,7 +63,7 @@ func TestTasker_Initialized(t *testing.T) {
 }
 
 func TestTasker_PostPipeline(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -88,7 +88,7 @@ func TestTasker_PostPipeline(t *testing.T) {
 }
 
 func TestTasker_Running(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -105,7 +105,7 @@ func TestTasker_Running(t *testing.T) {
 }
 
 func TestTasker_PostStop(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -136,7 +136,7 @@ func TestTasker_GetResource(t *testing.T) {
 }
 
 func TestTasker_GetController(t *testing.T) {
-	ctrl1 := createDbgController(t)
+	ctrl1 := createCarouselImageController(t)
 	defer ctrl1.Destroy()
 
 	tasker := createTasker(t)
@@ -150,7 +150,7 @@ func TestTasker_GetController(t *testing.T) {
 }
 
 func TestTasker_ClearCache(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -167,7 +167,7 @@ func TestTasker_ClearCache(t *testing.T) {
 }
 
 func TestTasker_GetLatestNode(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)

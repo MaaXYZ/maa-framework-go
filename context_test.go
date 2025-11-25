@@ -22,7 +22,7 @@ func (t *testContextRunTaskAct) Run(ctx *Context, _ *CustomActionArg) bool {
 }
 
 func TestContext_RunTask(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -63,7 +63,7 @@ func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) boo
 }
 
 func TestContext_RunRecognition(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -110,7 +110,7 @@ func (a testContextRunActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
 }
 
 func TestContext_RunAction(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -160,7 +160,7 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 }
 
 func TestContext_OverridePipeline(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -207,7 +207,7 @@ func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool 
 }
 
 func TestContext_OverrideNext(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -242,7 +242,7 @@ func (t *testContextGetTaskJobAct) Run(ctx *Context, _ *CustomActionArg) bool {
 }
 
 func TestContext_GetTaskJob(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -277,7 +277,7 @@ func (t testContextGetTaskerAct) Run(ctx *Context, _ *CustomActionArg) bool {
 }
 
 func TestContext_GetTasker(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -312,7 +312,7 @@ func (t testContextCloneAct) Run(ctx *Context, _ *CustomActionArg) bool {
 }
 
 func TestContext_Clone(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)

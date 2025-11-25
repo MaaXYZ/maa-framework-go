@@ -24,7 +24,7 @@ func (t *testResourceTestRec) Run(_ *Context, _ *CustomRecognitionArg) (*CustomR
 }
 
 func TestResource_RegisterCustomRecognition(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -49,7 +49,7 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 }
 
 func TestResource_UnregisterCustomRecognition(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -85,7 +85,7 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 }
 
 func TestResource_ClearCustomRecognition(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -143,7 +143,7 @@ func (t *testResourceTestAct) Run(_ *Context, _ *CustomActionArg) bool {
 }
 
 func TestResource_RegisterCustomAction(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -168,7 +168,7 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 }
 
 func TestResource_UnregisterCustomAction(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -204,7 +204,7 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 }
 
 func TestResource_ClearCustomAction(t *testing.T) {
-	ctrl := createDbgController(t)
+	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
