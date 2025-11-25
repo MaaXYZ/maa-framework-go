@@ -433,77 +433,77 @@ func (c *Controller) SetScreenshotUseRawSize(enabled bool) bool {
 // PostConnect posts a connection.
 func (c *Controller) PostConnect() *Job {
 	id := native.MaaControllerPostConnection(c.handle)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 // PostClick posts a click.
 func (c *Controller) PostClick(x, y int32) *Job {
 	id := native.MaaControllerPostClick(c.handle, x, y)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 // PostSwipe posts a swipe.
 func (c *Controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job {
 	id := native.MaaControllerPostSwipe(c.handle, x1, y1, x2, y2, int32(duration.Milliseconds()))
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 // PostPressKey posts a click key.
 func (c *Controller) PostClickKey(keycode int32) *Job {
 	id := native.MaaControllerPostClickKey(c.handle, keycode)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 // PostInputText posts an input text.
 func (c *Controller) PostInputText(text string) *Job {
 	id := native.MaaControllerPostInputText(c.handle, text)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 // PostStartApp posts a start app.
 func (c *Controller) PostStartApp(intent string) *Job {
 	id := native.MaaControllerPostStartApp(c.handle, intent)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 // PostStopApp posts a stop app.
 func (c *Controller) PostStopApp(intent string) *Job {
 	id := native.MaaControllerPostStopApp(c.handle, intent)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 // PostTouchDown posts a touch-down.
 func (c *Controller) PostTouchDown(contact, x, y, pressure int32) *Job {
 	id := native.MaaControllerPostTouchDown(c.handle, contact, x, y, pressure)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 // PostTouchMove posts a touch-move.
 func (c *Controller) PostTouchMove(contact, x, y, pressure int32) *Job {
 	id := native.MaaControllerPostTouchMove(c.handle, contact, x, y, pressure)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 // PostTouchUp posts a touch-up.
 func (c *Controller) PostTouchUp(contact int32) *Job {
 	id := native.MaaControllerPostTouchUp(c.handle, contact)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 func (c *Controller) PostKeyDown(keycode int32) *Job {
 	id := native.MaaControllerPostKeyDown(c.handle, keycode)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 func (c *Controller) PostKeyUp(keycode int32) *Job {
 	id := native.MaaControllerPostKeyUp(c.handle, keycode)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 // PostScreencap posts a screencap.
 func (c *Controller) PostScreencap() *Job {
 	id := native.MaaControllerPostScreencap(c.handle)
-	return NewJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait)
 }
 
 // status gets the status of a request identified by the given id.

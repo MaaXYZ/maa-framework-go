@@ -95,7 +95,7 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 
 func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
 	id := native.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
-	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
 // PostTask posts a task to the tasker.
@@ -129,7 +129,7 @@ func (t *Tasker) Running() bool {
 // PostStop posts a stop signal to the tasker.
 func (t *Tasker) PostStop() *TaskJob {
 	id := native.MaaTaskerPostStop(t.handle)
-	return NewTaskJob(id, t.status, t.wait, t.getTaskDetail)
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail)
 }
 
 // GetResource returns the resource handle of the tasker.

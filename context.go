@@ -183,7 +183,7 @@ func (ctx *Context) GetNodeJSON(name string) (bool, string) {
 func (ctx *Context) GetTaskJob() *TaskJob {
 	tasker := ctx.GetTasker()
 	taskId := native.MaaContextGetTaskId(ctx.handle)
-	return NewTaskJob(taskId, tasker.status, tasker.wait, tasker.getTaskDetail)
+	return newTaskJob(taskId, tasker.status, tasker.wait, tasker.getTaskDetail)
 }
 
 // GetTasker return current Tasker.

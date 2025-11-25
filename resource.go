@@ -229,7 +229,7 @@ func (r *Resource) ClearCustomAction() bool {
 // Return id of the resource.
 func (r *Resource) PostBundle(path string) *Job {
 	id := native.MaaResourcePostBundle(r.handle, path)
-	return NewJob(id, r.status, r.wait)
+	return newJob(id, r.status, r.wait)
 }
 
 func (r *Resource) overridePipeline(override string) bool {
