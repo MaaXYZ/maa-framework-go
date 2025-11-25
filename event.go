@@ -114,7 +114,7 @@ type eventHandler struct {
 	sink any
 }
 
-func (n *eventHandler) HandleRaw(handle uintptr, msg, detailsJSON string) {
+func (n *eventHandler) handleRaw(handle uintptr, msg, detailsJSON string) {
 	if n.sink == nil {
 		return
 	}
@@ -304,7 +304,7 @@ func _MaaEventCallbackAgent(handle uintptr, message, detailsJson *byte, transArg
 	handler := &eventHandler{
 		sink: cb.sink,
 	}
-	handler.HandleRaw(
+	handler.handleRaw(
 		handle,
 		bytePtrToString(message),
 		bytePtrToString(detailsJson),
