@@ -1,8 +1,9 @@
 package buffer
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func createRectBuffer(t *testing.T) *RectBuffer {
@@ -36,9 +37,9 @@ func TestRectBuffer_Set(t *testing.T) {
 	y := rectBuffer.GetY()
 	require.Equal(t, rect1.Y, y)
 	w := rectBuffer.GetW()
-	require.Equal(t, rect1.W, w)
+	require.Equal(t, rect1.Width(), w)
 	h := rectBuffer.GetH()
-	require.Equal(t, rect1.H, h)
+	require.Equal(t, rect1.Height(), h)
 	rect2 := rectBuffer.Get()
 	require.Equal(t, rect1, rect2)
 }

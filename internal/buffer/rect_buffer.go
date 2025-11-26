@@ -5,16 +5,22 @@ import (
 )
 
 // Rect represents a 2D rectangle area
-// X, Y coordinates represent the top-left corner position
-// W, H represent the width and height of the rectangle respectively
-type Rect struct {
-	X, Y, W, H int32
+type Rect [4]int
+
+func (r Rect) X() int {
+	return r[0]
 }
 
-// ToInts converts the rectangle to an array of 4 int32 values
-// Returns array in format: [X, Y, Width, Height]
-func (r Rect) ToInts() [4]int32 {
-	return [4]int32{r.X, r.Y, r.W, r.H}
+func (r Rect) Y() int {
+	return r[1]
+}
+
+func (r Rect) Width() int {
+	return r[2]
+}
+
+func (r Rect) Height() int {
+	return r[3]
 }
 
 type RectBuffer struct {
@@ -46,7 +52,7 @@ func (r *RectBuffer) Handle() uintptr {
 }
 
 func (r *RectBuffer) Get() Rect {
-	return Rect{r.GetX(), r.GetY(), r.GetW(), r.GetH()}
+	return Rect{int(r.GetX()), int(r.GetY()), int(r.GetW()), int(r.GetH())}
 }
 
 func (r *RectBuffer) GetX() int32 {
@@ -66,5 +72,5 @@ func (r *RectBuffer) GetH() int32 {
 }
 
 func (r *RectBuffer) Set(rect Rect) bool {
-	return native.MaaRectSet(r.handle, rect.X, rect.Y, rect.W, rect.H)
+	return native.MaaRectSet(r.handle, int32(rect.X()), int32(rect.Y()), int32(rect.Width()), int32(rect.Height()))
 }
