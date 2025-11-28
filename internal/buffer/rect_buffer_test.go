@@ -33,13 +33,13 @@ func TestRectBuffer_Set(t *testing.T) {
 	require.True(t, got)
 
 	x := rectBuffer.GetX()
-	require.Equal(t, rect1.X(), x)
+	require.Equal(t, rect1.X(), int(x))
 	y := rectBuffer.GetY()
-	require.Equal(t, rect1.Y(), y)
+	require.Equal(t, rect1.Y(), int(y))
 	w := rectBuffer.GetW()
-	require.Equal(t, rect1.Width(), w)
+	require.Equal(t, rect1.Width(), int(w))
 	h := rectBuffer.GetH()
-	require.Equal(t, rect1.Height(), h)
+	require.Equal(t, rect1.Height(), int(h))
 	rect2 := rectBuffer.Get()
 	require.Equal(t, rect1, rect2)
 }
