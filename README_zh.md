@@ -3,9 +3,9 @@
   <img alt="LOGO" src="https://cdn.jsdelivr.net/gh/MaaAssistantArknights/design@main/logo/maa-logo_512x512.png" width="256" height="256" />
 </p>
 
-# MaaFramework Golang 绑定
+<h1 align="center">MaaFramework Go 绑定</h1>
 
-<p>
+<p align="center">
     <a href="https://github.com/MaaXYZ/maa-framework-go/blob/main/LICENSE.md">
         <img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
     </a>
@@ -15,58 +15,154 @@
     <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.0.5">
         <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.0.5-blue">
     </a>
+    <a href="https://goreportcard.com/report/github.com/MaaXYZ/maa-framework-go/v3">
+        <img alt="go report" src="https://goreportcard.com/badge/github.com/MaaXYZ/maa-framework-go/v3">
+    </a>
 </p>
 
-[English](README.md) | 简体中文
+<p align="center">
+    <a href="README.md">English</a> | 简体中文
+</p>
 
-这是 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 的Go语言绑定，为Go开发者提供了一种简单而有效的方式，在他们的Go应用程序中使用MaaFramework的功能。
+[MaaFramework](https://github.com/MaaXYZ/MaaFramework) 的 Go 语言绑定。MaaFramework 是一个基于图像识别的跨平台自动化测试框架。
 
-> 无需 Cgo！
+> **🚀 无需 Cgo！** 基于 [purego](https://github.com/ebitengine/purego) 的纯 Go 实现。
 
-## 安装
+## ✨ 特性
 
-要安装MaaFramework Go绑定，请在终端中运行以下命令：
+- 🎯 **ADB 控制器** - 通过 ADB 实现 Android 设备自动化
+- 🖥️ **Win32 控制器** - Windows 桌面应用自动化
+- 🔍 **图像识别** - 模板匹配、OCR、特征检测等
+- 🧩 **自定义识别** - 实现自定义图像识别算法
+- 🎮 **自定义动作** - 定义你自己的自动化逻辑
+- 🔌 **Agent 支持** - 支持从外部进程挂载自定义识别和动作
+- 📦 **流水线驱动** - 基于 JSON 配置的声明式任务流
+
+## 📦 安装
+
+### 1. 安装 Go 包
 
 ```shell
 go get github.com/MaaXYZ/maa-framework-go/v3
 ```
 
-此外，请下载MaaFramework的[Release 包](https://github.com/MaaXYZ/MaaFramework/releases)，以获取必要的动态库文件。
+### 2. 下载 MaaFramework
 
-## 使用
+根据你的平台下载 [MaaFramework Release](https://github.com/MaaXYZ/MaaFramework/releases) 并解压。
 
-要在您的Go项目中使用MaaFramework，请像导入其他Go包一样导入此包：
+| 平台 | 架构 | 下载 |
+|------|------|------|
+| Windows  | amd64       | `MAA-win-x86_64-*.zip` |
+| Windows  | arm64       | `MAA-win-aarch64-*.zip` |
+| Linux    | amd64       | `MAA-linux-x86_64-*.zip` |
+| Linux    | arm64      | `MAA-linux-aarch64-*.zip` |
+| macOS    | amd64       | `MAA-macos-x86_64-*.zip` |
+| macOS    | arm64      | `MAA-macos-aarch64-*.zip` |
+
+## ⚙️ 运行时要求
+
+使用 maa-framework-go 构建的程序需要 MaaFramework 动态库才能运行。你有以下几种方式：
+
+1. **通过 `Init()` 选项** - 在代码中指定库文件路径：
+
+   ```go
+   maa.Init(maa.WithLibDir("path/to/MaaFramework/bin"))
+   ```
+
+2. **工作目录** - 将 MaaFramework 库文件放在程序的工作目录中
+
+3. **环境变量** - 将库文件路径添加到 `PATH`（Windows）或 `LD_LIBRARY_PATH`（Linux/macOS）
+
+4. **系统库路径** - 将库文件安装到系统库目录
+
+## 🚀 快速开始
 
 ```go
-import "github.com/MaaXYZ/maa-framework-go/v3"
+package main
+
+import (
+    "fmt"
+    "os"
+
+    "github.com/MaaXYZ/maa-framework-go/v3"
+)
+
+func main() {
+    // 初始化 MaaFramework
+    maa.Init()
+    maa.ConfigInitOption("./", "{}")
+
+    // 创建 Tasker
+    tasker := maa.NewTasker()
+    defer tasker.Destroy()
+
+    // 查找并连接 ADB 设备
+    devices := maa.FindAdbDevices()
+    if len(devices) == 0 {
+        fmt.Println("未找到 ADB 设备")
+        os.Exit(1)
+    }
+    device := devices[0]
+
+    ctrl := maa.NewAdbController(
+        device.AdbPath,
+        device.Address,
+        device.ScreencapMethod,
+        device.InputMethod,
+        device.Config,
+        "path/to/MaaAgentBinary",
+    )
+    defer ctrl.Destroy()
+    ctrl.PostConnect().Wait()
+    tasker.BindController(ctrl)
+
+    // 加载资源
+    res := maa.NewResource()
+    defer res.Destroy()
+    res.PostBundle("./resource").Wait()
+    tasker.BindResource(res)
+
+    if !tasker.Initialized() {
+        fmt.Println("MAA 初始化失败")
+        os.Exit(1)
+    }
+
+    // 运行任务
+    detail := tasker.PostTask("Startup").Wait().GetDetail()
+    fmt.Println(detail)
+}
 ```
 
-然后，您可以使用MaaFramework提供的功能。有关详细用法，请参阅仓库中提供的 [文档](#文档)。
+## 📖 示例
 
-> 注意: 使用 maa-framework-go 构建的程序依赖于 MaaFramework 的动态库运行。请确保以下条件之一满足：
->
-> 1. 程序的工作目录包含 MaaFramework 的动态库。
-> 2. 设置了指向动态库的环境变量（如 LD_LIBRARY_PATH 或 PATH）。
->
-> 否则，程序可能无法正确运行。
+更多示例请查看 [examples](examples) 目录：
 
-## 文档
+- [quick-start](examples/quick-start) - 基础使用
+- [custom-action](examples/custom-action) - 自定义动作
+- [custom-recognition](examples/custom-recognition) - 自定义识别
+- [agent-client](examples/agent-client) - Agent 客户端
+- [agent-server](examples/agent-server) - Agent 服务端
 
-目前没有太多详细的文档。请参阅源代码，并与MaaFramework项目中的接口进行比较，以了解如何使用这些绑定。我们正在积极添加更多注释和文档到源代码中。
+## 📚 文档
 
-以下是一些可能对您有帮助的MaaFramework文档：
-
-- [快速开始](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md)
+- [MaaFramework 快速开始](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md)
 - [任务流水线协议](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.1-%E4%BB%BB%E5%8A%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%8D%8F%E8%AE%AE.md)
+- [集成文档](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/2.1-%E9%9B%86%E6%88%90%E6%96%87%E6%A1%A3.md)
+- [Go 包文档](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v3)
 
-## 贡献
+## 🤝 贡献
 
-我们欢迎对MaaFramework Go绑定的贡献。如果您发现了bug或有功能请求，请在GitHub仓库上打开一个issue。如果您想贡献代码，欢迎fork仓库并提交pull request。
+欢迎贡献！你可以：
 
-## 许可证
+- 🐛 通过 Issue 报告 Bug
+- 💡 提出功能建议或改进意见
+- 🔧 提交 Pull Request
 
-本项目使用 LGPL-3.0 许可证。详细信息请参阅 [LICENSE](https://github.com/MaaXYZ/maa-framework-go/blob/main/LICENSE.md) 文件。
+## 📄 许可证
 
-## 讨论
+本项目采用 [LGPL-3.0 许可证](LICENSE.md)。
 
-QQ 群: 595990173
+## 💬 社区
+
+- **QQ 群**: 595990173
+- **GitHub Discussions**: [MaaFramework Discussions](https://github.com/MaaXYZ/MaaFramework/discussions)
