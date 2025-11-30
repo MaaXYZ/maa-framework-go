@@ -55,6 +55,8 @@ type Node struct {
 	Inverse bool `json:"inverse,omitempty"`
 	// Enabled determines whether this node is active. Default: true.
 	Enabled *bool `json:"enabled,omitempty"`
+	// MaxHit sets the maximum hit count of the node. Default: unlimited.
+	MaxHit *uint64 `json:"max_hit,omitempty"`
 	// PreDelay sets the delay before action execution in milliseconds. Default: 200.
 	PreDelay *int64 `json:"pre_delay,omitempty"`
 	// PostDelay sets the delay after action execution in milliseconds. Default: 200.
@@ -127,6 +129,13 @@ func WithInverse(inverse bool) NodeOption {
 func WithEnabled(enabled bool) NodeOption {
 	return func(n *Node) {
 		n.Enabled = &enabled
+	}
+}
+
+// WithMaxHit sets the maximum hit count of the node.
+func WithMaxHit(maxHit uint64) NodeOption {
+	return func(n *Node) {
+		n.MaxHit = &maxHit
 	}
 }
 
@@ -240,6 +249,12 @@ func (n *Node) SetInverse(inverse bool) *Node {
 // SetEnabled sets whether the node is enabled and returns the node for chaining.
 func (n *Node) SetEnabled(enabled bool) *Node {
 	n.Enabled = &enabled
+	return n
+}
+
+// SetMaxHit sets the maximum hit count of the node and returns the node for chaining.
+func (n *Node) SetMaxHit(maxHit uint64) *Node {
+	n.MaxHit = &maxHit
 	return n
 }
 
