@@ -197,3 +197,28 @@ func (ctx *Context) Clone() *Context {
 	handle := native.MaaContextClone(ctx.handle)
 	return &Context{handle: handle}
 }
+
+// SetAnchor sets an anchor by name.
+func (ctx *Context) SetAnchor(anchorName, nodeName string) bool {
+	return native.MaaContextSetAnchor(ctx.handle, anchorName, nodeName)
+}
+
+// GetAnchor gets an anchor by name.
+func (ctx *Context) GetAnchor(anchorName string) (string, bool) {
+	buf := buffer.NewStringBuffer()
+	defer buf.Destroy()
+	ok := native.MaaContextGetAnchor(ctx.handle, anchorName, buf.Handle())
+	return buf.Get(), ok
+}
+
+// GetHitCount gets the hit count of a node by name.
+func (ctx *Context) GetHitCount(nodeName string) (uint64, bool) {
+	var count uint64
+	ok := native.MaaContextGetHitCount(ctx.handle, nodeName, &count)
+	return count, ok
+}
+
+// ClearHitCount clears the hit count of a node by name.
+func (ctx *Context) ClearHitCount(nodeName string) bool {
+	return native.MaaContextClearHitCount(ctx.handle, nodeName)
+}

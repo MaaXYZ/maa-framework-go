@@ -282,6 +282,10 @@ var (
 	MaaContextGetTaskId        func(context uintptr) int64
 	MaaContextGetTasker        func(context uintptr) uintptr
 	MaaContextClone            func(context uintptr) uintptr
+	MaaContextSetAnchor        func(context uintptr, anchorName, nodeName string) bool
+	MaaContextGetAnchor        func(context uintptr, anchorName string, buffer uintptr) bool
+	MaaContextGetHitCount      func(context uintptr, nodeName string, count *uint64) bool
+	MaaContextClearHitCount    func(context uintptr, nodeName string) bool
 )
 
 var (
@@ -487,6 +491,10 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaContextGetTaskId, maaFramework, "MaaContextGetTaskId")
 	purego.RegisterLibFunc(&MaaContextGetTasker, maaFramework, "MaaContextGetTasker")
 	purego.RegisterLibFunc(&MaaContextClone, maaFramework, "MaaContextClone")
+	purego.RegisterLibFunc(&MaaContextSetAnchor, maaFramework, "MaaContextSetAnchor")
+	purego.RegisterLibFunc(&MaaContextGetAnchor, maaFramework, "MaaContextGetAnchor")
+	purego.RegisterLibFunc(&MaaContextGetHitCount, maaFramework, "MaaContextGetHitCount")
+	purego.RegisterLibFunc(&MaaContextClearHitCount, maaFramework, "MaaContextClearHitCount")
 	// Buffer
 	purego.RegisterLibFunc(&MaaStringBufferCreate, maaFramework, "MaaStringBufferCreate")
 	purego.RegisterLibFunc(&MaaStringBufferDestroy, maaFramework, "MaaStringBufferDestroy")
