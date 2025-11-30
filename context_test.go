@@ -215,10 +215,13 @@ func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool 
 	testNode := NewNode("Test",
 		WithNext([]NodeNextItem{
 			{Name: "TaskA"},
-			{Name: "TaskB"},
 		}),
 	)
 	pipeline.AddNode(testNode)
+	taskANode := NewNode("TaskA")
+	pipeline.AddNode(taskANode)
+	taskBNode := NewNode("TaskB")
+	pipeline.AddNode(taskBNode)
 
 	ok1 := ctx.OverridePipeline(pipeline)
 	require.True(t.t, ok1)
