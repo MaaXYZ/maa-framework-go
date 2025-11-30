@@ -468,6 +468,12 @@ func (c *Controller) PostScreencap() *Job {
 	return newJob(id, c.status, c.wait)
 }
 
+// PostScroll posts a scroll.
+func (c *Controller) PostScroll(dx, dy int32) *Job {
+	id := native.MaaControllerPostScroll(c.handle, dx, dy)
+	return newJob(id, c.status, c.wait)
+}
+
 // status gets the status of a request identified by the given id.
 func (c *Controller) status(id int64) Status {
 	return Status(native.MaaControllerStatus(c.handle, id))
