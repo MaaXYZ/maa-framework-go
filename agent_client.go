@@ -91,3 +91,21 @@ func (ac *AgentClient) SetTimeout(duration time.Duration) bool {
 
 	return native.MaaAgentClientSetTimeout(ac.handle, milliseconds)
 }
+
+// GetCustomRecognitionList returns the custom recognition name list of the agent client
+func (ac *AgentClient) GetCustomRecognitionList() ([]string, bool) {
+	buf := buffer.NewStringListBuffer()
+	defer buf.Destroy()
+
+	ok := native.MaaAgentClientGetCustomRecognitionList(ac.handle, buf.Handle())
+	return buf.GetAll(), ok
+}
+
+// GetCustomActionList returns the custom action name list of the agent client
+func (ac *AgentClient) GetCustomActionList() ([]string, bool) {
+	buf := buffer.NewStringListBuffer()
+	defer buf.Destroy()
+
+	ok := native.MaaAgentClientGetCustomActionList(ac.handle, buf.Handle())
+	return buf.GetAll(), ok
+}

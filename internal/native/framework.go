@@ -132,6 +132,8 @@ var (
 	MaaResourceSetOption                   func(res uintptr, key MaaResOption, value unsafe.Pointer, valSize uint64) bool
 	MaaResourceGetHash                     func(res uintptr, buffer uintptr) bool
 	MaaResourceGetNodeList                 func(res uintptr, buffer uintptr) bool
+	MaaResourceGetCustomRecognitionList    func(res uintptr, buffer uintptr) bool
+	MaaResourceGetCustomActionList         func(res uintptr, buffer uintptr) bool
 )
 
 // MaaAdbScreencapMethod
@@ -443,6 +445,8 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaResourceSetOption, maaFramework, "MaaResourceSetOption")
 	purego.RegisterLibFunc(&MaaResourceGetHash, maaFramework, "MaaResourceGetHash")
 	purego.RegisterLibFunc(&MaaResourceGetNodeList, maaFramework, "MaaResourceGetNodeList")
+	purego.RegisterLibFunc(&MaaResourceGetCustomRecognitionList, maaFramework, "MaaResourceGetCustomRecognitionList")
+	purego.RegisterLibFunc(&MaaResourceGetCustomActionList, maaFramework, "MaaResourceGetCustomActionList")
 	// Controller
 	purego.RegisterLibFunc(&MaaAdbControllerCreate, maaFramework, "MaaAdbControllerCreate")
 	purego.RegisterLibFunc(&MaaWin32ControllerCreate, maaFramework, "MaaWin32ControllerCreate")

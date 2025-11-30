@@ -332,6 +332,32 @@ func (r *Resource) GetNodeList() ([]string, bool) {
 	return taskListArr, true
 }
 
+// GetCustomRecognitionList returns the custom recognition list of the resource.
+func (r *Resource) GetCustomRecognitionList() ([]string, bool) {
+	recognitionList := buffer.NewStringListBuffer()
+	defer recognitionList.Destroy()
+
+	got := native.MaaResourceGetCustomRecognitionList(r.handle, recognitionList.Handle())
+	if !got {
+		return []string{}, false
+	}
+
+	return recognitionList.GetAll(), true
+}
+
+// GetCustomActionList returns the custom action list of the resource.
+func (r *Resource) GetCustomActionList() ([]string, bool) {
+	actionList := buffer.NewStringListBuffer()
+	defer actionList.Destroy()
+
+	got := native.MaaResourceGetCustomActionList(r.handle, actionList.Handle())
+	if !got {
+		return []string{}, false
+	}
+
+	return actionList.GetAll(), true
+}
+
 // AddSink adds a event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
 func (r *Resource) AddSink(sink ResourceEventSink) int64 {

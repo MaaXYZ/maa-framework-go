@@ -11,18 +11,20 @@ import (
 var maaAgentClient uintptr
 
 var (
-	MaaAgentClientCreateV2               func(identifier uintptr) uintptr
-	MaaAgentClientDestroy                func(client uintptr)
-	MaaAgentClientIdentifier             func(client uintptr, identifier uintptr) bool
-	MaaAgentClientBindResource           func(client uintptr, res uintptr) bool
-	MaaAgentClientRegisterResourceSink   func(client uintptr, res uintptr) bool
-	MaaAgentClientRegisterControllerSink func(client uintptr, ctrl uintptr) bool
-	MaaAgentClientRegisterTaskerSink     func(client uintptr, tasker uintptr) bool
-	MaaAgentClientConnect                func(client uintptr) bool
-	MaaAgentClientDisconnect             func(client uintptr) bool
-	MaaAgentClientConnected              func(client uintptr) bool
-	MaaAgentClientAlive                  func(client uintptr) bool
-	MaaAgentClientSetTimeout             func(client uintptr, milliseconds int64) bool
+	MaaAgentClientCreateV2                 func(identifier uintptr) uintptr
+	MaaAgentClientDestroy                  func(client uintptr)
+	MaaAgentClientIdentifier               func(client uintptr, identifier uintptr) bool
+	MaaAgentClientBindResource             func(client uintptr, res uintptr) bool
+	MaaAgentClientRegisterResourceSink     func(client uintptr, res uintptr) bool
+	MaaAgentClientRegisterControllerSink   func(client uintptr, ctrl uintptr) bool
+	MaaAgentClientRegisterTaskerSink       func(client uintptr, tasker uintptr) bool
+	MaaAgentClientConnect                  func(client uintptr) bool
+	MaaAgentClientDisconnect               func(client uintptr) bool
+	MaaAgentClientConnected                func(client uintptr) bool
+	MaaAgentClientAlive                    func(client uintptr) bool
+	MaaAgentClientSetTimeout               func(client uintptr, milliseconds int64) bool
+	MaaAgentClientGetCustomRecognitionList func(client uintptr, buffer uintptr) bool
+	MaaAgentClientGetCustomActionList      func(client uintptr, buffer uintptr) bool
 )
 
 func initAgentClient(libDir string) error {
@@ -67,6 +69,8 @@ func registerAgentClient() {
 	purego.RegisterLibFunc(&MaaAgentClientConnected, maaAgentClient, "MaaAgentClientConnected")
 	purego.RegisterLibFunc(&MaaAgentClientAlive, maaAgentClient, "MaaAgentClientAlive")
 	purego.RegisterLibFunc(&MaaAgentClientSetTimeout, maaAgentClient, "MaaAgentClientSetTimeout")
+	purego.RegisterLibFunc(&MaaAgentClientGetCustomRecognitionList, maaAgentClient, "MaaAgentClientGetCustomRecognitionList")
+	purego.RegisterLibFunc(&MaaAgentClientGetCustomActionList, maaAgentClient, "MaaAgentClientGetCustomActionList")
 }
 
 func unregisterAgentClient() error {
