@@ -172,11 +172,11 @@ func (ctx *Context) OverrideImage(imageName string, image image.Image) bool {
 }
 
 // GetNodeJSON gets the node JSON by name.
-func (ctx *Context) GetNodeJSON(name string) (bool, string) {
+func (ctx *Context) GetNodeJSON(name string) (string, bool) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaResourceGetNodeData(ctx.handle, name, buf.Handle())
-	return ok, buf.Get()
+	return buf.Get(), ok
 }
 
 // GetTaskJob returns current task job.
