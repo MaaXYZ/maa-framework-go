@@ -39,12 +39,14 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 	got1 := res.RegisterCustomRecognition("TestRec", &testResourceTestRec{})
 	require.True(t, got1)
 
-	got2 := tasker.PostTask("TestResource_RegisterCustomRecognition", J{
-		"TestResource_RegisterCustomRecognition": J{
-			"recognition":        "custom",
-			"custom_recognition": "TestRec",
-		},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testResource_RegisterCustomRecognitionNode := NewNode("TestResource_RegisterCustomRecognition",
+		WithRecognition(RecCustom("TestRec")),
+	)
+	pipeline.AddNode(testResource_RegisterCustomRecognitionNode)
+
+	got2 := tasker.PostTask(testResource_RegisterCustomRecognitionNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got2)
 }
 
@@ -64,23 +66,21 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 	got1 := res.RegisterCustomRecognition("TestRec", &testResourceTestRec{})
 	require.True(t, got1)
 
-	got2 := tasker.PostTask("TestResource_UnregisterCustomRecognition", J{
-		"TestResource_UnregisterCustomRecognition": J{
-			"recognition":        "custom",
-			"custom_recognition": "TestRec",
-		},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testResource_UnregisterCustomRecognitionNode := NewNode("TestResource_UnregisterCustomRecognition",
+		WithRecognition(RecCustom("TestRec")),
+	)
+	pipeline.AddNode(testResource_UnregisterCustomRecognitionNode)
+
+	got2 := tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got2)
 
 	got3 := res.UnregisterCustomRecognition("TestRec")
 	require.True(t, got3)
 
-	got4 := tasker.PostTask("TestResource_UnregisterCustomRecognition", J{
-		"TestResource_UnregisterCustomRecognition": J{
-			"recognition":        "custom",
-			"custom_recognition": "TestRec",
-		},
-	}).Wait().Failure()
+	got4 := tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline).
+		Wait().Failure()
 	require.True(t, got4)
 }
 
@@ -102,37 +102,32 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 	got2 := res.RegisterCustomRecognition("TestRec2", &testResourceTestRec{})
 	require.True(t, got2)
 
-	got3 := tasker.PostTask("TestResource_ClearCustomRecognition", J{
-		"TestResource_ClearCustomRecognition": J{
-			"recognition":        "custom",
-			"custom_recognition": "TestRec1",
-		},
-	}).Wait().Success()
+	pipeline1 := NewPipeline()
+	testResource_ClearCustomRecognitionNode1 := NewNode("TestResource_ClearCustomRecognition",
+		WithRecognition(RecCustom("TestRec1")),
+	)
+	pipeline1.AddNode(testResource_ClearCustomRecognitionNode1)
+
+	pipeline2 := NewPipeline()
+	testResource_ClearCustomRecognitionNode2 := NewNode("TestResource_ClearCustomRecognition",
+		WithRecognition(RecCustom("TestRec2")),
+	)
+	pipeline2.AddNode(testResource_ClearCustomRecognitionNode2)
+	got3 := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1).
+		Wait().Success()
 	require.True(t, got3)
-	got4 := tasker.PostTask("TestResource_ClearCustomRecognition", J{
-		"TestResource_ClearCustomRecognition": J{
-			"recognition":        "custom",
-			"custom_recognition": "TestRec2",
-		},
-	}).Wait().Success()
+	got4 := tasker.PostTask(testResource_ClearCustomRecognitionNode2.Name, pipeline2).
+		Wait().Success()
 	require.True(t, got4)
 
 	got5 := res.ClearCustomRecognition()
 	require.True(t, got5)
 
-	got6 := tasker.PostTask("TestResource_ClearCustomRecognition", J{
-		"TestResource_ClearCustomRecognition": J{
-			"recognition":        "custom",
-			"custom_recognition": "TestRec1",
-		},
-	}).Wait().Failure()
+	got6 := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1).
+		Wait().Failure()
 	require.True(t, got6)
-	got7 := tasker.PostTask("TestResource_ClearCustomRecognition", J{
-		"TestResource_ClearCustomRecognition": J{
-			"recognition":        "custom",
-			"custom_recognition": "TestRec2",
-		},
-	}).Wait().Failure()
+	got7 := tasker.PostTask(testResource_ClearCustomRecognitionNode2.Name, pipeline2).
+		Wait().Failure()
 	require.True(t, got7)
 }
 
@@ -158,12 +153,14 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 	registered := res.RegisterCustomAction("TestAct", &testResourceTestAct{})
 	require.True(t, registered)
 
-	got := tasker.PostTask("TestResource_RegisterCustomAction", J{
-		"TestResource_RegisterCustomAction": J{
-			"action":        "custom",
-			"custom_action": "TestAct",
-		},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testResource_RegisterCustomActionNode := NewNode("TestResource_RegisterCustomAction",
+		WithAction(ActCustom("TestAct")),
+	)
+	pipeline.AddNode(testResource_RegisterCustomActionNode)
+
+	got := tasker.PostTask(testResource_RegisterCustomActionNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got)
 }
 
@@ -183,23 +180,21 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 	registered := res.RegisterCustomAction("TestAct", &testResourceTestAct{})
 	require.True(t, registered)
 
-	got1 := tasker.PostTask("TestResource_RegisterCustomAction", J{
-		"TestResource_RegisterCustomAction": J{
-			"action":        "custom",
-			"custom_action": "TestAct",
-		},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testResource_UnregisterCustomActionNode := NewNode("TestResource_UnregisterCustomAction",
+		WithAction(ActCustom("TestAct")),
+	)
+	pipeline.AddNode(testResource_UnregisterCustomActionNode)
+
+	got1 := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got1)
 
 	unregistered := res.UnregisterCustomAction("TestAct")
 	require.True(t, unregistered)
 
-	got2 := tasker.PostTask("TestResource_RegisterCustomAction", J{
-		"TestResource_RegisterCustomAction": J{
-			"action":        "custom",
-			"custom_action": "TestAct",
-		},
-	}).Wait().Failure()
+	got2 := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline).
+		Wait().Failure()
 	require.True(t, got2)
 }
 
@@ -221,37 +216,33 @@ func TestResource_ClearCustomAction(t *testing.T) {
 	registered2 := res.RegisterCustomAction("TestAct2", &testResourceTestAct{})
 	require.True(t, registered2)
 
-	got1 := tasker.PostTask("TestResource_RegisterCustomAction", J{
-		"TestResource_RegisterCustomAction": J{
-			"action":        "custom",
-			"custom_action": "TestAct1",
-		},
-	}).Wait().Success()
+	pipeline1 := NewPipeline()
+	testResource_ClearCustomActionNode1 := NewNode("TestResource_ClearCustomAction",
+		WithAction(ActCustom("TestAct1")),
+	)
+	pipeline1.AddNode(testResource_ClearCustomActionNode1)
+
+	pipeline2 := NewPipeline()
+	testResource_ClearCustomActionNode2 := NewNode("TestResource_ClearCustomAction",
+		WithAction(ActCustom("TestAct2")),
+	)
+	pipeline2.AddNode(testResource_ClearCustomActionNode2)
+
+	got1 := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1).
+		Wait().Success()
 	require.True(t, got1)
-	got2 := tasker.PostTask("TestResource_RegisterCustomAction", J{
-		"TestResource_RegisterCustomAction": J{
-			"action":        "custom",
-			"custom_action": "TestAct2",
-		},
-	}).Wait().Success()
+	got2 := tasker.PostTask(testResource_ClearCustomActionNode2.Name, pipeline2).
+		Wait().Success()
 	require.True(t, got2)
 
 	cleared := res.ClearCustomAction()
 	require.True(t, cleared)
 
-	got3 := tasker.PostTask("TestResource_RegisterCustomAction", J{
-		"TestResource_RegisterCustomAction": J{
-			"action":        "custom",
-			"custom_action": "TestAct1",
-		},
-	}).Wait().Failure()
+	got3 := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1).
+		Wait().Failure()
 	require.True(t, got3)
-	got4 := tasker.PostTask("TestResource_RegisterCustomAction", J{
-		"TestResource_RegisterCustomAction": J{
-			"action":        "custom",
-			"custom_action": "TestAct2",
-		},
-	}).Wait().Failure()
+	got4 := tasker.PostTask(testResource_ClearCustomActionNode2.Name, pipeline2).
+		Wait().Failure()
 	require.True(t, got4)
 }
 

@@ -44,21 +44,21 @@ func main() {
 type MyRec struct{}
 
 func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*maa.CustomRecognitionResult, bool) {
-	ctx.RunRecognition("MyCustomOCR", arg.Img, maa.J{
-		"MyCustomOCR": maa.J{
+	ctx.RunRecognition("MyCustomOCR", arg.Img, map[string]any{
+		"MyCustomOCR": map[string]any{
 			"roi": []int{100, 100, 200, 300},
 		},
 	})
 
-	ctx.OverridePipeline(maa.J{
-		"MyCustomOCR": maa.J{
+	ctx.OverridePipeline(map[string]any{
+		"MyCustomOCR": map[string]any{
 			"roi": []int{1, 1, 114, 514},
 		},
 	})
 
 	newContext := ctx.Clone()
-	newContext.OverridePipeline(maa.J{
-		"MyCustomOCR": maa.J{
+	newContext.OverridePipeline(map[string]any{
+		"MyCustomOCR": map[string]any{
 			"roi": []int{100, 200, 300, 400},
 		},
 	})

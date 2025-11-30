@@ -31,15 +31,15 @@ func TestRunWithoutFile(t *testing.T) {
 	ok := res.RegisterCustomAction("MyAct", &MyAct{t})
 	require.True(t, ok)
 
-	taskParam := maa.J{
-		"MyTask": maa.J{
-			"action":              "Custom",
-			"custom_action":       "MyAct",
-			"custom_action_param": "abcdefg",
-		},
-	}
+	pipeline := maa.NewPipeline()
+	myTaskNode := maa.NewNode("MyTask",
+		maa.WithAction(maa.ActCustom("MyAct",
+			maa.WithCustomActionParam("abcdefg"),
+		)),
+	)
+	pipeline.AddNode(myTaskNode)
 
-	got := tasker.PostTask("MyTask", taskParam).Wait().Success()
+	got := tasker.PostTask("MyTask", pipeline).Wait().Success()
 	require.True(t, got)
 }
 
@@ -55,14 +55,16 @@ func (a *MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	img := ctrl.CacheImage()
 	require.NotNil(a.t, img)
 
-	override := maa.J{
-		"MyColorMatching": maa.J{
-			"recognition": "ColorMatch",
-			"lower":       []int{100, 100, 100},
-			"upper":       []int{255, 255, 255},
-		},
-	}
-	detail := ctx.RunRecognition("MyColorMatching", img, override)
+	pipeline := maa.NewPipeline()
+	myColorMatchingNode := maa.NewNode("MyColorMatching",
+		maa.WithRecognition(maa.RecColorMatch(
+			[][]int{{100, 100, 100}},
+			[][]int{{255, 255, 255}},
+		)),
+	)
+	pipeline.AddNode(myColorMatchingNode)
+
+	detail := ctx.RunRecognition("MyColorMatching", img, pipeline)
 	require.NotNil(a.t, detail)
 
 	return true

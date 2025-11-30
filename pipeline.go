@@ -299,11 +299,11 @@ func (n *Node) SetAttach(attach map[string]any) *Node {
 // NodeNextItem represents an item in the next or on_error list.
 type NodeNextItem struct {
 	// Name is the name of the target node.
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 	// JumpBack indicates whether to jump back to the parent node after this node's chain completes.
-	JumpBack *bool `json:"jump_back,omitempty"`
+	JumpBack bool `json:"jump_back"`
 	// Anchor indicates whether this node should be set as the anchor.
-	Anchor *bool `json:"anchor,omitempty"`
+	Anchor bool `json:"anchor"`
 }
 
 // NodeAttributeOption is a functional option for configuring NodeNextItem attributes.
@@ -313,8 +313,7 @@ type NodeAttributeOption func(*NodeNextItem)
 // to the parent node after completing this node's chain, and continues recognizing from the start of next list.
 func WithJumpBack() NodeAttributeOption {
 	return func(i *NodeNextItem) {
-		jumpBack := true
-		i.JumpBack = &jumpBack
+		i.JumpBack = true
 	}
 }
 
@@ -322,8 +321,7 @@ func WithJumpBack() NodeAttributeOption {
 // and resolved to the last node that set this anchor at runtime.
 func WithAnchor() NodeAttributeOption {
 	return func(i *NodeNextItem) {
-		anchor := true
-		i.Anchor = &anchor
+		i.Anchor = true
 	}
 }
 

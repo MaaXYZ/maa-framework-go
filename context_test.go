@@ -11,12 +11,15 @@ type testContextRunTaskAct struct {
 }
 
 func (t *testContextRunTaskAct) Run(ctx *Context, _ *CustomActionArg) bool {
-	detail := ctx.RunTask("Test", J{
-		"Test": J{
-			"action": "Click",
-			"target": []int{100, 100, 10, 10},
-		},
-	})
+	pipeline := NewPipeline()
+	testNode := NewNode("Test",
+		WithAction(ActClick(
+			WithClickTarget(Rect{100, 100, 10, 10}),
+		)),
+	)
+	pipeline.AddNode(testNode)
+
+	detail := ctx.RunTask(testNode.Name, pipeline)
 	require.NotNil(t.t, detail)
 	return true
 }
@@ -37,12 +40,14 @@ func TestContext_RunTask(t *testing.T) {
 	ok := res.RegisterCustomAction("TestContext_RunPipelineAct", &testContextRunTaskAct{t})
 	require.True(t, ok)
 
-	got := tasker.PostTask("TestContext_RunPipeline", J{
-		"TestContext_RunPipeline": J{
-			"action":        "Custom",
-			"custom_action": "TestContext_RunPipelineAct",
-		},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testContext_RunPipelineNode := NewNode("TestContext_RunPipeline",
+		WithAction(ActCustom("TestContext_RunPipelineAct")),
+	)
+	pipeline.AddNode(testContext_RunPipelineNode)
+
+	got := tasker.PostTask(testContext_RunPipelineNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got)
 }
 
@@ -53,12 +58,14 @@ type testContextRunRecognitionAct struct {
 func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	img := ctx.GetTasker().GetController().CacheImage()
 	require.NotNil(t.t, img)
-	_ = ctx.RunRecognition("Test", img, J{
-		"Test": J{
-			"recognition": "OCR",
-			"expected":    "Hello",
-		},
-	})
+
+	pipeline := NewPipeline()
+	testNode := NewNode("Test",
+		WithRecognition(RecOCR([]string{"Hello"})),
+	)
+	pipeline.AddNode(testNode)
+
+	_ = ctx.RunRecognition("Test", img, pipeline)
 	return true
 }
 
@@ -78,19 +85,20 @@ func TestContext_RunRecognition(t *testing.T) {
 	ok := res.RegisterCustomAction("TestContext_RunRecognitionAct", &testContextRunRecognitionAct{t})
 	require.True(t, ok)
 
-	got := tasker.PostTask("TestContext_RunRecognition", J{
-		"TestContext_RunRecognition": J{
-			"next": []string{
-				"RunRecognition",
-				"Stop",
-			},
-		},
-		"RunRecognition": J{
-			"action":        "Custom",
-			"custom_action": "TestContext_RunRecognitionAct",
-		},
-		"Stop": J{},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testContext_RunRecognitionNode := NewNode("TestContext_RunRecognition").
+		AddNext("RunRecognition").
+		AddNext("Stop")
+	pipeline.AddNode(testContext_RunRecognitionNode)
+	runRecognitionNode := NewNode("RunRecognition",
+		WithRecognition(RecCustom("TestContext_RunRecognitionAct")),
+	)
+	pipeline.AddNode(runRecognitionNode)
+	stopNode := NewNode("Stop")
+	pipeline.AddNode(stopNode)
+
+	got := tasker.PostTask(testContext_RunRecognitionNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got)
 }
 
@@ -99,12 +107,15 @@ type testContextRunActionAct struct {
 }
 
 func (a testContextRunActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
-	detail := ctx.RunAction("Test", arg.Box, arg.RecognitionDetail.DetailJson, J{
-		"Test": J{
-			"action": "Click",
-			"target": []int{100, 100, 10, 10},
-		},
-	})
+	pipeline := NewPipeline()
+	testNode := NewNode("Test",
+		WithAction(ActClick(
+			WithClickTarget(Rect{100, 100, 10, 10}),
+		)),
+	)
+	pipeline.AddNode(testNode)
+
+	detail := ctx.RunAction(testNode.Name, arg.Box, arg.RecognitionDetail.DetailJson, pipeline)
 	require.NotNil(a.t, detail)
 	return true
 }
@@ -125,12 +136,14 @@ func TestContext_RunAction(t *testing.T) {
 	ok := res.RegisterCustomAction("TestContext_RunActionAct", &testContextRunActionAct{t})
 	require.True(t, ok)
 
-	got := tasker.PostTask("TestContext_RunAction", J{
-		"TestContext_RunAction": J{
-			"action":        "Custom",
-			"custom_action": "TestContext_RunActionAct",
-		},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testContext_RunActionNode := NewNode("TestContext_RunAction",
+		WithAction(ActCustom("TestContext_RunActionAct")),
+	)
+	pipeline.AddNode(testContext_RunActionNode)
+
+	got := tasker.PostTask(testContext_RunActionNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got)
 }
 
@@ -139,19 +152,26 @@ type testContextOverriderPipelineAct struct {
 }
 
 func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) bool {
-	detail1 := ctx.RunTask("Test", J{
-		"Test": J{
-			"action": "Click",
-			"target": []int{100, 100, 10, 10},
-		},
-	})
+	pipeline1 := NewPipeline()
+	testNode1 := NewNode("Test",
+		WithAction(ActClick(
+			WithClickTarget(Rect{100, 100, 10, 10}),
+		)),
+	)
+	pipeline1.AddNode(testNode1)
+
+	detail1 := ctx.RunTask(testNode1.Name, pipeline1)
 	require.NotNil(t.t, detail1)
 
-	ok := ctx.OverridePipeline(J{
-		"Test": J{
-			"target": []int{200, 200, 10, 10},
-		},
-	})
+	pipeline2 := NewPipeline()
+	testNode2 := NewNode("Test",
+		WithAction(ActClick(
+			WithClickTarget(Rect{200, 200, 10, 10}),
+		)),
+	)
+	pipeline2.AddNode(testNode2)
+
+	ok := ctx.OverridePipeline(pipeline2)
 	require.True(t.t, ok)
 
 	detail2 := ctx.RunTask("Test")
@@ -175,12 +195,14 @@ func TestContext_OverridePipeline(t *testing.T) {
 	ok := res.RegisterCustomAction("TestContext_OverridePipelineAct", &testContextOverriderPipelineAct{t})
 	require.True(t, ok)
 
-	got := tasker.PostTask("TestContext_OverridePipeline", J{
-		"TestContext_OverridePipeline": J{
-			"action":        "Custom",
-			"custom_action": "TestContext_OverridePipelineAct",
-		},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testContext_OverridePipelineNode := NewNode("TestContext_OverridePipeline",
+		WithAction(ActCustom("TestContext_OverridePipelineAct")),
+	)
+	pipeline.AddNode(testContext_OverridePipelineNode)
+
+	got := tasker.PostTask(testContext_OverridePipelineNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got)
 }
 
@@ -189,19 +211,22 @@ type testContextOverrideNextAct struct {
 }
 
 func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool {
-	ok1 := ctx.OverridePipeline(J{
-		"Test": J{
-			"next": "TaskA",
-		},
-		"TaskA": J{},
-		"TaskB": J{},
-	})
+	pipeline := NewPipeline()
+	testNode := NewNode("Test",
+		WithNext([]NodeNextItem{
+			{Name: "TaskA"},
+			{Name: "TaskB"},
+		}),
+	)
+	pipeline.AddNode(testNode)
+
+	ok1 := ctx.OverridePipeline(pipeline)
 	require.True(t.t, ok1)
 
-	ok2 := ctx.OverrideNext("Test", []string{"TaskB"})
+	ok2 := ctx.OverrideNext(testNode.Name, []string{"TaskB"})
 	require.True(t.t, ok2)
 
-	detail := ctx.RunTask("Test")
+	detail := ctx.RunTask(testNode.Name, pipeline)
 	require.NotNil(t.t, detail)
 	return true
 }
@@ -222,12 +247,14 @@ func TestContext_OverrideNext(t *testing.T) {
 	ok := res.RegisterCustomAction("TestContext_OverrideNextAct", &testContextOverrideNextAct{t})
 	require.True(t, ok)
 
-	got := tasker.PostTask("TestContext_OverrideNext", J{
-		"TestContext_OverrideNext": J{
-			"action":        "Custom",
-			"custom_action": "TestContext_OverrideNextAct",
-		},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testContext_OverrideNextNode := NewNode("TestContext_OverrideNext",
+		WithAction(ActCustom("TestContext_OverrideNextAct")),
+	)
+	pipeline.AddNode(testContext_OverrideNextNode)
+
+	got := tasker.PostTask(testContext_OverrideNextNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got)
 }
 
@@ -257,12 +284,14 @@ func TestContext_GetTaskJob(t *testing.T) {
 	ok := res.RegisterCustomAction("TestContext_GetTaskJobAct", &testContextGetTaskJobAct{t})
 	require.True(t, ok)
 
-	got := tasker.PostTask("TestContext_GetTaskJob", J{
-		"TestContext_GetTaskJob": J{
-			"action":        "Custom",
-			"custom_action": "TestContext_GetTaskJobAct",
-		},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testContext_GetTaskJobNode := NewNode("TestContext_GetTaskJob",
+		WithAction(ActCustom("TestContext_GetTaskJobAct")),
+	)
+	pipeline.AddNode(testContext_GetTaskJobNode)
+
+	got := tasker.PostTask(testContext_GetTaskJobNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got)
 }
 
@@ -292,12 +321,14 @@ func TestContext_GetTasker(t *testing.T) {
 	ok := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextGetTaskerAct{t})
 	require.True(t, ok)
 
-	got := tasker.PostTask("TestContext_GetTasker", J{
-		"TestContext_GetTasker": J{
-			"action":        "Custom",
-			"custom_action": "TestContext_GetTaskerAct",
-		},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testContext_GetTaskerNode := NewNode("TestContext_GetTasker",
+		WithAction(ActCustom("TestContext_GetTaskerAct")),
+	)
+	pipeline.AddNode(testContext_GetTaskerNode)
+
+	got := tasker.PostTask(testContext_GetTaskerNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got)
 }
 
@@ -327,11 +358,13 @@ func TestContext_Clone(t *testing.T) {
 	ok := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextCloneAct{t})
 	require.True(t, ok)
 
-	got := tasker.PostTask("TestContext_GetTasker", J{
-		"TestContext_GetTasker": J{
-			"action":        "Custom",
-			"custom_action": "TestContext_GetTaskerAct",
-		},
-	}).Wait().Success()
+	pipeline := NewPipeline()
+	testContext_CloneNode := NewNode("TestContext_Clone",
+		WithAction(ActCustom("TestContext_GetTaskerAct")),
+	)
+	pipeline.AddNode(testContext_CloneNode)
+
+	got := tasker.PostTask(testContext_CloneNode.Name, pipeline).
+		Wait().Success()
 	require.True(t, got)
 }

@@ -75,12 +75,15 @@ func TestTasker_PostPipeline(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	taskJob := tasker.PostTask("TestTasker_PostPipeline", J{
-		"TestTasker_PostPipeline": J{
-			"action": "Click",
-			"target": []int{100, 200, 100, 100},
-		},
-	})
+	pipeline := NewPipeline()
+	testTasker_PostPipelineNode := NewNode("TestTasker_PostPipeline",
+		WithAction(ActClick(
+			WithClickTarget(Rect{100, 200, 100, 100}),
+		)),
+	)
+	pipeline.AddNode(testTasker_PostPipelineNode)
+
+	taskJob := tasker.PostTask(testTasker_PostPipelineNode.Name, pipeline)
 	got := taskJob.Wait().Success()
 	require.True(t, got)
 	detail := taskJob.GetDetail()
