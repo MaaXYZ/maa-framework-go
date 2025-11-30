@@ -106,18 +106,18 @@ type NodeNextListDetail struct {
 
 // NodeRecognitionDetail contains information about node recognition events
 type NodeRecognitionDetail struct {
-	TaskID uint64 `json:"task_id"`
-	RecID  uint64 `json:"reco_id"`
-	Name   string `json:"name"`
-	Focus  any    `json:"focus"`
+	TaskID        uint64 `json:"task_id"`
+	RecognitionID uint64 `json:"reco_id"`
+	Name          string `json:"name"`
+	Focus         any    `json:"focus"`
 }
 
 // NodeActionDetail contains information about node action events
 type NodeActionDetail struct {
-	TaskID uint64 `json:"task_id"`
-	NodeID uint64 `json:"node_id"`
-	Name   string `json:"name"`
-	Focus  any    `json:"focus"`
+	TaskID   uint64 `json:"task_id"`
+	ActionID uint64 `json:"action_id"`
+	Name     string `json:"name"`
+	Focus    any    `json:"focus"`
 }
 
 type eventHandler struct {
