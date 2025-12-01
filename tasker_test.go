@@ -78,7 +78,7 @@ func TestTasker_PostPipeline(t *testing.T) {
 	pipeline := NewPipeline()
 	testTasker_PostPipelineNode := NewNode("TestTasker_PostPipeline",
 		WithAction(ActClick(
-			WithClickTarget(Rect{100, 200, 100, 100}),
+			WithClickTarget(NewTargetRect(Rect{100, 200, 100, 100})),
 		)),
 	)
 	pipeline.AddNode(testTasker_PostPipelineNode)

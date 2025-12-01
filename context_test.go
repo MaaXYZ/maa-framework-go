@@ -14,7 +14,7 @@ func (t *testContextRunTaskAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	pipeline := NewPipeline()
 	testNode := NewNode("Test",
 		WithAction(ActClick(
-			WithClickTarget(Rect{100, 100, 10, 10}),
+			WithClickTarget(NewTargetRect(Rect{100, 100, 10, 10})),
 		)),
 	)
 	pipeline.AddNode(testNode)
@@ -110,7 +110,7 @@ func (a testContextRunActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
 	pipeline := NewPipeline()
 	testNode := NewNode("Test",
 		WithAction(ActClick(
-			WithClickTarget(Rect{100, 100, 10, 10}),
+			WithClickTarget(NewTargetRect(Rect{100, 100, 10, 10})),
 		)),
 	)
 	pipeline.AddNode(testNode)
@@ -155,7 +155,7 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 	pipeline1 := NewPipeline()
 	testNode1 := NewNode("Test",
 		WithAction(ActClick(
-			WithClickTarget(Rect{100, 100, 10, 10}),
+			WithClickTarget(NewTargetRect(Rect{100, 100, 10, 10})),
 		)),
 	)
 	pipeline1.AddNode(testNode1)
@@ -166,7 +166,7 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 	pipeline2 := NewPipeline()
 	testNode2 := NewNode("Test",
 		WithAction(ActClick(
-			WithClickTarget(Rect{200, 200, 10, 10}),
+			WithClickTarget(NewTargetRect(Rect{200, 200, 10, 10})),
 		)),
 	)
 	pipeline2.AddNode(testNode2)

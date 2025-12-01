@@ -6,6 +6,7 @@ package maa
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 )
 
@@ -37,7 +38,7 @@ type Node struct {
 	Name string `json:"-"`
 
 	// Anchor specifies the anchor name that can be referenced in next or on_error lists via [Anchor] attribute.
-	Anchor string `json:"anchor,omitempty"`
+	Anchor []string `json:"anchor,omitempty"`
 
 	// Recognition defines how this node recognizes targets on screen.
 	Recognition *NodeRecognition `json:"recognition,omitempty"`
@@ -197,7 +198,7 @@ func NewNode(name string, opts ...NodeOption) *Node {
 }
 
 // SetAnchor sets the anchor for the node and returns the node for chaining.
-func (n *Node) SetAnchor(anchor string) *Node {
+func (n *Node) SetAnchor(anchor []string) *Node {
 	n.Anchor = anchor
 	return n
 }
@@ -325,10 +326,47 @@ func WithAnchor() NodeAttributeOption {
 	}
 }
 
+// AddAnchor appends an anchor to the node and returns the node for chaining.
+func (n *Node) AddAnchor(anchor string) *Node {
+	if anchor == "" {
+		return n
+	}
+
+	for _, a := range n.Anchor {
+		if a == anchor {
+			return n
+		}
+	}
+	n.Anchor = append(n.Anchor, anchor)
+	return n
+}
+
+// RemoveAnchor removes an anchor from the node and returns the node for chaining.
+func (n *Node) RemoveAnchor(anchor string) *Node {
+	if anchor == "" {
+		return n
+	}
+
+	for i, a := range n.Anchor {
+		if a == anchor {
+			copy(n.Anchor[i:], n.Anchor[i+1:])
+			n.Anchor = n.Anchor[:len(n.Anchor)-1]
+			break
+		}
+	}
+	return n
+}
+
 // AddNext appends a node to the next list and returns the node for chaining.
 func (n *Node) AddNext(name string, opts ...NodeAttributeOption) *Node {
 	if name == "" {
 		return n
+	}
+
+	for _, item := range n.Next {
+		if item.Name == name {
+			return n
+		}
 	}
 
 	next := NodeNextItem{
@@ -341,10 +379,32 @@ func (n *Node) AddNext(name string, opts ...NodeAttributeOption) *Node {
 	return n
 }
 
+// RemoveNext removes a node from the next list and returns the node for chaining.
+func (n *Node) RemoveNext(name string) *Node {
+	if name == "" {
+		return n
+	}
+
+	for i, item := range n.Next {
+		if item.Name == name {
+			copy(n.Next[i:], n.Next[i+1:])
+			n.Next = n.Next[:len(n.Next)-1]
+			break
+		}
+	}
+	return n
+}
+
 // AddOnError appends a node to the on_error list and returns the node for chaining.
 func (n *Node) AddOnError(name string, opts ...NodeAttributeOption) *Node {
 	if name == "" {
 		return n
+	}
+
+	for _, item := range n.OnError {
+		if item.Name == name {
+			return n
+		}
 	}
 
 	onError := NodeNextItem{
@@ -359,12 +419,74 @@ func (n *Node) AddOnError(name string, opts ...NodeAttributeOption) *Node {
 	return n
 }
 
+// RemoveOnError removes a node from the on_error list and returns the node for chaining.
+func (n *Node) RemoveOnError(name string) *Node {
+	if name == "" {
+		return n
+	}
+
+	for i, item := range n.OnError {
+		if item.Name == name {
+			copy(n.OnError[i:], n.OnError[i+1:])
+			n.OnError = n.OnError[:len(n.OnError)-1]
+			break
+		}
+	}
+	return n
+}
+
 // NodeRecognition defines the recognition configuration for a node.
 type NodeRecognition struct {
 	// Type specifies the recognition algorithm type.
 	Type NodeRecognitionType `json:"type,omitempty"`
 	// Param specifies the recognition parameters.
 	Param NodeRecognitionParam `json:"param,omitempty"`
+}
+
+func (nr *NodeRecognition) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Type  NodeRecognitionType `json:"type,omitempty"`
+		Param json.RawMessage     `json:"param,omitempty"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	nr.Type = raw.Type
+
+	// If no param provided or null, just return with type set
+	if len(raw.Param) == 0 || string(raw.Param) == "null" {
+		return nil
+	}
+
+	// Unmarshal param based on type
+	var param NodeRecognitionParam
+	switch nr.Type {
+	case NodeRecognitionTypeDirectHit, "":
+		param = &NodeDirectHitParam{}
+	case NodeRecognitionTypeTemplateMatch:
+		param = &NodeTemplateMatchParam{}
+	case NodeRecognitionTypeFeatureMatch:
+		param = &NodeFeatureMatchParam{}
+	case NodeRecognitionTypeColorMatch:
+		param = &NodeColorMatchParam{}
+	case NodeRecognitionTypeOCR:
+		param = &NodeOCRParam{}
+	case NodeRecognitionTypeNeuralNetworkClassify:
+		param = &NodeNeuralNetworkClassifyParam{}
+	case NodeRecognitionTypeNeuralNetworkDetect:
+		param = &NodeNeuralNetworkDetectParam{}
+	case NodeRecognitionTypeCustom:
+		param = &NodeCustomRecognitionParam{}
+	default:
+		return errors.New("unsupported recognition type: " + string(nr.Type))
+	}
+
+	if err := json.Unmarshal(raw.Param, param); err != nil {
+		return err
+	}
+	nr.Param = param
+	return nil
 }
 
 // NodeRecognitionType defines the available recognition algorithm types.
@@ -422,13 +544,13 @@ const (
 // NodeTemplateMatchParam defines parameters for template matching recognition.
 type NodeTemplateMatchParam struct {
 	// ROI specifies the region of interest for recognition.
-	ROI Rect `json:"roi,omitempty"`
+	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
 	// Template specifies the template image paths. Required.
 	Template []string `json:"template,omitempty"`
 	// Threshold specifies the matching threshold [0-1.0]. Default: 0.7.
-	Threshold float64 `json:"threshold,omitempty"`
+	Threshold []float64 `json:"threshold,omitempty"`
 	// OrderBy specifies the result ordering. Default: Horizontal.
 	OrderBy NodeTemplateMatchOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
@@ -445,7 +567,7 @@ func (n NodeTemplateMatchParam) isRecognitionParam() {}
 type TemplateMatchOption func(*NodeTemplateMatchParam)
 
 // WithTemplateMatchROI sets the region of interest for template matching.
-func WithTemplateMatchROI(roi Rect) TemplateMatchOption {
+func WithTemplateMatchROI(roi Target) TemplateMatchOption {
 	return func(param *NodeTemplateMatchParam) {
 		param.ROI = roi
 	}
@@ -459,7 +581,7 @@ func WithTemplateMatchROIOffset(offset Rect) TemplateMatchOption {
 }
 
 // WithTemplateMatchThreshold sets the matching threshold.
-func WithTemplateMatchThreshold(threshold float64) TemplateMatchOption {
+func WithTemplateMatchThreshold(threshold []float64) TemplateMatchOption {
 	return func(param *NodeTemplateMatchParam) {
 		param.Threshold = threshold
 	}
@@ -534,7 +656,7 @@ const (
 // NodeFeatureMatchParam defines parameters for feature matching recognition.
 type NodeFeatureMatchParam struct {
 	// ROI specifies the region of interest for recognition.
-	ROI Rect `json:"roi,omitempty"`
+	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
 	// Template specifies the template image paths. Required.
@@ -559,7 +681,7 @@ func (n NodeFeatureMatchParam) isRecognitionParam() {}
 type FeatureMatchOption func(*NodeFeatureMatchParam)
 
 // WithFeatureMatchROI sets the region of interest for feature matching.
-func WithFeatureMatchROI(roi Rect) FeatureMatchOption {
+func WithFeatureMatchROI(roi Target) FeatureMatchOption {
 	return func(param *NodeFeatureMatchParam) {
 		param.ROI = roi
 	}
@@ -654,7 +776,7 @@ const (
 // NodeColorMatchParam defines parameters for color matching recognition.
 type NodeColorMatchParam struct {
 	// ROI specifies the region of interest for recognition.
-	ROI Rect `json:"roi,omitempty"`
+	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
 	// Method specifies the color space. 4: RGB (default), 40: HSV, 6: GRAY.
@@ -679,7 +801,7 @@ func (n NodeColorMatchParam) isRecognitionParam() {}
 type ColorMatchOption func(*NodeColorMatchParam)
 
 // WithColorMatchROI sets the region of interest for color matching.
-func WithColorMatchROI(roi Rect) ColorMatchOption {
+func WithColorMatchROI(roi Target) ColorMatchOption {
 	return func(param *NodeColorMatchParam) {
 		param.ROI = roi
 	}
@@ -758,7 +880,7 @@ const (
 // NodeOCRParam defines parameters for OCR text recognition.
 type NodeOCRParam struct {
 	// ROI specifies the region of interest for recognition.
-	ROI Rect `json:"roi,omitempty"`
+	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
 	// Expected specifies the expected text results, supports regex. Required.
@@ -783,7 +905,7 @@ func (n NodeOCRParam) isRecognitionParam() {}
 type OCROption func(*NodeOCRParam)
 
 // WithOCRROI sets the region of interest for OCR.
-func WithOCRROI(roi Rect) OCROption {
+func WithOCRROI(roi Target) OCROption {
 	return func(param *NodeOCRParam) {
 		param.ROI = roi
 	}
@@ -867,7 +989,7 @@ const (
 // NodeNeuralNetworkClassifyParam defines parameters for neural network classification.
 type NodeNeuralNetworkClassifyParam struct {
 	// ROI specifies the region of interest for recognition.
-	ROI Rect `json:"roi,omitempty"`
+	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
 	// Labels specifies the class names for debugging and logging. Fills "Unknown" if not provided.
@@ -888,7 +1010,7 @@ func (n NodeNeuralNetworkClassifyParam) isRecognitionParam() {}
 type NeuralClassifyOption func(*NodeNeuralNetworkClassifyParam)
 
 // WithNeuralClassifyROI sets the region of interest for classification.
-func WithNeuralClassifyROI(roi Rect) NeuralClassifyOption {
+func WithNeuralClassifyROI(roi Target) NeuralClassifyOption {
 	return func(param *NodeNeuralNetworkClassifyParam) {
 		param.ROI = roi
 	}
@@ -954,7 +1076,7 @@ const (
 // NodeNeuralNetworkDetectParam defines parameters for neural network object detection.
 type NodeNeuralNetworkDetectParam struct {
 	// ROI specifies the region of interest for recognition.
-	ROI Rect `json:"roi,omitempty"`
+	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
 	// Labels specifies the class names for debugging and logging. Auto-reads from model metadata if not provided.
@@ -975,7 +1097,7 @@ func (n NodeNeuralNetworkDetectParam) isRecognitionParam() {}
 type NeuralDetectOption func(*NodeNeuralNetworkDetectParam)
 
 // WithNeuralDetectROI sets the region of interest for detection.
-func WithNeuralDetectROI(roi Rect) NeuralDetectOption {
+func WithNeuralDetectROI(roi Target) NeuralDetectOption {
 	return func(param *NodeNeuralNetworkDetectParam) {
 		param.ROI = roi
 	}
@@ -1030,7 +1152,7 @@ func RecNeuralNetworkDetect(model string, expected []int, opts ...NeuralDetectOp
 // NodeCustomRecognitionParam defines parameters for custom recognition handlers.
 type NodeCustomRecognitionParam struct {
 	// ROI specifies the region of interest for recognition.
-	ROI Rect `json:"roi,omitempty"`
+	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
 	// CustomRecognition specifies the recognizer name registered via MaaResourceRegisterCustomRecognition. Required.
@@ -1045,7 +1167,7 @@ func (n NodeCustomRecognitionParam) isRecognitionParam() {}
 type CustomRecognitionOption func(*NodeCustomRecognitionParam)
 
 // WithCustomRecognitionROI sets the region of interest for custom recognition.
-func WithCustomRecognitionROI(roi Rect) CustomRecognitionOption {
+func WithCustomRecognitionROI(roi Target) CustomRecognitionOption {
 	return func(param *NodeCustomRecognitionParam) {
 		param.ROI = roi
 	}
@@ -1085,6 +1207,72 @@ type NodeAction struct {
 	Type NodeActionType `json:"type,omitempty"`
 	// Param specifies the action parameters.
 	Param NodeActionParam `json:"param,omitempty"`
+}
+
+func (na *NodeAction) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Type  NodeActionType  `json:"type,omitempty"`
+		Param json.RawMessage `json:"param,omitempty"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	na.Type = raw.Type
+
+	// If no param provided or null, just return with type set
+	if len(raw.Param) == 0 || string(raw.Param) == "null" {
+		return nil
+	}
+
+	// Unmarshal param based on type
+	var param NodeActionParam
+	switch na.Type {
+	case NodeActionTypeDoNothing, "":
+		param = &NodeDoNothingParam{}
+	case NodeActionTypeClick:
+		param = &NodeClickParam{}
+	case NodeActionTypeLongPress:
+		param = &NodeLongPressParam{}
+	case NodeActionTypeSwipe:
+		param = &NodeSwipeParam{}
+	case NodeActionTypeMultiSwipe:
+		param = &NodeMultiSwipeParam{}
+	case NodeActionTypeTouchDown:
+		param = &NodeTouchDownParam{}
+	case NodeActionTypeTouchMove:
+		param = &NodeTouchMoveParam{}
+	case NodeActionTypeTouchUp:
+		param = &NodeTouchUpParam{}
+	case NodeActionTypeClickKey:
+		param = &NodeClickKeyParam{}
+	case NodeActionTypeLongPressKey:
+		param = &NodeLongPressKeyParam{}
+	case NodeActionTypeKeyDown:
+		param = &NodeKeyDownParam{}
+	case NodeActionTypeKeyUp:
+		param = &NodeKeyUpParam{}
+	case NodeActionTypeInputText:
+		param = &NodeInputTextParam{}
+	case NodeActionTypeStartApp:
+		param = &NodeStartAppParam{}
+	case NodeActionTypeStopApp:
+		param = &NodeStopAppParam{}
+	case NodeActionTypeStopTask:
+		param = &NodeStopTaskParam{}
+	case NodeActionTypeCommand:
+		param = &NodeCommandParam{}
+	case NodeActionTypeCustom:
+		param = &NodeCustomActionParam{}
+	default:
+		return errors.New("unsupported action type: " + string(na.Type))
+	}
+
+	if err := json.Unmarshal(raw.Param, param); err != nil {
+		return err
+	}
+	na.Param = param
+	return nil
 }
 
 // NodeActionType defines the available action types.
@@ -1132,7 +1320,7 @@ func ActDoNothing() *NodeAction {
 // NodeClickParam defines parameters for click action.
 type NodeClickParam struct {
 	// Target specifies the click target position.
-	Target Rect `json:"target,omitempty"`
+	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
 	TargetOffset Rect `json:"target_offset,omitempty"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
@@ -1145,7 +1333,7 @@ func (n NodeClickParam) isActionParam() {}
 type ClickOption func(*NodeClickParam)
 
 // WithClickTarget sets the click target position.
-func WithClickTarget(target Rect) ClickOption {
+func WithClickTarget(target Target) ClickOption {
 	return func(p *NodeClickParam) {
 		p.Target = target
 	}
@@ -1177,7 +1365,7 @@ func ActClick(opts ...ClickOption) *NodeAction {
 // NodeLongPressParam defines parameters for long press action.
 type NodeLongPressParam struct {
 	// Target specifies the long press target position.
-	Target Rect `json:"target,omitempty"`
+	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
 	TargetOffset Rect `json:"target_offset,omitempty"`
 	// Duration specifies the long press duration in milliseconds. Default: 1000.
@@ -1192,7 +1380,7 @@ func (n NodeLongPressParam) isActionParam() {}
 type LongPressOption func(*NodeLongPressParam)
 
 // WithLongPressTarget sets the long press target position.
-func WithLongPressTarget(target Rect) LongPressOption {
+func WithLongPressTarget(target Target) LongPressOption {
 	return func(p *NodeLongPressParam) {
 		p.Target = target
 	}
@@ -1229,17 +1417,17 @@ func ActLongPress(opts ...LongPressOption) *NodeAction {
 // NodeSwipeParam defines parameters for swipe action.
 type NodeSwipeParam struct {
 	// Begin specifies the swipe start position.
-	Begin Rect `json:"begin,omitempty"`
+	Begin Target `json:"begin,omitzero"`
 	// BeginOffset specifies additional offset applied to begin position.
 	BeginOffset Rect `json:"begin_offset,omitempty"`
 	// End specifies the swipe end position.
-	End Rect `json:"end,omitempty"`
+	End []Target `json:"end,omitzero"`
 	// EndOffset specifies additional offset applied to end position.
-	EndOffset Rect `json:"end_offset,omitempty"`
+	EndOffset []Rect `json:"end_offset,omitempty"`
 	// Duration specifies the swipe duration in milliseconds. Default: 200.
-	Duration int64 `json:"duration,omitempty"`
+	Duration []int64 `json:"duration,omitempty"`
 	// EndHold specifies extra wait time at end position before releasing in milliseconds. Default: 0.
-	EndHold int64 `json:"end_hold,omitempty"`
+	EndHold []int64 `json:"end_hold,omitempty"`
 	// OnlyHover enables hover-only mode without press/release actions. Default: false.
 	OnlyHover bool `json:"only_hover,omitempty"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
@@ -1252,7 +1440,7 @@ func (n NodeSwipeParam) isActionParam() {}
 type SwipeOption func(*NodeSwipeParam)
 
 // WithSwipeBegin sets the swipe start position.
-func WithSwipeBegin(begin Rect) SwipeOption {
+func WithSwipeBegin(begin Target) SwipeOption {
 	return func(p *NodeSwipeParam) {
 		p.Begin = begin
 	}
@@ -1266,30 +1454,36 @@ func WithSwipeBeginOffset(offset Rect) SwipeOption {
 }
 
 // WithSwipeEnd sets the swipe end position.
-func WithSwipeEnd(end Rect) SwipeOption {
+func WithSwipeEnd(end []Target) SwipeOption {
 	return func(p *NodeSwipeParam) {
 		p.End = end
 	}
 }
 
 // WithSwipeEndOffset sets additional offset applied to end position.
-func WithSwipeEndOffset(offset Rect) SwipeOption {
+func WithSwipeEndOffset(offset []Rect) SwipeOption {
 	return func(p *NodeSwipeParam) {
 		p.EndOffset = offset
 	}
 }
 
 // WithSwipeDuration sets the swipe duration.
-func WithSwipeDuration(d time.Duration) SwipeOption {
+func WithSwipeDuration(d []time.Duration) SwipeOption {
 	return func(p *NodeSwipeParam) {
-		p.Duration = d.Milliseconds()
+		p.Duration = make([]int64, len(d))
+		for index, duration := range d {
+			p.Duration[index] = duration.Milliseconds()
+		}
 	}
 }
 
 // WithSwipeEndHold sets extra wait time at end position before releasing.
-func WithSwipeEndHold(d time.Duration) SwipeOption {
+func WithSwipeEndHold(d []time.Duration) SwipeOption {
 	return func(p *NodeSwipeParam) {
-		p.EndHold = d.Milliseconds()
+		p.EndHold = make([]int64, len(d))
+		for index, duration := range d {
+			p.EndHold[index] = duration.Milliseconds()
+		}
 	}
 }
 
@@ -1324,17 +1518,17 @@ type NodeMultiSwipeItem struct {
 	// Starting specifies when this swipe starts within the action in milliseconds. Default: 0.
 	Starting int64 `json:"starting,omitempty"`
 	// Begin specifies the swipe start position.
-	Begin Rect `json:"begin,omitempty"`
+	Begin Target `json:"begin,omitzero"`
 	// BeginOffset specifies additional offset applied to begin position.
 	BeginOffset Rect `json:"begin_offset,omitempty"`
 	// End specifies the swipe end position.
-	End Rect `json:"end,omitempty"`
+	End []Target `json:"end,omitzero"`
 	// EndOffset specifies additional offset applied to end position.
-	EndOffset Rect `json:"end_offset,omitempty"`
+	EndOffset []Rect `json:"end_offset,omitempty"`
 	// Duration specifies the swipe duration in milliseconds. Default: 200.
-	Duration int64 `json:"duration,omitempty"`
+	Duration []int64 `json:"duration,omitempty"`
 	// EndHold specifies extra wait time at end position before releasing in milliseconds. Default: 0.
-	EndHold int64 `json:"end_hold,omitempty"`
+	EndHold []int64 `json:"end_hold,omitempty"`
 	// OnlyHover enables hover-only mode without press/release actions. Default: false.
 	OnlyHover bool `json:"only_hover,omitempty"`
 	// Contact specifies the touch point identifier. Adb: finger index. Win32: mouse button. Default uses array index if 0.
@@ -1360,7 +1554,7 @@ func WithMultiSwipeItemStarting(starting time.Duration) MultiSwipeItemOption {
 }
 
 // WithMultiSwipeItemBegin sets the swipe start position.
-func WithMultiSwipeItemBegin(begin Rect) MultiSwipeItemOption {
+func WithMultiSwipeItemBegin(begin Target) MultiSwipeItemOption {
 	return func(i *NodeMultiSwipeItem) {
 		i.Begin = begin
 	}
@@ -1374,30 +1568,36 @@ func WithMultiSwipeItemBeginOffset(offset Rect) MultiSwipeItemOption {
 }
 
 // WithMultiSwipeItemEnd sets the swipe end position.
-func WithMultiSwipeItemEnd(end Rect) MultiSwipeItemOption {
+func WithMultiSwipeItemEnd(end []Target) MultiSwipeItemOption {
 	return func(i *NodeMultiSwipeItem) {
 		i.End = end
 	}
 }
 
 // WithMultiSwipeItemEndOffset sets additional offset applied to end position.
-func WithMultiSwipeItemEndOffset(offset Rect) MultiSwipeItemOption {
+func WithMultiSwipeItemEndOffset(offset []Rect) MultiSwipeItemOption {
 	return func(i *NodeMultiSwipeItem) {
 		i.EndOffset = offset
 	}
 }
 
 // WithMultiSwipeItemDuration sets the swipe duration.
-func WithMultiSwipeItemDuration(d time.Duration) MultiSwipeItemOption {
+func WithMultiSwipeItemDuration(d []time.Duration) MultiSwipeItemOption {
 	return func(i *NodeMultiSwipeItem) {
-		i.Duration = d.Milliseconds()
+		i.Duration = make([]int64, len(d))
+		for index, duration := range d {
+			i.Duration[index] = duration.Milliseconds()
+		}
 	}
 }
 
 // WithMultiSwipeItemEndHold sets extra wait time at end position before releasing.
-func WithMultiSwipeItemEndHold(d time.Duration) MultiSwipeItemOption {
+func WithMultiSwipeItemEndHold(d []time.Duration) MultiSwipeItemOption {
 	return func(i *NodeMultiSwipeItem) {
-		i.EndHold = d.Milliseconds()
+		i.EndHold = make([]int64, len(d))
+		for index, duration := range d {
+			i.EndHold[index] = duration.Milliseconds()
+		}
 	}
 }
 
@@ -1438,7 +1638,7 @@ func ActMultiSwipe(swipes ...NodeMultiSwipeItem) *NodeAction {
 // NodeTouchDownParam defines parameters for touch down action.
 type NodeTouchDownParam struct {
 	// Target specifies the touch target position.
-	Target Rect `json:"target,omitempty"`
+	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
 	TargetOffset Rect `json:"target_offset,omitempty"`
 	// Pressure specifies the touch pressure, range depends on controller implementation. Default: 0.
@@ -1453,7 +1653,7 @@ func (n NodeTouchDownParam) isActionParam() {}
 type TouchDownOption func(*NodeTouchDownParam)
 
 // WithTouchDownTarget sets the touch target position.
-func WithTouchDownTarget(target Rect) TouchDownOption {
+func WithTouchDownTarget(target Target) TouchDownOption {
 	return func(p *NodeTouchDownParam) {
 		p.Target = target
 	}
@@ -1492,7 +1692,7 @@ func ActTouchDown(opts ...TouchDownOption) *NodeAction {
 // NodeTouchMoveParam defines parameters for touch move action.
 type NodeTouchMoveParam struct {
 	// Target specifies the touch target position.
-	Target Rect `json:"target,omitempty"`
+	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
 	TargetOffset Rect `json:"target_offset,omitempty"`
 	// Pressure specifies the touch pressure, range depends on controller implementation. Default: 0.
@@ -1507,7 +1707,7 @@ func (n NodeTouchMoveParam) isActionParam() {}
 type TouchMoveOption func(*NodeTouchMoveParam)
 
 // WithTouchMoveTarget sets the touch target position.
-func WithTouchMoveTarget(target Rect) TouchMoveOption {
+func WithTouchMoveTarget(target Target) TouchMoveOption {
 	return func(p *NodeTouchMoveParam) {
 		p.Target = target
 	}
@@ -1575,13 +1775,13 @@ func ActTouchUp(opts ...TouchUpOption) *NodeAction {
 // NodeClickKeyParam defines parameters for key click action.
 type NodeClickKeyParam struct {
 	// Key specifies the virtual key codes to click. Required.
-	Key []string `json:"key,omitempty"`
+	Key []int `json:"key,omitempty"`
 }
 
 func (n NodeClickKeyParam) isActionParam() {}
 
 // ActClickKey creates a ClickKey action with the given virtual key codes.
-func ActClickKey(keys []string) *NodeAction {
+func ActClickKey(keys []int) *NodeAction {
 	return &NodeAction{
 		Type:  NodeActionTypeClickKey,
 		Param: &NodeClickKeyParam{Key: keys},
@@ -1591,7 +1791,7 @@ func ActClickKey(keys []string) *NodeAction {
 // NodeLongPressKeyParam defines parameters for long press key action.
 type NodeLongPressKeyParam struct {
 	// Key specifies the virtual key code to press. Required.
-	Key string `json:"key,omitempty"`
+	Key []int `json:"key,omitempty"`
 	// Duration specifies the long press duration in milliseconds. Default: 1000.
 	Duration int64 `json:"duration,omitempty"`
 }
@@ -1607,7 +1807,7 @@ func WithLongPressKeyDuration(d time.Duration) LongPressKeyOption {
 }
 
 // ActLongPressKey creates a LongPressKey action with the given virtual key code.
-func ActLongPressKey(key string, opts ...LongPressKeyOption) *NodeAction {
+func ActLongPressKey(key []int, opts ...LongPressKeyOption) *NodeAction {
 	param := &NodeLongPressKeyParam{Key: key}
 	for _, opt := range opts {
 		opt(param)
@@ -1618,13 +1818,13 @@ func ActLongPressKey(key string, opts ...LongPressKeyOption) *NodeAction {
 // NodeKeyDownParam defines parameters for key down action.
 type NodeKeyDownParam struct {
 	// Key specifies the virtual key code to press down. Required.
-	Key string `json:"key,omitempty"`
+	Key int `json:"key,omitempty"`
 }
 
 func (n NodeKeyDownParam) isActionParam() {}
 
 // ActKeyDown creates a KeyDown action that presses the key without releasing.
-func ActKeyDown(key string) *NodeAction {
+func ActKeyDown(key int) *NodeAction {
 	return &NodeAction{
 		Type:  NodeActionTypeKeyDown,
 		Param: &NodeKeyDownParam{Key: key},
@@ -1634,13 +1834,13 @@ func ActKeyDown(key string) *NodeAction {
 // NodeKeyUpParam defines parameters for key up action.
 type NodeKeyUpParam struct {
 	// Key specifies the virtual key code to release. Required.
-	Key string `json:"key,omitempty"`
+	Key int `json:"key,omitempty"`
 }
 
 func (n NodeKeyUpParam) isActionParam() {}
 
 // ActKeyUp creates a KeyUp action that releases a previously pressed key.
-func ActKeyUp(key string) *NodeAction {
+func ActKeyUp(key int) *NodeAction {
 	return &NodeAction{
 		Type:  NodeActionTypeKeyUp,
 		Param: &NodeKeyUpParam{Key: key},
@@ -1749,7 +1949,7 @@ func ActCommand(exec string, opts ...CommandOption) *NodeAction {
 // NodeCustomActionParam defines parameters for custom action handlers.
 type NodeCustomActionParam struct {
 	// Target specifies the action target position.
-	Target Rect `json:"target,omitempty"`
+	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
 	TargetOffset Rect `json:"target_offset,omitempty"`
 	// CustomAction specifies the action name registered via MaaResourceRegisterCustomAction. Required.
@@ -1764,7 +1964,7 @@ func (n NodeCustomActionParam) isActionParam() {}
 type CustomActionOption func(*NodeCustomActionParam)
 
 // WithCustomActionTarget sets the action target position.
-func WithCustomActionTarget(target Rect) CustomActionOption {
+func WithCustomActionTarget(target Target) CustomActionOption {
 	return func(param *NodeCustomActionParam) {
 		param.Target = target
 	}
@@ -1804,7 +2004,7 @@ type NodeWaitFreezes struct {
 	// Time specifies the duration in milliseconds that the screen must remain stable. Default: 1.
 	Time int64 `json:"time,omitempty"`
 	// Target specifies the region to monitor for changes.
-	Target Rect `json:"target,omitempty"`
+	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
 	TargetOffset Rect `json:"target_offset,omitempty"`
 	// Threshold specifies the template matching threshold for detecting changes. Default: 0.95.
@@ -1828,7 +2028,7 @@ func WithWaitFreezesTime(d time.Duration) WaitFreezesOption {
 }
 
 // WithWaitFreezesTarget sets the region to monitor for changes.
-func WithWaitFreezesTarget(target Rect) WaitFreezesOption {
+func WithWaitFreezesTarget(target Target) WaitFreezesOption {
 	return func(w *NodeWaitFreezes) {
 		w.Target = target
 	}
