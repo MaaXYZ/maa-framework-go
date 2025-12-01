@@ -3,6 +3,7 @@ package target
 import (
 	"encoding/json"
 	"errors"
+	"strconv"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/rect"
 )
@@ -84,7 +85,7 @@ func (t Target) MarshalJSON() ([]byte, error) {
 	case targetRect:
 		return json.Marshal(t.val.(rect.Rect))
 	default:
-		return nil, errors.New("unknown target type")
+		return nil, errors.New("unknown target type: " + strconv.Itoa(int(t.tp)))
 	}
 }
 
@@ -116,5 +117,5 @@ func (t *Target) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	return errors.New("unsupported target type")
+	return errors.New("unsupported target type: " + strconv.Itoa(int(t.tp)))
 }
