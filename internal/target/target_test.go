@@ -1,6 +1,7 @@
 package target
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/rect"
@@ -44,4 +45,44 @@ func TestTarget_IsZero(t *testing.T) {
 		})
 	}
 
+}
+
+func TestTarget_UnmarshalJSON(t *testing.T) {
+	type Case struct {
+		Name   string
+		JSON   string
+		Expect Target
+	}
+
+	cases := []Case{
+		{
+			Name:   "Bool",
+			JSON:   "true",
+			Expect: NewBool(true),
+		},
+		{
+			Name:   "String",
+			JSON:   "\"test\"",
+			Expect: NewString("test"),
+		},
+		{
+			Name:   "Rect",
+			JSON:   "[100, 100, 100, 100]",
+			Expect: NewRect(rect.Rect{100, 100, 100, 100}),
+		},
+		{
+			Name:   "Unknown",
+			JSON:   "null",
+			Expect: Target{},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.Name, func(t *testing.T) {
+			var got Target
+			err := json.Unmarshal([]byte(tc.JSON), &got)
+			require.NoError(t, err)
+			require.Equal(t, tc.Expect, got)
+		})
+	}
 }
