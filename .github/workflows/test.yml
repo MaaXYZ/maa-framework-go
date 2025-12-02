@@ -6,10 +6,16 @@ on:
       - "v*"
     branches:
       - "**"
+    paths-ignore:
+      - "README.md"
+      - "README_zh.md"
 
   pull_request:
     branches:
       - "**"
+    paths-ignore:
+      - "README.md"
+      - "README_zh.md"
 
   workflow_dispatch:
 
