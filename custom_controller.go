@@ -74,24 +74,6 @@ type MaaCustomControllerCallbacks struct {
 	KeyUp       uintptr
 }
 
-type (
-	ConnectCallback     func(transArg uintptr) uintptr
-	RequestUUIDCallback func(transArg uintptr, buffer uintptr) uintptr
-	GetFeatureCallback  func(transArg uintptr) ControllerFeature
-	StartAppCallback    func(intent *byte, transArg uintptr) uintptr
-	StopAppCallback     func(intent *byte, transArg uintptr) uintptr
-	ScreencapCallback   func(transArg uintptr, buffer uintptr) uintptr
-	ClickCallback       func(x, y int32, transArg uintptr) uintptr
-	SwipeCallback       func(x1, y1, x2, y2, duration int32, transArg uintptr) uintptr
-	TouchDownCallback   func(contact, x, y, pressure int32, transArg uintptr) uintptr
-	TouchMoveCallback   func(contact, x, y, pressure int32, transArg uintptr) uintptr
-	TouchUpCallback     func(contact int32, transArg uintptr) uintptr
-	ClickKeyCallback    func(keycode int32, transArg uintptr) uintptr
-	InputTextCallback   func(text *byte, transArg uintptr) uintptr
-	KeyDownCallback     func(keycode int32, transArg uintptr) uintptr
-	KeyUpCallback       func(keycode int32, transArg uintptr) uintptr
-)
-
 var customControllerCallbacksHandle = new(MaaCustomControllerCallbacks)
 
 func init() {
