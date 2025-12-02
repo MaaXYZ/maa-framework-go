@@ -3,6 +3,7 @@ package maa
 import (
 	"unsafe"
 
+	"github.com/MaaXYZ/maa-framework-go/v3/controller/adb"
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
@@ -11,8 +12,8 @@ type AdbDevice struct {
 	Name            string
 	AdbPath         string
 	Address         string
-	ScreencapMethod AdbScreencapMethod
-	InputMethod     AdbInputMethod
+	ScreencapMethod adb.ScreencapMethod
+	InputMethod     adb.InputMethod
 	Config          string
 }
 
@@ -49,8 +50,8 @@ func FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
 		name := native.MaaToolkitAdbDeviceGetName(deviceHandle)
 		adbPath := native.MaaToolkitAdbDeviceGetAdbPath(deviceHandle)
 		address := native.MaaToolkitAdbDeviceGetAddress(deviceHandle)
-		screencapMethod := AdbScreencapMethod(native.MaaToolkitAdbDeviceGetScreencapMethods(deviceHandle))
-		inputMethod := AdbInputMethod(native.MaaToolkitAdbDeviceGetInputMethods(deviceHandle))
+		screencapMethod := adb.ScreencapMethod(native.MaaToolkitAdbDeviceGetScreencapMethods(deviceHandle))
+		inputMethod := adb.InputMethod(native.MaaToolkitAdbDeviceGetInputMethods(deviceHandle))
 		config := native.MaaToolkitAdbDeviceGetConfig(deviceHandle)
 		list[i] = &AdbDevice{
 			Name:            name,

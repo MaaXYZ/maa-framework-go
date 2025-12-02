@@ -136,81 +136,6 @@ var (
 	MaaResourceGetCustomActionList         func(res uintptr, buffer uintptr) bool
 )
 
-// MaaAdbScreencapMethod
-//
-// Use bitwise OR to set the method you need,
-// MaaFramework will test their speed and use the fastest one.
-type MaaAdbScreencapMethod uint64
-
-const (
-	MaaAdbScreencapMethod_None                MaaAdbScreencapMethod = 0
-	MaaAdbScreencapMethod_EncodeToFileAndPull MaaAdbScreencapMethod = 1
-	MaaAdbScreencapMethod_Encode              MaaAdbScreencapMethod = 1 << 1
-	MaaAdbScreencapMethod_RawWithGzip         MaaAdbScreencapMethod = 1 << 2
-	MaaAdbScreencapMethod_RawByNetcat         MaaAdbScreencapMethod = 1 << 3
-	MaaAdbScreencapMethod_MinicapDirect       MaaAdbScreencapMethod = 1 << 4
-	MaaAdbScreencapMethod_MinicapStream       MaaAdbScreencapMethod = 1 << 5
-	MaaAdbScreencapMethod_EmulatorExtras      MaaAdbScreencapMethod = 1 << 6
-
-	MaaAdbScreencapMethod_All     = ^MaaAdbScreencapMethod_None
-	MaaAdbScreencapMethod_Default = MaaAdbScreencapMethod_All & (^MaaAdbScreencapMethod_MinicapDirect) & (^MaaAdbScreencapMethod_MinicapStream)
-)
-
-// MaaAdbInputMethod
-//
-// Use bitwise OR to set the method you need,
-// MaaFramework will select the available ones according to priority.
-// The priority is: EmulatorExtras > Maatouch > MinitouchAndAdbKey > AdbShell
-type MaaAdbInputMethod uint64
-
-const (
-	MaaAdbInputMethod_None               MaaAdbInputMethod = 0
-	MaaAdbInputMethod_AdbShell           MaaAdbInputMethod = 1
-	MaaAdbInputMethod_MinitouchAndAdbKey MaaAdbInputMethod = 1 << 1
-	MaaAdbInputMethod_Maatouch           MaaAdbInputMethod = 1 << 2
-	MaaAdbInputMethod_EmulatorExtras     MaaAdbInputMethod = 1 << 3
-
-	MaaAdbInputMethod_All     = ^MaaAdbInputMethod_None
-	MaaAdbInputMethod_Default = MaaAdbInputMethod_All & (^MaaAdbInputMethod_EmulatorExtras)
-)
-
-// MaaWin32ScreencapMethod
-//
-// No bitwise OR, just set it.
-type MaaWin32ScreencapMethod uint64
-
-const (
-	MaaWin32ScreencapMethod_None           MaaWin32ScreencapMethod = 0
-	MaaWin32ScreencapMethod_GDI            MaaWin32ScreencapMethod = 1
-	MaaWin32ScreencapMethod_FramePool      MaaWin32ScreencapMethod = 1 << 1
-	MaaWin32ScreencapMethod_DXGIDesktopDup MaaWin32ScreencapMethod = 1 << 2
-)
-
-// MaaWin32InputMethod
-//
-// No bitwise OR, just set it.
-type MaaWin32InputMethod uint64
-
-const (
-	MaaWin32InputMethod_None              MaaWin32ScreencapMethod = 0
-	MaaWin32InputMethod_Seize             MaaWin32ScreencapMethod = 1
-	MaaWin32InputMethod_SendMessage       MaaWin32ScreencapMethod = 1 << 1
-	MaaWin32InputMethod_PostMessage       MaaWin32ScreencapMethod = 1 << 2
-	MaaWin32InputMethod_LegacyEvent       MaaWin32ScreencapMethod = 1 << 3
-	MaaWin32InputMethod_PostThreadMessage MaaWin32ScreencapMethod = 1 << 4
-)
-
-// DbgControllerType
-//
-// No bitwise OR, just set it.
-type MaaDbgControllerType uint64
-
-const (
-	MaaDbgControllerType_None            MaaDbgControllerType = 0
-	MaaDbgControllerType_CarouselImage   MaaDbgControllerType = 1
-	MaaDbgControllerType_ReplayRecording MaaDbgControllerType = 1 << 1
-)
-
 type MaaControllerFeature uint64
 
 const (
@@ -238,8 +163,8 @@ const (
 )
 
 var (
-	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods MaaAdbScreencapMethod, inputMethods MaaAdbInputMethod, config, agentPath string) uintptr
-	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods MaaWin32ScreencapMethod, mouseMethod, keyboardMethod MaaWin32InputMethod) uintptr
+	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
+	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
 	MaaCustomControllerCreate   func(controller unsafe.Pointer, controllerArg uintptr) uintptr
 	MaaControllerDestroy        func(ctrl uintptr)
 	MaaControllerAddSink        func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64

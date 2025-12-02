@@ -1,13 +1,12 @@
 package maa
 
 import (
-	"fmt"
 	"image"
-	"strconv"
-	"strings"
 	"time"
 	"unsafe"
 
+	"github.com/MaaXYZ/maa-framework-go/v3/controller/adb"
+	"github.com/MaaXYZ/maa-framework-go/v3/controller/win32"
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/store"
@@ -26,154 +25,18 @@ type Controller struct {
 	handle uintptr
 }
 
-// AdbScreencapMethod
-//
-// Use bitwise OR to set the method you need,
-// MaaFramework will test their speed and use the fastest one.
-type AdbScreencapMethod uint64
-
-// AdbScreencapMethod
-const (
-	AdbScreencapMethodNone                AdbScreencapMethod = 0
-	AdbScreencapMethodEncodeToFileAndPull AdbScreencapMethod = 1
-	AdbScreencapMethodEncode              AdbScreencapMethod = 1 << 1
-	AdbScreencapMethodRawWithGzip         AdbScreencapMethod = 1 << 2
-	AdbScreencapMethodRawByNetcat         AdbScreencapMethod = 1 << 3
-	AdbScreencapMethodMinicapDirect       AdbScreencapMethod = 1 << 4
-	AdbScreencapMethodMinicapStream       AdbScreencapMethod = 1 << 5
-	AdbScreencapMethodEmulatorExtras      AdbScreencapMethod = 1 << 6
-
-	AdbScreencapMethodAll     = ^AdbScreencapMethodNone
-	AdbScreencapMethodDefault = AdbScreencapMethodAll & (^AdbScreencapMethodRawByNetcat) & (^AdbScreencapMethodMinicapDirect) & (^AdbScreencapMethodMinicapStream)
-)
-
-func (m AdbScreencapMethod) String() string {
-	switch m {
-	case AdbScreencapMethodNone:
-		return ""
-	case AdbScreencapMethodEncodeToFileAndPull:
-		return AdbScreencapMethodEncodeToFileAndPullValue
-	case AdbScreencapMethodEncode:
-		return AdbScreencapMethodEncodeValue
-	case AdbScreencapMethodRawWithGzip:
-		return AdbScreencapMethodRawWithGzipValue
-	case AdbScreencapMethodRawByNetcat:
-		return AdbScreencapMethodRawByNetcatValue
-	case AdbScreencapMethodMinicapDirect:
-		return AdbScreencapMethodMinicapDirectValue
-	case AdbScreencapMethodMinicapStream:
-		return AdbScreencapMethodMinicapStreamValue
-	case AdbScreencapMethodEmulatorExtras:
-		return AdbScreencapMethodEmulatorExtrasValue
-	case AdbScreencapMethodAll:
-		return AdbScreencapMethodAllValue
-	case AdbScreencapMethodDefault:
-		return AdbScreencapMethodDefaultValue
-	}
-	return strconv.Itoa(int(m))
-}
-
-func ParseAdbScreencapMethod(methodStr string) (AdbScreencapMethod, error) {
-	switch {
-	case strings.EqualFold(methodStr, AdbScreencapMethodEncodeToFileAndPull.String()):
-		return AdbScreencapMethodEncodeToFileAndPull, nil
-	case strings.EqualFold(methodStr, AdbScreencapMethodEncode.String()):
-		return AdbScreencapMethodEncode, nil
-	case strings.EqualFold(methodStr, AdbScreencapMethodRawWithGzip.String()):
-		return AdbScreencapMethodRawWithGzip, nil
-	case strings.EqualFold(methodStr, AdbScreencapMethodRawByNetcat.String()):
-		return AdbScreencapMethodRawByNetcat, nil
-	case strings.EqualFold(methodStr, AdbScreencapMethodMinicapDirect.String()):
-		return AdbScreencapMethodMinicapDirect, nil
-	case strings.EqualFold(methodStr, AdbScreencapMethodMinicapStream.String()):
-		return AdbScreencapMethodMinicapStream, nil
-	case strings.EqualFold(methodStr, AdbScreencapMethodEmulatorExtras.String()):
-		return AdbScreencapMethodEmulatorExtras, nil
-	case strings.EqualFold(methodStr, AdbScreencapMethodAll.String()):
-		return AdbScreencapMethodAll, nil
-	case strings.EqualFold(methodStr, AdbScreencapMethodDefault.String()):
-		return AdbScreencapMethodDefault, nil
-	}
-	i, err := strconv.Atoi(methodStr)
-	if err != nil {
-		return AdbScreencapMethodNone, fmt.Errorf("unknown Adb Screencap Method String: '%s', defaulting to AdbScreencapMethodNone", methodStr)
-	}
-	return AdbScreencapMethod(i), nil
-}
-
-// AdbInputMethod
-//
-// Use bitwise OR to set the method you need,
-// MaaFramework will select the available ones according to priority.
-// The priority is: EmulatorExtras > Maatouch > MinitouchAndAdbKey > AdbShell
-type AdbInputMethod uint64
-
-// AdbInputMethod
-const (
-	AdbInputMethodNone               AdbInputMethod = 0
-	AdbInputMethodAdbShell           AdbInputMethod = 1
-	AdbInputMethodMinitouchAndAdbKey AdbInputMethod = 1 << 1
-	AdbInputMethodMaatouch           AdbInputMethod = 1 << 2
-	AdbInputMethodEmulatorExtras     AdbInputMethod = 1 << 3
-
-	AdbInputMethodAll     = ^AdbInputMethodNone
-	AdbInputMethodDefault = AdbInputMethodAll & (^AdbInputMethodEmulatorExtras)
-)
-
-func (m AdbInputMethod) String() string {
-	switch m {
-	case AdbInputMethodNone:
-		return ""
-	case AdbInputMethodAdbShell:
-		return AdbInputMethodAdbShellValue
-	case AdbInputMethodMinitouchAndAdbKey:
-		return AdbInputMethodMinitouchAndAdbKeyValue
-	case AdbInputMethodMaatouch:
-		return AdbInputMethodMaatouchValue
-	case AdbInputMethodEmulatorExtras:
-		return AdbInputMethodEmulatorExtrasValue
-	case AdbInputMethodAll:
-		return AdbInputMethodAllValue
-	case AdbInputMethodDefault:
-		return AdbInputMethodDefaultValue
-	}
-	return strconv.Itoa(int(m))
-}
-
-func ParseAdbInputMethod(methodStr string) (AdbInputMethod, error) {
-	switch {
-	case strings.EqualFold(methodStr, AdbInputMethodAdbShell.String()):
-		return AdbInputMethodAdbShell, nil
-	case strings.EqualFold(methodStr, AdbInputMethodMinitouchAndAdbKey.String()):
-		return AdbInputMethodMinitouchAndAdbKey, nil
-	case strings.EqualFold(methodStr, AdbInputMethodMaatouch.String()):
-		return AdbInputMethodMaatouch, nil
-	case strings.EqualFold(methodStr, AdbInputMethodEmulatorExtras.String()):
-		return AdbInputMethodEmulatorExtras, nil
-	case strings.EqualFold(methodStr, AdbInputMethodAll.String()):
-		return AdbInputMethodAll, nil
-	case strings.EqualFold(methodStr, AdbInputMethodDefault.String()):
-		return AdbInputMethodDefault, nil
-	}
-	i, err := strconv.Atoi(methodStr)
-	if err != nil {
-		return AdbInputMethodNone, fmt.Errorf("unknown Adb Input Method String: '%s', defaulting to AdbInputMethodNone", methodStr)
-	}
-	return AdbInputMethod(i), nil
-}
-
 // NewAdbController creates a new ADB controller.
 func NewAdbController(
 	adbPath, address string,
-	screencapMethod AdbScreencapMethod,
-	inputMethod AdbInputMethod,
+	screencapMethod adb.ScreencapMethod,
+	inputMethod adb.InputMethod,
 	config, agentPath string,
 ) *Controller {
 	handle := native.MaaAdbControllerCreate(
 		adbPath,
 		address,
-		native.MaaAdbScreencapMethod(screencapMethod),
-		native.MaaAdbInputMethod(inputMethod),
+		uint64(screencapMethod),
+		uint64(inputMethod),
 		config,
 		agentPath,
 	)
@@ -188,108 +51,18 @@ func NewAdbController(
 	}
 }
 
-// Win32ScreencapMethod
-//
-// No bitwise OR, just set it.
-type Win32ScreencapMethod uint64
-
-// Win32ScreencapMethod
-const (
-	Win32ScreencapMethodNone           Win32ScreencapMethod = 0
-	Win32ScreencapMethodGDI            Win32ScreencapMethod = 1
-	Win32ScreencapMethodFramePool      Win32ScreencapMethod = 1 << 1
-	Win32ScreencapMethodDXGIDesktopDup Win32ScreencapMethod = 1 << 2
-)
-
-func (m Win32ScreencapMethod) String() string {
-	switch m {
-	case Win32ScreencapMethodNone:
-		return ""
-	case Win32ScreencapMethodGDI:
-		return Win32ScreencapMethodGDIValue
-	case Win32ScreencapMethodFramePool:
-		return Win32ScreencapMethodFramePoolValue
-	case Win32ScreencapMethodDXGIDesktopDup:
-		return Win32ScreencapMethodDXGIDesktopDupValue
-	}
-	return strconv.Itoa(int(m))
-}
-
-func ParseWin32ScreencapMethod(methodStr string) (Win32ScreencapMethod, error) {
-	switch {
-	case strings.EqualFold(methodStr, Win32ScreencapMethodGDI.String()):
-		return Win32ScreencapMethodGDI, nil
-	case strings.EqualFold(methodStr, Win32ScreencapMethodFramePool.String()):
-		return Win32ScreencapMethodFramePool, nil
-	case strings.EqualFold(methodStr, Win32ScreencapMethodDXGIDesktopDup.String()):
-		return Win32ScreencapMethodDXGIDesktopDup, nil
-	}
-	i, err := strconv.Atoi(methodStr)
-	if err != nil {
-		return Win32ScreencapMethodNone, fmt.Errorf("unknown Win32 Screencap Method String: '%s', defaulting to Win32ScreencapMethodNone", methodStr)
-	}
-	return Win32ScreencapMethod(i), nil
-}
-
-// Win32InputMethod
-//
-// No bitwise OR, just set it.
-type Win32InputMethod uint64
-
-// Win32InputMethod
-const (
-	Win32InputMethodNone              Win32InputMethod = 0
-	Win32InputMethodSeize             Win32InputMethod = 1
-	Win32InputMethodSendMessage       Win32InputMethod = 1 << 1
-	Win32InputMethodPostMessage       Win32InputMethod = 1 << 2
-	Win32InputMethodLegacyEvent       Win32InputMethod = 1 << 3
-	Win32InputMethodPostThreadMessage Win32InputMethod = 1 << 4
-)
-
-func (m Win32InputMethod) String() string {
-	switch m {
-	case Win32InputMethodNone:
-		return ""
-	case Win32InputMethodSeize:
-		return Win32InputMethodSeizeValue
-	case Win32InputMethodSendMessage:
-		return Win32InputMethodSendMessageValue
-	case Win32InputMethodPostMessage:
-		return Win32InputMethodPostMessageValue
-	case Win32InputMethodLegacyEvent:
-		return Win32InputMethodLegacyEventValue
-	case Win32InputMethodPostThreadMessage:
-		return Win32InputMethodPostThreadMessageValue
-	}
-	return strconv.Itoa(int(m))
-}
-
-func ParseWin32InputMethod(methodStr string) (Win32InputMethod, error) {
-	switch {
-	case strings.EqualFold(methodStr, Win32InputMethodSeize.String()):
-		return Win32InputMethodSeize, nil
-	case strings.EqualFold(methodStr, Win32InputMethodSendMessage.String()):
-		return Win32InputMethodSendMessage, nil
-	}
-	i, err := strconv.Atoi(methodStr)
-	if err != nil {
-		return Win32InputMethodNone, fmt.Errorf("unknown Win32 Input Method String: '%s', defaulting to Win32InputMethodNone", methodStr)
-	}
-	return Win32InputMethod(i), nil
-}
-
 // NewWin32Controller creates a win32 controller instance.
 func NewWin32Controller(
 	hWnd unsafe.Pointer,
-	screencapMethod Win32ScreencapMethod,
-	mouseMethod Win32InputMethod,
-	keyboardMethod Win32InputMethod,
+	screencapMethod win32.ScreencapMethod,
+	mouseMethod win32.InputMethod,
+	keyboardMethod win32.InputMethod,
 ) *Controller {
 	handle := native.MaaWin32ControllerCreate(
 		hWnd,
-		native.MaaWin32ScreencapMethod(screencapMethod),
-		native.MaaWin32InputMethod(mouseMethod),
-		native.MaaWin32InputMethod(keyboardMethod),
+		uint64(screencapMethod),
+		uint64(mouseMethod),
+		uint64(keyboardMethod),
 	)
 	if handle == 0 {
 		return nil
