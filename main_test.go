@@ -9,7 +9,7 @@ func TestMain(m *testing.M) {
 	Init(
 		WithLogDir("./test/debug"),
 		WithSaveDraw(true),
-		WithStdoutLevel(LoggingLevelInfo),
+		WithStdoutLevel(LoggingLevelAll),
 	)
 
 	os.Exit(m.Run())

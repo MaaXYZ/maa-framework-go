@@ -11,7 +11,7 @@ func TestMain(m *testing.M) {
 	maa.Init(
 		maa.WithLogDir("./debug"),
 		maa.WithSaveDraw(true),
-		maa.WithStdoutLevel(maa.LoggingLevelInfo),
+		maa.WithStdoutLevel(maa.LoggingLevelAll),
 	)
 
 	os.Exit(m.Run())
