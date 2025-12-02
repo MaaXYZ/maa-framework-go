@@ -2,6 +2,7 @@ package maa
 
 import (
 	"encoding/json"
+	"errors"
 	"image"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
@@ -177,6 +178,20 @@ func (ctx *Context) GetNodeJSON(name string) (string, bool) {
 	defer buf.Destroy()
 	ok := native.MaaResourceGetNodeData(ctx.handle, name, buf.Handle())
 	return buf.Get(), ok
+}
+
+func (ctx *Context) GetNodeData(name string) (*Node, error) {
+	raw, ok := ctx.GetNodeJSON(name)
+	if !ok {
+		return nil, errors.New("node not found")
+	}
+
+	var node Node
+	err := json.Unmarshal([]byte(raw), &node)
+	if err != nil {
+		return nil, err
+	}
+	return &node, nil
 }
 
 // GetTaskJob returns current task job.
