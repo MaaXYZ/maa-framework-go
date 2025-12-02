@@ -1260,6 +1260,8 @@ func (na *NodeAction) UnmarshalJSON(data []byte) error {
 		param = &NodeStopAppParam{}
 	case NodeActionTypeStopTask:
 		param = &NodeStopTaskParam{}
+	case NodeActionTypeScroll:
+		param = &NodeScrollParam{}
 	case NodeActionTypeCommand:
 		param = &NodeCommandParam{}
 	case NodeActionTypeCustom:
@@ -1295,6 +1297,7 @@ const (
 	NodeActionTypeStartApp     NodeActionType = "StartApp"
 	NodeActionTypeStopApp      NodeActionType = "StopApp"
 	NodeActionTypeStopTask     NodeActionType = "StopTask"
+	NodeActionTypeScroll       NodeActionType = "Scroll"
 	NodeActionTypeCommand      NodeActionType = "Command"
 	NodeActionTypeCustom       NodeActionType = "Custom"
 )
@@ -1906,6 +1909,38 @@ func ActStopTask() *NodeAction {
 	return &NodeAction{
 		Type:  NodeActionTypeStopTask,
 		Param: &NodeStopTaskParam{},
+	}
+}
+
+type NodeScrollParam struct {
+	Dx int `json:"dx,omitempty"`
+	Dy int `json:"dy,omitempty"`
+}
+
+func (n NodeScrollParam) isActionParam() {}
+
+type ScrollOption func(*NodeScrollParam)
+
+func WithScrollDx(dx int) ScrollOption {
+	return func(p *NodeScrollParam) {
+		p.Dx = dx
+	}
+}
+
+func WithScrollDy(dy int) ScrollOption {
+	return func(p *NodeScrollParam) {
+		p.Dy = dy
+	}
+}
+
+func ActScroll(opts ...ScrollOption) *NodeAction {
+	param := &NodeScrollParam{}
+	for _, opt := range opts {
+		opt(param)
+	}
+	return &NodeAction{
+		Type:  NodeActionTypeScroll,
+		Param: param,
 	}
 }
 
