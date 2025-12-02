@@ -5,7 +5,6 @@ import (
 	"image"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"unsafe"
 
@@ -14,24 +13,14 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/store"
 )
 
-type controllerStoreValue struct {
-	sinkIDToEventCallbackID     map[int64]uint64
-	customControllerCallbacksID uint64
-}
-
 func initControllerStore(handle uintptr) {
-	controllerStoreMutex.Lock()
-	controllerStore.Set(handle, controllerStoreValue{
-		sinkIDToEventCallbackID:     make(map[int64]uint64),
-		customControllerCallbacksID: 0,
+	store.CtrlStore.Lock()
+	store.CtrlStore.Set(handle, store.CtrlStoreValue{
+		SinkIDToEventCallbackID:     make(map[int64]uint64),
+		CustomControllerCallbacksID: 0,
 	})
-	controllerStoreMutex.Unlock()
+	store.CtrlStore.Unlock()
 }
-
-var (
-	controllerStore      = store.New[controllerStoreValue]()
-	controllerStoreMutex sync.RWMutex
-)
 
 type Controller struct {
 	handle uintptr
@@ -328,12 +317,12 @@ func NewCustomController(
 		return nil
 	}
 
-	controllerStoreMutex.Lock()
-	controllerStore.Set(handle, controllerStoreValue{
-		sinkIDToEventCallbackID:     make(map[int64]uint64),
-		customControllerCallbacksID: ctrlID,
+	store.CtrlStore.Lock()
+	store.CtrlStore.Set(handle, store.CtrlStoreValue{
+		SinkIDToEventCallbackID:     make(map[int64]uint64),
+		CustomControllerCallbacksID: ctrlID,
 	})
-	controllerStoreMutex.Unlock()
+	store.CtrlStore.Unlock()
 
 	return &Controller{
 		handle: handle,
@@ -342,14 +331,14 @@ func NewCustomController(
 
 // Destroy frees the controller instance.
 func (c *Controller) Destroy() {
-	controllerStoreMutex.Lock()
-	value := controllerStore.Get(c.handle)
-	unregisterCustomControllerCallbacks(value.customControllerCallbacksID)
-	for _, cbID := range value.sinkIDToEventCallbackID {
+	store.CtrlStore.Lock()
+	value := store.CtrlStore.Get(c.handle)
+	unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
+	for _, cbID := range value.SinkIDToEventCallbackID {
 		unregisterEventCallback(cbID)
 	}
-	controllerStore.Del(c.handle)
-	controllerStoreMutex.Unlock()
+	store.CtrlStore.Del(c.handle)
+	store.CtrlStore.Unlock()
 
 	native.MaaControllerDestroy(c.handle)
 }

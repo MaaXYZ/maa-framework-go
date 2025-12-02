@@ -3,23 +3,11 @@ package maa
 import (
 	"encoding/json"
 	"image"
-	"sync"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/store"
-)
-
-type resourceStoreValue struct {
-	sinkIDToEventCallbackID     map[int64]uint64
-	CustomRecognizersCallbackID map[string]uint64
-	CustomActionsCallbackID     map[string]uint64
-}
-
-var (
-	resourceStore      = store.New[resourceStoreValue]()
-	resourceStoreMutex sync.RWMutex
 )
 
 type Resource struct {
@@ -33,13 +21,13 @@ func NewResource() *Resource {
 		return nil
 	}
 
-	resourceStoreMutex.Lock()
-	resourceStore.Set(handle, resourceStoreValue{
-		sinkIDToEventCallbackID:     make(map[int64]uint64),
+	store.ResStore.Lock()
+	store.ResStore.Set(handle, store.ResStoreValue{
+		SinkIDToEventCallbackID:     make(map[int64]uint64),
 		CustomRecognizersCallbackID: make(map[string]uint64),
 		CustomActionsCallbackID:     make(map[string]uint64),
 	})
-	resourceStoreMutex.Unlock()
+	store.ResStore.Unlock()
 
 	return &Resource{
 		handle: handle,
@@ -48,9 +36,9 @@ func NewResource() *Resource {
 
 // Destroy frees the resource.
 func (r *Resource) Destroy() {
-	resourceStoreMutex.Lock()
-	value := resourceStore.Get(r.handle)
-	for _, id := range value.sinkIDToEventCallbackID {
+	store.ResStore.Lock()
+	value := store.ResStore.Get(r.handle)
+	for _, id := range value.SinkIDToEventCallbackID {
 		unregisterEventCallback(id)
 	}
 	for _, id := range value.CustomRecognizersCallbackID {
@@ -59,8 +47,8 @@ func (r *Resource) Destroy() {
 	for _, id := range value.CustomActionsCallbackID {
 		unregisterCustomAction(id)
 	}
-	resourceStore.Del(r.handle)
-	resourceStoreMutex.Unlock()
+	store.ResStore.Del(r.handle)
+	store.ResStore.Unlock()
 
 	native.MaaResourceDestroy(r.handle)
 }
@@ -127,14 +115,12 @@ func (r *Resource) UseAutoExecutionProvider() bool {
 func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognition) bool {
 	id := registerCustomRecognition(recognition)
 
-	resourceStoreMutex.Lock()
-	value := resourceStore.Get(r.handle)
-	if oldID, ok := value.CustomRecognizersCallbackID[name]; ok {
-		unregisterCustomRecognition(oldID)
-	}
-	value.CustomRecognizersCallbackID[name] = id
-	resourceStore.Set(r.handle, value)
-	resourceStoreMutex.Unlock()
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		if oldID, ok := v.CustomRecognizersCallbackID[name]; ok {
+			unregisterCustomRecognition(oldID)
+		}
+		v.CustomRecognizersCallbackID[name] = id
+	})
 
 	return native.MaaResourceRegisterCustomRecognition(
 		r.handle,
@@ -148,28 +134,28 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 
 // UnregisterCustomRecognition unregisters a custom recognition from the resource.
 func (r *Resource) UnregisterCustomRecognition(name string) bool {
-	resourceStoreMutex.Lock()
-	defer resourceStoreMutex.Unlock()
-
-	value := resourceStore.Get(r.handle)
-	if id, ok := value.CustomRecognizersCallbackID[name]; ok {
-		unregisterCustomRecognition(id)
-	} else {
+	var found bool
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		if id, ok := v.CustomRecognizersCallbackID[name]; ok {
+			unregisterCustomRecognition(id)
+			delete(v.CustomRecognizersCallbackID, name)
+			found = true
+		}
+	})
+	if !found {
 		return false
 	}
-
 	return native.MaaResourceUnregisterCustomRecognition(r.handle, name)
 }
 
 // ClearCustomRecognition clears all custom recognitions registered from the resource.
 func (r *Resource) ClearCustomRecognition() bool {
-	resourceStoreMutex.Lock()
-	defer resourceStoreMutex.Unlock()
-
-	value := resourceStore.Get(r.handle)
-	for _, id := range value.CustomRecognizersCallbackID {
-		unregisterCustomRecognition(id)
-	}
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		for _, id := range v.CustomRecognizersCallbackID {
+			unregisterCustomRecognition(id)
+		}
+		v.CustomRecognizersCallbackID = make(map[string]uint64)
+	})
 
 	return native.MaaResourceClearCustomRecognition(r.handle)
 }
@@ -178,14 +164,12 @@ func (r *Resource) ClearCustomRecognition() bool {
 func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
 	id := registerCustomAction(action)
 
-	resourceStoreMutex.Lock()
-	value := resourceStore.Get(r.handle)
-	if oldID, ok := value.CustomActionsCallbackID[name]; ok {
-		unregisterCustomAction(oldID)
-	}
-	value.CustomActionsCallbackID[name] = id
-	resourceStore.Set(r.handle, value)
-	resourceStoreMutex.Unlock()
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		if oldID, ok := v.CustomActionsCallbackID[name]; ok {
+			unregisterCustomAction(oldID)
+		}
+		v.CustomActionsCallbackID[name] = id
+	})
 
 	return native.MaaResourceRegisterCustomAction(
 		r.handle,
@@ -199,28 +183,28 @@ func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
 
 // UnregisterCustomAction unregisters a custom action from the resource.
 func (r *Resource) UnregisterCustomAction(name string) bool {
-	resourceStoreMutex.Lock()
-	defer resourceStoreMutex.Unlock()
-
-	value := resourceStore.Get(r.handle)
-	if id, ok := value.CustomActionsCallbackID[name]; ok {
-		unregisterCustomAction(id)
-	} else {
+	var found bool
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		if id, ok := v.CustomActionsCallbackID[name]; ok {
+			unregisterCustomAction(id)
+			delete(v.CustomActionsCallbackID, name)
+			found = true
+		}
+	})
+	if !found {
 		return false
 	}
-
 	return native.MaaResourceUnregisterCustomAction(r.handle, name)
 }
 
 // ClearCustomAction clears all custom actions registered from the resource.
 func (r *Resource) ClearCustomAction() bool {
-	resourceStoreMutex.Lock()
-	defer resourceStoreMutex.Unlock()
-
-	value := resourceStore.Get(r.handle)
-	for _, id := range value.CustomActionsCallbackID {
-		unregisterCustomAction(id)
-	}
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		for _, id := range v.CustomActionsCallbackID {
+			unregisterCustomAction(id)
+		}
+		v.CustomActionsCallbackID = make(map[string]uint64)
+	})
 
 	return native.MaaResourceClearCustomAction(r.handle)
 }
@@ -368,37 +352,31 @@ func (r *Resource) AddSink(sink ResourceEventSink) int64 {
 		uintptr(id),
 	)
 
-	resourceStoreMutex.Lock()
-	value := resourceStore.Get(r.handle)
-	value.sinkIDToEventCallbackID[sinkId] = id
-	resourceStore.Set(r.handle, value)
-	resourceStoreMutex.Unlock()
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		v.SinkIDToEventCallbackID[sinkId] = id
+	})
 
 	return sinkId
 }
 
 // RemoveSink removes a event callback sink by sink ID.
 func (r *Resource) RemoveSink(sinkId int64) {
-	resourceStoreMutex.Lock()
-	value := resourceStore.Get(r.handle)
-	unregisterEventCallback(value.sinkIDToEventCallbackID[sinkId])
-	delete(value.sinkIDToEventCallbackID, sinkId)
-	resourceStore.Set(r.handle, value)
-	resourceStoreMutex.Unlock()
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
+		delete(v.SinkIDToEventCallbackID, sinkId)
+	})
 
 	native.MaaResourceRemoveSink(r.handle, sinkId)
 }
 
 // ClearSinks clears all event callback sinks.
 func (r *Resource) ClearSinks() {
-	resourceStoreMutex.Lock()
-	value := resourceStore.Get(r.handle)
-	for _, id := range value.sinkIDToEventCallbackID {
-		unregisterEventCallback(id)
-	}
-	value.sinkIDToEventCallbackID = make(map[int64]uint64)
-	resourceStore.Set(r.handle, value)
-	resourceStoreMutex.Unlock()
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		for _, id := range v.SinkIDToEventCallbackID {
+			unregisterEventCallback(id)
+		}
+		v.SinkIDToEventCallbackID = make(map[int64]uint64)
+	})
 
 	native.MaaResourceClearSinks(r.handle)
 }

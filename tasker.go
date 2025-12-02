@@ -3,22 +3,11 @@ package maa
 import (
 	"encoding/json"
 	"image"
-	"sync"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/store"
-)
-
-type taskerStoreValue struct {
-	sinkIDToEventCallbackID        map[int64]uint64
-	contextSinkIDToEventCallbackID map[int64]uint64
-}
-
-var (
-	taskerStore      = store.New[taskerStoreValue]()
-	taskerStoreMutex sync.RWMutex
 )
 
 type Tasker struct {
@@ -32,28 +21,28 @@ func NewTasker() *Tasker {
 		return nil
 	}
 
-	taskerStoreMutex.Lock()
-	taskerStore.Set(handle, taskerStoreValue{
-		sinkIDToEventCallbackID:        make(map[int64]uint64),
-		contextSinkIDToEventCallbackID: make(map[int64]uint64),
+	store.TaskerStore.Lock()
+	store.TaskerStore.Set(handle, store.TaskerStoreValue{
+		SinkIDToEventCallbackID:        make(map[int64]uint64),
+		ContextSinkIDToEventCallbackID: make(map[int64]uint64),
 	})
-	taskerStoreMutex.Unlock()
+	store.TaskerStore.Unlock()
 
 	return &Tasker{handle: handle}
 }
 
 // Destroy free the tasker.
 func (t *Tasker) Destroy() {
-	taskerStoreMutex.Lock()
-	value := taskerStore.Get(t.handle)
-	for _, id := range value.sinkIDToEventCallbackID {
+	store.TaskerStore.Lock()
+	value := store.TaskerStore.Get(t.handle)
+	for _, id := range value.SinkIDToEventCallbackID {
 		unregisterEventCallback(id)
 	}
-	for _, id := range value.contextSinkIDToEventCallbackID {
+	for _, id := range value.ContextSinkIDToEventCallbackID {
 		unregisterEventCallback(id)
 	}
-	taskerStore.Del(t.handle)
-	taskerStoreMutex.Unlock()
+	store.TaskerStore.Del(t.handle)
+	store.TaskerStore.Unlock()
 
 	native.MaaTaskerDestroy(t.handle)
 }
@@ -375,37 +364,31 @@ func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
 		uintptr(id),
 	)
 
-	taskerStoreMutex.Lock()
-	value := taskerStore.Get(t.handle)
-	value.sinkIDToEventCallbackID[sinkId] = id
-	taskerStore.Set(t.handle, value)
-	taskerStoreMutex.Unlock()
+	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
+		v.SinkIDToEventCallbackID[sinkId] = id
+	})
 
 	return sinkId
 }
 
 // RemoveSink removes a event callback sink by sink ID.
 func (t *Tasker) RemoveSink(sinkId int64) {
-	taskerStoreMutex.Lock()
-	value := taskerStore.Get(t.handle)
-	unregisterEventCallback(value.sinkIDToEventCallbackID[sinkId])
-	delete(value.sinkIDToEventCallbackID, sinkId)
-	taskerStore.Set(t.handle, value)
-	taskerStoreMutex.Unlock()
+	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
+		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
+		delete(v.SinkIDToEventCallbackID, sinkId)
+	})
 
 	native.MaaTaskerRemoveSink(t.handle, sinkId)
 }
 
 // ClearSinks clears all event callback sinks.
 func (t *Tasker) ClearSinks() {
-	taskerStoreMutex.Lock()
-	value := taskerStore.Get(t.handle)
-	for _, id := range value.sinkIDToEventCallbackID {
-		unregisterEventCallback(id)
-	}
-	value.sinkIDToEventCallbackID = make(map[int64]uint64)
-	taskerStore.Set(t.handle, value)
-	taskerStoreMutex.Unlock()
+	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
+		for _, id := range v.SinkIDToEventCallbackID {
+			unregisterEventCallback(id)
+		}
+		v.SinkIDToEventCallbackID = make(map[int64]uint64)
+	})
 
 	native.MaaTaskerClearSinks(t.handle)
 }
@@ -419,37 +402,31 @@ func (t *Tasker) AddContextSink(sink ContextEventSink) int64 {
 		uintptr(id),
 	)
 
-	taskerStoreMutex.Lock()
-	value := taskerStore.Get(t.handle)
-	value.contextSinkIDToEventCallbackID[sinkId] = id
-	taskerStore.Set(t.handle, value)
-	taskerStoreMutex.Unlock()
+	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
+		v.ContextSinkIDToEventCallbackID[sinkId] = id
+	})
 
 	return sinkId
 }
 
 // RemoveContextSink removes a context event callback sink by sink ID.
 func (t *Tasker) RemoveContextSink(sinkId int64) {
-	taskerStoreMutex.Lock()
-	value := taskerStore.Get(t.handle)
-	unregisterEventCallback(value.contextSinkIDToEventCallbackID[sinkId])
-	delete(value.contextSinkIDToEventCallbackID, sinkId)
-	taskerStore.Set(t.handle, value)
-	taskerStoreMutex.Unlock()
+	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
+		unregisterEventCallback(v.ContextSinkIDToEventCallbackID[sinkId])
+		delete(v.ContextSinkIDToEventCallbackID, sinkId)
+	})
 
 	native.MaaTaskerRemoveContextSink(t.handle, sinkId)
 }
 
 // ClearContextSinks clears all context event callback sinks.
 func (t *Tasker) ClearContextSinks() {
-	taskerStoreMutex.Lock()
-	value := taskerStore.Get(t.handle)
-	for _, id := range value.contextSinkIDToEventCallbackID {
-		unregisterEventCallback(id)
-	}
-	value.contextSinkIDToEventCallbackID = make(map[int64]uint64)
-	taskerStore.Set(t.handle, value)
-	taskerStoreMutex.Unlock()
+	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
+		for _, id := range v.ContextSinkIDToEventCallbackID {
+			unregisterEventCallback(id)
+		}
+		v.ContextSinkIDToEventCallbackID = make(map[int64]uint64)
+	})
 
 	native.MaaTaskerClearContextSinks(t.handle)
 }
