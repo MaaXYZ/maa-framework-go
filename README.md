@@ -30,13 +30,13 @@ Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-p
 
 ## ✨ Features
 
-- 🎯 **ADB Controller** - Android device automation via ADB
-- 🖥️ **Win32 Controller** - Windows desktop application automation
-- 🔍 **Image Recognition** - Template matching, OCR, feature detection and more
-- 🧩 **Custom Recognition** - Implement custom image recognition algorithms
-- 🎮 **Custom Actions** - Define your own automation logic
-- 🔌 **Agent Support** - Mount custom recognition and actions from external processes
-- 📦 **Pipeline-based** - Declarative task flow with JSON configuration
+- **ADB Controller** - Android device automation via ADB
+- **Win32 Controller** - Windows desktop application automation
+- **Image Recognition** - Template matching, OCR, feature detection and more
+- **Custom Recognition** - Implement custom image recognition algorithms
+- **Custom Actions** - Define your own automation logic
+- **Agent Support** - Mount custom recognition and actions from external processes
+- **Pipeline-based** - Declarative task flow with JSON configuration
 
 ## 📦 Installation
 
@@ -154,9 +154,9 @@ For more examples, see the [examples](examples) directory:
 
 Contributions are welcome! Feel free to:
 
-- 🐛 Report bugs by opening issues
-- 💡 Suggest features or improvements
-- 🔧 Submit pull requests
+- Report bugs by opening issues
+- Suggest features or improvements
+- Submit pull requests
 
 ## 📄 License
 
