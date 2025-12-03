@@ -136,14 +136,6 @@ var (
 	MaaResourceGetCustomActionList         func(res uintptr, buffer uintptr) bool
 )
 
-type MaaControllerFeature uint64
-
-const (
-	MaaControllerFeature_None                               MaaControllerFeature = 0
-	MaaControllerFeature_UseMouseDownAndUpInsteadOfClick    MaaControllerFeature = 1
-	MaaControllerFeature_UseKeyboardDownAndUpInsteadOfClick MaaControllerFeature = 1 << 1
-)
-
 type MaaCtrlOption int32
 
 const (

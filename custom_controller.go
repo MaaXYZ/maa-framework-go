@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 	"github.com/ebitengine/purego"
 )
 
@@ -31,6 +30,14 @@ func unregisterCustomControllerCallbacks(id uint64) {
 	delete(customControllerCallbacksAgents, id)
 	customControllerCallbacksAgentsMutex.Unlock()
 }
+
+type ControllerFeature uint64
+
+const (
+	ControllerFeatureNone                               ControllerFeature = 0
+	ControllerFeatureUseMouseDownAndUpInsteadOfClick    ControllerFeature = 1
+	ControllerFeatureUseKeyboardDownAndUpInsteadOfClick ControllerFeature = 1 << 1
+)
 
 // CustomController defines an interface for custom controller.
 // Implementers of this interface must embed a CustomControllerHandler struct
@@ -134,14 +141,6 @@ func _RequestUUIDAgent(handleArg uintptr, uuidBuffer uintptr) uintptr {
 	}
 	return uintptr(0)
 }
-
-type ControllerFeature = native.MaaControllerFeature
-
-const (
-	ControllerFeatureNone                               = native.MaaControllerFeature_None
-	ControllerFeatureUseMouseDownAndUpInsteadOfClick    = native.MaaControllerFeature_UseMouseDownAndUpInsteadOfClick
-	ControllerFeatureUseKeyboardDownAndUpInsteadOfClick = native.MaaControllerFeature_UseKeyboardDownAndUpInsteadOfClick
-)
 
 func _GetFeatureAgent(handleArg uintptr) ControllerFeature {
 	// Here, we are simply passing the uint64 value as a pointer
