@@ -1,6 +1,6 @@
 module github.com/MaaXYZ/maa-framework-go/v3
 
-go 1.21
+go 1.24
 
 require (
 	github.com/ebitengine/purego v0.9.1
