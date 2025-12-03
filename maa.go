@@ -2,12 +2,14 @@ package maa
 
 import (
 	"errors"
+	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
 var (
-	inited                bool
+	inited bool
+
 	ErrAlreadyInitialized = errors.New("maa framework already initialized")
 	ErrNotInitialized     = errors.New("maa framework not initialized")
 )
@@ -35,6 +37,10 @@ type InitConfig struct {
 	// DebugMode enables or disables comprehensive debug mode.
 	// When enabled, additional debug information is collected and logged.
 	DebugMode bool
+
+	// PluginPaths specifies the paths to the plugins to load.
+	// If empty, the framework will not load any plugins.
+	PluginPaths []string
 }
 
 // InitOption defines a function type for configuring InitConfig through functional options.
@@ -82,6 +88,12 @@ func WithDebugMode(enabled bool) InitOption {
 	}
 }
 
+func WithPluginPaths(path ...string) InitOption {
+	return func(ic *InitConfig) {
+		ic.PluginPaths = path
+	}
+}
+
 func defaultInitConfig() InitConfig {
 	return InitConfig{
 		LibDir:      "",
@@ -89,6 +101,7 @@ func defaultInitConfig() InitConfig {
 		SaveDraw:    false,
 		StdoutLevel: LoggingLevelInfo,
 		DebugMode:   false,
+		PluginPaths: []string{},
 	}
 }
 
@@ -116,6 +129,10 @@ func Init(opts ...InitOption) error {
 	SetStdoutLevel(cfg.StdoutLevel)
 	SetDebugMode(cfg.DebugMode)
 
+	for _, path := range cfg.PluginPaths {
+		LoadPlugin(path)
+	}
+
 	inited = true
 
 	return nil
@@ -141,4 +158,53 @@ func Release() error {
 	inited = false
 
 	return nil
+}
+
+func setGlobalOption(key native.MaaGlobalOption, value unsafe.Pointer, valSize uintptr) bool {
+	return native.MaaGlobalSetOption(key, value, uint64(valSize))
+}
+
+// SetLogDir sets the log directory.
+func SetLogDir(path string) bool {
+	if path == "" {
+		return false
+	}
+	return setGlobalOption(native.MaaGlobalOption_LogDir, unsafe.Pointer(&[]byte(path)[0]), uintptr(len(path)))
+}
+
+// SetSaveDraw sets whether to save draw.
+func SetSaveDraw(enabled bool) bool {
+	return setGlobalOption(native.MaaGlobalOption_SaveDraw, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled))
+}
+
+type LoggingLevel int32
+
+// LoggingLevel
+const (
+	LoggingLevelOff LoggingLevel = iota
+	LoggingLevelFatal
+	LoggingLevelError
+	LoggingLevelWarn
+	LoggingLevelInfo
+	LoggingLevelDebug
+	LoggingLevelTrace
+	LoggingLevelAll
+)
+
+// SetStdoutLevel sets the level of log output to stdout.
+func SetStdoutLevel(level LoggingLevel) bool {
+	return setGlobalOption(native.MaaGlobalOption_StdoutLevel, unsafe.Pointer(&level), unsafe.Sizeof(level))
+}
+
+// SetDebugMode sets whether to enable debug mode.
+func SetDebugMode(enabled bool) bool {
+	return setGlobalOption(native.MaaGlobalOption_DebugMode, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled))
+}
+
+// LoadPlugin loads a plugin specified by path.
+// The path may be a full filesystem path or just a plugin name.
+// When only a name is provided, the function searches system directories and the current working directory for a matching plugin.
+// If the path refers to a directory, plugins inside that directory are searched recursively.
+func LoadPlugin(path string) bool {
+	return native.MaaGlobalLoadPlugin(path)
 }
