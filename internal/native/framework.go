@@ -33,6 +33,8 @@ var (
 	MaaTaskerBindController       func(tasker uintptr, ctrl uintptr) bool
 	MaaTaskerInited               func(tasker uintptr) bool
 	MaaTaskerPostTask             func(tasker uintptr, entry, pipelineOverride string) int64
+	MaaTaskerPostRecognition      func(tasker uintptr, recognitionType, recognitionParam string, image uintptr) int64
+	MaaTaskerPostAction           func(tasker uintptr, actionType, actionParam string, box uintptr, recoDetail string) int64
 	MaaTaskerStatus               func(tasker uintptr, id int64) int32
 	MaaTaskerWait                 func(tasker uintptr, id int64) int32
 	MaaTaskerRunning              func(tasker uintptr) bool
@@ -330,6 +332,8 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaTaskerBindController, maaFramework, "MaaTaskerBindController")
 	purego.RegisterLibFunc(&MaaTaskerInited, maaFramework, "MaaTaskerInited")
 	purego.RegisterLibFunc(&MaaTaskerPostTask, maaFramework, "MaaTaskerPostTask")
+	purego.RegisterLibFunc(&MaaTaskerPostRecognition, maaFramework, "MaaTaskerPostRecognition")
+	purego.RegisterLibFunc(&MaaTaskerPostAction, maaFramework, "MaaTaskerPostAction")
 	purego.RegisterLibFunc(&MaaTaskerStopping, maaFramework, "MaaTaskerStopping")
 	purego.RegisterLibFunc(&MaaTaskerStatus, maaFramework, "MaaTaskerStatus")
 	purego.RegisterLibFunc(&MaaTaskerWait, maaFramework, "MaaTaskerWait")

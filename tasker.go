@@ -95,6 +95,31 @@ func (t *Tasker) PostTask(entry string, override ...any) *TaskJob {
 	return t.handleOverride(entry, t.postTask, override...)
 }
 
+// PostRecognition posts a recognition to the tasker.
+func (t *Tasker) PostRecognition(recType NodeRecognitionType, recParam NodeRecognitionParam, img image.Image) *TaskJob {
+	imgBuf := buffer.NewImageBuffer()
+	defer imgBuf.Destroy()
+	imgBuf.Set(img)
+
+	recParamJSON, _ := json.Marshal(recParam)
+
+	id := native.MaaTaskerPostRecognition(t.handle, string(recType), string(recParamJSON), imgBuf.Handle())
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail)
+}
+
+// PostAction posts an action to the tasker.
+func (t *Tasker) PostAction(actionType NodeActionType, actionParam NodeActionParam, box Rect, recoDetail *RecognitionDetail) *TaskJob {
+	rectBuf := buffer.NewRectBuffer()
+	defer rectBuf.Destroy()
+	rectBuf.Set(box)
+
+	actParamJSON, _ := json.Marshal(actionParam)
+	recoDetailJSON, _ := json.Marshal(recoDetail)
+
+	id := native.MaaTaskerPostAction(t.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail)
+}
+
 // Stopping checks whether the tasker is stopping.
 func (t *Tasker) Stopping() bool {
 	return native.MaaTaskerStopping(t.handle)
