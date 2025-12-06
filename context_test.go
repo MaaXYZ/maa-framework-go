@@ -61,7 +61,9 @@ func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) boo
 
 	pipeline := NewPipeline()
 	testNode := NewNode("Test",
-		WithRecognition(RecOCR([]string{"Hello"})),
+		WithRecognition(RecOCR(
+			WithOCRExpected([]string{"Hello"}),
+		)),
 	)
 	pipeline.AddNode(testNode)
 

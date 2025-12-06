@@ -918,6 +918,13 @@ func WithOCRROIOffset(offset Rect) OCROption {
 	}
 }
 
+// WithOCRExpected sets the expected text results.
+func WithOCRExpected(expected []string) OCROption {
+	return func(param *NodeOCRParam) {
+		param.Expected = expected
+	}
+}
+
 // WithOCRThreshold sets the model confidence threshold.
 func WithOCRThreshold(th float64) OCROption {
 	return func(param *NodeOCRParam) {
@@ -961,10 +968,8 @@ func WithOCRModel(model string) OCROption {
 }
 
 // RecOCR creates an OCR recognition with the given expected text patterns.
-func RecOCR(expected []string, opts ...OCROption) *NodeRecognition {
-	param := &NodeOCRParam{
-		Expected: expected,
-	}
+func RecOCR(opts ...OCROption) *NodeRecognition {
+	param := &NodeOCRParam{}
 
 	for _, opt := range opts {
 		opt(param)
@@ -1030,6 +1035,13 @@ func WithNeuralClassifyLabels(labels []string) NeuralClassifyOption {
 	}
 }
 
+// WithNeuralClassifyExpected sets the expected class indices.
+func WithNeuralClassifyExpected(expected []int) NeuralClassifyOption {
+	return func(param *NodeNeuralNetworkClassifyParam) {
+		param.Expected = expected
+	}
+}
+
 // WithNeuralClassifyOrderBy sets the result ordering method.
 func WithNeuralClassifyOrderBy(orderBy NodeNeuralNetworkClassifyOrderBy) NeuralClassifyOption {
 	return func(param *NodeNeuralNetworkClassifyParam) {
@@ -1046,10 +1058,9 @@ func WithNeuralClassifyIndex(index int) NeuralClassifyOption {
 
 // RecNeuralNetworkClassify creates a NeuralNetworkClassify recognition.
 // This classifies images at fixed positions into predefined categories.
-func RecNeuralNetworkClassify(model string, expected []int, opts ...NeuralClassifyOption) *NodeRecognition {
+func RecNeuralNetworkClassify(model string, opts ...NeuralClassifyOption) *NodeRecognition {
 	param := &NodeNeuralNetworkClassifyParam{
-		Model:    model,
-		Expected: expected,
+		Model: model,
 	}
 
 	for _, opt := range opts {
@@ -1117,6 +1128,13 @@ func WithNeuralDetectLabels(labels []string) NeuralDetectOption {
 	}
 }
 
+// WithNeuralDetectExpected sets the expected class indices.
+func WithNeuralDetectExpected(expected []int) NeuralDetectOption {
+	return func(param *NodeNeuralNetworkDetectParam) {
+		param.Expected = expected
+	}
+}
+
 // WithNeuralDetectOrderBy sets the result ordering method.
 func WithNeuralDetectOrderBy(orderBy NodeNeuralNetworkDetectOrderBy) NeuralDetectOption {
 	return func(param *NodeNeuralNetworkDetectParam) {
@@ -1133,10 +1151,9 @@ func WithNeuralDetectIndex(index int) NeuralDetectOption {
 
 // RecNeuralNetworkDetect creates a NeuralNetworkDetect recognition.
 // This detects objects at arbitrary positions using deep learning models like YOLO.
-func RecNeuralNetworkDetect(model string, expected []int, opts ...NeuralDetectOption) *NodeRecognition {
+func RecNeuralNetworkDetect(model string, opts ...NeuralDetectOption) *NodeRecognition {
 	param := &NodeNeuralNetworkDetectParam{
-		Model:    model,
-		Expected: expected,
+		Model: model,
 	}
 
 	for _, opt := range opts {
