@@ -1316,6 +1316,7 @@ const (
 	NodeActionTypeStopTask     NodeActionType = "StopTask"
 	NodeActionTypeScroll       NodeActionType = "Scroll"
 	NodeActionTypeCommand      NodeActionType = "Command"
+	NodeActionTypeShell        NodeActionType = "Shell"
 	NodeActionTypeCustom       NodeActionType = "Custom"
 )
 
@@ -1996,6 +1997,20 @@ func ActCommand(exec string, opts ...CommandOption) *NodeAction {
 		opt(param)
 	}
 	return &NodeAction{Type: NodeActionTypeCommand, Param: param}
+}
+
+// NodeShellParam defines parameters for shell command execution action.
+type NodeShellParam struct {
+	Cmd string `json:"cmd,omitempty"`
+}
+
+func (n NodeShellParam) isActionParam() {}
+
+// ActShell creates a Shell action with the given command.
+// This is only valid for ADB controllers. If the controller is not an ADB controller, the action will fail.
+// The output of the command can be obtained in the action detail by MaaTaskerGetActionDetail.
+func ActShell(cmd string) *NodeAction {
+	return &NodeAction{Type: NodeActionTypeShell, Param: &NodeShellParam{Cmd: cmd}}
 }
 
 // NodeCustomActionParam defines parameters for custom action handlers.

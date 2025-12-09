@@ -236,6 +236,25 @@ func (c *Controller) PostScroll(dx, dy int32) *Job {
 	return newJob(id, c.status, c.wait)
 }
 
+// PostShell posts a adb shell command.
+// This is only valid for ADB controllers. If the controller is not an ADB controller, the action will fail.
+func (c *Controller) PostShell(cmd string, timeout time.Duration) *Job {
+	id := native.MaaControllerPostShell(c.handle, cmd, timeout.Milliseconds())
+	return newJob(id, c.status, c.wait)
+}
+
+// GetShellOutput gets the output of the last shell command.
+func (c *Controller) GetShellOutput() (string, bool) {
+	output := buffer.NewStringBuffer()
+	defer output.Destroy()
+
+	got := native.MaaControllerGetShellOutput(c.handle, output.Handle())
+	if !got {
+		return "", false
+	}
+	return output.Get(), true
+}
+
 // status gets the status of a request identified by the given id.
 func (c *Controller) status(id int64) Status {
 	return Status(native.MaaControllerStatus(c.handle, id))

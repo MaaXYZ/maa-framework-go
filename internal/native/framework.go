@@ -178,16 +178,18 @@ var (
 	MaaControllerPostTouchMove func(ctrl uintptr, contact, x, y, pressure int32) int64
 	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
 	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
-	MaaControllerPostTouchUp   func(ctrl uintptr, contact int32) int64
-	MaaControllerPostKeyDown   func(ctrl uintptr, keycode int32) int64
-	MaaControllerPostKeyUp     func(ctrl uintptr, keycode int32) int64
-	MaaControllerPostScreencap func(ctrl uintptr) int64
-	MaaControllerPostScroll    func(ctrl uintptr, dx, dy int32) int64
-	MaaControllerStatus        func(ctrl uintptr, id int64) int32
-	MaaControllerWait          func(ctrl uintptr, id int64) int32
-	MaaControllerConnected     func(ctrl uintptr) bool
-	MaaControllerCachedImage   func(ctrl uintptr, buffer uintptr) bool
-	MaaControllerGetUuid       func(ctrl uintptr, buffer uintptr) bool
+	MaaControllerPostTouchUp    func(ctrl uintptr, contact int32) int64
+	MaaControllerPostKeyDown    func(ctrl uintptr, keycode int32) int64
+	MaaControllerPostKeyUp      func(ctrl uintptr, keycode int32) int64
+	MaaControllerPostScreencap  func(ctrl uintptr) int64
+	MaaControllerPostScroll     func(ctrl uintptr, dx, dy int32) int64
+	MaaControllerPostShell      func(ctrl uintptr, cmd string, timeout int64) int64
+	MaaControllerGetShellOutput func(ctrl uintptr, buffer uintptr) bool
+	MaaControllerStatus         func(ctrl uintptr, id int64) int32
+	MaaControllerWait           func(ctrl uintptr, id int64) int32
+	MaaControllerConnected      func(ctrl uintptr) bool
+	MaaControllerCachedImage    func(ctrl uintptr, buffer uintptr) bool
+	MaaControllerGetUuid        func(ctrl uintptr, buffer uintptr) bool
 )
 
 var (
@@ -396,6 +398,8 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaControllerPostKeyUp, maaFramework, "MaaControllerPostKeyUp")
 	purego.RegisterLibFunc(&MaaControllerPostScreencap, maaFramework, "MaaControllerPostScreencap")
 	purego.RegisterLibFunc(&MaaControllerPostScroll, maaFramework, "MaaControllerPostScroll")
+	purego.RegisterLibFunc(&MaaControllerPostShell, maaFramework, "MaaControllerPostShell")
+	purego.RegisterLibFunc(&MaaControllerGetShellOutput, maaFramework, "MaaControllerGetShellOutput")
 	purego.RegisterLibFunc(&MaaControllerStatus, maaFramework, "MaaControllerStatus")
 	purego.RegisterLibFunc(&MaaControllerWait, maaFramework, "MaaControllerWait")
 	purego.RegisterLibFunc(&MaaControllerConnected, maaFramework, "MaaControllerConnected")
