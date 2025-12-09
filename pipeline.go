@@ -536,9 +536,9 @@ const (
 type NodeTemplateMatchMethod int
 
 const (
-	NodeTemplateMatchMethodSQDIFF_NORMED NodeTemplateMatchMethod = 1 // Normalized squared difference
-	NodeTemplateMatchMethodCCORR_NORMED  NodeTemplateMatchMethod = 3 // Normalized cross correlation
-	NodeTemplateMatchMethodCCOEFF_NORMED NodeTemplateMatchMethod = 5 // Normalized correlation coefficient (default, most accurate)
+	NodeTemplateMatchMethodSQDIFF_NORMED_Inverted NodeTemplateMatchMethod = 10001 // Normalized squared difference (Inverted)
+	NodeTemplateMatchMethodCCORR_NORMED           NodeTemplateMatchMethod = 3     // Normalized cross correlation
+	NodeTemplateMatchMethodCCOEFF_NORMED          NodeTemplateMatchMethod = 5     // Normalized correlation coefficient (default, most accurate)
 )
 
 // NodeTemplateMatchParam defines parameters for template matching recognition.
