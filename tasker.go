@@ -74,6 +74,10 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 	case []byte:
 		return postFunc(entry, string(v))
 	default:
+		if v == nil {
+			return postFunc(entry, "{}")
+		}
+
 		jsonBytes, err := json.Marshal(v)
 		if err != nil {
 			return postFunc(entry, "{}")

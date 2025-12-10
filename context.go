@@ -20,6 +20,11 @@ func (ctx *Context) handleOverride(override ...any) string {
 	if str, ok := override[0].(string); ok {
 		return str
 	}
+
+	if override[0] == nil {
+		return "{}"
+	}
+
 	str, err := json.Marshal(override[0])
 	if err != nil {
 		str = []byte("{}")
@@ -138,6 +143,10 @@ func (ctx *Context) OverridePipeline(override any) bool {
 	case []byte:
 		return ctx.overridePipeline(string(v))
 	default:
+		if v == nil {
+			return ctx.overridePipeline("{}")
+		}
+
 		jsonBytes, err := json.Marshal(v)
 		if err != nil {
 			return false
