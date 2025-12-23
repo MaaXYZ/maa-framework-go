@@ -2,7 +2,6 @@ package maa
 
 import (
 	"encoding/json"
-	"log"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -129,8 +128,6 @@ func (n *eventHandler) handleRaw(handle uintptr, msg, detailsJSON string) {
 	if n.sink == nil {
 		return
 	}
-
-	log.Println("handleRaw: ", msg, " ", detailsJSON)
 
 	eventType := n.getEventStatus(msg)
 	switch {
