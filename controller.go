@@ -316,3 +316,27 @@ func (c *Controller) RemoveSink(sinkId int64) {
 func (c *Controller) ClearSinks() {
 	native.MaaControllerClearSinks(c.handle)
 }
+
+type ControllerEventSink interface {
+	OnControllerAction(ctrl *Controller, event EventStatus, detail ControllerActionDetail)
+}
+
+// ControllerEventSinkAdapter is a lightweight adapter that makes it easy to register
+// a single-event handler via a callback function.
+type ControllerEventSinkAdapter struct {
+	onControllerAction func(EventStatus, ControllerActionDetail)
+}
+
+func (a *ControllerEventSinkAdapter) OnControllerAction(ctrl *Controller, status EventStatus, detail ControllerActionDetail) {
+	if a == nil || a.onControllerAction == nil {
+		return
+	}
+	a.onControllerAction(status, detail)
+}
+
+// OnControllerAction registers a callback sink that only handles Controller.Action events and returns the sink ID.
+// The sink ID can be used to remove the sink later.
+func (c *Controller) OnControllerAction(fn func(EventStatus, ControllerActionDetail)) int64 {
+	sink := &ControllerEventSinkAdapter{onControllerAction: fn}
+	return c.AddSink(sink)
+}

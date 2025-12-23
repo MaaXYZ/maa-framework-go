@@ -380,3 +380,27 @@ func (r *Resource) ClearSinks() {
 
 	native.MaaResourceClearSinks(r.handle)
 }
+
+type ResourceEventSink interface {
+	OnResourceLoading(res *Resource, event EventStatus, detail ResourceLoadingDetail)
+}
+
+// ResourceEventSinkAdapter is a lightweight adapter that makes it easy to register
+// a single-event handler via a callback function.
+type ResourceEventSinkAdapter struct {
+	onResourceLoading func(EventStatus, ResourceLoadingDetail)
+}
+
+func (a *ResourceEventSinkAdapter) OnResourceLoading(res *Resource, status EventStatus, detail ResourceLoadingDetail) {
+	if a == nil || a.onResourceLoading == nil {
+		return
+	}
+	a.onResourceLoading(status, detail)
+}
+
+// OnResourceLoading registers a callback sink that only handles Resource.Loading events and returns the sink ID.
+// The sink ID can be used to remove the sink later.
+func (r *Resource) OnResourceLoading(fn func(EventStatus, ResourceLoadingDetail)) int64 {
+	sink := &ResourceEventSinkAdapter{onResourceLoading: fn}
+	return r.AddSink(sink)
+}
