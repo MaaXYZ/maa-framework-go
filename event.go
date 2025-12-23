@@ -120,6 +120,151 @@ type NodeActionDetail struct {
 	Focus    any    `json:"focus"`
 }
 
+func parseEvent(msg string) (name string, status EventStatus) {
+	lastDot := strings.LastIndexByte(msg, '.')
+
+	if lastDot == -1 {
+		return msg, EventStatusUnknown
+	}
+
+	switch msg[lastDot:] {
+	case ".Starting":
+		return msg[:lastDot], EventStatusStarting
+	case ".Succeeded":
+		return msg[:lastDot], EventStatusSucceeded
+	case ".Failed":
+		return msg[:lastDot], EventStatusFailed
+	default:
+		return msg, EventStatusUnknown
+	}
+}
+
+func handleResourceLoading(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+	s, ok := sink.(ResourceEventSink)
+	if !ok {
+		return
+	}
+
+	var detail ResourceLoadingDetail
+	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+		return
+	}
+
+	s.OnResourceLoading(&Resource{handle: handle}, status, detail)
+}
+
+func handleControllerAction(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+	s, ok := sink.(ControllerEventSink)
+	if !ok {
+		return
+	}
+
+	var detail ControllerActionDetail
+	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+		return
+	}
+
+	s.OnControllerAction(&Controller{handle: handle}, status, detail)
+}
+
+func handleTaskerTask(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+	s, ok := sink.(TaskerEventSink)
+	if !ok {
+		return
+	}
+
+	var detail TaskerTaskDetail
+	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+		return
+	}
+
+	s.OnTaskerTask(&Tasker{handle: handle}, status, detail)
+}
+
+func handleNodePipelineNode(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+	s, ok := sink.(ContextEventSink)
+	if !ok {
+		return
+	}
+
+	var detail NodePipelineNodeDetail
+	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+		return
+	}
+
+	s.OnNodePipelineNode(&Context{handle: handle}, status, detail)
+}
+
+func handleNodeRecognitionNode(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+	s, ok := sink.(ContextEventSink)
+	if !ok {
+		return
+	}
+
+	var detail NodeRecognitionNodeDetail
+	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+		return
+	}
+
+	s.OnNodeRecognitionNode(&Context{handle: handle}, status, detail)
+}
+
+func handleNodeActionNode(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+	s, ok := sink.(ContextEventSink)
+	if !ok {
+		return
+	}
+
+	var detail NodeActionNodeDetail
+	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+		return
+	}
+
+	s.OnNodeActionNode(&Context{handle: handle}, status, detail)
+}
+
+func handleNodeNextList(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+	s, ok := sink.(ContextEventSink)
+	if !ok {
+		return
+	}
+
+	var detail NodeNextListDetail
+	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+		return
+	}
+
+	s.OnNodeNextList(&Context{handle: handle}, status, detail)
+}
+
+func handleNodeRecognition(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+	s, ok := sink.(ContextEventSink)
+	if !ok {
+		return
+	}
+
+	var detail NodeRecognitionDetail
+	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+		return
+	}
+
+	s.OnNodeRecognition(&Context{handle: handle}, status, detail)
+}
+
+func handleNodeAction(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+	s, ok := sink.(ContextEventSink)
+	if !ok {
+		return
+	}
+
+	var detail NodeActionDetail
+	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+		return
+	}
+
+	s.OnNodeAction(&Context{handle: handle}, status, detail)
+}
+
 type eventHandler struct {
 	sink any
 }
@@ -129,105 +274,33 @@ func (n *eventHandler) handleRaw(handle uintptr, msg, detailsJSON string) {
 		return
 	}
 
-	eventType := n.getEventStatus(msg)
-	switch {
-	case strings.HasPrefix(msg, "Resource.Loading"):
-		var detail ResourceLoadingDetail
-		_ = json.Unmarshal([]byte(detailsJSON), &detail)
-		switch s := n.sink.(type) {
+	eventName, eventStatus := parseEvent(msg)
+	switch eventName {
+	case "Resource.Loading":
+		handleResourceLoading(n.sink, handle, eventStatus, detailsJSON)
+	case "Controller.Action":
+		handleControllerAction(n.sink, handle, eventStatus, detailsJSON)
+	case "Tasker.Task":
+		handleTaskerTask(n.sink, handle, eventStatus, detailsJSON)
+	case "Node.PipelineNode":
+		handleNodePipelineNode(n.sink, handle, eventStatus, detailsJSON)
+	case "Node.RecognitionNode":
+		handleNodeRecognitionNode(n.sink, handle, eventStatus, detailsJSON)
 
-		case ResourceEventSink:
-			s.OnResourceLoading(&Resource{handle: handle}, eventType, detail)
-		}
-		return
+	case "Node.ActionNode":
+		handleNodeActionNode(n.sink, handle, eventStatus, detailsJSON)
 
-	case strings.HasPrefix(msg, "Controller.Action"):
-		var detail ControllerActionDetail
-		_ = json.Unmarshal([]byte(detailsJSON), &detail)
-		switch s := n.sink.(type) {
-		case ControllerEventSink:
-			s.OnControllerAction(&Controller{handle: handle}, eventType, detail)
-		}
-		return
+	case "Node.NextList":
+		handleNodeNextList(n.sink, handle, eventStatus, detailsJSON)
 
-	case strings.HasPrefix(msg, "Tasker.Task"):
-		var detail TaskerTaskDetail
-		_ = json.Unmarshal([]byte(detailsJSON), &detail)
-		switch s := n.sink.(type) {
-		case TaskerEventSink:
-			s.OnTaskerTask(&Tasker{handle: handle}, eventType, detail)
-		}
-		return
+	case "Node.Recognition":
+		handleNodeRecognition(n.sink, handle, eventStatus, detailsJSON)
 
-	case strings.HasPrefix(msg, "Node.PipelineNode"):
-		var detail NodePipelineNodeDetail
-		_ = json.Unmarshal([]byte(detailsJSON), &detail)
-		switch s := n.sink.(type) {
-		case ContextEventSink:
-			s.OnNodePipelineNode(&Context{handle: handle}, eventType, detail)
-		}
-		return
-
-	case strings.HasPrefix(msg, "Node.RecognitionNode"):
-		var detail NodeRecognitionNodeDetail
-		_ = json.Unmarshal([]byte(detailsJSON), &detail)
-		switch s := n.sink.(type) {
-		case ContextEventSink:
-			s.OnNodeRecognitionNode(&Context{handle: handle}, eventType, detail)
-		}
-		return
-
-	case strings.HasPrefix(msg, "Node.ActionNode"):
-		var detail NodeActionNodeDetail
-		_ = json.Unmarshal([]byte(detailsJSON), &detail)
-		switch s := n.sink.(type) {
-		case ContextEventSink:
-			s.OnNodeActionNode(&Context{handle: handle}, eventType, detail)
-		}
-		return
-
-	case strings.HasPrefix(msg, "Node.NextList"):
-		var detail NodeNextListDetail
-		_ = json.Unmarshal([]byte(detailsJSON), &detail)
-		switch s := n.sink.(type) {
-		case ContextEventSink:
-			s.OnNodeNextList(&Context{handle: handle}, eventType, detail)
-		}
-		return
-
-	case strings.HasPrefix(msg, "Node.Recognition"):
-		var detail NodeRecognitionDetail
-		_ = json.Unmarshal([]byte(detailsJSON), &detail)
-		switch s := n.sink.(type) {
-		case ContextEventSink:
-			s.OnNodeRecognition(&Context{handle: handle}, eventType, detail)
-		}
-		return
-
-	case strings.HasPrefix(msg, "Node.Action"):
-		var detail NodeActionDetail
-		_ = json.Unmarshal([]byte(detailsJSON), &detail)
-		switch s := n.sink.(type) {
-		case ContextEventSink:
-			s.OnNodeAction(&Context{handle: handle}, eventType, detail)
-		}
-		return
+	case "Node.Action":
+		handleNodeAction(n.sink, handle, eventStatus, detailsJSON)
 
 	default:
 		// do nothing
-	}
-}
-
-func (n *eventHandler) getEventStatus(msg string) EventStatus {
-	switch {
-	case strings.HasSuffix(msg, ".Starting"):
-		return EventStatusStarting
-	case strings.HasSuffix(msg, ".Succeeded"):
-		return EventStatusSucceeded
-	case strings.HasSuffix(msg, ".Failed"):
-		return EventStatusFailed
-	default:
-		return EventStatusUnknown
 	}
 }
 
