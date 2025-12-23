@@ -139,126 +139,126 @@ func parseEvent(msg string) (name string, status EventStatus) {
 	}
 }
 
-func handleResourceLoading(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+func handleResourceLoading(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
 	s, ok := sink.(ResourceEventSink)
 	if !ok {
 		return
 	}
 
 	var detail ResourceLoadingDetail
-	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
 		return
 	}
 
 	s.OnResourceLoading(&Resource{handle: handle}, status, detail)
 }
 
-func handleControllerAction(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+func handleControllerAction(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
 	s, ok := sink.(ControllerEventSink)
 	if !ok {
 		return
 	}
 
 	var detail ControllerActionDetail
-	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
 		return
 	}
 
 	s.OnControllerAction(&Controller{handle: handle}, status, detail)
 }
 
-func handleTaskerTask(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+func handleTaskerTask(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
 	s, ok := sink.(TaskerEventSink)
 	if !ok {
 		return
 	}
 
 	var detail TaskerTaskDetail
-	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
 		return
 	}
 
 	s.OnTaskerTask(&Tasker{handle: handle}, status, detail)
 }
 
-func handleNodePipelineNode(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+func handleNodePipelineNode(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
 	s, ok := sink.(ContextEventSink)
 	if !ok {
 		return
 	}
 
 	var detail NodePipelineNodeDetail
-	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
 		return
 	}
 
 	s.OnNodePipelineNode(&Context{handle: handle}, status, detail)
 }
 
-func handleNodeRecognitionNode(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+func handleNodeRecognitionNode(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
 	s, ok := sink.(ContextEventSink)
 	if !ok {
 		return
 	}
 
 	var detail NodeRecognitionNodeDetail
-	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
 		return
 	}
 
 	s.OnNodeRecognitionNode(&Context{handle: handle}, status, detail)
 }
 
-func handleNodeActionNode(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+func handleNodeActionNode(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
 	s, ok := sink.(ContextEventSink)
 	if !ok {
 		return
 	}
 
 	var detail NodeActionNodeDetail
-	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
 		return
 	}
 
 	s.OnNodeActionNode(&Context{handle: handle}, status, detail)
 }
 
-func handleNodeNextList(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+func handleNodeNextList(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
 	s, ok := sink.(ContextEventSink)
 	if !ok {
 		return
 	}
 
 	var detail NodeNextListDetail
-	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
 		return
 	}
 
 	s.OnNodeNextList(&Context{handle: handle}, status, detail)
 }
 
-func handleNodeRecognition(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+func handleNodeRecognition(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
 	s, ok := sink.(ContextEventSink)
 	if !ok {
 		return
 	}
 
 	var detail NodeRecognitionDetail
-	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
 		return
 	}
 
 	s.OnNodeRecognition(&Context{handle: handle}, status, detail)
 }
 
-func handleNodeAction(sink any, handle uintptr, status EventStatus, detailsJSON string) {
+func handleNodeAction(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
 	s, ok := sink.(ContextEventSink)
 	if !ok {
 		return
 	}
 
 	var detail NodeActionDetail
-	if err := json.Unmarshal([]byte(detailsJSON), &detail); err != nil {
+	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
 		return
 	}
 
@@ -269,7 +269,7 @@ type eventHandler struct {
 	sink any
 }
 
-func (n *eventHandler) handleRaw(handle uintptr, msg, detailsJSON string) {
+func (n *eventHandler) handleRaw(handle uintptr, msg string, detailsJSON []byte) {
 	if n.sink == nil {
 		return
 	}
@@ -327,18 +327,35 @@ func _MaaEventCallbackAgent(handle uintptr, message, detailsJson *byte, transArg
 	}
 	handler.handleRaw(
 		handle,
-		bytePtrToString(message),
-		bytePtrToString(detailsJson),
+		cStringToString(message),
+		cStringToBytes(detailsJson),
 	)
 	return 0
 }
 
-func bytePtrToString(b *byte) string {
+func cStringToString(b *byte) string {
+	if b == nil {
+		return ""
+	}
+
+	return string(cStringToBytes(b))
+}
+
+func cStringToBytes(b *byte) []byte {
+	if b == nil {
+		return nil
+	}
+
+	ptr := unsafe.Pointer(b)
 	length := 0
-	for ptr := b; *ptr != 0; ptr = (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(ptr)) + 1)) {
+
+	for {
+		if *(*byte)(ptr) == 0 {
+			break
+		}
+		ptr = unsafe.Add(ptr, 1)
 		length++
 	}
-	byteSlice := unsafe.Slice(b, length)
 
-	return string(byteSlice)
+	return unsafe.Slice(b, length)
 }

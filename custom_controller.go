@@ -171,7 +171,7 @@ func _StartAppAgent(intent *byte, handleArg uintptr) uintptr {
 		return uintptr(0)
 	}
 
-	if ctrl.StartApp(bytePtrToString(intent)) {
+	if ctrl.StartApp(cStringToString(intent)) {
 		return uintptr(1)
 	}
 	return uintptr(0)
@@ -190,7 +190,7 @@ func _StopAppAgent(intent *byte, handleArg uintptr) uintptr {
 		return uintptr(0)
 	}
 
-	if ctrl.StopApp(bytePtrToString(intent)) {
+	if ctrl.StopApp(cStringToString(intent)) {
 		return uintptr(1)
 	}
 	return uintptr(0)
@@ -346,7 +346,7 @@ func _InputText(text *byte, handleArg uintptr) uintptr {
 		return uintptr(0)
 	}
 
-	if ctrl.InputText(bytePtrToString(text)) {
+	if ctrl.InputText(cStringToString(text)) {
 		return uintptr(1)
 	}
 	return uintptr(0)

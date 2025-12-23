@@ -83,9 +83,9 @@ func _MaaCustomRecognitionCallbackAgent(
 		&Context{handle: context},
 		&CustomRecognitionArg{
 			TaskDetail:             taskDetail,
-			CurrentTaskName:        bytePtrToString(currentTaskName),
-			CustomRecognitionName:  bytePtrToString(customRecognitionName),
-			CustomRecognitionParam: bytePtrToString(customRecognitionParam),
+			CurrentTaskName:        cStringToString(currentTaskName),
+			CustomRecognitionName:  cStringToString(customRecognitionName),
+			CustomRecognitionParam: cStringToString(customRecognitionParam),
 			Img:                    imgImg,
 			Roi:                    buffer.NewRectBufferByHandle(roi).Get(),
 		},

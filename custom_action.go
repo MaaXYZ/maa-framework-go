@@ -77,9 +77,9 @@ func _MaaCustomActionCallbackAgent(
 		&Context{handle: context},
 		&CustomActionArg{
 			TaskDetail:        taskDetail,
-			CurrentTaskName:   bytePtrToString(currentTaskName),
-			CustomActionName:  bytePtrToString(customActionName),
-			CustomActionParam: bytePtrToString(customActionParam),
+			CurrentTaskName:   cStringToString(currentTaskName),
+			CustomActionName:  cStringToString(customActionName),
+			CustomActionParam: cStringToString(customActionParam),
 			RecognitionDetail: recognitionDetail,
 			Box:               curBoxRectBuffer.Get(),
 		},
