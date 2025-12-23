@@ -12,8 +12,8 @@
     <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v3">
         <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
     </a>
-    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.2.3">
-        <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.2.3-blue">
+    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.2.6">
+        <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.2.6-blue">
     </a>
     <a href="https://goreportcard.com/report/github.com/MaaXYZ/maa-framework-go/v3">
         <img alt="go report" src="https://goreportcard.com/badge/github.com/MaaXYZ/maa-framework-go/v3">
