@@ -265,39 +265,35 @@ func handleNodeAction(sink any, handle uintptr, status EventStatus, detailsJSON 
 	s.OnNodeAction(&Context{handle: handle}, status, detail)
 }
 
-type eventHandler struct {
-	sink any
-}
-
-func (n *eventHandler) handleRaw(handle uintptr, msg string, detailsJSON []byte) {
-	if n.sink == nil {
+func (c *eventCallback) handleRaw(handle uintptr, msg string, detailsJSON []byte) {
+	if c.sink == nil {
 		return
 	}
 
 	eventName, eventStatus := parseEvent(msg)
 	switch eventName {
 	case "Resource.Loading":
-		handleResourceLoading(n.sink, handle, eventStatus, detailsJSON)
+		handleResourceLoading(c.sink, handle, eventStatus, detailsJSON)
 	case "Controller.Action":
-		handleControllerAction(n.sink, handle, eventStatus, detailsJSON)
+		handleControllerAction(c.sink, handle, eventStatus, detailsJSON)
 	case "Tasker.Task":
-		handleTaskerTask(n.sink, handle, eventStatus, detailsJSON)
+		handleTaskerTask(c.sink, handle, eventStatus, detailsJSON)
 	case "Node.PipelineNode":
-		handleNodePipelineNode(n.sink, handle, eventStatus, detailsJSON)
+		handleNodePipelineNode(c.sink, handle, eventStatus, detailsJSON)
 	case "Node.RecognitionNode":
-		handleNodeRecognitionNode(n.sink, handle, eventStatus, detailsJSON)
+		handleNodeRecognitionNode(c.sink, handle, eventStatus, detailsJSON)
 
 	case "Node.ActionNode":
-		handleNodeActionNode(n.sink, handle, eventStatus, detailsJSON)
+		handleNodeActionNode(c.sink, handle, eventStatus, detailsJSON)
 
 	case "Node.NextList":
-		handleNodeNextList(n.sink, handle, eventStatus, detailsJSON)
+		handleNodeNextList(c.sink, handle, eventStatus, detailsJSON)
 
 	case "Node.Recognition":
-		handleNodeRecognition(n.sink, handle, eventStatus, detailsJSON)
+		handleNodeRecognition(c.sink, handle, eventStatus, detailsJSON)
 
 	case "Node.Action":
-		handleNodeAction(n.sink, handle, eventStatus, detailsJSON)
+		handleNodeAction(c.sink, handle, eventStatus, detailsJSON)
 
 	default:
 		// do nothing
@@ -322,10 +318,7 @@ func _MaaEventCallbackAgent(handle uintptr, message, detailsJson *byte, transArg
 		return 0
 	}
 
-	handler := &eventHandler{
-		sink: cb.sink,
-	}
-	handler.handleRaw(
+	cb.handleRaw(
 		handle,
 		cStringToString(message),
 		cStringToBytes(detailsJson),
