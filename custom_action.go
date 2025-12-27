@@ -8,29 +8,29 @@ import (
 )
 
 var (
-	customActionCallbackID          uint64
-	customActionCallbackAgents      = make(map[uint64]CustomAction)
-	customActionCallbackAgentsMutex sync.RWMutex
+	customActionRunnerCallbackID          uint64
+	customActionRunnerCallbackAgents      = make(map[uint64]CustomActionRunner)
+	customActionRunnerCallbackAgentsMutex sync.RWMutex
 )
 
-func registerCustomAction(action CustomAction) uint64 {
-	id := atomic.AddUint64(&customActionCallbackID, 1)
+func registerCustomAction(action CustomActionRunner) uint64 {
+	id := atomic.AddUint64(&customActionRunnerCallbackID, 1)
 
-	customActionCallbackAgentsMutex.Lock()
-	customActionCallbackAgents[id] = action
-	customActionCallbackAgentsMutex.Unlock()
+	customActionRunnerCallbackAgentsMutex.Lock()
+	customActionRunnerCallbackAgents[id] = action
+	customActionRunnerCallbackAgentsMutex.Unlock()
 
 	return id
 }
 
 func unregisterCustomAction(id uint64) bool {
-	customActionCallbackAgentsMutex.Lock()
-	defer customActionCallbackAgentsMutex.Unlock()
+	customActionRunnerCallbackAgentsMutex.Lock()
+	defer customActionRunnerCallbackAgentsMutex.Unlock()
 
-	if _, ok := customActionCallbackAgents[id]; !ok {
+	if _, ok := customActionRunnerCallbackAgents[id]; !ok {
 		return false
 	}
-	delete(customActionCallbackAgents, id)
+	delete(customActionRunnerCallbackAgents, id)
 	return true
 }
 
@@ -43,9 +43,14 @@ type CustomActionArg struct {
 	Box               Rect
 }
 
-type CustomAction interface {
+type CustomActionRunner interface {
 	Run(ctx *Context, arg *CustomActionArg) bool
 }
+
+// CustomAction is an alias for CustomActionRunner for backward compatibility.
+//
+// Deprecated: Use CustomActionRunner instead. This type will be removed in the future.
+type CustomAction = CustomActionRunner
 
 func _MaaCustomActionCallbackAgent(
 	context uintptr,
@@ -59,9 +64,9 @@ func _MaaCustomActionCallbackAgent(
 	// and will not actually dereference this pointer.
 	id := uint64(transArg)
 
-	customActionCallbackAgentsMutex.RLock()
-	action, exists := customActionCallbackAgents[id]
-	customActionCallbackAgentsMutex.RUnlock()
+	customActionRunnerCallbackAgentsMutex.RLock()
+	action, exists := customActionRunnerCallbackAgents[id]
+	customActionRunnerCallbackAgentsMutex.RUnlock()
 
 	if !exists || action == nil {
 		return 0

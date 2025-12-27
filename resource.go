@@ -111,8 +111,8 @@ func (r *Resource) UseAutoExecutionProvider() bool {
 	return r.setInference(native.MaaInferenceExecutionProvider_Auto, native.MaaInferenceDevice_Auto)
 }
 
-// RegisterCustomRecognition registers a custom recognition to the resource.
-func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognition) bool {
+// RegisterCustomRecognition registers a custom recognition runner to the resource.
+func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognitionRunner) bool {
 	id := registerCustomRecognition(recognition)
 
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
@@ -132,7 +132,7 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 	)
 }
 
-// UnregisterCustomRecognition unregisters a custom recognition from the resource.
+// UnregisterCustomRecognition unregisters a custom recognition runner from the resource.
 func (r *Resource) UnregisterCustomRecognition(name string) bool {
 	var found bool
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
@@ -148,7 +148,7 @@ func (r *Resource) UnregisterCustomRecognition(name string) bool {
 	return native.MaaResourceUnregisterCustomRecognition(r.handle, name)
 }
 
-// ClearCustomRecognition clears all custom recognitions registered from the resource.
+// ClearCustomRecognition clears all custom recognitions runner registered from the resource.
 func (r *Resource) ClearCustomRecognition() bool {
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
 		for _, id := range v.CustomRecognizersCallbackID {
@@ -160,8 +160,8 @@ func (r *Resource) ClearCustomRecognition() bool {
 	return native.MaaResourceClearCustomRecognition(r.handle)
 }
 
-// RegisterCustomAction registers a custom action to the resource.
-func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
+// RegisterCustomAction registers a custom action runner to the resource.
+func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) bool {
 	id := registerCustomAction(action)
 
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
@@ -181,7 +181,7 @@ func (r *Resource) RegisterCustomAction(name string, action CustomAction) bool {
 	)
 }
 
-// UnregisterCustomAction unregisters a custom action from the resource.
+// UnregisterCustomAction unregisters a custom action runner from the resource.
 func (r *Resource) UnregisterCustomAction(name string) bool {
 	var found bool
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
@@ -197,7 +197,7 @@ func (r *Resource) UnregisterCustomAction(name string) bool {
 	return native.MaaResourceUnregisterCustomAction(r.handle, name)
 }
 
-// ClearCustomAction clears all custom actions registered from the resource.
+// ClearCustomAction clears all custom actions runners registered from the resource.
 func (r *Resource) ClearCustomAction() bool {
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
 		for _, id := range v.CustomActionsCallbackID {

@@ -9,29 +9,29 @@ import (
 )
 
 var (
-	customRecognitionCallbackID          uint64
-	customRecognitionCallbackAgents      = make(map[uint64]CustomRecognition)
-	customRecognitionCallbackAgentsMutex sync.RWMutex
+	customRecognitionRunnerCallbackID          uint64
+	customRecognitionRunnerCallbackAgents      = make(map[uint64]CustomRecognitionRunner)
+	customRecognitionRunnerCallbackAgentsMutex sync.RWMutex
 )
 
-func registerCustomRecognition(recognizer CustomRecognition) uint64 {
-	id := atomic.AddUint64(&customRecognitionCallbackID, 1)
+func registerCustomRecognition(recognizer CustomRecognitionRunner) uint64 {
+	id := atomic.AddUint64(&customRecognitionRunnerCallbackID, 1)
 
-	customRecognitionCallbackAgentsMutex.Lock()
-	customRecognitionCallbackAgents[id] = recognizer
-	customRecognitionCallbackAgentsMutex.Unlock()
+	customRecognitionRunnerCallbackAgentsMutex.Lock()
+	customRecognitionRunnerCallbackAgents[id] = recognizer
+	customRecognitionRunnerCallbackAgentsMutex.Unlock()
 
 	return id
 }
 
 func unregisterCustomRecognition(id uint64) bool {
-	customRecognitionCallbackAgentsMutex.Lock()
-	defer customRecognitionCallbackAgentsMutex.Unlock()
+	customRecognitionRunnerCallbackAgentsMutex.Lock()
+	defer customRecognitionRunnerCallbackAgentsMutex.Unlock()
 
-	if _, ok := customRecognitionCallbackAgents[id]; !ok {
+	if _, ok := customRecognitionRunnerCallbackAgents[id]; !ok {
 		return false
 	}
-	delete(customRecognitionCallbackAgents, id)
+	delete(customRecognitionRunnerCallbackAgents, id)
 	return true
 }
 
@@ -49,9 +49,14 @@ type CustomRecognitionResult struct {
 	Detail string
 }
 
-type CustomRecognition interface {
+type CustomRecognitionRunner interface {
 	Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool)
 }
+
+// CustomRecognition is an alias for CustomRecognitionRunner for backward compatibility.
+//
+// Deprecated: Use CustomRecognitionRunner instead. This type will be removed in the future.
+type CustomRecognition = CustomRecognitionRunner
 
 func _MaaCustomRecognitionCallbackAgent(
 	context uintptr,
@@ -65,9 +70,9 @@ func _MaaCustomRecognitionCallbackAgent(
 	// and will not actually dereference this pointer.
 	id := uint64(transArg)
 
-	customRecognitionCallbackAgentsMutex.RLock()
-	recognition, exists := customRecognitionCallbackAgents[id]
-	customRecognitionCallbackAgentsMutex.RUnlock()
+	customRecognitionRunnerCallbackAgentsMutex.RLock()
+	recognition, exists := customRecognitionRunnerCallbackAgents[id]
+	customRecognitionRunnerCallbackAgentsMutex.RUnlock()
 
 	if !exists || recognition == nil {
 		return 0

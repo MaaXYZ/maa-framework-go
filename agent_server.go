@@ -6,8 +6,8 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
-// AgentServerRegisterCustomRecognition registers a custom recognition with the given name.
-func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognition) bool {
+// AgentServerRegisterCustomRecognition registers a custom recognition runner with the given name.
+func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognitionRunner) bool {
 	id := registerCustomRecognition(recognition)
 
 	return native.MaaAgentServerRegisterCustomRecognition(
@@ -19,8 +19,8 @@ func AgentServerRegisterCustomRecognition(name string, recognition CustomRecogni
 	)
 }
 
-// AgentServerRegisterCustomAction registers a custom action with the given name.
-func AgentServerRegisterCustomAction(name string, action CustomAction) bool {
+// AgentServerRegisterCustomAction registers a custom action runner with the given name.
+func AgentServerRegisterCustomAction(name string, action CustomActionRunner) bool {
 	id := registerCustomAction(action)
 
 	return native.MaaAgentServerRegisterCustomAction(
