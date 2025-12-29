@@ -216,6 +216,24 @@ func (r *Resource) PostBundle(path string) *Job {
 	return newJob(id, r.status, r.wait)
 }
 
+// PostOcrModel adds a ocr model to the resource loading paths.
+func (r *Resource) PostOcrModel(path string) *Job {
+	id := native.MaaResourcePostOcrModel(r.handle, path)
+	return newJob(id, r.status, r.wait)
+}
+
+// PostPipeline adds a pipeline to the resource loading paths.
+func (r *Resource) PostPipeline(path string) *Job {
+	id := native.MaaResourcePostPipeline(r.handle, path)
+	return newJob(id, r.status, r.wait)
+}
+
+// PostImage adds an image to the resource loading paths.
+func (r *Resource) PostImage(path string) *Job {
+	id := native.MaaResourcePostImage(r.handle, path)
+	return newJob(id, r.status, r.wait)
+}
+
 func (r *Resource) overridePipeline(override string) bool {
 	return native.MaaResourceOverridePipeline(r.handle, override)
 }

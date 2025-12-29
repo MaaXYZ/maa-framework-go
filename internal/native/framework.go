@@ -123,6 +123,9 @@ var (
 	MaaResourceUnregisterCustomAction      func(res uintptr, name string) bool
 	MaaResourceClearCustomAction           func(res uintptr) bool
 	MaaResourcePostBundle                  func(res uintptr, path string) int64
+	MaaResourcePostOcrModel                func(res uintptr, path string) int64
+	MaaResourcePostPipeline                func(res uintptr, path string) int64
+	MaaResourcePostImage                   func(res uintptr, path string) int64
 	MaaResourceOverridePipeline            func(res uintptr, pipelineOverride string) bool
 	MaaResourceOverrideNext                func(res uintptr, nodeName string, nextList uintptr) bool
 	MaaResourceOverrideImage               func(res uintptr, imageName string, image uintptr) bool
@@ -363,6 +366,9 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaResourceUnregisterCustomAction, maaFramework, "MaaResourceUnregisterCustomAction")
 	purego.RegisterLibFunc(&MaaResourceClearCustomAction, maaFramework, "MaaResourceClearCustomAction")
 	purego.RegisterLibFunc(&MaaResourcePostBundle, maaFramework, "MaaResourcePostBundle")
+	purego.RegisterLibFunc(&MaaResourcePostOcrModel, maaFramework, "MaaResourcePostOcrModel")
+	purego.RegisterLibFunc(&MaaResourcePostPipeline, maaFramework, "MaaResourcePostPipeline")
+	purego.RegisterLibFunc(&MaaResourcePostImage, maaFramework, "MaaResourcePostImage")
 	purego.RegisterLibFunc(&MaaResourceOverridePipeline, maaFramework, "MaaResourceOverridePipeline")
 	purego.RegisterLibFunc(&MaaResourceOverrideNext, maaFramework, "MaaResourceOverrideNext")
 	purego.RegisterLibFunc(&MaaResourceOverrideImage, maaFramework, "MaaResourceOverrideImage")
