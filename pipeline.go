@@ -66,6 +66,12 @@ type Node struct {
 	PreWaitFreezes *NodeWaitFreezes `json:"pre_wait_freezes,omitempty"`
 	// PostWaitFreezes waits for screen to stabilize after action.
 	PostWaitFreezes *NodeWaitFreezes `json:"post_wait_freezes,omitempty"`
+	// Repeat specifies the number of times to repeat the node. Default: 1.
+	Repeat *uint64 `json:"repeat,omitempty"`
+	// RepeatDelay sets the delay between repetitions in milliseconds. Default: 0.
+	RepeatDelay *int64 `json:"repeat_delay,omitempty"`
+	// RepeatWaitFreezes waits for screen to stabilize between repetitions.
+	RepeatWaitFreezes *NodeWaitFreezes `json:"repeat_wait_freezes,omitempty"`
 	// Focus specifies custom focus data.
 	Focus any `json:"focus,omitempty"`
 	// Attach provides additional custom data for the node.
@@ -167,6 +173,28 @@ func WithPreWaitFreezes(waitFreezes *NodeWaitFreezes) NodeOption {
 func WithPostWaitFreezes(waitFreezes *NodeWaitFreezes) NodeOption {
 	return func(n *Node) {
 		n.PostWaitFreezes = waitFreezes
+	}
+}
+
+// WithRepeat sets the number of times to repeat the node.
+func WithRepeat(repeat uint64) NodeOption {
+	return func(n *Node) {
+		n.Repeat = &repeat
+	}
+}
+
+// WithRepeatDelay sets the delay between repetitions.
+func WithRepeatDelay(repeatDelay time.Duration) NodeOption {
+	return func(n *Node) {
+		d := repeatDelay.Milliseconds()
+		n.RepeatDelay = &d
+	}
+}
+
+// WithRepeatWaitFreezes sets the wait freezes configuration between repetitions.
+func WithRepeatWaitFreezes(waitFreezes *NodeWaitFreezes) NodeOption {
+	return func(n *Node) {
+		n.RepeatWaitFreezes = waitFreezes
 	}
 }
 
@@ -282,6 +310,25 @@ func (n *Node) SetPreWaitFreezes(preWaitFreezes *NodeWaitFreezes) *Node {
 // SetPostWaitFreezes sets the post-action wait freezes configuration and returns the node for chaining.
 func (n *Node) SetPostWaitFreezes(postWaitFreezes *NodeWaitFreezes) *Node {
 	n.PostWaitFreezes = postWaitFreezes
+	return n
+}
+
+// SetRepeat sets the number of times to repeat the node and returns the node for chaining.
+func (n *Node) SetRepeat(repeat uint64) *Node {
+	n.Repeat = &repeat
+	return n
+}
+
+// SetRepeatDelay sets the delay between repetitions and returns the node for chaining.
+func (n *Node) SetRepeatDelay(repeatDelay time.Duration) *Node {
+	d := repeatDelay.Milliseconds()
+	n.RepeatDelay = &d
+	return n
+}
+
+// SetRepeatWaitFreezes sets the wait freezes configuration between repetitions and returns the node for chaining.
+func (n *Node) SetRepeatWaitFreezes(repeatWaitFreezes *NodeWaitFreezes) *Node {
+	n.RepeatWaitFreezes = repeatWaitFreezes
 	return n
 }
 
