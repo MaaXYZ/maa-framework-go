@@ -1371,6 +1371,8 @@ func (na *NodeAction) UnmarshalJSON(data []byte) error {
 		param = &NodeScrollParam{}
 	case NodeActionTypeCommand:
 		param = &NodeCommandParam{}
+	case NodeActionTypeShell:
+		param = &NodeShellParam{}
 	case NodeActionTypeCustom:
 		param = &NodeCustomActionParam{}
 	default:
