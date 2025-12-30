@@ -8,6 +8,15 @@ import (
 	"encoding/json"
 )
 
+// Node is a single unit of work in a pipeline.
+//
+// Task is a logical sequential structure consisting of several Nodes connected in a specific order,
+// representing the entire process from start to finish.
+//
+// Entry is the first node in a task.
+//
+// Pipeline is a collection of all nodes.
+
 // Pipeline represents a collection of nodes that define a task flow.
 type Pipeline struct {
 	nodes map[string]*Node
