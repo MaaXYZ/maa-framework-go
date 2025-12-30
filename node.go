@@ -3,6 +3,7 @@ package maa
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 )
 
@@ -367,13 +368,10 @@ func (n *Node) RemoveAnchor(anchor string) *Node {
 		return n
 	}
 
-	for i, a := range n.Anchor {
-		if a == anchor {
-			copy(n.Anchor[i:], n.Anchor[i+1:])
-			n.Anchor = n.Anchor[:len(n.Anchor)-1]
-			break
-		}
-	}
+	n.Anchor = slices.DeleteFunc(n.Anchor, func(a string) bool {
+		return a == anchor
+	})
+
 	return n
 }
 
@@ -405,13 +403,10 @@ func (n *Node) RemoveNext(name string) *Node {
 		return n
 	}
 
-	for i, item := range n.Next {
-		if item.Name == name {
-			copy(n.Next[i:], n.Next[i+1:])
-			n.Next = n.Next[:len(n.Next)-1]
-			break
-		}
-	}
+	n.Next = slices.DeleteFunc(n.Next, func(item NodeNextItem) bool {
+		return item.Name == name
+	})
+
 	return n
 }
 
@@ -445,13 +440,10 @@ func (n *Node) RemoveOnError(name string) *Node {
 		return n
 	}
 
-	for i, item := range n.OnError {
-		if item.Name == name {
-			copy(n.OnError[i:], n.OnError[i+1:])
-			n.OnError = n.OnError[:len(n.OnError)-1]
-			break
-		}
-	}
+	n.OnError = slices.DeleteFunc(n.OnError, func(item NodeNextItem) bool {
+		return item.Name == name
+	})
+
 	return n
 }
 
