@@ -381,19 +381,25 @@ func (n *Node) AddNext(name string, opts ...NodeAttributeOption) *Node {
 		return n
 	}
 
-	for _, item := range n.Next {
-		if item.Name == name {
-			return n
-		}
-	}
-
-	next := NodeNextItem{
+	newItem := NodeNextItem{
 		Name: name,
 	}
 	for _, opt := range opts {
-		opt(&next)
+		opt(&newItem)
 	}
-	n.Next = append(n.Next, next)
+
+	found := false
+	for i, item := range n.Next {
+		if item.Name == name {
+			n.Next[i] = newItem
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		n.Next = append(n.Next, newItem)
+	}
 	return n
 }
 
@@ -416,21 +422,25 @@ func (n *Node) AddOnError(name string, opts ...NodeAttributeOption) *Node {
 		return n
 	}
 
-	for _, item := range n.OnError {
+	newItem := NodeNextItem{
+		Name: name,
+	}
+	for _, opt := range opts {
+		opt(&newItem)
+	}
+
+	found := false
+	for i, item := range n.OnError {
 		if item.Name == name {
-			return n
+			n.OnError[i] = newItem
+			found = true
+			break
 		}
 	}
 
-	onError := NodeNextItem{
-		Name: name,
+	if !found {
+		n.OnError = append(n.OnError, newItem)
 	}
-
-	for _, opt := range opts {
-		opt(&onError)
-	}
-
-	n.OnError = append(n.OnError, onError)
 	return n
 }
 
