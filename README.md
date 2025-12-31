@@ -5,23 +5,32 @@
 
 <h1 align="center">MaaFramework Go Binding</h1>
 
-<p align="center">
+<div align="center">
+  <div>
     <a href="https://github.com/MaaXYZ/maa-framework-go/blob/main/LICENSE.md">
-        <img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
+      <img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
     </a>
     <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v3">
-        <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
-    </a>
-    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.3.0">
-        <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.3.0-blue">
+      <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
     </a>
     <a href="https://goreportcard.com/report/github.com/MaaXYZ/maa-framework-go/v3">
-        <img alt="go report" src="https://goreportcard.com/badge/github.com/MaaXYZ/maa-framework-go/v3">
+      <img alt="go report" src="https://goreportcard.com/badge/github.com/MaaXYZ/maa-framework-go/v3">
     </a>
-</p>
+  </div>
+  <div>
+    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.3.0">
+      <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.3.0-blue">
+    </a>
+    <a href="https://deepwiki.com/MaaXYZ/maa-framework-go">
+      <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki">
+    </a>
+  </div>
+</div>
+
+<br />
 
 <p align="center">
-    English | <a href="README_zh.md">简体中文</a>
+  English | <a href="README_zh.md">简体中文</a>
 </p>
 
 Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-platform automation testing framework based on image recognition.
@@ -50,14 +59,14 @@ go get github.com/MaaXYZ/maa-framework-go/v3
 
 Download the [MaaFramework Release](https://github.com/MaaXYZ/MaaFramework/releases) for your platform and extract it.
 
-| Platform | Architecture | Download |
-|----------|--------------|----------|
-| Windows  | amd64       | `MAA-win-x86_64-*.zip` |
-| Windows  | arm64       | `MAA-win-aarch64-*.zip` |
-| Linux    | amd64       | `MAA-linux-x86_64-*.zip` |
-| Linux    | arm64      | `MAA-linux-aarch64-*.zip` |
-| macOS    | amd64       | `MAA-macos-x86_64-*.zip` |
-| macOS    | arm64      | `MAA-macos-aarch64-*.zip` |
+| Platform | Architecture | Download                  |
+| -------- | ------------ | ------------------------- |
+| Windows  | amd64        | `MAA-win-x86_64-*.zip`    |
+| Windows  | arm64        | `MAA-win-aarch64-*.zip`   |
+| Linux    | amd64        | `MAA-linux-x86_64-*.zip`  |
+| Linux    | arm64        | `MAA-linux-aarch64-*.zip` |
+| macOS    | amd64        | `MAA-macos-x86_64-*.zip`  |
+| macOS    | arm64        | `MAA-macos-aarch64-*.zip` |
 
 ## ⚙️ Runtime Requirements
 

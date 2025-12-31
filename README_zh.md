@@ -5,23 +5,32 @@
 
 <h1 align="center">MaaFramework Go 绑定</h1>
 
-<p align="center">
+<div align="center">
+  <div>
     <a href="https://github.com/MaaXYZ/maa-framework-go/blob/main/LICENSE.md">
-        <img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
+      <img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
     </a>
     <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v3">
-        <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
-    </a>
-    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.3.0">
-        <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.3.0-blue">
+      <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
     </a>
     <a href="https://goreportcard.com/report/github.com/MaaXYZ/maa-framework-go/v3">
-        <img alt="go report" src="https://goreportcard.com/badge/github.com/MaaXYZ/maa-framework-go/v3">
+      <img alt="go report" src="https://goreportcard.com/badge/github.com/MaaXYZ/maa-framework-go/v3">
     </a>
-</p>
+  </div>
+  <div>
+    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.3.0">
+      <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.3.0-blue">
+    </a>
+    <a href="https://deepwiki.com/MaaXYZ/maa-framework-go">
+      <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki">
+    </a>
+  </div>
+</div>
+
+<br />
 
 <p align="center">
-    <a href="README.md">English</a> | 简体中文
+  <a href="README.md">English</a> | 简体中文
 </p>
 
 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 的 Go 语言绑定。MaaFramework 是一个基于图像识别的跨平台自动化测试框架。
