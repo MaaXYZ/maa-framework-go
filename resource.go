@@ -216,7 +216,7 @@ func (r *Resource) PostBundle(path string) *Job {
 	return newJob(id, r.status, r.wait)
 }
 
-// PostOcrModel adds a ocr model to the resource loading paths.
+// PostOcrModel adds an OCR model to the resource loading paths.
 func (r *Resource) PostOcrModel(path string) *Job {
 	id := native.MaaResourcePostOcrModel(r.handle, path)
 	return newJob(id, r.status, r.wait)
