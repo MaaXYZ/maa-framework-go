@@ -46,7 +46,7 @@ jobs:
         with:
           repository: MaaXYZ/MaaFramework
           latest: true
-          preRelease: ${{ github.ref_name != 'main' }}
+          preRelease: ${{ github.ref_type == 'branch' && github.ref != 'refs/heads/main' }}
           fileName: "MAA-win-${{ matrix.arch }}*"
           out-file-path: "${{ github.workspace }}/deps"
           extract: true
