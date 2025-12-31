@@ -72,7 +72,7 @@ func WithAction(act *NodeAction) NodeOption {
 // WithNext sets the next nodes list for the node.
 func WithNext(next []NodeNextItem) NodeOption {
 	return func(n *Node) {
-		n.Next = next
+		n.Next = slices.Clone(next)
 	}
 }
 
@@ -95,7 +95,7 @@ func WithTimeout(timeout time.Duration) NodeOption {
 // WithOnError sets the error handling nodes for the node.
 func WithOnError(onError []NodeNextItem) NodeOption {
 	return func(n *Node) {
-		n.OnError = onError
+		n.OnError = slices.Clone(onError)
 	}
 }
 
@@ -201,7 +201,7 @@ func NewNode(name string, opts ...NodeOption) *Node {
 
 // SetAnchor sets the anchor for the node and returns the node for chaining.
 func (n *Node) SetAnchor(anchor []string) *Node {
-	n.Anchor = anchor
+	n.Anchor = slices.Clone(anchor)
 	return n
 }
 
@@ -219,7 +219,7 @@ func (n *Node) SetAction(act *NodeAction) *Node {
 
 // SetNext sets the next nodes list for the node and returns the node for chaining.
 func (n *Node) SetNext(next []NodeNextItem) *Node {
-	n.Next = next
+	n.Next = slices.Clone(next)
 	return n
 }
 
@@ -239,7 +239,7 @@ func (n *Node) SetTimeout(timeout time.Duration) *Node {
 
 // SetOnError sets the error handling nodes for the node and returns the node for chaining.
 func (n *Node) SetOnError(onError []NodeNextItem) *Node {
-	n.OnError = onError
+	n.OnError = slices.Clone(onError)
 	return n
 }
 
@@ -646,7 +646,7 @@ func WithTemplateMatchGreenMask(greenMask bool) TemplateMatchOption {
 // RecTemplateMatch creates a TemplateMatch recognition with the given template images.
 func RecTemplateMatch(template []string, opts ...TemplateMatchOption) *NodeRecognition {
 	param := &NodeTemplateMatchParam{
-		Template: template,
+		Template: slices.Clone(template),
 	}
 
 	for _, opt := range opts {
@@ -768,7 +768,7 @@ func WithFeatureMatchRatio(ratio float64) FeatureMatchOption {
 // Feature matching provides better generalization with perspective and scale invariance.
 func RecFeatureMatch(template []string, opts ...FeatureMatchOption) *NodeRecognition {
 	param := &NodeFeatureMatchParam{
-		Template: template,
+		Template: slices.Clone(template),
 	}
 
 	for _, opt := range opts {
@@ -880,8 +880,8 @@ func WithColorMatchConnected(connected bool) ColorMatchOption {
 // RecColorMatch creates a ColorMatch recognition with the given color bounds.
 func RecColorMatch(lower, upper [][]int, opts ...ColorMatchOption) *NodeRecognition {
 	param := &NodeColorMatchParam{
-		Lower: lower,
-		Upper: upper,
+		Lower: slices.Clone(lower),
+		Upper: slices.Clone(upper),
 	}
 
 	for _, opt := range opts {
@@ -949,7 +949,7 @@ func WithOCRROIOffset(offset Rect) OCROption {
 // WithOCRExpected sets the expected text results.
 func WithOCRExpected(expected []string) OCROption {
 	return func(param *NodeOCRParam) {
-		param.Expected = expected
+		param.Expected = slices.Clone(expected)
 	}
 }
 
@@ -963,7 +963,7 @@ func WithOCRThreshold(th float64) OCROption {
 // WithOCRReplace sets text replacement rules for correcting OCR errors.
 func WithOCRReplace(replace [][2]string) OCROption {
 	return func(param *NodeOCRParam) {
-		param.Replace = replace
+		param.Replace = slices.Clone(replace)
 	}
 }
 
@@ -1059,14 +1059,14 @@ func WithNeuralClassifyROIOffset(offset Rect) NeuralClassifyOption {
 // WithNeuralClassifyLabels sets the class names for debugging and logging.
 func WithNeuralClassifyLabels(labels []string) NeuralClassifyOption {
 	return func(param *NodeNeuralNetworkClassifyParam) {
-		param.Labels = labels
+		param.Labels = slices.Clone(labels)
 	}
 }
 
 // WithNeuralClassifyExpected sets the expected class indices.
 func WithNeuralClassifyExpected(expected []int) NeuralClassifyOption {
 	return func(param *NodeNeuralNetworkClassifyParam) {
-		param.Expected = expected
+		param.Expected = slices.Clone(expected)
 	}
 }
 
@@ -1152,14 +1152,14 @@ func WithNeuralDetectROIOffset(offset Rect) NeuralDetectOption {
 // WithNeuralDetectLabels sets the class names for debugging and logging.
 func WithNeuralDetectLabels(labels []string) NeuralDetectOption {
 	return func(param *NodeNeuralNetworkDetectParam) {
-		param.Labels = labels
+		param.Labels = slices.Clone(labels)
 	}
 }
 
 // WithNeuralDetectExpected sets the expected class indices.
 func WithNeuralDetectExpected(expected []int) NeuralDetectOption {
 	return func(param *NodeNeuralNetworkDetectParam) {
-		param.Expected = expected
+		param.Expected = slices.Clone(expected)
 	}
 }
 
@@ -1229,7 +1229,7 @@ func WithAndRecognitionBoxIndex(boxIndex int) AndRecognitionOption {
 // RecAnd creates an AND recognition that requires all sub-recognitions to succeed.
 func RecAnd(allOf []NodeAndRecognitionItem, opts ...AndRecognitionOption) *NodeRecognition {
 	param := &NodeAndRecognitionParam{
-		AllOf: allOf,
+		AllOf: slices.Clone(allOf),
 	}
 	for _, opt := range opts {
 		opt(param)
@@ -1250,7 +1250,7 @@ func (n NodeOrRecognitionParam) isRecognitionParam() {}
 // RecOr creates an OR recognition that succeeds if any sub-recognition succeeds.
 func RecOr(anyOf []*NodeRecognition) *NodeRecognition {
 	param := &NodeOrRecognitionParam{
-		AnyOf: anyOf,
+		AnyOf: slices.Clone(anyOf),
 	}
 	return &NodeRecognition{
 		Type:  NodeRecognitionTypeOr,
@@ -1571,14 +1571,14 @@ func WithSwipeBeginOffset(offset Rect) SwipeOption {
 // WithSwipeEnd sets the swipe end position.
 func WithSwipeEnd(end []Target) SwipeOption {
 	return func(p *NodeSwipeParam) {
-		p.End = end
+		p.End = slices.Clone(end)
 	}
 }
 
 // WithSwipeEndOffset sets additional offset applied to end position.
 func WithSwipeEndOffset(offset []Rect) SwipeOption {
 	return func(p *NodeSwipeParam) {
-		p.EndOffset = offset
+		p.EndOffset = slices.Clone(offset)
 	}
 }
 
@@ -1685,14 +1685,14 @@ func WithMultiSwipeItemBeginOffset(offset Rect) MultiSwipeItemOption {
 // WithMultiSwipeItemEnd sets the swipe end position.
 func WithMultiSwipeItemEnd(end []Target) MultiSwipeItemOption {
 	return func(i *NodeMultiSwipeItem) {
-		i.End = end
+		i.End = slices.Clone(end)
 	}
 }
 
 // WithMultiSwipeItemEndOffset sets additional offset applied to end position.
 func WithMultiSwipeItemEndOffset(offset []Rect) MultiSwipeItemOption {
 	return func(i *NodeMultiSwipeItem) {
-		i.EndOffset = offset
+		i.EndOffset = slices.Clone(offset)
 	}
 }
 
@@ -1923,7 +1923,9 @@ func WithLongPressKeyDuration(d time.Duration) LongPressKeyOption {
 
 // ActLongPressKey creates a LongPressKey action with the given virtual key code.
 func ActLongPressKey(key []int, opts ...LongPressKeyOption) *NodeAction {
-	param := &NodeLongPressKeyParam{Key: key}
+	param := &NodeLongPressKeyParam{
+		Key: slices.Clone(key),
+	}
 	for _, opt := range opts {
 		opt(param)
 	}
@@ -2076,7 +2078,9 @@ type CommandOption func(*NodeCommandParam)
 
 // WithCommandArgs sets the command arguments.
 func WithCommandArgs(args []string) CommandOption {
-	return func(p *NodeCommandParam) { p.Args = args }
+	return func(p *NodeCommandParam) {
+		p.Args = slices.Clone(args)
+	}
 }
 
 // WithCommandDetach enables detached mode to run without waiting for completion.
