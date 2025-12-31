@@ -123,6 +123,9 @@ var (
 	MaaResourceUnregisterCustomAction      func(res uintptr, name string) bool
 	MaaResourceClearCustomAction           func(res uintptr) bool
 	MaaResourcePostBundle                  func(res uintptr, path string) int64
+	MaaResourcePostOcrModel                func(res uintptr, path string) int64
+	MaaResourcePostPipeline                func(res uintptr, path string) int64
+	MaaResourcePostImage                   func(res uintptr, path string) int64
 	MaaResourceOverridePipeline            func(res uintptr, pipelineOverride string) bool
 	MaaResourceOverrideNext                func(res uintptr, nodeName string, nextList uintptr) bool
 	MaaResourceOverrideImage               func(res uintptr, imageName string, image uintptr) bool
@@ -157,21 +160,22 @@ const (
 )
 
 var (
-	MaaAdbControllerCreate      func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
-	MaaWin32ControllerCreate    func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
-	MaaCustomControllerCreate   func(controller unsafe.Pointer, controllerArg uintptr) uintptr
-	MaaControllerDestroy        func(ctrl uintptr)
-	MaaControllerAddSink        func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64
-	MaaControllerRemoveSink     func(ctrl uintptr, sinkId int64)
-	MaaControllerClearSinks     func(ctrl uintptr)
-	MaaControllerSetOption      func(ctrl uintptr, key MaaCtrlOption, value unsafe.Pointer, valSize uint64) bool
-	MaaControllerPostConnection func(ctrl uintptr) int64
-	MaaControllerPostClick      func(ctrl uintptr, x, y int32) int64
-	MaaControllerPostSwipe      func(ctrl uintptr, x1, y1, x2, y2, duration int32) int64
-	MaaControllerPostClickKey   func(ctrl uintptr, keycode int32) int64
-	MaaControllerPostInputText  func(ctrl uintptr, text string) int64
-	MaaControllerPostStartApp   func(ctrl uintptr, intent string) int64
-	MaaControllerPostStopApp    func(ctrl uintptr, intent string) int64
+	MaaAdbControllerCreate       func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
+	MaaPlayCoverControllerCreate func(address, uuid string) uintptr
+	MaaWin32ControllerCreate     func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
+	MaaCustomControllerCreate    func(controller unsafe.Pointer, controllerArg uintptr) uintptr
+	MaaControllerDestroy         func(ctrl uintptr)
+	MaaControllerAddSink         func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64
+	MaaControllerRemoveSink      func(ctrl uintptr, sinkId int64)
+	MaaControllerClearSinks      func(ctrl uintptr)
+	MaaControllerSetOption       func(ctrl uintptr, key MaaCtrlOption, value unsafe.Pointer, valSize uint64) bool
+	MaaControllerPostConnection  func(ctrl uintptr) int64
+	MaaControllerPostClick       func(ctrl uintptr, x, y int32) int64
+	MaaControllerPostSwipe       func(ctrl uintptr, x1, y1, x2, y2, duration int32) int64
+	MaaControllerPostClickKey    func(ctrl uintptr, keycode int32) int64
+	MaaControllerPostInputText   func(ctrl uintptr, text string) int64
+	MaaControllerPostStartApp    func(ctrl uintptr, intent string) int64
+	MaaControllerPostStopApp     func(ctrl uintptr, intent string) int64
 	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
 	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
 	MaaControllerPostTouchDown func(ctrl uintptr, contact, x, y, pressure int32) int64
@@ -362,6 +366,9 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaResourceUnregisterCustomAction, maaFramework, "MaaResourceUnregisterCustomAction")
 	purego.RegisterLibFunc(&MaaResourceClearCustomAction, maaFramework, "MaaResourceClearCustomAction")
 	purego.RegisterLibFunc(&MaaResourcePostBundle, maaFramework, "MaaResourcePostBundle")
+	purego.RegisterLibFunc(&MaaResourcePostOcrModel, maaFramework, "MaaResourcePostOcrModel")
+	purego.RegisterLibFunc(&MaaResourcePostPipeline, maaFramework, "MaaResourcePostPipeline")
+	purego.RegisterLibFunc(&MaaResourcePostImage, maaFramework, "MaaResourcePostImage")
 	purego.RegisterLibFunc(&MaaResourceOverridePipeline, maaFramework, "MaaResourceOverridePipeline")
 	purego.RegisterLibFunc(&MaaResourceOverrideNext, maaFramework, "MaaResourceOverrideNext")
 	purego.RegisterLibFunc(&MaaResourceOverrideImage, maaFramework, "MaaResourceOverrideImage")
@@ -377,6 +384,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaResourceGetCustomActionList, maaFramework, "MaaResourceGetCustomActionList")
 	// Controller
 	purego.RegisterLibFunc(&MaaAdbControllerCreate, maaFramework, "MaaAdbControllerCreate")
+	purego.RegisterLibFunc(&MaaPlayCoverControllerCreate, maaFramework, "MaaPlayCoverControllerCreate")
 	purego.RegisterLibFunc(&MaaWin32ControllerCreate, maaFramework, "MaaWin32ControllerCreate")
 	purego.RegisterLibFunc(&MaaCustomControllerCreate, maaFramework, "MaaCustomControllerCreate")
 	purego.RegisterLibFunc(&MaaControllerDestroy, maaFramework, "MaaControllerDestroy")

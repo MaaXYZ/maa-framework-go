@@ -51,6 +51,22 @@ func NewAdbController(
 	}
 }
 
+// NewPlayCoverController creates a new PlayCover controller.
+func NewPlayCoverController(
+	address, uuid string,
+) *Controller {
+	handle := native.MaaPlayCoverControllerCreate(address, uuid)
+	if handle == 0 {
+		return nil
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}
+}
+
 // NewWin32Controller creates a win32 controller instance.
 func NewWin32Controller(
 	hWnd unsafe.Pointer,

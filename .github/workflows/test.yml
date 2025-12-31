@@ -42,10 +42,11 @@ jobs:
           go-version: 'stable'
 
       - name: Download MaaFramework
-        uses: robinraju/release-downloader@v1.10
+        uses: robinraju/release-downloader@v1
         with:
           repository: MaaXYZ/MaaFramework
           latest: true
+          preRelease: ${{ github.ref_type == 'branch' && github.ref != 'refs/heads/main' }}
           fileName: "MAA-win-${{ matrix.arch }}*"
           out-file-path: "${{ github.workspace }}/deps"
           extract: true
@@ -106,10 +107,11 @@ jobs:
           go-version: 'stable'
 
       - name: Download MaaFramework
-        uses: robinraju/release-downloader@v1.10
+        uses: robinraju/release-downloader@v1
         with:
           repository: MaaXYZ/MaaFramework
           latest: true
+          preRelease: ${{ github.ref_type == 'branch' && github.ref_name != 'main' }}
           fileName: "MAA-linux-${{ matrix.arch }}*"
           out-file-path: "deps"
           extract: true
@@ -163,10 +165,11 @@ jobs:
           go-version: 'stable'
 
       - name: Download MaaFramework
-        uses: robinraju/release-downloader@v1.10
+        uses: robinraju/release-downloader@v1
         with:
           repository: MaaXYZ/MaaFramework
           latest: true
+          preRelease: ${{ github.ref_type == 'branch' && github.ref_name != 'main' }}
           fileName: "MAA-macos-${{ matrix.arch }}*"
           out-file-path: "deps"
           extract: true
