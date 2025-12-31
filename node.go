@@ -1899,7 +1899,7 @@ func (n NodeClickKeyParam) isActionParam() {}
 func ActClickKey(keys []int) *NodeAction {
 	return &NodeAction{
 		Type:  NodeActionTypeClickKey,
-		Param: &NodeClickKeyParam{Key: keys},
+		Param: &NodeClickKeyParam{Key: slices.Clone(keys)},
 	}
 }
 
