@@ -118,6 +118,72 @@ func NewCustomController(
 	}
 }
 
+// DbgControllerType defines the type of debug controller.
+type DbgControllerType = native.MaaDbgControllerType
+
+// Debug controller type constants.
+const (
+	DbgControllerTypeNone            DbgControllerType = native.MaaDbgControllerType_None
+	DbgControllerTypeCarouselImage   DbgControllerType = native.MaaDbgControllerType_CarouselImage
+	DbgControllerTypeReplayRecording DbgControllerType = native.MaaDbgControllerType_ReplayRecording
+)
+
+// NewDbgController creates a debug controller instance.
+//
+// readPath: Path to read images from (for carousel) or recording file.
+// writePath: Path to write output.
+// dbgType: Type of debug controller.
+// config: Optional JSON configuration.
+func NewDbgController(
+	readPath, writePath string,
+	dbgType DbgControllerType,
+	config string,
+) *Controller {
+	handle := native.MaaDbgControllerCreate(readPath, writePath, dbgType, config)
+	if handle == 0 {
+		return nil
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}
+}
+
+// GamepadType defines the type of virtual gamepad.
+type GamepadType = native.MaaGamepadType
+
+// Gamepad type constants.
+const (
+	GamepadTypeXbox360    GamepadType = native.MaaGamepadType_Xbox360
+	GamepadTypeDualShock4 GamepadType = native.MaaGamepadType_DualShock4
+)
+
+// NewGamepadController creates a virtual gamepad controller for Windows.
+//
+// hWnd: Window handle for screencap (optional, can be nil if screencap not needed).
+// gamepadType: Type of virtual gamepad (Xbox360 or DualShock4).
+// screencapMethod: Win32 screencap method to use. Ignored if hWnd is nil.
+//
+// Note: Requires ViGEm Bus Driver to be installed on the system.
+func NewGamepadController(
+	hWnd unsafe.Pointer,
+	gamepadType GamepadType,
+	screencapMethod win32.ScreencapMethod,
+) *Controller {
+	handle := native.MaaGamepadControllerCreate(hWnd, gamepadType, uint64(screencapMethod))
+	if handle == 0 {
+		return nil
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}
+}
+
 // Destroy frees the controller instance.
 func (c *Controller) Destroy() {
 	store.CtrlStore.Lock()
@@ -182,9 +248,25 @@ func (c *Controller) PostClick(x, y int32) *Job {
 	return newJob(id, c.status, c.wait)
 }
 
+// PostClickV2 posts a click with contact and pressure.
+// For adb controller, contact means finger id (0 for first finger, 1 for second finger, etc).
+// For win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle).
+func (c *Controller) PostClickV2(x, y, contact, pressure int32) *Job {
+	id := native.MaaControllerPostClickV2(c.handle, x, y, contact, pressure)
+	return newJob(id, c.status, c.wait)
+}
+
 // PostSwipe posts a swipe.
 func (c *Controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job {
 	id := native.MaaControllerPostSwipe(c.handle, x1, y1, x2, y2, int32(duration.Milliseconds()))
+	return newJob(id, c.status, c.wait)
+}
+
+// PostSwipeV2 posts a swipe with contact and pressure.
+// For adb controller, contact means finger id (0 for first finger, 1 for second finger, etc).
+// For win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle).
+func (c *Controller) PostSwipeV2(x1, y1, x2, y2 int32, duration time.Duration, contact, pressure int32) *Job {
+	id := native.MaaControllerPostSwipeV2(c.handle, x1, y1, x2, y2, int32(duration.Milliseconds()), contact, pressure)
 	return newJob(id, c.status, c.wait)
 }
 
@@ -309,6 +391,15 @@ func (c *Controller) GetUUID() (string, bool) {
 		return "", false
 	}
 	return uuid.Get(), true
+}
+
+// GetResolution gets the raw (unscaled) device resolution.
+// Returns the width and height, and whether the resolution is available.
+// Note: This returns the actual device screen resolution before any scaling.
+// The screenshot obtained via CacheImage is scaled according to the screenshot target size settings.
+func (c *Controller) GetResolution() (width, height int32, ok bool) {
+	ok = native.MaaControllerGetResolution(c.handle, &width, &height)
+	return
 }
 
 // AddSink adds a event callback sink and returns the sink ID.

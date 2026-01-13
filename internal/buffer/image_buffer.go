@@ -127,3 +127,32 @@ func (i *ImageBuffer) getType() int32 {
 func (i *ImageBuffer) setRawData(data unsafe.Pointer, width, height, imageType int32) bool {
 	return native.MaaImageBufferSetRawData(i.handle, data, width, height, imageType)
 }
+
+// GetEncoded retrieves the encoded image data (e.g., PNG/JPEG) from the buffer.
+// It returns the encoded data as a byte slice.
+func (i *ImageBuffer) GetEncoded() []byte {
+	ptr := native.MaaImageBufferGetEncoded(i.handle)
+	if ptr == nil {
+		return nil
+	}
+	size := native.MaaImageBufferGetEncodedSize(i.handle)
+	if size == 0 {
+		return nil
+	}
+	return unsafe.Slice((*byte)(ptr), size)
+}
+
+// GetEncodedSize retrieves the size of the encoded image data.
+func (i *ImageBuffer) GetEncodedSize() uint64 {
+	return native.MaaImageBufferGetEncodedSize(i.handle)
+}
+
+// SetEncoded sets the encoded image data (e.g., PNG/JPEG bytes) in the buffer.
+// It takes the encoded data as a byte slice.
+// It returns true if the operation was successful, otherwise false.
+func (i *ImageBuffer) SetEncoded(data []byte) bool {
+	if len(data) == 0 {
+		return false
+	}
+	return native.MaaImageBufferSetEncoded(i.handle, unsafe.Pointer(&data[0]), uint64(len(data)))
+}
