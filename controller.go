@@ -118,39 +118,6 @@ func NewCustomController(
 	}
 }
 
-// DbgControllerType defines the type of debug controller.
-type DbgControllerType = native.MaaDbgControllerType
-
-// Debug controller type constants.
-const (
-	DbgControllerTypeNone            DbgControllerType = native.MaaDbgControllerType_None
-	DbgControllerTypeCarouselImage   DbgControllerType = native.MaaDbgControllerType_CarouselImage
-	DbgControllerTypeReplayRecording DbgControllerType = native.MaaDbgControllerType_ReplayRecording
-)
-
-// NewDbgController creates a debug controller instance.
-//
-// readPath: Path to read images from (for carousel) or recording file.
-// writePath: Path to write output.
-// dbgType: Type of debug controller.
-// config: Optional JSON configuration.
-func NewDbgController(
-	readPath, writePath string,
-	dbgType DbgControllerType,
-	config string,
-) *Controller {
-	handle := native.MaaDbgControllerCreate(readPath, writePath, dbgType, config)
-	if handle == 0 {
-		return nil
-	}
-
-	initControllerStore(handle)
-
-	return &Controller{
-		handle: handle,
-	}
-}
-
 // GamepadType defines the type of virtual gamepad.
 type GamepadType = native.MaaGamepadType
 

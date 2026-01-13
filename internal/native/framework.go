@@ -159,14 +159,6 @@ const (
 	MaaCtrlOption_ScreenshotUseRawSize MaaCtrlOption = 3
 )
 
-type MaaDbgControllerType uint64
-
-const (
-	MaaDbgControllerType_None            MaaDbgControllerType = 0
-	MaaDbgControllerType_CarouselImage   MaaDbgControllerType = 1
-	MaaDbgControllerType_ReplayRecording MaaDbgControllerType = 1 << 1
-)
-
 type MaaGamepadType uint64
 
 const (
@@ -178,9 +170,8 @@ var (
 	MaaAdbControllerCreate       func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
 	MaaPlayCoverControllerCreate func(address, uuid string) uintptr
 	MaaWin32ControllerCreate     func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
-	MaaCustomControllerCreate    func(controller unsafe.Pointer, controllerArg uintptr) uintptr
-	MaaDbgControllerCreate       func(readPath, writePath string, dbgType MaaDbgControllerType, config string) uintptr
-	MaaGamepadControllerCreate   func(hWnd unsafe.Pointer, gamepadType MaaGamepadType, screencapMethod uint64) uintptr
+	MaaCustomControllerCreate  func(controller unsafe.Pointer, controllerArg uintptr) uintptr
+	MaaGamepadControllerCreate func(hWnd unsafe.Pointer, gamepadType MaaGamepadType, screencapMethod uint64) uintptr
 	MaaControllerDestroy         func(ctrl uintptr)
 	MaaControllerAddSink         func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64
 	MaaControllerRemoveSink      func(ctrl uintptr, sinkId int64)
@@ -258,11 +249,8 @@ var (
 	MaaImageBufferWidth          func(handle uintptr) int32
 	MaaImageBufferHeight         func(handle uintptr) int32
 	MaaImageBufferChannels       func(handle uintptr) int32
-	MaaImageBufferType           func(handle uintptr) int32
-	MaaImageBufferSetRawData     func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
-	MaaImageBufferGetEncoded     func(handle uintptr) unsafe.Pointer
-	MaaImageBufferGetEncodedSize func(handle uintptr) uint64
-	MaaImageBufferSetEncoded     func(handle uintptr, data unsafe.Pointer, size uint64) bool
+	MaaImageBufferType       func(handle uintptr) int32
+	MaaImageBufferSetRawData func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
 
 	MaaImageListBufferCreate  func() uintptr
 	MaaImageListBufferDestroy func(handle uintptr)
@@ -425,7 +413,6 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaPlayCoverControllerCreate, maaFramework, "MaaPlayCoverControllerCreate")
 	purego.RegisterLibFunc(&MaaWin32ControllerCreate, maaFramework, "MaaWin32ControllerCreate")
 	purego.RegisterLibFunc(&MaaCustomControllerCreate, maaFramework, "MaaCustomControllerCreate")
-	purego.RegisterLibFunc(&MaaDbgControllerCreate, maaFramework, "MaaDbgControllerCreate")
 	purego.RegisterLibFunc(&MaaGamepadControllerCreate, maaFramework, "MaaGamepadControllerCreate")
 	purego.RegisterLibFunc(&MaaControllerDestroy, maaFramework, "MaaControllerDestroy")
 	purego.RegisterLibFunc(&MaaControllerAddSink, maaFramework, "MaaControllerAddSink")
@@ -498,9 +485,6 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaImageBufferChannels, maaFramework, "MaaImageBufferChannels")
 	purego.RegisterLibFunc(&MaaImageBufferType, maaFramework, "MaaImageBufferType")
 	purego.RegisterLibFunc(&MaaImageBufferSetRawData, maaFramework, "MaaImageBufferSetRawData")
-	purego.RegisterLibFunc(&MaaImageBufferGetEncoded, maaFramework, "MaaImageBufferGetEncoded")
-	purego.RegisterLibFunc(&MaaImageBufferGetEncodedSize, maaFramework, "MaaImageBufferGetEncodedSize")
-	purego.RegisterLibFunc(&MaaImageBufferSetEncoded, maaFramework, "MaaImageBufferSetEncoded")
 	purego.RegisterLibFunc(&MaaImageListBufferCreate, maaFramework, "MaaImageListBufferCreate")
 	purego.RegisterLibFunc(&MaaImageListBufferDestroy, maaFramework, "MaaImageListBufferDestroy")
 	purego.RegisterLibFunc(&MaaImageListBufferIsEmpty, maaFramework, "MaaImageListBufferIsEmpty")
