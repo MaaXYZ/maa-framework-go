@@ -167,6 +167,7 @@ const (
 // screencapMethod: Win32 screencap method to use. Ignored if hWnd is nil.
 //
 // Note: Requires ViGEm Bus Driver to be installed on the system.
+// For gamepad button and touch constants, import "github.com/MaaXYZ/maa-framework-go/v3/controller/gamepad".
 func NewGamepadController(
 	hWnd unsafe.Pointer,
 	gamepadType GamepadType,

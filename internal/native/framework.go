@@ -197,13 +197,9 @@ var (
 	MaaControllerPostInputText func(ctrl uintptr, text string) int64
 	MaaControllerPostStartApp  func(ctrl uintptr, intent string) int64
 	MaaControllerPostStopApp   func(ctrl uintptr, intent string) int64
-	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
-	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
 	MaaControllerPostTouchDown func(ctrl uintptr, contact, x, y, pressure int32) int64
 	MaaControllerPostTouchMove func(ctrl uintptr, contact, x, y, pressure int32) int64
-	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
-	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
-	MaaControllerPostTouchUp    func(ctrl uintptr, contact int32) int64
+	MaaControllerPostTouchUp   func(ctrl uintptr, contact int32) int64
 	MaaControllerPostKeyDown    func(ctrl uintptr, keycode int32) int64
 	MaaControllerPostKeyUp      func(ctrl uintptr, keycode int32) int64
 	MaaControllerPostScreencap  func(ctrl uintptr) int64
