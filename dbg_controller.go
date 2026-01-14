@@ -7,6 +7,7 @@ import (
 	_ "image/png"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 )
 
 type CarouselImageController struct {
@@ -14,6 +15,7 @@ type CarouselImageController struct {
 	images     []image.Image
 	imageIndex int
 	resolution image.Point
+	connected  atomic.Bool
 }
 
 func NewCarouselImageController(path string) *Controller {
@@ -34,6 +36,8 @@ func (c *CarouselImageController) ClickKey(keycode int32) bool {
 
 // Connect implements CustomController.
 func (c *CarouselImageController) Connect() bool {
+	// reset connection state first (reconnect-safe)
+	c.connected.Store(false)
 
 	if c.path == "" {
 		return false
@@ -84,7 +88,13 @@ func (c *CarouselImageController) Connect() bool {
 	}
 
 	c.resolution = c.images[0].Bounds().Size()
+	c.connected.Store(true)
 	return true
+}
+
+// Connected implements CustomController.
+func (c *CarouselImageController) Connected() bool {
+	return c.connected.Load()
 }
 
 // GetFeature implements CustomController.
@@ -175,6 +185,11 @@ func (c *BlankController) ClickKey(keycode int32) bool {
 
 // Connect implements CustomController.
 func (c *BlankController) Connect() bool {
+	return true
+}
+
+// Connected implements CustomController.
+func (c *BlankController) Connected() bool {
 	return true
 }
 

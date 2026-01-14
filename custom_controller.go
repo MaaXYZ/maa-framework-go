@@ -47,6 +47,7 @@ const (
 // ClickKey, InputText, KeyDown and KeyUp.
 type CustomController interface {
 	Connect() bool
+	Connected() bool
 	RequestUUID() (string, bool)
 	GetFeature() ControllerFeature
 	StartApp(intent string) bool
@@ -65,6 +66,7 @@ type CustomController interface {
 
 type MaaCustomControllerCallbacks struct {
 	Connect     uintptr
+	Connected   uintptr
 	RequestUUID uintptr
 	GetFeature  uintptr
 	StartApp    uintptr
@@ -85,6 +87,7 @@ var customControllerCallbacksHandle = new(MaaCustomControllerCallbacks)
 
 func init() {
 	customControllerCallbacksHandle.Connect = purego.NewCallback(_ConnectAgent)
+	customControllerCallbacksHandle.Connected = purego.NewCallback(_ConnectedAgent)
 	customControllerCallbacksHandle.RequestUUID = purego.NewCallback(_RequestUUIDAgent)
 	customControllerCallbacksHandle.GetFeature = purego.NewCallback(_GetFeatureAgent)
 	customControllerCallbacksHandle.StartApp = purego.NewCallback(_StartAppAgent)
@@ -115,6 +118,25 @@ func _ConnectAgent(handleArg uintptr) uintptr {
 	}
 
 	if ctrl.Connect() {
+		return uintptr(1)
+	}
+	return uintptr(0)
+}
+
+func _ConnectedAgent(handleArg uintptr) uintptr {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(handleArg)
+
+	customControllerCallbacksAgentsMutex.RLock()
+	ctrl, exists := customControllerCallbacksAgents[id]
+	customControllerCallbacksAgentsMutex.RUnlock()
+
+	if !exists || ctrl == nil {
+		return uintptr(0)
+	}
+
+	if ctrl.Connected() {
 		return uintptr(1)
 	}
 	return uintptr(0)
