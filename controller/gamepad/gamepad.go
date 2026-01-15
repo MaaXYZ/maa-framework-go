@@ -1,9 +1,10 @@
 package gamepad
 
-// Button represents gamepad button codes for click_key/key_down/key_up.
-// These values are used with Controller.PostClickKey, Controller.PostKeyDown, Controller.PostKeyUp.
-// Values are based on XUSB (Xbox 360) button flags. DS4 face buttons are mapped to Xbox equivalents.
-type Button uint64
+ // Button represents gamepad button codes for click_key/key_down/key_up.
+ // These values are used with Controller.PostClickKey, Controller.PostKeyDown, Controller.PostKeyUp.
+ // Values are based on XUSB (Xbox 360) button flags. DS4 face buttons are mapped to Xbox equivalents.
+ // The underlying type matches the controller keycode type to avoid truncation and unnecessary casts.
+ type Button int32
 
 // Xbox 360 buttons (XUSB protocol values)
 const (
