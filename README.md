@@ -11,7 +11,7 @@
       <img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
     </a>
     <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v3">
-      <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go">
+      <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go/v3.svg">
     </a>
     <a href="https://goreportcard.com/report/github.com/MaaXYZ/maa-framework-go/v3">
       <img alt="go report" src="https://goreportcard.com/badge/github.com/MaaXYZ/maa-framework-go/v3">
