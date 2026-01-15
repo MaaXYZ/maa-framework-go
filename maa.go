@@ -201,6 +201,23 @@ func SetDebugMode(enabled bool) bool {
 	return setGlobalOption(native.MaaGlobalOption_DebugMode, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled))
 }
 
+// SetSaveOnError sets whether to save screenshot on error.
+func SetSaveOnError(enabled bool) bool {
+	return setGlobalOption(native.MaaGlobalOption_SaveOnError, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled))
+}
+
+// SetDrawQuality sets image quality for draw images.
+// Default value is 85, range: [0, 100].
+func SetDrawQuality(quality int32) bool {
+	return setGlobalOption(native.MaaGlobalOption_DrawQuality, unsafe.Pointer(&quality), unsafe.Sizeof(quality))
+}
+
+// SetRecoImageCacheLimit sets recognition image cache limit.
+// Default value is 4096.
+func SetRecoImageCacheLimit(limit uint64) bool {
+	return setGlobalOption(native.MaaGlobalOption_RecoImageCacheLimit, unsafe.Pointer(&limit), unsafe.Sizeof(limit))
+}
+
 // LoadPlugin loads a plugin specified by path.
 // The path may be a full filesystem path or just a plugin name.
 // When only a name is provided, the function searches system directories and the current working directory for a matching plugin.
