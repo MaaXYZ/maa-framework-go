@@ -169,13 +169,9 @@ const (
 	MaaGamepadType_DualShock4 MaaGamepadType = 1
 )
 
-type MaaDbgControllerType uint64
-
-const (
-	MaaDbgControllerType_Invalid             MaaDbgControllerType = 0
-	MaaDbgControllerType_CarouselImage       MaaDbgControllerType = 1
-	MaaDbgControllerType_ReplayRecording     MaaDbgControllerType = 2
-)
+// NOTE: MaaDbgControllerCreate and MaaDbgControllerType are intentionally NOT implemented in Go binding.
+// The Go binding provides CarouselImageController and BlankController as alternatives for debugging purposes.
+// Do not add MaaDbgController bindings here.
 
 var (
 	MaaAdbControllerCreate       func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
@@ -183,7 +179,6 @@ var (
 	MaaWin32ControllerCreate     func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
 	MaaCustomControllerCreate    func(controller unsafe.Pointer, controllerArg uintptr) uintptr
 	MaaGamepadControllerCreate   func(hWnd unsafe.Pointer, gamepadType MaaGamepadType, screencapMethod uint64) uintptr
-	MaaDbgControllerCreate       func(readPath, writePath string, dbgType MaaDbgControllerType, config string) uintptr
 	MaaControllerDestroy         func(ctrl uintptr)
 	MaaControllerAddSink         func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64
 	MaaControllerRemoveSink      func(ctrl uintptr, sinkId int64)
@@ -265,9 +260,9 @@ var (
 	MaaImageBufferChannels        func(handle uintptr) int32
 	MaaImageBufferType            func(handle uintptr) int32
 	MaaImageBufferSetRawData      func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
-	MaaImageBufferGetEncoded      func(handle uintptr) unsafe.Pointer
-	MaaImageBufferGetEncodedSize  func(handle uintptr) uint64
-	MaaImageBufferSetEncoded      func(handle uintptr, data unsafe.Pointer, size uint64) bool
+	// NOTE: MaaImageBufferGetEncoded, MaaImageBufferGetEncodedSize, and MaaImageBufferSetEncoded are intentionally
+	// NOT implemented in Go binding. Go handles image encoding/decoding natively through the standard library.
+	// Do not add encoded image buffer bindings here.
 
 	MaaImageListBufferCreate  func() uintptr
 	MaaImageListBufferDestroy func(handle uintptr)
@@ -434,7 +429,6 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaWin32ControllerCreate, maaFramework, "MaaWin32ControllerCreate")
 	purego.RegisterLibFunc(&MaaCustomControllerCreate, maaFramework, "MaaCustomControllerCreate")
 	purego.RegisterLibFunc(&MaaGamepadControllerCreate, maaFramework, "MaaGamepadControllerCreate")
-	purego.RegisterLibFunc(&MaaDbgControllerCreate, maaFramework, "MaaDbgControllerCreate")
 	purego.RegisterLibFunc(&MaaControllerDestroy, maaFramework, "MaaControllerDestroy")
 	purego.RegisterLibFunc(&MaaControllerAddSink, maaFramework, "MaaControllerAddSink")
 	purego.RegisterLibFunc(&MaaControllerRemoveSink, maaFramework, "MaaControllerRemoveSink")
@@ -508,9 +502,6 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaImageBufferChannels, maaFramework, "MaaImageBufferChannels")
 	purego.RegisterLibFunc(&MaaImageBufferType, maaFramework, "MaaImageBufferType")
 	purego.RegisterLibFunc(&MaaImageBufferSetRawData, maaFramework, "MaaImageBufferSetRawData")
-	purego.RegisterLibFunc(&MaaImageBufferGetEncoded, maaFramework, "MaaImageBufferGetEncoded")
-	purego.RegisterLibFunc(&MaaImageBufferGetEncodedSize, maaFramework, "MaaImageBufferGetEncodedSize")
-	purego.RegisterLibFunc(&MaaImageBufferSetEncoded, maaFramework, "MaaImageBufferSetEncoded")
 	purego.RegisterLibFunc(&MaaImageListBufferCreate, maaFramework, "MaaImageListBufferCreate")
 	purego.RegisterLibFunc(&MaaImageListBufferDestroy, maaFramework, "MaaImageListBufferDestroy")
 	purego.RegisterLibFunc(&MaaImageListBufferIsEmpty, maaFramework, "MaaImageListBufferIsEmpty")

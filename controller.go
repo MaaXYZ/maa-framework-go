@@ -152,38 +152,9 @@ func NewGamepadController(
 	}
 }
 
-// DbgControllerType defines the type of debug controller.
-type DbgControllerType = native.MaaDbgControllerType
-
-// Debug controller type constants.
-const (
-	DbgControllerTypeInvalid         DbgControllerType = native.MaaDbgControllerType_Invalid
-	DbgControllerTypeCarouselImage   DbgControllerType = native.MaaDbgControllerType_CarouselImage
-	DbgControllerTypeReplayRecording DbgControllerType = native.MaaDbgControllerType_ReplayRecording
-)
-
-// NewDbgController creates a debug controller instance for testing purposes.
-//
-// readPath: Path to read test data from (e.g., images or recordings).
-// writePath: Path to write test results to.
-// dbgType: Type of debug controller (CarouselImage or ReplayRecording).
-// config: JSON configuration string for the debug controller.
-func NewDbgController(
-	readPath, writePath string,
-	dbgType DbgControllerType,
-	config string,
-) *Controller {
-	handle := native.MaaDbgControllerCreate(readPath, writePath, dbgType, config)
-	if handle == 0 {
-		return nil
-	}
-
-	initControllerStore(handle)
-
-	return &Controller{
-		handle: handle,
-	}
-}
+// NOTE: MaaDbgController is intentionally NOT implemented in Go binding.
+// Use CarouselImageController or BlankController from dbg_controller.go for debugging purposes.
+// Do not add NewDbgController here.
 
 // Destroy frees the controller instance.
 func (c *Controller) Destroy() {

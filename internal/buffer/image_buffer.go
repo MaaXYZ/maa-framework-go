@@ -128,26 +128,6 @@ func (i *ImageBuffer) setRawData(data unsafe.Pointer, width, height, imageType i
 	return native.MaaImageBufferSetRawData(i.handle, data, width, height, imageType)
 }
 
-// GetEncoded retrieves the encoded image data (e.g., PNG format) from the buffer.
-// It returns the encoded data as a byte slice.
-func (i *ImageBuffer) GetEncoded() []byte {
-	data := native.MaaImageBufferGetEncoded(i.handle)
-	if data == nil {
-		return nil
-	}
-	size := native.MaaImageBufferGetEncodedSize(i.handle)
-	if size == 0 {
-		return nil
-	}
-	return unsafe.Slice((*byte)(data), size)
-}
-
-// SetEncoded sets the encoded image data (e.g., PNG format) in the buffer.
-// It takes the encoded data as a byte slice.
-// It returns true if the operation was successful, otherwise false.
-func (i *ImageBuffer) SetEncoded(data []byte) bool {
-	if len(data) == 0 {
-		return false
-	}
-	return native.MaaImageBufferSetEncoded(i.handle, unsafe.Pointer(&data[0]), uint64(len(data)))
-}
+// NOTE: GetEncoded and SetEncoded are intentionally NOT implemented in Go binding.
+// Go handles image encoding/decoding natively through the standard library (image/png, image/jpeg, etc.).
+// Do not add encoded image methods here.
