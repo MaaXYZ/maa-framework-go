@@ -253,7 +253,7 @@ func (ctx *Context) GetNodeData(name string) (*Node, error) {
 func (ctx *Context) GetTaskJob() *TaskJob {
 	tasker := ctx.GetTasker()
 	taskId := native.MaaContextGetTaskId(ctx.handle)
-	return newTaskJob(taskId, tasker.status, tasker.wait, tasker.getTaskDetail)
+	return newTaskJob(taskId, tasker.status, tasker.wait, tasker.getTaskDetail, tasker.overridePipeline)
 }
 
 // GetTasker return current Tasker.

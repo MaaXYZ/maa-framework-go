@@ -88,7 +88,7 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 
 func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
 	id := native.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail)
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline)
 }
 
 // PostTask posts a task to the tasker.
@@ -108,7 +108,7 @@ func (t *Tasker) PostRecognition(recType NodeRecognitionType, recParam NodeRecog
 	recParamJSON, _ := json.Marshal(recParam)
 
 	id := native.MaaTaskerPostRecognition(t.handle, string(recType), string(recParamJSON), imgBuf.Handle())
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail)
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline)
 }
 
 // PostAction posts an action to the tasker.
@@ -121,7 +121,7 @@ func (t *Tasker) PostAction(actionType NodeActionType, actionParam NodeActionPar
 	recoDetailJSON, _ := json.Marshal(recoDetail)
 
 	id := native.MaaTaskerPostAction(t.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail)
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline)
 }
 
 // Stopping checks whether the tasker is stopping.
@@ -147,7 +147,7 @@ func (t *Tasker) Running() bool {
 // PostStop posts a stop signal to the tasker.
 func (t *Tasker) PostStop() *TaskJob {
 	id := native.MaaTaskerPostStop(t.handle)
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail)
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline)
 }
 
 // GetResource returns the resource handle of the tasker.
@@ -167,28 +167,25 @@ func (t *Tasker) ClearCache() bool {
 	return native.MaaTaskerClearCache(t.handle)
 }
 
-func (t *Tasker) overridePipeline(taskId int64, override string) bool {
-	return native.MaaTaskerOverridePipeline(t.handle, taskId, override)
-}
-
-// OverridePipeline overrides the pipeline for a running task.
-// The `override` parameter can be a JSON string or any data type that can be marshaled to JSON.
-func (t *Tasker) OverridePipeline(taskId int64, override any) bool {
+func (t *Tasker) overridePipeline(taskId int64, override any) bool {
+	var overrideStr string
 	switch v := override.(type) {
 	case string:
-		return t.overridePipeline(taskId, v)
+		overrideStr = v
 	case []byte:
-		return t.overridePipeline(taskId, string(v))
+		overrideStr = string(v)
 	default:
 		if v == nil {
-			return t.overridePipeline(taskId, "{}")
+			overrideStr = "{}"
+		} else {
+			jsonBytes, err := json.Marshal(v)
+			if err != nil {
+				return false
+			}
+			overrideStr = string(jsonBytes)
 		}
-		jsonBytes, err := json.Marshal(v)
-		if err != nil {
-			return false
-		}
-		return t.overridePipeline(taskId, string(jsonBytes))
 	}
+	return native.MaaTaskerOverridePipeline(t.handle, taskId, overrideStr)
 }
 
 type RecognitionDetail struct {

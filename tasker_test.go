@@ -216,7 +216,6 @@ func TestTasker_OverridePipeline(t *testing.T) {
 
 	// Start a task
 	taskJob := tasker.PostTask(testNode.Name, pipeline)
-	taskId := taskJob.GetId()
 
 	// Override the pipeline while task is running
 	overridePipeline := NewPipeline()
@@ -228,7 +227,7 @@ func TestTasker_OverridePipeline(t *testing.T) {
 	overridePipeline.AddNode(overrideNode)
 
 	// Test OverridePipeline with a Pipeline object
-	got := tasker.OverridePipeline(taskId, overridePipeline)
+	got := taskJob.OverridePipeline(overridePipeline)
 	// Note: OverridePipeline may return false if the task has already completed
 	// The important thing is that it doesn't panic and executes correctly
 	t.Logf("OverridePipeline result: %v", got)
