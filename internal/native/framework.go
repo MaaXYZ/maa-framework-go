@@ -48,6 +48,7 @@ var (
 	MaaTaskerGetNodeDetail        func(tasker uintptr, nodeId int64, nodeName uintptr, recoId *int64, actionId *int64, completed *bool) bool
 	MaaTaskerGetTaskDetail        func(tasker uintptr, taskId int64, entry uintptr, nodeIdList uintptr, nodeIdListSize *uint64, status *int32) bool
 	MaaTaskerGetLatestNode        func(tasker uintptr, taskName string, latestId *int64) bool
+	MaaTaskerOverridePipeline     func(tasker uintptr, taskId int64, pipelineOverride string) bool
 )
 
 type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi uintptr, transArg uintptr, outBox, outDetail uintptr) uint64
@@ -139,6 +140,8 @@ var (
 	MaaResourceGetNodeList                 func(res uintptr, buffer uintptr) bool
 	MaaResourceGetCustomRecognitionList    func(res uintptr, buffer uintptr) bool
 	MaaResourceGetCustomActionList         func(res uintptr, buffer uintptr) bool
+	MaaResourceGetDefaultRecognitionParam  func(res uintptr, recoType string, buffer uintptr) bool
+	MaaResourceGetDefaultActionParam       func(res uintptr, actionType string, buffer uintptr) bool
 )
 
 type MaaCtrlOption int32
@@ -166,12 +169,21 @@ const (
 	MaaGamepadType_DualShock4 MaaGamepadType = 1
 )
 
+type MaaDbgControllerType uint64
+
+const (
+	MaaDbgControllerType_Invalid             MaaDbgControllerType = 0
+	MaaDbgControllerType_CarouselImage       MaaDbgControllerType = 1
+	MaaDbgControllerType_ReplayRecording     MaaDbgControllerType = 2
+)
+
 var (
 	MaaAdbControllerCreate       func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
 	MaaPlayCoverControllerCreate func(address, uuid string) uintptr
 	MaaWin32ControllerCreate     func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
-	MaaCustomControllerCreate  func(controller unsafe.Pointer, controllerArg uintptr) uintptr
-	MaaGamepadControllerCreate func(hWnd unsafe.Pointer, gamepadType MaaGamepadType, screencapMethod uint64) uintptr
+	MaaCustomControllerCreate    func(controller unsafe.Pointer, controllerArg uintptr) uintptr
+	MaaGamepadControllerCreate   func(hWnd unsafe.Pointer, gamepadType MaaGamepadType, screencapMethod uint64) uintptr
+	MaaDbgControllerCreate       func(readPath, writePath string, dbgType MaaDbgControllerType, config string) uintptr
 	MaaControllerDestroy         func(ctrl uintptr)
 	MaaControllerAddSink         func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64
 	MaaControllerRemoveSink      func(ctrl uintptr, sinkId int64)
@@ -206,20 +218,22 @@ var (
 )
 
 var (
-	MaaContextRunTask          func(context uintptr, entry, pipelineOverride string) int64
-	MaaContextRunRecognition   func(context uintptr, entry, pipelineOverride string, image uintptr) int64
-	MaaContextRunAction        func(context uintptr, entry, pipelineOverride string, box uintptr, recoDetail string) int64
-	MaaContextOverridePipeline func(context uintptr, pipelineOverride string) bool
-	MaaContextOverrideNext     func(context uintptr, nodeName string, nextList uintptr) bool
-	MaaContextOverrideImage    func(context uintptr, imageName string, image uintptr) bool
-	MaaContextGetNodeData      func(context uintptr, nodeName string, buffer uintptr) bool
-	MaaContextGetTaskId        func(context uintptr) int64
-	MaaContextGetTasker        func(context uintptr) uintptr
-	MaaContextClone            func(context uintptr) uintptr
-	MaaContextSetAnchor        func(context uintptr, anchorName, nodeName string) bool
-	MaaContextGetAnchor        func(context uintptr, anchorName string, buffer uintptr) bool
-	MaaContextGetHitCount      func(context uintptr, nodeName string, count *uint64) bool
-	MaaContextClearHitCount    func(context uintptr, nodeName string) bool
+	MaaContextRunTask             func(context uintptr, entry, pipelineOverride string) int64
+	MaaContextRunRecognition      func(context uintptr, entry, pipelineOverride string, image uintptr) int64
+	MaaContextRunAction           func(context uintptr, entry, pipelineOverride string, box uintptr, recoDetail string) int64
+	MaaContextRunRecognitionDirect func(context uintptr, recoType, recoParam string, image uintptr) int64
+	MaaContextRunActionDirect     func(context uintptr, actionType, actionParam string, box uintptr, recoDetail string) int64
+	MaaContextOverridePipeline    func(context uintptr, pipelineOverride string) bool
+	MaaContextOverrideNext        func(context uintptr, nodeName string, nextList uintptr) bool
+	MaaContextOverrideImage       func(context uintptr, imageName string, image uintptr) bool
+	MaaContextGetNodeData         func(context uintptr, nodeName string, buffer uintptr) bool
+	MaaContextGetTaskId           func(context uintptr) int64
+	MaaContextGetTasker           func(context uintptr) uintptr
+	MaaContextClone               func(context uintptr) uintptr
+	MaaContextSetAnchor           func(context uintptr, anchorName, nodeName string) bool
+	MaaContextGetAnchor           func(context uintptr, anchorName string, buffer uintptr) bool
+	MaaContextGetHitCount         func(context uintptr, nodeName string, count *uint64) bool
+	MaaContextClearHitCount       func(context uintptr, nodeName string) bool
 )
 
 var (
@@ -241,16 +255,19 @@ var (
 	MaaStringListBufferRemove  func(handle uintptr, index uint64) bool
 	MaaStringListBufferClear   func(handle uintptr) bool
 
-	MaaImageBufferCreate         func() uintptr
-	MaaImageBufferDestroy        func(handle uintptr)
-	MaaImageBufferIsEmpty        func(handle uintptr) bool
-	MaaImageBufferClear          func(handle uintptr) bool
-	MaaImageBufferGetRawData     func(handle uintptr) unsafe.Pointer
-	MaaImageBufferWidth          func(handle uintptr) int32
-	MaaImageBufferHeight         func(handle uintptr) int32
-	MaaImageBufferChannels       func(handle uintptr) int32
-	MaaImageBufferType       func(handle uintptr) int32
-	MaaImageBufferSetRawData func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
+	MaaImageBufferCreate          func() uintptr
+	MaaImageBufferDestroy         func(handle uintptr)
+	MaaImageBufferIsEmpty         func(handle uintptr) bool
+	MaaImageBufferClear           func(handle uintptr) bool
+	MaaImageBufferGetRawData      func(handle uintptr) unsafe.Pointer
+	MaaImageBufferWidth           func(handle uintptr) int32
+	MaaImageBufferHeight          func(handle uintptr) int32
+	MaaImageBufferChannels        func(handle uintptr) int32
+	MaaImageBufferType            func(handle uintptr) int32
+	MaaImageBufferSetRawData      func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
+	MaaImageBufferGetEncoded      func(handle uintptr) unsafe.Pointer
+	MaaImageBufferGetEncodedSize  func(handle uintptr) uint64
+	MaaImageBufferSetEncoded      func(handle uintptr, data unsafe.Pointer, size uint64) bool
 
 	MaaImageListBufferCreate  func() uintptr
 	MaaImageListBufferDestroy func(handle uintptr)
@@ -379,6 +396,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaTaskerGetNodeDetail, maaFramework, "MaaTaskerGetNodeDetail")
 	purego.RegisterLibFunc(&MaaTaskerGetTaskDetail, maaFramework, "MaaTaskerGetTaskDetail")
 	purego.RegisterLibFunc(&MaaTaskerGetLatestNode, maaFramework, "MaaTaskerGetLatestNode")
+	purego.RegisterLibFunc(&MaaTaskerOverridePipeline, maaFramework, "MaaTaskerOverridePipeline")
 	// Resource
 	purego.RegisterLibFunc(&MaaResourceCreate, maaFramework, "MaaResourceCreate")
 	purego.RegisterLibFunc(&MaaResourceDestroy, maaFramework, "MaaResourceDestroy")
@@ -408,12 +426,15 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaResourceGetNodeList, maaFramework, "MaaResourceGetNodeList")
 	purego.RegisterLibFunc(&MaaResourceGetCustomRecognitionList, maaFramework, "MaaResourceGetCustomRecognitionList")
 	purego.RegisterLibFunc(&MaaResourceGetCustomActionList, maaFramework, "MaaResourceGetCustomActionList")
+	purego.RegisterLibFunc(&MaaResourceGetDefaultRecognitionParam, maaFramework, "MaaResourceGetDefaultRecognitionParam")
+	purego.RegisterLibFunc(&MaaResourceGetDefaultActionParam, maaFramework, "MaaResourceGetDefaultActionParam")
 	// Controller
 	purego.RegisterLibFunc(&MaaAdbControllerCreate, maaFramework, "MaaAdbControllerCreate")
 	purego.RegisterLibFunc(&MaaPlayCoverControllerCreate, maaFramework, "MaaPlayCoverControllerCreate")
 	purego.RegisterLibFunc(&MaaWin32ControllerCreate, maaFramework, "MaaWin32ControllerCreate")
 	purego.RegisterLibFunc(&MaaCustomControllerCreate, maaFramework, "MaaCustomControllerCreate")
 	purego.RegisterLibFunc(&MaaGamepadControllerCreate, maaFramework, "MaaGamepadControllerCreate")
+	purego.RegisterLibFunc(&MaaDbgControllerCreate, maaFramework, "MaaDbgControllerCreate")
 	purego.RegisterLibFunc(&MaaControllerDestroy, maaFramework, "MaaControllerDestroy")
 	purego.RegisterLibFunc(&MaaControllerAddSink, maaFramework, "MaaControllerAddSink")
 	purego.RegisterLibFunc(&MaaControllerRemoveSink, maaFramework, "MaaControllerRemoveSink")
@@ -447,6 +468,8 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaContextRunTask, maaFramework, "MaaContextRunTask")
 	purego.RegisterLibFunc(&MaaContextRunRecognition, maaFramework, "MaaContextRunRecognition")
 	purego.RegisterLibFunc(&MaaContextRunAction, maaFramework, "MaaContextRunAction")
+	purego.RegisterLibFunc(&MaaContextRunRecognitionDirect, maaFramework, "MaaContextRunRecognitionDirect")
+	purego.RegisterLibFunc(&MaaContextRunActionDirect, maaFramework, "MaaContextRunActionDirect")
 	purego.RegisterLibFunc(&MaaContextOverridePipeline, maaFramework, "MaaContextOverridePipeline")
 	purego.RegisterLibFunc(&MaaContextOverrideNext, maaFramework, "MaaContextOverrideNext")
 	purego.RegisterLibFunc(&MaaContextOverrideImage, maaFramework, "MaaContextOverrideImage")
@@ -485,6 +508,9 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaImageBufferChannels, maaFramework, "MaaImageBufferChannels")
 	purego.RegisterLibFunc(&MaaImageBufferType, maaFramework, "MaaImageBufferType")
 	purego.RegisterLibFunc(&MaaImageBufferSetRawData, maaFramework, "MaaImageBufferSetRawData")
+	purego.RegisterLibFunc(&MaaImageBufferGetEncoded, maaFramework, "MaaImageBufferGetEncoded")
+	purego.RegisterLibFunc(&MaaImageBufferGetEncodedSize, maaFramework, "MaaImageBufferGetEncodedSize")
+	purego.RegisterLibFunc(&MaaImageBufferSetEncoded, maaFramework, "MaaImageBufferSetEncoded")
 	purego.RegisterLibFunc(&MaaImageListBufferCreate, maaFramework, "MaaImageListBufferCreate")
 	purego.RegisterLibFunc(&MaaImageListBufferDestroy, maaFramework, "MaaImageListBufferDestroy")
 	purego.RegisterLibFunc(&MaaImageListBufferIsEmpty, maaFramework, "MaaImageListBufferIsEmpty")

@@ -130,6 +130,43 @@ func (ctx *Context) RunAction(entry string, box Rect, recognitionDetail string, 
 	return ctx.runAction(entry, ctx.handleOverride(override...), box, recognitionDetail)
 }
 
+// RunRecognitionDirect runs recognition directly with type and parameters, without requiring a pipeline entry.
+// It accepts a recognition type string (e.g., "OCR", "TemplateMatch"), recognition parameters as JSON,
+// and an image to recognize.
+func (ctx *Context) RunRecognitionDirect(recoType NodeRecognitionType, recoParam NodeRecognitionParam, img image.Image) *RecognitionDetail {
+	imgBuf := buffer.NewImageBuffer()
+	imgBuf.Set(img)
+	defer imgBuf.Destroy()
+
+	recParamJSON, _ := json.Marshal(recoParam)
+
+	recId := native.MaaContextRunRecognitionDirect(ctx.handle, string(recoType), string(recParamJSON), imgBuf.Handle())
+	if recId == 0 {
+		return nil
+	}
+	tasker := ctx.GetTasker()
+	return tasker.getRecognitionDetail(recId)
+}
+
+// RunActionDirect runs action directly with type and parameters, without requiring a pipeline entry.
+// It accepts an action type string (e.g., "Click", "Swipe"), action parameters as JSON,
+// a box for the action position, and recognition details.
+func (ctx *Context) RunActionDirect(actionType NodeActionType, actionParam NodeActionParam, box Rect, recoDetail *RecognitionDetail) *ActionDetail {
+	rectBuf := buffer.NewRectBuffer()
+	rectBuf.Set(box)
+	defer rectBuf.Destroy()
+
+	actParamJSON, _ := json.Marshal(actionParam)
+	recoDetailJSON, _ := json.Marshal(recoDetail)
+
+	actId := native.MaaContextRunActionDirect(ctx.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
+	if actId == 0 {
+		return nil
+	}
+	tasker := ctx.GetTasker()
+	return tasker.getActionDetail(actId)
+}
+
 func (ctx *Context) overridePipeline(override string) bool {
 	return native.MaaContextOverridePipeline(ctx.handle, override)
 }

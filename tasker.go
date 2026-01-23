@@ -167,6 +167,30 @@ func (t *Tasker) ClearCache() bool {
 	return native.MaaTaskerClearCache(t.handle)
 }
 
+func (t *Tasker) overridePipeline(taskId int64, override string) bool {
+	return native.MaaTaskerOverridePipeline(t.handle, taskId, override)
+}
+
+// OverridePipeline overrides the pipeline for a running task.
+// The `override` parameter can be a JSON string or any data type that can be marshaled to JSON.
+func (t *Tasker) OverridePipeline(taskId int64, override any) bool {
+	switch v := override.(type) {
+	case string:
+		return t.overridePipeline(taskId, v)
+	case []byte:
+		return t.overridePipeline(taskId, string(v))
+	default:
+		if v == nil {
+			return t.overridePipeline(taskId, "{}")
+		}
+		jsonBytes, err := json.Marshal(v)
+		if err != nil {
+			return false
+		}
+		return t.overridePipeline(taskId, string(jsonBytes))
+	}
+}
+
 type RecognitionDetail struct {
 	ID         int64
 	Name       string

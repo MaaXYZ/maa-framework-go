@@ -360,6 +360,24 @@ func (r *Resource) GetCustomActionList() ([]string, bool) {
 	return actionList.GetAll(), true
 }
 
+// GetDefaultRecognitionParam returns the default recognition parameters for the specified type from DefaultPipelineMgr.
+// recoType is a recognition type string (e.g., "OCR", "TemplateMatch").
+func (r *Resource) GetDefaultRecognitionParam(recoType string) (string, bool) {
+	buf := buffer.NewStringBuffer()
+	defer buf.Destroy()
+	ok := native.MaaResourceGetDefaultRecognitionParam(r.handle, recoType, buf.Handle())
+	return buf.Get(), ok
+}
+
+// GetDefaultActionParam returns the default action parameters for the specified type from DefaultPipelineMgr.
+// actionType is an action type string (e.g., "Click", "Swipe").
+func (r *Resource) GetDefaultActionParam(actionType string) (string, bool) {
+	buf := buffer.NewStringBuffer()
+	defer buf.Destroy()
+	ok := native.MaaResourceGetDefaultActionParam(r.handle, actionType, buf.Handle())
+	return buf.Get(), ok
+}
+
 // AddSink adds a event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
 func (r *Resource) AddSink(sink ResourceEventSink) int64 {
