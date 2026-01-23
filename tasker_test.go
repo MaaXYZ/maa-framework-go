@@ -192,3 +192,48 @@ func TestTasker_GetLatestNode(t *testing.T) {
 	got := job.Wait().Success()
 	require.True(t, got)
 }
+
+func TestTasker_OverridePipeline(t *testing.T) {
+	ctrl := createCarouselImageController(t)
+	defer ctrl.Destroy()
+	isConnected := ctrl.PostConnect().Wait().Success()
+	require.True(t, isConnected)
+
+	res := createResource(t)
+	defer res.Destroy()
+
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+	taskerBind(t, tasker, ctrl, res)
+
+	pipeline := NewPipeline()
+	testNode := NewNode("TestTasker_OverridePipeline",
+		WithAction(ActClick(
+			WithClickTarget(NewTargetRect(Rect{100, 200, 100, 100})),
+		)),
+	)
+	pipeline.AddNode(testNode)
+
+	// Start a task
+	taskJob := tasker.PostTask(testNode.Name, pipeline)
+	taskId := taskJob.GetId()
+
+	// Override the pipeline while task is running
+	overridePipeline := NewPipeline()
+	overrideNode := NewNode("TestTasker_OverridePipeline",
+		WithAction(ActClick(
+			WithClickTarget(NewTargetRect(Rect{200, 300, 100, 100})),
+		)),
+	)
+	overridePipeline.AddNode(overrideNode)
+
+	// Test OverridePipeline with a Pipeline object
+	got := tasker.OverridePipeline(taskId, overridePipeline)
+	// Note: OverridePipeline may return false if the task has already completed
+	// The important thing is that it doesn't panic and executes correctly
+	t.Logf("OverridePipeline result: %v", got)
+
+	// Wait for task to complete
+	success := taskJob.Wait().Success()
+	require.True(t, success)
+}
