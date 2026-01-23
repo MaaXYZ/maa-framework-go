@@ -361,20 +361,20 @@ func (r *Resource) GetCustomActionList() ([]string, bool) {
 }
 
 // GetDefaultRecognitionParam returns the default recognition parameters for the specified type from DefaultPipelineMgr.
-// recoType is a recognition type string (e.g., "OCR", "TemplateMatch").
-func (r *Resource) GetDefaultRecognitionParam(recoType string) (string, bool) {
+// recoType is a recognition type (e.g., NodeRecognitionTypeOCR, NodeRecognitionTypeTemplateMatch).
+func (r *Resource) GetDefaultRecognitionParam(recoType NodeRecognitionType) (string, bool) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
-	ok := native.MaaResourceGetDefaultRecognitionParam(r.handle, recoType, buf.Handle())
+	ok := native.MaaResourceGetDefaultRecognitionParam(r.handle, string(recoType), buf.Handle())
 	return buf.Get(), ok
 }
 
 // GetDefaultActionParam returns the default action parameters for the specified type from DefaultPipelineMgr.
-// actionType is an action type string (e.g., "Click", "Swipe").
-func (r *Resource) GetDefaultActionParam(actionType string) (string, bool) {
+// actionType is an action type (e.g., NodeActionTypeClick, NodeActionTypeSwipe).
+func (r *Resource) GetDefaultActionParam(actionType NodeActionType) (string, bool) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
-	ok := native.MaaResourceGetDefaultActionParam(r.handle, actionType, buf.Handle())
+	ok := native.MaaResourceGetDefaultActionParam(r.handle, string(actionType), buf.Handle())
 	return buf.Get(), ok
 }
 
