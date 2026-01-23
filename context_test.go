@@ -149,6 +149,89 @@ func TestContext_RunAction(t *testing.T) {
 	require.True(t, got)
 }
 
+type testContextRunRecognitionDirectAct struct {
+	t *testing.T
+}
+
+func (a *testContextRunRecognitionDirectAct) Run(ctx *Context, _ *CustomActionArg) bool {
+	img := ctx.GetTasker().GetController().CacheImage()
+	require.NotNil(a.t, img)
+
+	// Test RunRecognitionDirect with DirectHit recognition
+	detail := ctx.RunRecognitionDirect(NodeRecognitionTypeDirectHit, &NodeDirectHitParam{}, img)
+	// Note: The detail may be nil if recognition doesn't hit, which is expected behavior
+	// The test validates that the API call executes without panic
+	_ = detail
+	return true
+}
+
+func TestContext_RunRecognitionDirect(t *testing.T) {
+	ctrl := createCarouselImageController(t)
+	defer ctrl.Destroy()
+	isConnected := ctrl.PostConnect().Wait().Success()
+	require.True(t, isConnected)
+
+	res := createResource(t)
+	defer res.Destroy()
+
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+	taskerBind(t, tasker, ctrl, res)
+
+	ok := res.RegisterCustomAction("TestContext_RunRecognitionDirectAct", &testContextRunRecognitionDirectAct{t})
+	require.True(t, ok)
+
+	pipeline := NewPipeline()
+	testContext_RunRecognitionDirectNode := NewNode("TestContext_RunRecognitionDirect",
+		WithAction(ActCustom("TestContext_RunRecognitionDirectAct")),
+	)
+	pipeline.AddNode(testContext_RunRecognitionDirectNode)
+
+	got := tasker.PostTask(testContext_RunRecognitionDirectNode.Name, pipeline).
+		Wait().Success()
+	require.True(t, got)
+}
+
+type testContextRunActionDirectAct struct {
+	t *testing.T
+}
+
+func (a *testContextRunActionDirectAct) Run(ctx *Context, arg *CustomActionArg) bool {
+	// Test RunActionDirect with DoNothing action
+	detail := ctx.RunActionDirect(NodeActionTypeDoNothing, &NodeDoNothingParam{}, arg.Box, arg.RecognitionDetail)
+	// Note: The detail may be nil depending on the framework state
+	// The test validates that the API call executes without panic
+	_ = detail
+	return true
+}
+
+func TestContext_RunActionDirect(t *testing.T) {
+	ctrl := createCarouselImageController(t)
+	defer ctrl.Destroy()
+	isConnected := ctrl.PostConnect().Wait().Success()
+	require.True(t, isConnected)
+
+	res := createResource(t)
+	defer res.Destroy()
+
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+	taskerBind(t, tasker, ctrl, res)
+
+	ok := res.RegisterCustomAction("TestContext_RunActionDirectAct", &testContextRunActionDirectAct{t})
+	require.True(t, ok)
+
+	pipeline := NewPipeline()
+	testContext_RunActionDirectNode := NewNode("TestContext_RunActionDirect",
+		WithAction(ActCustom("TestContext_RunActionDirectAct")),
+	)
+	pipeline.AddNode(testContext_RunActionDirectNode)
+
+	got := tasker.PostTask(testContext_RunActionDirectNode.Name, pipeline).
+		Wait().Success()
+	require.True(t, got)
+}
+
 type testContextOverriderPipelineAct struct {
 	t *testing.T
 }
