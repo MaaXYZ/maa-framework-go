@@ -4,7 +4,10 @@ package native
 
 func Init(libDir string) error {
 
-	handleLibDir(libDir)
+	err := handleLibDir(libDir)
+	if err != nil {
+		return err
+	}
 
 	initFns := []func(libDir string) error{
 		initFramework,

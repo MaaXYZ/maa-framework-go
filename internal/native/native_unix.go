@@ -4,8 +4,9 @@ package native
 
 import "github.com/ebitengine/purego"
 
-func handleLibDir(libDir string) {
+func handleLibDir(_ string) error {
 	// do nothing
+	return nil
 }
 
 func openLibrary(name string) (uintptr, error) {
