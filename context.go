@@ -138,7 +138,10 @@ func (ctx *Context) RunRecognitionDirect(recoType NodeRecognitionType, recoParam
 	imgBuf.Set(img)
 	defer imgBuf.Destroy()
 
-	recParamJSON, _ := json.Marshal(recoParam)
+	recParamJSON, err := json.Marshal(recoParam)
+	if err != nil {
+		return nil
+	}
 
 	recId := native.MaaContextRunRecognitionDirect(ctx.handle, string(recoType), string(recParamJSON), imgBuf.Handle())
 	if recId == 0 {
@@ -156,8 +159,14 @@ func (ctx *Context) RunActionDirect(actionType NodeActionType, actionParam NodeA
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
 
-	actParamJSON, _ := json.Marshal(actionParam)
-	recoDetailJSON, _ := json.Marshal(recoDetail)
+	actParamJSON, err := json.Marshal(actionParam)
+	if err != nil {
+		return nil
+	}
+	recoDetailJSON, err := json.Marshal(recoDetail)
+	if err != nil {
+		return nil
+	}
 
 	actId := native.MaaContextRunActionDirect(ctx.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
 	if actId == 0 {
