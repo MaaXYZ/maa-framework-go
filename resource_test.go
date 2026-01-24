@@ -295,3 +295,41 @@ func TestResource_GetNodeList(t *testing.T) {
 	require.True(t, ok)
 	require.NotEmpty(t, taskList)
 }
+
+func TestResource_GetDefaultRecognitionParam(t *testing.T) {
+	res := createResource(t)
+	defer res.Destroy()
+
+	// Test getting default recognition parameters for DirectHit type
+	param, ok := res.GetDefaultRecognitionParam(NodeRecognitionTypeDirectHit)
+	require.True(t, ok)
+	require.NotNil(t, param)
+	_, isDirectHit := param.(*NodeDirectHitParam)
+	require.True(t, isDirectHit, "param should be *NodeDirectHitParam")
+
+	// Test getting default recognition parameters for OCR type
+	param2, ok2 := res.GetDefaultRecognitionParam(NodeRecognitionTypeOCR)
+	require.True(t, ok2)
+	require.NotNil(t, param2)
+	_, isOCR := param2.(*NodeOCRParam)
+	require.True(t, isOCR, "param2 should be *NodeOCRParam")
+}
+
+func TestResource_GetDefaultActionParam(t *testing.T) {
+	res := createResource(t)
+	defer res.Destroy()
+
+	// Test getting default action parameters for Click type
+	param, ok := res.GetDefaultActionParam(NodeActionTypeClick)
+	require.True(t, ok)
+	require.NotNil(t, param)
+	_, isClick := param.(*NodeClickParam)
+	require.True(t, isClick, "param should be *NodeClickParam")
+
+	// Test getting default action parameters for DoNothing type
+	param2, ok2 := res.GetDefaultActionParam(NodeActionTypeDoNothing)
+	require.True(t, ok2)
+	require.NotNil(t, param2)
+	_, isDoNothing := param2.(*NodeDoNothingParam)
+	require.True(t, isDoNothing, "param2 should be *NodeDoNothingParam")
+}

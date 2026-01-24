@@ -127,3 +127,7 @@ func (i *ImageBuffer) getType() int32 {
 func (i *ImageBuffer) setRawData(data unsafe.Pointer, width, height, imageType int32) bool {
 	return native.MaaImageBufferSetRawData(i.handle, data, width, height, imageType)
 }
+
+// NOTE: GetEncoded and SetEncoded are intentionally NOT implemented in Go binding.
+// Go handles image encoding/decoding natively through the standard library (image/png, image/jpeg, etc.).
+// Do not add encoded image methods here.

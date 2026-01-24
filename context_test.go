@@ -1363,3 +1363,86 @@ func TestContext_Clone(t *testing.T) {
 		Wait().Success()
 	require.True(t, got)
 }
+
+type testContextRunRecognitionDirectAct struct {
+	t *testing.T
+}
+
+func (a *testContextRunRecognitionDirectAct) Run(ctx *Context, _ *CustomActionArg) bool {
+	img := ctx.GetTasker().GetController().CacheImage()
+	require.NotNil(a.t, img)
+
+	// Test RunRecognitionDirect with DirectHit recognition type
+	detail := ctx.RunRecognitionDirect(NodeRecognitionTypeDirectHit, &NodeDirectHitParam{}, img)
+	require.NotNil(a.t, detail)
+	require.True(a.t, detail.Hit)
+	return true
+}
+
+func TestContext_RunRecognitionDirect(t *testing.T) {
+	ctrl := createCarouselImageController(t)
+	defer ctrl.Destroy()
+	isConnected := ctrl.PostConnect().Wait().Success()
+	require.True(t, isConnected)
+
+	res := createResource(t)
+	defer res.Destroy()
+
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+	taskerBind(t, tasker, ctrl, res)
+
+	ok := res.RegisterCustomAction("TestContext_RunRecognitionDirectAct", &testContextRunRecognitionDirectAct{t})
+	require.True(t, ok)
+
+	pipeline := NewPipeline()
+	testContext_RunRecognitionDirectNode := NewNode("TestContext_RunRecognitionDirect",
+		WithAction(ActCustom("TestContext_RunRecognitionDirectAct")),
+	)
+	pipeline.AddNode(testContext_RunRecognitionDirectNode)
+
+	got := tasker.PostTask(testContext_RunRecognitionDirectNode.Name, pipeline).
+		Wait().Success()
+	require.True(t, got)
+}
+
+type testContextRunActionDirectAct struct {
+	t *testing.T
+}
+
+func (a *testContextRunActionDirectAct) Run(ctx *Context, arg *CustomActionArg) bool {
+	// Test RunActionDirect with Click action type
+	clickParam := &NodeClickParam{
+		Target: NewTargetRect(Rect{100, 100, 10, 10}),
+	}
+	detail := ctx.RunActionDirect(NodeActionTypeClick, clickParam, arg.Box, arg.RecognitionDetail)
+	require.NotNil(a.t, detail)
+	return true
+}
+
+func TestContext_RunActionDirect(t *testing.T) {
+	ctrl := createCarouselImageController(t)
+	defer ctrl.Destroy()
+	isConnected := ctrl.PostConnect().Wait().Success()
+	require.True(t, isConnected)
+
+	res := createResource(t)
+	defer res.Destroy()
+
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+	taskerBind(t, tasker, ctrl, res)
+
+	ok := res.RegisterCustomAction("TestContext_RunActionDirectAct", &testContextRunActionDirectAct{t})
+	require.True(t, ok)
+
+	pipeline := NewPipeline()
+	testContext_RunActionDirectNode := NewNode("TestContext_RunActionDirect",
+		WithAction(ActCustom("TestContext_RunActionDirectAct")),
+	)
+	pipeline.AddNode(testContext_RunActionDirectNode)
+
+	got := tasker.PostTask(testContext_RunActionDirectNode.Name, pipeline).
+		Wait().Success()
+	require.True(t, got)
+}

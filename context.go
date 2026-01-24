@@ -130,6 +130,52 @@ func (ctx *Context) RunAction(entry string, box Rect, recognitionDetail string, 
 	return ctx.runAction(entry, ctx.handleOverride(override...), box, recognitionDetail)
 }
 
+// RunRecognitionDirect runs recognition directly with type and parameters, without requiring a pipeline entry.
+// It accepts a recognition type string (e.g., "OCR", "TemplateMatch"), recognition parameters as JSON,
+// and an image to recognize.
+func (ctx *Context) RunRecognitionDirect(recoType NodeRecognitionType, recoParam NodeRecognitionParam, img image.Image) *RecognitionDetail {
+	imgBuf := buffer.NewImageBuffer()
+	imgBuf.Set(img)
+	defer imgBuf.Destroy()
+
+	recParamJSON, err := json.Marshal(recoParam)
+	if err != nil {
+		return nil
+	}
+
+	recId := native.MaaContextRunRecognitionDirect(ctx.handle, string(recoType), string(recParamJSON), imgBuf.Handle())
+	if recId == 0 {
+		return nil
+	}
+	tasker := ctx.GetTasker()
+	return tasker.getRecognitionDetail(recId)
+}
+
+// RunActionDirect runs action directly with type and parameters, without requiring a pipeline entry.
+// It accepts an action type string (e.g., "Click", "Swipe"), action parameters as JSON,
+// a box for the action position, and recognition details.
+func (ctx *Context) RunActionDirect(actionType NodeActionType, actionParam NodeActionParam, box Rect, recoDetail *RecognitionDetail) *ActionDetail {
+	rectBuf := buffer.NewRectBuffer()
+	rectBuf.Set(box)
+	defer rectBuf.Destroy()
+
+	actParamJSON, err := json.Marshal(actionParam)
+	if err != nil {
+		return nil
+	}
+	recoDetailJSON, err := json.Marshal(recoDetail)
+	if err != nil {
+		return nil
+	}
+
+	actId := native.MaaContextRunActionDirect(ctx.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
+	if actId == 0 {
+		return nil
+	}
+	tasker := ctx.GetTasker()
+	return tasker.getActionDetail(actId)
+}
+
 func (ctx *Context) overridePipeline(override string) bool {
 	return native.MaaContextOverridePipeline(ctx.handle, override)
 }
@@ -207,7 +253,7 @@ func (ctx *Context) GetNodeData(name string) (*Node, error) {
 func (ctx *Context) GetTaskJob() *TaskJob {
 	tasker := ctx.GetTasker()
 	taskId := native.MaaContextGetTaskId(ctx.handle)
-	return newTaskJob(taskId, tasker.status, tasker.wait, tasker.getTaskDetail)
+	return newTaskJob(taskId, tasker.status, tasker.wait, tasker.getTaskDetail, tasker.overridePipeline)
 }
 
 // GetTasker return current Tasker.

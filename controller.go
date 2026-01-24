@@ -152,6 +152,10 @@ func NewGamepadController(
 	}
 }
 
+// NOTE: MaaDbgController is intentionally NOT implemented in Go binding.
+// Use CarouselImageController or BlankController from dbg_controller.go for debugging purposes.
+// Do not add NewDbgController here.
+
 // Destroy frees the controller instance.
 func (c *Controller) Destroy() {
 	store.CtrlStore.Lock()
