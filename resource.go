@@ -362,20 +362,124 @@ func (r *Resource) GetCustomActionList() ([]string, bool) {
 
 // GetDefaultRecognitionParam returns the default recognition parameters for the specified type from DefaultPipelineMgr.
 // recoType is a recognition type (e.g., NodeRecognitionTypeOCR, NodeRecognitionTypeTemplateMatch).
-func (r *Resource) GetDefaultRecognitionParam(recoType NodeRecognitionType) (string, bool) {
+// Returns the parsed NodeRecognitionParam interface and a boolean indicating success.
+func (r *Resource) GetDefaultRecognitionParam(recoType NodeRecognitionType) (NodeRecognitionParam, bool) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaResourceGetDefaultRecognitionParam(r.handle, string(recoType), buf.Handle())
-	return buf.Get(), ok
+	if !ok {
+		return nil, false
+	}
+
+	jsonStr := buf.Get()
+	if jsonStr == "" {
+		return nil, false
+	}
+
+	// Create the appropriate param type based on recoType
+	var param NodeRecognitionParam
+	switch recoType {
+	case NodeRecognitionTypeDirectHit, "":
+		param = &NodeDirectHitParam{}
+	case NodeRecognitionTypeTemplateMatch:
+		param = &NodeTemplateMatchParam{}
+	case NodeRecognitionTypeFeatureMatch:
+		param = &NodeFeatureMatchParam{}
+	case NodeRecognitionTypeColorMatch:
+		param = &NodeColorMatchParam{}
+	case NodeRecognitionTypeOCR:
+		param = &NodeOCRParam{}
+	case NodeRecognitionTypeNeuralNetworkClassify:
+		param = &NodeNeuralNetworkClassifyParam{}
+	case NodeRecognitionTypeNeuralNetworkDetect:
+		param = &NodeNeuralNetworkDetectParam{}
+	case NodeRecognitionTypeAnd:
+		param = &NodeAndRecognitionParam{}
+	case NodeRecognitionTypeOr:
+		param = &NodeOrRecognitionParam{}
+	case NodeRecognitionTypeCustom:
+		param = &NodeCustomRecognitionParam{}
+	default:
+		return nil, false
+	}
+
+	// Unmarshal the JSON string into the param
+	if err := json.Unmarshal([]byte(jsonStr), param); err != nil {
+		return nil, false
+	}
+
+	return param, true
 }
 
 // GetDefaultActionParam returns the default action parameters for the specified type from DefaultPipelineMgr.
 // actionType is an action type (e.g., NodeActionTypeClick, NodeActionTypeSwipe).
-func (r *Resource) GetDefaultActionParam(actionType NodeActionType) (string, bool) {
+// Returns the parsed NodeActionParam interface and a boolean indicating success.
+func (r *Resource) GetDefaultActionParam(actionType NodeActionType) (NodeActionParam, bool) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaResourceGetDefaultActionParam(r.handle, string(actionType), buf.Handle())
-	return buf.Get(), ok
+	if !ok {
+		return nil, false
+	}
+
+	jsonStr := buf.Get()
+	if jsonStr == "" {
+		return nil, false
+	}
+
+	// Create the appropriate param type based on actionType
+	var param NodeActionParam
+	switch actionType {
+	case NodeActionTypeDoNothing, "":
+		param = &NodeDoNothingParam{}
+	case NodeActionTypeClick:
+		param = &NodeClickParam{}
+	case NodeActionTypeLongPress:
+		param = &NodeLongPressParam{}
+	case NodeActionTypeSwipe:
+		param = &NodeSwipeParam{}
+	case NodeActionTypeMultiSwipe:
+		param = &NodeMultiSwipeParam{}
+	case NodeActionTypeTouchDown:
+		param = &NodeTouchDownParam{}
+	case NodeActionTypeTouchMove:
+		param = &NodeTouchMoveParam{}
+	case NodeActionTypeTouchUp:
+		param = &NodeTouchUpParam{}
+	case NodeActionTypeClickKey:
+		param = &NodeClickKeyParam{}
+	case NodeActionTypeLongPressKey:
+		param = &NodeLongPressKeyParam{}
+	case NodeActionTypeKeyDown:
+		param = &NodeKeyDownParam{}
+	case NodeActionTypeKeyUp:
+		param = &NodeKeyUpParam{}
+	case NodeActionTypeInputText:
+		param = &NodeInputTextParam{}
+	case NodeActionTypeStartApp:
+		param = &NodeStartAppParam{}
+	case NodeActionTypeStopApp:
+		param = &NodeStopAppParam{}
+	case NodeActionTypeStopTask:
+		param = &NodeStopTaskParam{}
+	case NodeActionTypeScroll:
+		param = &NodeScrollParam{}
+	case NodeActionTypeCommand:
+		param = &NodeCommandParam{}
+	case NodeActionTypeShell:
+		param = &NodeShellParam{}
+	case NodeActionTypeCustom:
+		param = &NodeCustomActionParam{}
+	default:
+		return nil, false
+	}
+
+	// Unmarshal the JSON string into the param
+	if err := json.Unmarshal([]byte(jsonStr), param); err != nil {
+		return nil, false
+	}
+
+	return param, true
 }
 
 // AddSink adds a event callback sink and returns the sink ID.
