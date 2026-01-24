@@ -378,11 +378,7 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 
 	nodeDetails := make([]*NodeDetail, size)
 	for i, nodeId := range nodeIdList {
-		nodeDetail := t.getNodeDetail(nodeId)
-		if nodeDetail != nil {
-			nodeDetails[i] = nil
-		}
-		nodeDetails[i] = nodeDetail
+		nodeDetails[i] = t.getNodeDetail(nodeId)
 	}
 
 	return &TaskDetail{
