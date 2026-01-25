@@ -195,6 +195,7 @@ type RecognitionDetail struct {
 	Hit        bool
 	Box        Rect
 	DetailJson string
+	Results    *RecognitionResults // (from DetailJson) if algorithm is DirectHit, And or OR, Results is nil
 	Raw        image.Image
 	Draws      []image.Image
 }
@@ -232,13 +233,18 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 	rawImg := raw.Get()
 	DrawImages := draws.GetAll()
 
+	detailJsonStr := detailJson.Get()
+	algorithmStr := algorithm.Get()
+	results := parseRecognitionResults(algorithmStr, detailJsonStr)
+
 	return &RecognitionDetail{
 		ID:         recId,
 		Name:       name.Get(),
-		Algorithm:  algorithm.Get(),
+		Algorithm:  algorithmStr,
 		Hit:        hit,
 		Box:        box.Get(),
-		DetailJson: detailJson.Get(),
+		DetailJson: detailJsonStr,
+		Results:    results,
 		Raw:        rawImg,
 		Draws:      DrawImages,
 	}

@@ -45,8 +45,8 @@ type CustomRecognitionArg struct {
 }
 
 type CustomRecognitionResult struct {
-	Box    Rect
-	Detail string
+	Box    Rect   `json:"box"`
+	Detail string `json:"detail"`
 }
 
 type CustomRecognitionRunner interface {
