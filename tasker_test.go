@@ -120,8 +120,8 @@ func TestTasker_PostStop(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	got := tasker.PostStop()
-	require.NotNil(t, got)
+	ok := tasker.PostStop().Wait().Success()
+	require.True(t, ok)
 }
 
 func TestTasker_GetResource(t *testing.T) {
