@@ -38,6 +38,36 @@ func unregisterEventCallback(id uint64) {
 	eventCallbacksMutex.Unlock()
 }
 
+type Event string
+
+func (e Event) String() string {
+	return string(e)
+}
+
+func (e Event) Starting() string {
+	return string(e) + ".Starting"
+}
+
+func (e Event) Succeeded() string {
+	return string(e) + ".Succeeded"
+}
+
+func (e Event) Failed() string {
+	return string(e) + ".Failed"
+}
+
+const (
+	EventResourceLoading     = Event("Resource.Loading")
+	EventControllerAction    = Event("Controller.Action")
+	EventTaskerTask          = Event("Tasker.Task")
+	EventNodePipelineNode    = Event("Node.PipelineNode")
+	EventNodeRecognitionNode = Event("Node.RecognitionNode")
+	EventNodeActionNode      = Event("Node.ActionNode")
+	EventNodeNextList        = Event("Node.NextList")
+	EventNodeRecognition     = Event("Node.Recognition")
+	EventNodeAction          = Event("Node.Action")
+)
+
 // EventStatus represents the current state of an event
 type EventStatus int
 
@@ -271,28 +301,28 @@ func (c *eventCallback) handleRaw(handle uintptr, msg string, detailsJSON []byte
 	}
 
 	eventName, eventStatus := parseEvent(msg)
-	switch eventName {
-	case "Resource.Loading":
+	switch Event(eventName) {
+	case EventResourceLoading:
 		handleResourceLoading(c.sink, handle, eventStatus, detailsJSON)
-	case "Controller.Action":
+	case EventControllerAction:
 		handleControllerAction(c.sink, handle, eventStatus, detailsJSON)
-	case "Tasker.Task":
+	case EventTaskerTask:
 		handleTaskerTask(c.sink, handle, eventStatus, detailsJSON)
-	case "Node.PipelineNode":
+	case EventNodePipelineNode:
 		handleNodePipelineNode(c.sink, handle, eventStatus, detailsJSON)
-	case "Node.RecognitionNode":
+	case EventNodeRecognitionNode:
 		handleNodeRecognitionNode(c.sink, handle, eventStatus, detailsJSON)
 
-	case "Node.ActionNode":
+	case EventNodeActionNode:
 		handleNodeActionNode(c.sink, handle, eventStatus, detailsJSON)
 
-	case "Node.NextList":
+	case EventNodeNextList:
 		handleNodeNextList(c.sink, handle, eventStatus, detailsJSON)
 
-	case "Node.Recognition":
+	case EventNodeRecognition:
 		handleNodeRecognition(c.sink, handle, eventStatus, detailsJSON)
 
-	case "Node.Action":
+	case EventNodeAction:
 		handleNodeAction(c.sink, handle, eventStatus, detailsJSON)
 
 	default:
