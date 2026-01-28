@@ -75,7 +75,10 @@ func _MaaCustomActionCallbackAgent(
 	ctx := &Context{handle: context}
 	tasker := ctx.GetTasker()
 	taskDetail := tasker.getTaskDetail(taskId)
-	recognitionDetail := tasker.getRecognitionDetail(recoId)
+	recognitionDetail, err := tasker.getRecognitionDetail(recoId)
+	if err != nil {
+		return 0
+	}
 	curBoxRectBuffer := buffer.NewRectBufferByHandle(box)
 
 	ok := action.Run(

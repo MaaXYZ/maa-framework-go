@@ -72,7 +72,11 @@ func (ctx *Context) runRecognition(entry, override string, img image.Image) *Rec
 		return nil
 	}
 	tasker := ctx.GetTasker()
-	return tasker.getRecognitionDetail(recId)
+	recognitionDetail, err := tasker.getRecognitionDetail(recId)
+	if err != nil {
+		return nil
+	}
+	return recognitionDetail
 }
 
 // RunRecognition run a recognition and return its detail.
@@ -148,7 +152,11 @@ func (ctx *Context) RunRecognitionDirect(recoType NodeRecognitionType, recoParam
 		return nil
 	}
 	tasker := ctx.GetTasker()
-	return tasker.getRecognitionDetail(recId)
+	recognitionDetail, err := tasker.getRecognitionDetail(recId)
+	if err != nil {
+		return nil
+	}
+	return recognitionDetail
 }
 
 // RunActionDirect runs action directly with type and parameters, without requiring a pipeline entry.

@@ -2,6 +2,7 @@ package maa
 
 import (
 	"encoding/json"
+	"errors"
 	"image"
 	"unsafe"
 
@@ -189,19 +190,20 @@ func (t *Tasker) overridePipeline(taskId int64, override any) bool {
 }
 
 type RecognitionDetail struct {
-	ID         int64
-	Name       string
-	Algorithm  string
-	Hit        bool
-	Box        Rect
-	DetailJson string
-	Results    *RecognitionResults // (from DetailJson) if algorithm is DirectHit, And or OR, Results is nil
-	Raw        image.Image
-	Draws      []image.Image
+	ID             int64
+	Name           string
+	Algorithm      string
+	Hit            bool
+	Box            Rect
+	DetailJson     string
+	Results        *RecognitionResults  // (from DetailJson) if algorithm is DirectHit, And or OR, Results is nil
+	CombinedResult []*RecognitionDetail // (from DetailJson) for And/Or recognition, nil for other algorithms
+	Raw            image.Image
+	Draws          []image.Image
 }
 
 // getRecognitionDetail queries recognition detail.
-func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
+func (t *Tasker) getRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	algorithm := buffer.NewStringBuffer()
@@ -227,7 +229,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 		draws.Handle(),
 	)
 	if !got {
-		return nil
+		return nil, errors.New("failed to get recognition detail")
 	}
 
 	rawImg := raw.Get()
@@ -235,19 +237,35 @@ func (t *Tasker) getRecognitionDetail(recId int64) *RecognitionDetail {
 
 	detailJsonStr := detailJson.Get()
 	algorithmStr := algorithm.Get()
-	results := parseRecognitionResults(algorithmStr, detailJsonStr)
+
+	var err error
+	var results *RecognitionResults
+	var combinedResults []*RecognitionDetail
+
+	if isCombinedRecognition(algorithmStr) {
+		combinedResults, err = parseCombinedResult(detailJsonStr)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		results, err = parseRecognitionResults(algorithmStr, detailJsonStr)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return &RecognitionDetail{
-		ID:         recId,
-		Name:       name.Get(),
-		Algorithm:  algorithmStr,
-		Hit:        hit,
-		Box:        box.Get(),
-		DetailJson: detailJsonStr,
-		Results:    results,
-		Raw:        rawImg,
-		Draws:      DrawImages,
-	}
+		ID:             recId,
+		Name:           name.Get(),
+		Algorithm:      algorithmStr,
+		Hit:            hit,
+		Box:            box.Get(),
+		DetailJson:     detailJsonStr,
+		Results:        results,
+		CombinedResult: combinedResults,
+		Raw:            rawImg,
+		Draws:          DrawImages,
+	}, nil
 }
 
 type ActionDetail struct {
@@ -319,7 +337,10 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 		return nil
 	}
 
-	recognitionDetail := t.getRecognitionDetail(recId)
+	recognitionDetail, err := t.getRecognitionDetail(recId)
+	if err != nil {
+		return nil
+	}
 	if recognitionDetail == nil {
 		return nil
 	}

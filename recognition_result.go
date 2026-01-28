@@ -2,7 +2,6 @@ package maa
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 type RecognitionResult struct {
@@ -175,10 +174,9 @@ func parseRecognitionResult(algorithm string, resultJson []byte) *RecognitionRes
 
 // parseRecognitionResults parses detailJson and returns RecognitionResults containing all, best, and filtered results.
 // Detail JSON format: {"all": [Result...], "best": [Result...], "filtered": [Result...]}
-// Returns nil if parsing fails, or an empty RecognitionResults if detailJson is empty or "{}".
-func parseRecognitionResults(algorithm, detailJson string) *RecognitionResults {
+func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults, error) {
 	if algorithm == string(NodeRecognitionTypeDirectHit) {
-		return nil
+		return nil, nil
 	}
 
 	// Handle empty or invalid JSON
@@ -187,7 +185,7 @@ func parseRecognitionResults(algorithm, detailJson string) *RecognitionResults {
 			All:      []*RecognitionResult{},
 			Best:     []*RecognitionResult{},
 			Filtered: []*RecognitionResult{},
-		}
+		}, nil
 	}
 
 	var raw struct {
@@ -197,8 +195,7 @@ func parseRecognitionResults(algorithm, detailJson string) *RecognitionResults {
 	}
 
 	if err := json.Unmarshal([]byte(detailJson), &raw); err != nil {
-		fmt.Println("parseRecognitionResults error:", err)
-		return nil
+		return nil, err
 	}
 
 	results := &RecognitionResults{
@@ -243,5 +240,70 @@ func parseRecognitionResults(algorithm, detailJson string) *RecognitionResults {
 		}
 	}
 
-	return results
+	return results, nil
+}
+
+// combinedResultItem represents a single item in the CombinedResult array for And/Or recognition.
+type combinedResultItem struct {
+	Algorithm string          `json:"algorithm"`
+	Box       Rect            `json:"box"`
+	Detail    json.RawMessage `json:"detail"`
+	Name      string          `json:"name"`
+	RecoID    int64           `json:"reco_id"`
+}
+
+// isCombinedRecognition returns true if the algorithm is a combined recognition (And or Or).
+func isCombinedRecognition(algorithm string) bool {
+	switch NodeRecognitionType(algorithm) {
+	case NodeRecognitionTypeAnd, NodeRecognitionTypeOr:
+		return true
+	default:
+		return false
+	}
+}
+
+// parseCombinedResult parses detailJson for And/Or recognition and returns an array of RecognitionDetail.
+// Detail JSON format: [{"algorithm": "...", "box": [...], "detail": {...}, "name": "...", "reco_id": ...}, ...]
+func parseCombinedResult(detailJson string) ([]*RecognitionDetail, error) {
+	if detailJson == "" || detailJson == "[]" {
+		return []*RecognitionDetail{}, nil
+	}
+
+	var items []combinedResultItem
+	if err := json.Unmarshal([]byte(detailJson), &items); err != nil {
+		return []*RecognitionDetail{}, err
+	}
+
+	combinedResult := make([]*RecognitionDetail, 0, len(items))
+	for _, item := range items {
+		var err error
+		var detail *RecognitionResults
+		var combined []*RecognitionDetail
+
+		if len(item.Detail) > 0 {
+			if isCombinedRecognition(item.Algorithm) {
+				combined, err = parseCombinedResult(string(item.Detail))
+				if err != nil {
+					return []*RecognitionDetail{}, err
+				}
+			} else {
+				detail, err = parseRecognitionResults(item.Algorithm, string(item.Detail))
+				if err != nil {
+					return []*RecognitionDetail{}, err
+				}
+			}
+		}
+
+		combinedResult = append(combinedResult, &RecognitionDetail{
+			ID:             item.RecoID,
+			Name:           item.Name,
+			Algorithm:      item.Algorithm,
+			Box:            item.Box,
+			DetailJson:     string(item.Detail),
+			Results:        detail,
+			CombinedResult: combined,
+		})
+	}
+
+	return combinedResult, nil
 }
