@@ -86,11 +86,11 @@ func (ctx *Context) runRecognition(entry, override string, img image.Image) *Rec
 //
 // Example 1:
 //
-//	ctx.RunRecognition("Task", `{"Task":{"recognition":"OCR","expected":"Hello"}}`)
+//	ctx.RunRecognition("Task", img, `{"Task":{"recognition":"OCR","expected":"Hello"}}`)
 //
 // Example 2:
 //
-//	ctx.RunRecognition("Task", map[string]interface{}{
+//	ctx.RunRecognition("Task", img, map[string]interface{}{
 //	    "Task": map[string]interface{}{
 //	        "recognition": "OCR",
 //	        "expected": "Hello",
@@ -124,11 +124,11 @@ func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetai
 //
 // Example 1:
 //
-//	ctx.RunAction("Task", `{"Task":{"action":"Click","target":[100, 200, 100, 100]}}`)
+//	ctx.RunAction("Task", box, recognitionDetail, `{"Task":{"action":"Click","target":[100, 200, 100, 100]}}`)
 //
 // Example 2:
 //
-//	ctx.RunAction("Task", map[string]interface{}{
+//	ctx.RunAction("Task", box, recognitionDetail, map[string]interface{}{
 //	    "Task": map[string]interface{}{
 //	        "action": "Click",
 //	        "target": []int{100, 200, 100, 100},
