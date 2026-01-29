@@ -275,9 +275,10 @@ type ActionDetail struct {
 	Box        Rect
 	Success    bool
 	DetailJson string
+	Result     *ActionResult
 }
 
-func (t *Tasker) getActionDetail(actionId int64) *ActionDetail {
+func (t *Tasker) getActionDetail(actionId int64) (*ActionDetail, error) {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	action := buffer.NewStringBuffer()
@@ -298,7 +299,13 @@ func (t *Tasker) getActionDetail(actionId int64) *ActionDetail {
 	)
 
 	if !got {
-		return nil
+		return nil, errors.New("failed to get action detail")
+	}
+
+	detailJsonStr := detailJson.Get()
+	result, err := parseActionResult(action.Get(), detailJsonStr)
+	if err != nil {
+		return nil, err
 	}
 
 	return &ActionDetail{
@@ -307,8 +314,9 @@ func (t *Tasker) getActionDetail(actionId int64) *ActionDetail {
 		Action:     action.Get(),
 		Box:        box.Get(),
 		Success:    success,
-		DetailJson: detailJson.Get(),
-	}
+		DetailJson: detailJsonStr,
+		Result:     result,
+	}, nil
 }
 
 type NodeDetail struct {
@@ -345,7 +353,10 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 		return nil
 	}
 
-	actionDetail := t.getActionDetail(actionId)
+	actionDetail, err := t.getActionDetail(actionId)
+	if err != nil {
+		return nil
+	}
 	if actionDetail == nil {
 		return nil
 	}

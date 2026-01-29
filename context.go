@@ -110,7 +110,11 @@ func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetai
 		return nil
 	}
 	tasker := ctx.GetTasker()
-	return tasker.getActionDetail(actId)
+	actionDetail, err := tasker.getActionDetail(actId)
+	if err != nil {
+		return nil
+	}
+	return actionDetail
 }
 
 // RunAction run an action and return its detail.
@@ -181,7 +185,11 @@ func (ctx *Context) RunActionDirect(actionType NodeActionType, actionParam NodeA
 		return nil
 	}
 	tasker := ctx.GetTasker()
-	return tasker.getActionDetail(actId)
+	actionDetail, err := tasker.getActionDetail(actId)
+	if err != nil {
+		return nil
+	}
+	return actionDetail
 }
 
 func (ctx *Context) overridePipeline(override string) bool {
