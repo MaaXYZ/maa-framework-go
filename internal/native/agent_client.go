@@ -12,6 +12,7 @@ var maaAgentClient uintptr
 
 var (
 	MaaAgentClientCreateV2                 func(identifier uintptr) uintptr
+	MaaAgentClientCreateTcp                func(port uint16) uintptr
 	MaaAgentClientDestroy                  func(client uintptr)
 	MaaAgentClientIdentifier               func(client uintptr, identifier uintptr) bool
 	MaaAgentClientBindResource             func(client uintptr, res uintptr) bool
@@ -58,6 +59,7 @@ func getMaaAgentClientLibrary() string {
 
 func registerAgentClient() {
 	purego.RegisterLibFunc(&MaaAgentClientCreateV2, maaAgentClient, "MaaAgentClientCreateV2")
+	purego.RegisterLibFunc(&MaaAgentClientCreateTcp, maaAgentClient, "MaaAgentClientCreateTcp")
 	purego.RegisterLibFunc(&MaaAgentClientDestroy, maaAgentClient, "MaaAgentClientDestroy")
 	purego.RegisterLibFunc(&MaaAgentClientIdentifier, maaAgentClient, "MaaAgentClientIdentifier")
 	purego.RegisterLibFunc(&MaaAgentClientBindResource, maaAgentClient, "MaaAgentClientBindResource")

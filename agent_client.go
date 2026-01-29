@@ -28,6 +28,17 @@ func NewAgentClient(identifier string) *AgentClient {
 	}
 }
 
+// NewAgentClientTcp creates an Agent client instance using TCP connection
+func NewAgentClientTcp(port uint16) *AgentClient {
+	handle := native.MaaAgentClientCreateTcp(port)
+	if handle == 0 {
+		return nil
+	}
+	return &AgentClient{
+		handle: handle,
+	}
+}
+
 // Destroy releases underlying resources
 func (ac *AgentClient) Destroy() {
 	native.MaaAgentClientDestroy(ac.handle)
