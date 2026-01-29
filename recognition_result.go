@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"bytes"
 	"encoding/json"
 )
 
@@ -180,7 +181,7 @@ func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults,
 	}
 
 	// Handle empty or invalid JSON
-	if detailJson == "" || detailJson == "{}" {
+	if detailJson == "" || detailJson == "{}" || detailJson == "null" {
 		return &RecognitionResults{
 			All:      []*RecognitionResult{},
 			Best:     []*RecognitionResult{},
@@ -198,49 +199,37 @@ func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults,
 		return nil, err
 	}
 
-	results := &RecognitionResults{
-		All:      make([]*RecognitionResult, 0),
-		Best:     make([]*RecognitionResult, 0),
-		Filtered: make([]*RecognitionResult, 0),
+	return &RecognitionResults{
+		All:      parseRecognitionResultList(algorithm, raw.All),
+		Best:     parseRecognitionResultList(algorithm, raw.Best),
+		Filtered: parseRecognitionResultList(algorithm, raw.Filtered),
+	}, nil
+}
+
+func parseRecognitionResultList(algorithm string, raw json.RawMessage) []*RecognitionResult {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return []*RecognitionResult{}
 	}
 
-	// Parse all results
-	var allItems []json.RawMessage
-	if len(raw.All) > 0 {
-		if err := json.Unmarshal(raw.All, &allItems); err == nil {
-			for _, item := range allItems {
-				if result := parseRecognitionResult(algorithm, item); result != nil {
-					results.All = append(results.All, result)
-				}
+	results := make([]*RecognitionResult, 0)
+	switch trimmed[0] {
+	case '[':
+		var items []json.RawMessage
+		if err := json.Unmarshal(trimmed, &items); err != nil {
+			return results
+		}
+		for _, item := range items {
+			if result := parseRecognitionResult(algorithm, item); result != nil {
+				results = append(results, result)
 			}
 		}
-	}
-
-	// Parse best results
-	var bestItems []json.RawMessage
-	if len(raw.Best) > 0 {
-		if err := json.Unmarshal(raw.Best, &bestItems); err == nil {
-			for _, item := range bestItems {
-				if result := parseRecognitionResult(algorithm, item); result != nil {
-					results.Best = append(results.Best, result)
-				}
-			}
+	case '{':
+		if result := parseRecognitionResult(algorithm, trimmed); result != nil {
+			results = append(results, result)
 		}
 	}
-
-	// Parse filtered results
-	var filteredItems []json.RawMessage
-	if len(raw.Filtered) > 0 {
-		if err := json.Unmarshal(raw.Filtered, &filteredItems); err == nil {
-			for _, item := range filteredItems {
-				if result := parseRecognitionResult(algorithm, item); result != nil {
-					results.Filtered = append(results.Filtered, result)
-				}
-			}
-		}
-	}
-
-	return results, nil
+	return results
 }
 
 // combinedResultItem represents a single item in the CombinedResult array for And/Or recognition.
