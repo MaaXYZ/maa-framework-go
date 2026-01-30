@@ -328,7 +328,7 @@ type NodeDetail struct {
 }
 
 // getNodeDetail queries running detail.
-func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
+func (t *Tasker) getNodeDetail(nodeId int64) (*NodeDetail, error) {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId, actionId int64
@@ -342,23 +342,17 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 		&runCompleted,
 	)
 	if !got {
-		return nil
+		return nil, errors.New("failed to get node detail")
 	}
 
 	recognitionDetail, err := t.getRecognitionDetail(recId)
 	if err != nil {
-		return nil
-	}
-	if recognitionDetail == nil {
-		return nil
+		return nil, err
 	}
 
 	actionDetail, err := t.getActionDetail(actionId)
 	if err != nil {
-		return nil
-	}
-	if actionDetail == nil {
-		return nil
+		return nil, err
 	}
 
 	return &NodeDetail{
@@ -367,7 +361,7 @@ func (t *Tasker) getNodeDetail(nodeId int64) *NodeDetail {
 		Recognition:  recognitionDetail,
 		Action:       actionDetail,
 		RunCompleted: runCompleted,
-	}
+	}, nil
 }
 
 type TaskDetail struct {
@@ -414,9 +408,13 @@ func (t *Tasker) getTaskDetail(taskId int64) (*TaskDetail, error) {
 		return nil, errors.New("failed to get task detail data")
 	}
 
+	var err error
 	nodeDetails := make([]*NodeDetail, size)
 	for i, nodeId := range nodeIdList {
-		nodeDetails[i] = t.getNodeDetail(nodeId)
+		nodeDetails[i], err = t.getNodeDetail(nodeId)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &TaskDetail{
@@ -428,12 +426,12 @@ func (t *Tasker) getTaskDetail(taskId int64) (*TaskDetail, error) {
 }
 
 // GetLatestNode returns latest node id.
-func (t *Tasker) GetLatestNode(taskName string) *NodeDetail {
+func (t *Tasker) GetLatestNode(taskName string) (*NodeDetail, error) {
 	var nodeId int64
 
 	got := native.MaaTaskerGetLatestNode(t.handle, taskName, &nodeId)
 	if !got {
-		return nil
+		return nil, errors.New("failed to get latest node")
 	}
 	return t.getNodeDetail(nodeId)
 }

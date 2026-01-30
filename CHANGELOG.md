@@ -98,4 +98,21 @@ if err != nil {
 }
 ```
 
+### Tasker
+
+- `GetLatestNode` 现在返回 `(*NodeDetail, error)` 而非 `*NodeDetail`
+
+迁移示例：
+
+```go
+// 旧 API
+detail := tasker.GetLatestNode("MyTaskName")
+
+// 新 API
+detail, err := tasker.GetLatestNode("MyTaskName")
+if err != nil {
+    // 处理错误
+}
+```
+
 
