@@ -143,17 +143,17 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 				},
 			},
 		},
-		// {
-		// 	name: "nn_classify",
-		// 	typ:  NodeRecognitionTypeNeuralNetworkClassify,
-		// 	param: &NodeNeuralNetworkClassifyParam{
-		// 		Labels:   []string{"cat", "dog"},
-		// 		Model:    "classifier.onnx",
-		// 		Expected: []int{0},
-		// 		OrderBy:  NodeNeuralNetworkClassifyOrderByScore,
-		// 		Index:    0,
-		// 	},
-		// },
+		{
+			name: "nn_classify",
+			typ:  NodeRecognitionTypeNeuralNetworkClassify,
+			param: &NodeNeuralNetworkClassifyParam{
+				Labels:   []string{"cat", "dog", "mouse"},
+				Model:    "classify/classifier.onnx",
+				Expected: []int{0, 2},
+				OrderBy:  NodeNeuralNetworkClassifyOrderByScore,
+				Index:    0,
+			},
+		},
 		{
 			name: "nn_detect",
 			typ:  NodeRecognitionTypeNeuralNetworkDetect,
@@ -218,6 +218,16 @@ func (a *testRecognitionDetailFromRecognitionAct) Run(ctx *Context, _ *CustomAct
 			val, ok := detail.Results.All[0].AsOCR()
 			require.True(t, ok)
 			require.NotNil(t, val)
+		},
+		"nn_classify": func(t *testing.T, detail *RecognitionDetail) {
+			if len(detail.Results.All) == 0 {
+				return
+			}
+			for _, item := range detail.Results.All {
+				val, ok := item.AsNeuralNetworkClassify()
+				require.True(t, ok)
+				require.NotNil(t, val)
+			}
 		},
 		"nn_detect": func(t *testing.T, detail *RecognitionDetail) {
 			if len(detail.Results.All) == 0 {

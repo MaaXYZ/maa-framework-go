@@ -59,6 +59,8 @@ jobs:
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
           cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
+          mkdir -p test/data_set/PipelineSmoking/resource/model/classify
+          cp -r test/classifier.onnx test/data_set/PipelineSmoking/resource/model/classify
 
       - name: Run Tests
         env:
@@ -124,6 +126,8 @@ jobs:
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
           cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
+          mkdir -p test/data_set/PipelineSmoking/resource/model/classify
+          cp -r test/classifier.onnx test/data_set/PipelineSmoking/resource/model/classify
 
       - name: Run Tests
         env:
@@ -182,6 +186,8 @@ jobs:
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
           cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
+          mkdir -p test/data_set/PipelineSmoking/resource/model/classify
+          cp -r test/classifier.onnx test/data_set/PipelineSmoking/resource/model/classify
         
       - name: Run Tests
         env:
