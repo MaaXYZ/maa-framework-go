@@ -281,19 +281,19 @@ func (ctx *Context) GetTasker() *Tasker {
 
 // WaitFreezes waits until the screen stabilizes (no significant changes).
 // duration: The duration that the screen must remain stable.
-// roi: The region of interest to monitor. If nil, monitors the entire screen.
+// box: The recognition hit box, used when target is "Self" to calculate the ROI. If nil, uses entire screen.
 // waitFreezesParam: Additional wait_freezes parameters. Can be a JSON string or any data type that can be marshaled to JSON.
 // Returns true if the screen stabilized within the timeout, false otherwise.
-func (ctx *Context) WaitFreezes(duration time.Duration, roi *Rect, waitFreezesParam ...any) bool {
-	var roiHandle uintptr
-	if roi != nil {
+func (ctx *Context) WaitFreezes(duration time.Duration, box *Rect, waitFreezesParam ...any) bool {
+	var boxHandle uintptr
+	if box != nil {
 		rectBuf := buffer.NewRectBuffer()
-		rectBuf.Set(*roi)
+		rectBuf.Set(*box)
 		defer rectBuf.Destroy()
-		roiHandle = rectBuf.Handle()
+		boxHandle = rectBuf.Handle()
 	}
 
-	return native.MaaContextWaitFreezes(ctx.handle, uint64(duration.Milliseconds()), roiHandle, ctx.handleOverride(waitFreezesParam...))
+	return native.MaaContextWaitFreezes(ctx.handle, uint64(duration.Milliseconds()), boxHandle, ctx.handleOverride(waitFreezesParam...))
 }
 
 // Clone clones current Context.

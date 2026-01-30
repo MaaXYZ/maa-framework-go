@@ -218,7 +218,7 @@ var (
 	MaaContextRunAction            func(context uintptr, entry, pipelineOverride string, box uintptr, recoDetail string) int64
 	MaaContextRunRecognitionDirect func(context uintptr, recoType, recoParam string, image uintptr) int64
 	MaaContextRunActionDirect      func(context uintptr, actionType, actionParam string, box uintptr, recoDetail string) int64
-	MaaContextWaitFreezes          func(context uintptr, time uint64, roi uintptr, waitFreezesParam string) bool
+	MaaContextWaitFreezes          func(context uintptr, time uint64, box uintptr, waitFreezesParam string) bool
 	MaaContextOverridePipeline     func(context uintptr, pipelineOverride string) bool
 	MaaContextOverrideNext         func(context uintptr, nodeName string, nextList uintptr) bool
 	MaaContextOverrideImage        func(context uintptr, imageName string, image uintptr) bool
