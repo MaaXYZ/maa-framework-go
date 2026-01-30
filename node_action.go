@@ -724,8 +724,10 @@ func ActStopTask() *NodeAction {
 }
 
 type NodeScrollParam struct {
-	Dx int `json:"dx,omitempty"`
-	Dy int `json:"dy,omitempty"`
+	Target       Target `json:"target,omitzero"`
+	TargetOffset Rect   `json:"target_offset,omitempty"`
+	Dx           int    `json:"dx,omitempty"`
+	Dy           int    `json:"dy,omitempty"`
 }
 
 func (n NodeScrollParam) isActionParam() {}
