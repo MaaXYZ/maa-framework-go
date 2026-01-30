@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"image"
+	"time"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
@@ -276,6 +277,23 @@ func (ctx *Context) GetTaskJob() *TaskJob {
 func (ctx *Context) GetTasker() *Tasker {
 	handle := native.MaaContextGetTasker(ctx.handle)
 	return &Tasker{handle: handle}
+}
+
+// WaitFreezes waits until the screen stabilizes (no significant changes).
+// duration: The duration that the screen must remain stable.
+// roi: The region of interest to monitor. If nil, monitors the entire screen.
+// waitFreezesParam: Additional wait_freezes parameters. Can be a JSON string or any data type that can be marshaled to JSON.
+// Returns true if the screen stabilized within the timeout, false otherwise.
+func (ctx *Context) WaitFreezes(duration time.Duration, roi *Rect, waitFreezesParam ...any) bool {
+	var roiHandle uintptr
+	if roi != nil {
+		rectBuf := buffer.NewRectBuffer()
+		rectBuf.Set(*roi)
+		defer rectBuf.Destroy()
+		roiHandle = rectBuf.Handle()
+	}
+
+	return native.MaaContextWaitFreezes(ctx.handle, uint64(duration.Milliseconds()), roiHandle, ctx.handleOverride(waitFreezesParam...))
 }
 
 // Clone clones current Context.

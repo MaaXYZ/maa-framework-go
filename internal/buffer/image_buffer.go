@@ -128,6 +128,12 @@ func (i *ImageBuffer) setRawData(data unsafe.Pointer, width, height, imageType i
 	return native.MaaImageBufferSetRawData(i.handle, data, width, height, imageType)
 }
 
+// Resize resizes the image buffer to the specified width and height.
+// It returns true if the operation was successful, otherwise false.
+func (i *ImageBuffer) Resize(width, height int32) bool {
+	return native.MaaImageBufferResize(i.handle, width, height)
+}
+
 // NOTE: GetEncoded and SetEncoded are intentionally NOT implemented in Go binding.
 // Go handles image encoding/decoding natively through the standard library (image/png, image/jpeg, etc.).
 // Do not add encoded image methods here.
