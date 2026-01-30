@@ -44,7 +44,7 @@ const (
 // and provide implementations for the following methods:
 // Connect, RequestUUID, StartApp, StopApp,
 // Screencap, Click, Swipe, TouchDown, TouchMove, TouchUp,
-// ClickKey, InputText, KeyDown and KeyUp.
+// ClickKey, InputText, KeyDown, KeyUp and Scroll.
 type CustomController interface {
 	Connect() bool
 	Connected() bool
@@ -62,6 +62,7 @@ type CustomController interface {
 	InputText(text string) bool
 	KeyDown(keycode int32) bool
 	KeyUp(keycode int32) bool
+	Scroll(dx, dy int32) bool
 }
 
 type MaaCustomControllerCallbacks struct {
@@ -81,6 +82,7 @@ type MaaCustomControllerCallbacks struct {
 	InputText   uintptr
 	KeyDown     uintptr
 	KeyUp       uintptr
+	Scroll      uintptr
 }
 
 var customControllerCallbacksHandle = new(MaaCustomControllerCallbacks)
@@ -102,6 +104,7 @@ func init() {
 	customControllerCallbacksHandle.InputText = purego.NewCallback(_InputText)
 	customControllerCallbacksHandle.KeyDown = purego.NewCallback(_KeyDown)
 	customControllerCallbacksHandle.KeyUp = purego.NewCallback(_KeyUp)
+	customControllerCallbacksHandle.Scroll = purego.NewCallback(_ScrollAgent)
 }
 
 func _ConnectAgent(handleArg uintptr) uintptr {
@@ -407,6 +410,25 @@ func _KeyUp(keycode int32, handleArg uintptr) uintptr {
 	}
 
 	if ctrl.KeyUp(keycode) {
+		return uintptr(1)
+	}
+	return uintptr(0)
+}
+
+func _ScrollAgent(dx, dy int32, handleArg uintptr) uintptr {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(handleArg)
+
+	customControllerCallbacksAgentsMutex.RLock()
+	ctrl, exists := customControllerCallbacksAgents[id]
+	customControllerCallbacksAgentsMutex.RUnlock()
+
+	if !exists || ctrl == nil {
+		return uintptr(0)
+	}
+
+	if ctrl.Scroll(dx, dy) {
 		return uintptr(1)
 	}
 	return uintptr(0)
