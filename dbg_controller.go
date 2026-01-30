@@ -167,6 +167,11 @@ func (c *CarouselImageController) TouchUp(contact int32) bool {
 	return true
 }
 
+// Scroll implements CustomController.
+func (c *CarouselImageController) Scroll(dx int32, dy int32) bool {
+	return true
+}
+
 type BlankController struct{}
 
 func NewBlankController() *Controller {
@@ -250,5 +255,10 @@ func (c *BlankController) TouchMove(contact int32, x int32, y int32, pressure in
 
 // TouchUp implements CustomController.
 func (c *BlankController) TouchUp(contact int32) bool {
+	return true
+}
+
+// Scroll implements CustomController.
+func (c *BlankController) Scroll(dx int32, dy int32) bool {
 	return true
 }
