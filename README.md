@@ -18,8 +18,8 @@
     </a>
   </div>
   <div>
-    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.5.0-beta.4">
-      <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.5.0--beta.4-blue">
+    <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.6.0-alpha.4">
+      <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.6.0--alpha.4-blue">
     </a>
     <a href="https://deepwiki.com/MaaXYZ/maa-framework-go">
       <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki">
