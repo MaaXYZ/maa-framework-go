@@ -178,11 +178,11 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 	)
 	pipeline2.AddNode(testNode2)
 
-	ok := ctx.OverridePipeline(pipeline2)
-	require.True(t.t, ok)
-
-	detail2, err := ctx.RunTask("Test")
+	err = ctx.OverridePipeline(pipeline2)
 	require.NoError(t.t, err)
+
+	detail2, err2 := ctx.RunTask("Test")
+	require.NoError(t.t, err2)
 	require.NotNil(t.t, detail2)
 	return true
 }
@@ -231,14 +231,14 @@ func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool 
 	taskBNode := NewNode("TaskB")
 	pipeline.AddNode(taskBNode)
 
-	ok1 := ctx.OverridePipeline(pipeline)
-	require.True(t.t, ok1)
-
-	ok2 := ctx.OverrideNext(testNode.Name, []string{"TaskB"})
-	require.True(t.t, ok2)
-
-	detail, err := ctx.RunTask(testNode.Name, pipeline)
+	err := ctx.OverridePipeline(pipeline)
 	require.NoError(t.t, err)
+
+	err = ctx.OverrideNext(testNode.Name, []string{"TaskB"})
+	require.NoError(t.t, err)
+
+	detail, err2 := ctx.RunTask(testNode.Name, pipeline)
+	require.NoError(t.t, err2)
 	require.NotNil(t.t, detail)
 	return true
 }
