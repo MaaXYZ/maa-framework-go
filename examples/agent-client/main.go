@@ -36,7 +36,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	client := maa.NewAgentClient("7788")
+	client, err := maa.NewAgentClient(maa.WithTcpPort(7788))
+	if err != nil {
+		fmt.Println("Failed to create agent client")
+		os.Exit(1)
+	}
 	defer client.Destroy()
 
 	client.BindResource(res)
