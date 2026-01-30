@@ -6,7 +6,8 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
-// AgentServerRegisterCustomRecognition registers a custom recognition runner with the given name.
+// AgentServerRegisterCustomRecognition registers a custom recognition runner.
+// The name should match the custom_recognition field in Pipeline.
 func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognitionRunner) bool {
 	id := registerCustomRecognition(recognition)
 
@@ -19,7 +20,8 @@ func AgentServerRegisterCustomRecognition(name string, recognition CustomRecogni
 	)
 }
 
-// AgentServerRegisterCustomAction registers a custom action runner with the given name.
+// AgentServerRegisterCustomAction registers a custom action runner.
+// The name should match the custom_action field in Pipeline.
 func AgentServerRegisterCustomAction(name string, action CustomActionRunner) bool {
 	id := registerCustomAction(action)
 
@@ -81,6 +83,7 @@ func AgentServerAddContextSink(sink ContextEventSink) int64 {
 }
 
 // AgentServerStartUp starts the MAA Agent Server with the given identifier.
+// The identifier is used to match with AgentClient.
 func AgentServerStartUp(identifier string) bool {
 	return native.MaaAgentServerStartUp(identifier)
 }
@@ -90,12 +93,14 @@ func AgentServerShutDown() {
 	native.MaaAgentServerShutDown()
 }
 
-// AgentServerJoin waits synchronously for the service thread to finish
+// AgentServerJoin waits for the agent service to end.
+// It blocks the current goroutine until the service ends.
 func AgentServerJoin() {
 	native.MaaAgentServerJoin()
 }
 
-// AgentServerDetach detaches the service thread to run independently
+// AgentServerDetach detaches the service thread to run independently.
+// It allows the service to run in the background without blocking.
 func AgentServerDetach() {
 	native.MaaAgentServerDetach()
 }
