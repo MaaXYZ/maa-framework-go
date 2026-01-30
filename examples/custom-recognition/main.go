@@ -37,7 +37,11 @@ func main() {
 
 	res.RegisterCustomRecognition("MyRec", &MyRec{})
 
-	detail := tasker.PostTask("Startup").Wait().GetDetail()
+	detail, err := tasker.PostTask("Startup").Wait().GetDetail()
+	if err != nil {
+		fmt.Println("Failed to get task detail:", err)
+		os.Exit(1)
+	}
 	fmt.Println(detail)
 }
 

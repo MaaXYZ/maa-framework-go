@@ -19,7 +19,8 @@ func (t *testContextRunTaskAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	)
 	pipeline.AddNode(testNode)
 
-	detail := ctx.RunTask(testNode.Name, pipeline)
+	detail, err := ctx.RunTask(testNode.Name, pipeline)
+	require.NoError(t.t, err)
 	require.NotNil(t.t, detail)
 	return true
 }
@@ -67,7 +68,9 @@ func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) boo
 	)
 	pipeline.AddNode(testNode)
 
-	_ = ctx.RunRecognition("Test", img, pipeline)
+	detail, err := ctx.RunRecognition("Test", img, pipeline)
+	require.NoError(t.t, err)
+	require.NotNil(t.t, detail)
 	return true
 }
 
@@ -117,7 +120,8 @@ func (a testContextRunActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
 	)
 	pipeline.AddNode(testNode)
 
-	detail := ctx.RunAction(testNode.Name, arg.Box, arg.RecognitionDetail.DetailJson, pipeline)
+	detail, err := ctx.RunAction(testNode.Name, arg.Box, arg.RecognitionDetail.DetailJson, pipeline)
+	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 	return true
 }
@@ -162,7 +166,8 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 	)
 	pipeline1.AddNode(testNode1)
 
-	detail1 := ctx.RunTask(testNode1.Name, pipeline1)
+	detail1, err := ctx.RunTask(testNode1.Name, pipeline1)
+	require.NoError(t.t, err)
 	require.NotNil(t.t, detail1)
 
 	pipeline2 := NewPipeline()
@@ -176,7 +181,8 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 	ok := ctx.OverridePipeline(pipeline2)
 	require.True(t.t, ok)
 
-	detail2 := ctx.RunTask("Test")
+	detail2, err := ctx.RunTask("Test")
+	require.NoError(t.t, err)
 	require.NotNil(t.t, detail2)
 	return true
 }
@@ -231,7 +237,8 @@ func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool 
 	ok2 := ctx.OverrideNext(testNode.Name, []string{"TaskB"})
 	require.True(t.t, ok2)
 
-	detail := ctx.RunTask(testNode.Name, pipeline)
+	detail, err := ctx.RunTask(testNode.Name, pipeline)
+	require.NoError(t.t, err)
 	require.NotNil(t.t, detail)
 	return true
 }
@@ -1373,7 +1380,8 @@ func (a *testContextRunRecognitionDirectAct) Run(ctx *Context, _ *CustomActionAr
 	require.NotNil(a.t, img)
 
 	// Test RunRecognitionDirect with DirectHit recognition type
-	detail := ctx.RunRecognitionDirect(NodeRecognitionTypeDirectHit, &NodeDirectHitParam{}, img)
+	detail, err := ctx.RunRecognitionDirect(NodeRecognitionTypeDirectHit, &NodeDirectHitParam{}, img)
+	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 	require.True(a.t, detail.Hit)
 	return true
@@ -1415,7 +1423,8 @@ func (a *testContextRunActionDirectAct) Run(ctx *Context, arg *CustomActionArg) 
 	clickParam := &NodeClickParam{
 		Target: NewTargetRect(Rect{100, 100, 10, 10}),
 	}
-	detail := ctx.RunActionDirect(NodeActionTypeClick, clickParam, arg.Box, arg.RecognitionDetail)
+	detail, err := ctx.RunActionDirect(NodeActionTypeClick, clickParam, arg.Box, arg.RecognitionDetail)
+	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 	return true
 }

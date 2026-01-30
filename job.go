@@ -1,5 +1,7 @@
 package maa
 
+import "errors"
+
 // Job represents an asynchronous job with status tracking capabilities.
 // It provides methods to check the job status and wait for completion.
 type Job struct {
@@ -67,7 +69,7 @@ func (j *Job) Wait() *Job {
 // It provides additional methods to retrieve task details.
 type TaskJob struct {
 	*Job
-	getTaskDetailFunc    func(id int64) *TaskDetail
+	getTaskDetailFunc    func(id int64) (*TaskDetail, error)
 	overridePipelineFunc func(id int64, override any) bool
 }
 
@@ -75,7 +77,7 @@ func newTaskJob(
 	id int64,
 	statusFunc func(id int64) Status,
 	waitFunc func(id int64) Status,
-	getTaskDetailFunc func(id int64) *TaskDetail,
+	getTaskDetailFunc func(id int64) (*TaskDetail, error),
 	overridePipelineFunc func(id int64, override any) bool,
 ) *TaskJob {
 	job := newJob(id, statusFunc, waitFunc)
@@ -93,7 +95,10 @@ func (j *TaskJob) Wait() *TaskJob {
 }
 
 // GetDetail retrieves the detailed information of the task.
-func (j *TaskJob) GetDetail() *TaskDetail {
+func (j *TaskJob) GetDetail() (*TaskDetail, error) {
+	if j.getTaskDetailFunc == nil {
+		return nil, errors.New("getTaskDetailFunc is nil")
+	}
 	return j.getTaskDetailFunc(j.id)
 }
 

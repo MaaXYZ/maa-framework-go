@@ -64,7 +64,8 @@ func (a *MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	)
 	pipeline.AddNode(myColorMatchingNode)
 
-	detail := ctx.RunRecognition("MyColorMatching", img, pipeline)
+	detail, err := ctx.RunRecognition("MyColorMatching", img, pipeline)
+	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 
 	return true

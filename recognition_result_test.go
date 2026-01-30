@@ -257,7 +257,8 @@ func (a *testRecognitionDetailFromRecognitionAct) Run(ctx *Context, _ *CustomAct
 	}
 
 	runRecognition := func(t *testing.T, name string, recoType NodeRecognitionType, param NodeRecognitionParam) {
-		detail := ctx.RunRecognitionDirect(recoType, param, img)
+		detail, err := ctx.RunRecognitionDirect(recoType, param, img)
+		require.NoError(t, err)
 		require.NotNil(t, detail)
 
 		switch recoType {

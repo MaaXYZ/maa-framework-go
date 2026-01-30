@@ -86,7 +86,8 @@ func TestTasker_PostPipeline(t *testing.T) {
 	taskJob := tasker.PostTask(testTasker_PostPipelineNode.Name, pipeline)
 	got := taskJob.Wait().Success()
 	require.True(t, got)
-	detail := taskJob.GetDetail()
+	detail, err := taskJob.GetDetail()
+	require.NoError(t, err)
 	t.Logf("%#v", detail)
 }
 

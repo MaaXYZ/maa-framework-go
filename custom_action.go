@@ -74,7 +74,10 @@ func _MaaCustomActionCallbackAgent(
 
 	ctx := &Context{handle: context}
 	tasker := ctx.GetTasker()
-	taskDetail := tasker.getTaskDetail(taskId)
+	taskDetail, err := tasker.getTaskDetail(taskId)
+	if err != nil {
+		return 0
+	}
 	recognitionDetail, err := tasker.getRecognitionDetail(recoId)
 	if err != nil {
 		return 0

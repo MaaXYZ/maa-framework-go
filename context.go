@@ -32,10 +32,10 @@ func (ctx *Context) handleOverride(override ...any) string {
 	return string(str)
 }
 
-func (ctx *Context) runTask(entry, override string) *TaskDetail {
+func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {
 	taskId := native.MaaContextRunTask(ctx.handle, entry, override)
 	if taskId == 0 {
-		return nil
+		return nil, errors.New("failed to run task")
 	}
 	tasker := ctx.GetTasker()
 	return tasker.getTaskDetail(taskId)
@@ -58,25 +58,22 @@ func (ctx *Context) runTask(entry, override string) *TaskDetail {
 //	        "target": []int{100, 200, 100, 100},
 //		}
 //	})
-func (ctx *Context) RunTask(entry string, override ...any) *TaskDetail {
+func (ctx *Context) RunTask(entry string, override ...any) (*TaskDetail, error) {
 	return ctx.runTask(entry, ctx.handleOverride(override...))
 }
 
-func (ctx *Context) runRecognition(entry, override string, img image.Image) *RecognitionDetail {
+func (ctx *Context) runRecognition(entry, override string, img image.Image) (*RecognitionDetail, error) {
 	imgBuf := buffer.NewImageBuffer()
 	imgBuf.Set(img)
 	defer imgBuf.Destroy()
 
 	recId := native.MaaContextRunRecognition(ctx.handle, entry, override, imgBuf.Handle())
 	if recId == 0 {
-		return nil
+		return nil, errors.New("failed to run recognition")
 	}
 	tasker := ctx.GetTasker()
 	recognitionDetail, err := tasker.getRecognitionDetail(recId)
-	if err != nil {
-		return nil
-	}
-	return recognitionDetail
+	return recognitionDetail, err
 }
 
 // RunRecognition run a recognition and return its detail.
@@ -96,25 +93,22 @@ func (ctx *Context) runRecognition(entry, override string, img image.Image) *Rec
 //	        "expected": "Hello",
 //		}
 //	})
-func (ctx *Context) RunRecognition(entry string, img image.Image, override ...any) *RecognitionDetail {
+func (ctx *Context) RunRecognition(entry string, img image.Image, override ...any) (*RecognitionDetail, error) {
 	return ctx.runRecognition(entry, ctx.handleOverride(override...), img)
 }
 
-func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetail string) *ActionDetail {
+func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetail string) (*ActionDetail, error) {
 	rectBuf := buffer.NewRectBuffer()
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
 
 	actId := native.MaaContextRunAction(ctx.handle, entry, override, rectBuf.Handle(), recognitionDetail)
 	if actId == 0 {
-		return nil
+		return nil, errors.New("failed to run action")
 	}
 	tasker := ctx.GetTasker()
 	actionDetail, err := tasker.getActionDetail(actId)
-	if err != nil {
-		return nil
-	}
-	return actionDetail
+	return actionDetail, err
 }
 
 // RunAction run an action and return its detail.
@@ -134,62 +128,56 @@ func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetai
 //	        "target": []int{100, 200, 100, 100},
 //		}
 //	})
-func (ctx *Context) RunAction(entry string, box Rect, recognitionDetail string, override ...any) *ActionDetail {
+func (ctx *Context) RunAction(entry string, box Rect, recognitionDetail string, override ...any) (*ActionDetail, error) {
 	return ctx.runAction(entry, ctx.handleOverride(override...), box, recognitionDetail)
 }
 
 // RunRecognitionDirect runs recognition directly with type and parameters, without requiring a pipeline entry.
 // It accepts a recognition type string (e.g., "OCR", "TemplateMatch"), recognition parameters as JSON,
 // and an image to recognize.
-func (ctx *Context) RunRecognitionDirect(recoType NodeRecognitionType, recoParam NodeRecognitionParam, img image.Image) *RecognitionDetail {
+func (ctx *Context) RunRecognitionDirect(recoType NodeRecognitionType, recoParam NodeRecognitionParam, img image.Image) (*RecognitionDetail, error) {
 	imgBuf := buffer.NewImageBuffer()
 	imgBuf.Set(img)
 	defer imgBuf.Destroy()
 
 	recParamJSON, err := json.Marshal(recoParam)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	recId := native.MaaContextRunRecognitionDirect(ctx.handle, string(recoType), string(recParamJSON), imgBuf.Handle())
 	if recId == 0 {
-		return nil
+		return nil, errors.New("failed to run recognition direct")
 	}
 	tasker := ctx.GetTasker()
 	recognitionDetail, err := tasker.getRecognitionDetail(recId)
-	if err != nil {
-		return nil
-	}
-	return recognitionDetail
+	return recognitionDetail, err
 }
 
 // RunActionDirect runs action directly with type and parameters, without requiring a pipeline entry.
 // It accepts an action type string (e.g., "Click", "Swipe"), action parameters as JSON,
 // a box for the action position, and recognition details.
-func (ctx *Context) RunActionDirect(actionType NodeActionType, actionParam NodeActionParam, box Rect, recoDetail *RecognitionDetail) *ActionDetail {
+func (ctx *Context) RunActionDirect(actionType NodeActionType, actionParam NodeActionParam, box Rect, recoDetail *RecognitionDetail) (*ActionDetail, error) {
 	rectBuf := buffer.NewRectBuffer()
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
 
 	actParamJSON, err := json.Marshal(actionParam)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	recoDetailJSON, err := json.Marshal(recoDetail)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	actId := native.MaaContextRunActionDirect(ctx.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
 	if actId == 0 {
-		return nil
+		return nil, errors.New("failed to run action direct")
 	}
 	tasker := ctx.GetTasker()
 	actionDetail, err := tasker.getActionDetail(actId)
-	if err != nil {
-		return nil
-	}
-	return actionDetail
+	return actionDetail, err
 }
 
 func (ctx *Context) overridePipeline(override string) bool {

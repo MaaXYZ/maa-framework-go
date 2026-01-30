@@ -378,7 +378,7 @@ type TaskDetail struct {
 }
 
 // getTaskDetail queries task detail.
-func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
+func (t *Tasker) getTaskDetail(taskId int64) (*TaskDetail, error) {
 	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
@@ -391,14 +391,14 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 		nil,
 	)
 	if !got {
-		return nil
+		return nil, errors.New("failed to get task detail size")
 	}
 	if size == 0 {
 		return &TaskDetail{
 			ID:          taskId,
 			Entry:       entry.Get(),
 			NodeDetails: nil,
-		}
+		}, nil
 	}
 	nodeIdList := make([]int64, size)
 	var status Status
@@ -411,7 +411,7 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 		(*int32)(&status),
 	)
 	if !got {
-		return nil
+		return nil, errors.New("failed to get task detail data")
 	}
 
 	nodeDetails := make([]*NodeDetail, size)
@@ -424,7 +424,7 @@ func (t *Tasker) getTaskDetail(taskId int64) *TaskDetail {
 		Entry:       entry.Get(),
 		NodeDetails: nodeDetails,
 		Status:      status,
-	}
+	}, nil
 }
 
 // GetLatestNode returns latest node id.
