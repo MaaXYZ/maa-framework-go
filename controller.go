@@ -416,13 +416,13 @@ type ControllerEventSink interface {
 	OnControllerAction(ctrl *Controller, event EventStatus, detail ControllerActionDetail)
 }
 
-// ControllerEventSinkAdapter is a lightweight adapter that makes it easy to register
+// ctrlEventSinkAdapter is a lightweight adapter that makes it easy to register
 // a single-event handler via a callback function.
-type ControllerEventSinkAdapter struct {
+type ctrlEventSinkAdapter struct {
 	onControllerAction func(EventStatus, ControllerActionDetail)
 }
 
-func (a *ControllerEventSinkAdapter) OnControllerAction(ctrl *Controller, status EventStatus, detail ControllerActionDetail) {
+func (a *ctrlEventSinkAdapter) OnControllerAction(ctrl *Controller, status EventStatus, detail ControllerActionDetail) {
 	if a == nil || a.onControllerAction == nil {
 		return
 	}
@@ -432,6 +432,6 @@ func (a *ControllerEventSinkAdapter) OnControllerAction(ctrl *Controller, status
 // OnControllerAction registers a callback sink that only handles Controller.Action events and returns the sink ID.
 // The sink ID can be used to remove the sink later.
 func (c *Controller) OnControllerAction(fn func(EventStatus, ControllerActionDetail)) int64 {
-	sink := &ControllerEventSinkAdapter{onControllerAction: fn}
+	sink := &ctrlEventSinkAdapter{onControllerAction: fn}
 	return c.AddSink(sink)
 }
