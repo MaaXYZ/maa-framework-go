@@ -422,7 +422,11 @@ type ctrlEventSinkAdapter struct {
 	onControllerAction func(EventStatus, ControllerActionDetail)
 }
 
-func (a *ctrlEventSinkAdapter) OnControllerAction(ctrl *Controller, status EventStatus, detail ControllerActionDetail) {
+func (a *ctrlEventSinkAdapter) OnControllerAction(
+	ctrl *Controller,
+	status EventStatus,
+	detail ControllerActionDetail,
+) {
 	if a == nil || a.onControllerAction == nil {
 		return
 	}
@@ -431,7 +435,9 @@ func (a *ctrlEventSinkAdapter) OnControllerAction(ctrl *Controller, status Event
 
 // OnControllerAction registers a callback sink that only handles Controller.Action events and returns the sink ID.
 // The sink ID can be used to remove the sink later.
-func (c *Controller) OnControllerAction(fn func(EventStatus, ControllerActionDetail)) int64 {
+func (c *Controller) OnControllerAction(
+	fn func(EventStatus, ControllerActionDetail),
+) int64 {
 	sink := &ctrlEventSinkAdapter{onControllerAction: fn}
 	return c.AddSink(sink)
 }
