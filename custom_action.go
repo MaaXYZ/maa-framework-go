@@ -47,11 +47,6 @@ type CustomActionRunner interface {
 	Run(ctx *Context, arg *CustomActionArg) bool
 }
 
-// CustomAction is an alias for CustomActionRunner for backward compatibility.
-//
-// Deprecated: Use CustomActionRunner instead. This type will be removed in the future.
-type CustomAction = CustomActionRunner
-
 func _MaaCustomActionCallbackAgent(
 	context uintptr,
 	taskId int64,

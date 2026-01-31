@@ -155,6 +155,23 @@ if err != nil {
 // 其他 Get 系列方法迁移方式相同
 ```
 
+### Custom Action and Recognition
+
+- `CustomAction` 类型别名已移除，直接使用 `CustomActionRunner`
+- `CustomRecognition` 类型别名已移除，直接使用 `CustomRecognitionRunner`
+
+迁移示例：
+
+```go
+// 旧 API
+var _ maa.CustomAction = &MyAction{}
+var _ maa.CustomRecognition = &MyRecognition{}
+
+// 新 API
+var _ maa.CustomActionRunner = &MyAction{}
+var _ maa.CustomRecognitionRunner = &MyRecognition{}
+```
+
 ### Tasker
 
 - `GetLatestNode` 现在返回 `(*NodeDetail, error)` 而非 `*NodeDetail`

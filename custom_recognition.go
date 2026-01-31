@@ -53,11 +53,6 @@ type CustomRecognitionRunner interface {
 	Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool)
 }
 
-// CustomRecognition is an alias for CustomRecognitionRunner for backward compatibility.
-//
-// Deprecated: Use CustomRecognitionRunner instead. This type will be removed in the future.
-type CustomRecognition = CustomRecognitionRunner
-
 func _MaaCustomRecognitionCallbackAgent(
 	context uintptr,
 	taskId int64,
