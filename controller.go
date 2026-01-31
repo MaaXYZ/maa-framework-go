@@ -106,12 +106,11 @@ func NewCustomController(
 		return nil
 	}
 
-	store.CtrlStore.Lock()
-	store.CtrlStore.Set(handle, store.CtrlStoreValue{
-		SinkIDToEventCallbackID:     make(map[int64]uint64),
-		CustomControllerCallbacksID: ctrlID,
+	initControllerStore(handle)
+
+	store.CtrlStore.Update(handle, func(v *store.CtrlStoreValue) {
+		v.CustomControllerCallbacksID = ctrlID
 	})
-	store.CtrlStore.Unlock()
 
 	return &Controller{
 		handle: handle,
