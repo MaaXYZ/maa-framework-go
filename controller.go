@@ -430,7 +430,7 @@ func (c *Controller) GetUUID() (string, error) {
 }
 
 // GetResolution gets the raw (unscaled) device resolution.
-// Returns the width and height, and whether the resolution is available.
+// Returns the width and height. Returns an error if the resolution is not available.
 // Note: This returns the actual device screen resolution before any scaling.
 // The screenshot obtained via CacheImage is scaled according to the screenshot target size settings.
 func (c *Controller) GetResolution() (width, height int32, err error) {
