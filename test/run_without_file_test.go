@@ -53,7 +53,8 @@ func (a *MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	require.NotNil(a.t, tasker)
 	ctrl := tasker.GetController()
 	require.NotNil(a.t, ctrl)
-	img := ctrl.CacheImage()
+	img, err := ctrl.CacheImage()
+	require.NoError(a.t, err)
 	require.NotNil(a.t, img)
 
 	pipeline := maa.NewPipeline()

@@ -205,7 +205,8 @@ func TestController_CacheImage(t *testing.T) {
 	require.True(t, isConnected)
 	screencaped := ctrl.PostScreencap().Wait().Success()
 	require.True(t, screencaped)
-	img := ctrl.CacheImage()
+	img, err := ctrl.CacheImage()
+	require.NoError(t, err)
 	require.NotNil(t, img)
 }
 
@@ -214,7 +215,7 @@ func TestController_GetUUID(t *testing.T) {
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
-	uuid, oK := ctrl.GetUUID()
-	require.True(t, oK)
+	uuid, err := ctrl.GetUUID()
+	require.NoError(t, err)
 	require.NotEmpty(t, uuid)
 }

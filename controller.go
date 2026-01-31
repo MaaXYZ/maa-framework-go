@@ -378,15 +378,15 @@ func (c *Controller) PostShell(cmd string, timeout time.Duration) *Job {
 }
 
 // GetShellOutput gets the output of the last shell command.
-func (c *Controller) GetShellOutput() (string, bool) {
+func (c *Controller) GetShellOutput() (string, error) {
 	output := buffer.NewStringBuffer()
 	defer output.Destroy()
 
 	got := native.MaaControllerGetShellOutput(c.handle, output.Handle())
 	if !got {
-		return "", false
+		return "", errors.New("failed to get shell output")
 	}
-	return output.Get(), true
+	return output.Get(), nil
 }
 
 // status gets the status of a request identified by the given id.
@@ -404,38 +404,41 @@ func (c *Controller) Connected() bool {
 }
 
 // CacheImage gets the image buffer of the last screencap request.
-func (c *Controller) CacheImage() image.Image {
+func (c *Controller) CacheImage() (image.Image, error) {
 	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 
 	got := native.MaaControllerCachedImage(c.handle, imgBuffer.Handle())
 	if !got {
-		return nil
+		return nil, errors.New("failed to get cached image")
 	}
 
 	img := imgBuffer.Get()
 
-	return img
+	return img, nil
 }
 
 // GetUUID gets the UUID of the controller.
-func (c *Controller) GetUUID() (string, bool) {
+func (c *Controller) GetUUID() (string, error) {
 	uuid := buffer.NewStringBuffer()
 	defer uuid.Destroy()
 	got := native.MaaControllerGetUuid(c.handle, uuid.Handle())
 	if !got {
-		return "", false
+		return "", errors.New("failed to get UUID")
 	}
-	return uuid.Get(), true
+	return uuid.Get(), nil
 }
 
 // GetResolution gets the raw (unscaled) device resolution.
 // Returns the width and height, and whether the resolution is available.
 // Note: This returns the actual device screen resolution before any scaling.
 // The screenshot obtained via CacheImage is scaled according to the screenshot target size settings.
-func (c *Controller) GetResolution() (width, height int32, ok bool) {
-	ok = native.MaaControllerGetResolution(c.handle, &width, &height)
-	return
+func (c *Controller) GetResolution() (width, height int32, err error) {
+	got := native.MaaControllerGetResolution(c.handle, &width, &height)
+	if !got {
+		return 0, 0, fmt.Errorf("failed to get resolution")
+	}
+	return width, height, nil
 }
 
 // AddSink adds a event callback sink and returns the sink ID.

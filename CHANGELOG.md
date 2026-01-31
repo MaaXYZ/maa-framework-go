@@ -215,6 +215,51 @@ ok := ctrl.SetScreenshotTargetLongSide(1280)
 err := ctrl.SetScreenshot(maa.WithScreenshotTargetLongSide(1280))
 ```
 
+- `GetShellOutput` 现在返回 `(string, error)` 而非 `(string, bool)`
+- `CacheImage` 现在返回 `(image.Image, error)` 而非 `image.Image`
+- `GetUUID` 现在返回 `(string, error)` 而非 `(string, bool)`
+- `GetResolution` 现在返回 `(width, height int32, error)` 而非 `(width, height int32, bool)`
+
+迁移示例：
+
+```go
+// 旧 API
+output, ok := ctrl.GetShellOutput()
+
+// 新 API
+output, err := ctrl.GetShellOutput()
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+img := ctrl.CacheImage()
+
+// 新 API
+img, err := ctrl.CacheImage()
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+uuid, ok := ctrl.GetUUID()
+
+// 新 API
+uuid, err := ctrl.GetUUID()
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+width, height, ok := ctrl.GetResolution()
+
+// 新 API
+width, height, err := ctrl.GetResolution()
+if err != nil {
+    // 处理错误
+}
+```
+
 ### Tasker
 
 - `GetLatestNode` 现在返回 `(*NodeDetail, error)` 而非 `*NodeDetail`
