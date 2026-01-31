@@ -180,7 +180,8 @@ type testRecognitionDetailFromRecognitionAct struct {
 }
 
 func (a *testRecognitionDetailFromRecognitionAct) Run(ctx *Context, _ *CustomActionArg) bool {
-	img := ctx.GetTasker().GetController().CacheImage()
+	img, err := ctx.GetTasker().GetController().CacheImage()
+	require.NoError(a.t, err)
 	require.NotNil(a.t, img)
 
 	assertions := map[string]func(t *testing.T, detail *RecognitionDetail){
