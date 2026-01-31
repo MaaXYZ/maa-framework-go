@@ -51,9 +51,9 @@ var (
 	MaaTaskerOverridePipeline     func(tasker uintptr, taskId int64, pipelineOverride string) bool
 )
 
-type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi uintptr, transArg uintptr, outBox, outDetail uintptr) uint64
+type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi, transArg, outBox, outDetail uintptr) uint8
 
-type MaaCustomActionCallback func(context uintptr, taskId int64, currentTaskName, customActionName, customActionParam *byte, recoId int64, box uintptr, transArg uintptr) uint64
+type MaaCustomActionCallback func(context uintptr, taskId int64, currentTaskName, customActionName, customActionParam *byte, recoId int64, box, transArg uintptr) uint8
 
 type MaaInferenceDevice int32
 
@@ -188,16 +188,16 @@ var (
 	MaaControllerPostClick       func(ctrl uintptr, x, y int32) int64
 	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
 	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
-	MaaControllerPostClickV2   func(ctrl uintptr, x, y, contact, pressure int32) int64
-	MaaControllerPostSwipe     func(ctrl uintptr, x1, y1, x2, y2, duration int32) int64
-	MaaControllerPostSwipeV2   func(ctrl uintptr, x1, y1, x2, y2, duration, contact, pressure int32) int64
-	MaaControllerPostClickKey  func(ctrl uintptr, keycode int32) int64
-	MaaControllerPostInputText func(ctrl uintptr, text string) int64
-	MaaControllerPostStartApp  func(ctrl uintptr, intent string) int64
-	MaaControllerPostStopApp   func(ctrl uintptr, intent string) int64
-	MaaControllerPostTouchDown func(ctrl uintptr, contact, x, y, pressure int32) int64
-	MaaControllerPostTouchMove func(ctrl uintptr, contact, x, y, pressure int32) int64
-	MaaControllerPostTouchUp   func(ctrl uintptr, contact int32) int64
+	MaaControllerPostClickV2    func(ctrl uintptr, x, y, contact, pressure int32) int64
+	MaaControllerPostSwipe      func(ctrl uintptr, x1, y1, x2, y2, duration int32) int64
+	MaaControllerPostSwipeV2    func(ctrl uintptr, x1, y1, x2, y2, duration, contact, pressure int32) int64
+	MaaControllerPostClickKey   func(ctrl uintptr, keycode int32) int64
+	MaaControllerPostInputText  func(ctrl uintptr, text string) int64
+	MaaControllerPostStartApp   func(ctrl uintptr, intent string) int64
+	MaaControllerPostStopApp    func(ctrl uintptr, intent string) int64
+	MaaControllerPostTouchDown  func(ctrl uintptr, contact, x, y, pressure int32) int64
+	MaaControllerPostTouchMove  func(ctrl uintptr, contact, x, y, pressure int32) int64
+	MaaControllerPostTouchUp    func(ctrl uintptr, contact int32) int64
 	MaaControllerPostKeyDown    func(ctrl uintptr, keycode int32) int64
 	MaaControllerPostKeyUp      func(ctrl uintptr, keycode int32) int64
 	MaaControllerPostScreencap  func(ctrl uintptr) int64
@@ -213,22 +213,22 @@ var (
 )
 
 var (
-	MaaContextRunTask             func(context uintptr, entry, pipelineOverride string) int64
-	MaaContextRunRecognition      func(context uintptr, entry, pipelineOverride string, image uintptr) int64
-	MaaContextRunAction           func(context uintptr, entry, pipelineOverride string, box uintptr, recoDetail string) int64
+	MaaContextRunTask              func(context uintptr, entry, pipelineOverride string) int64
+	MaaContextRunRecognition       func(context uintptr, entry, pipelineOverride string, image uintptr) int64
+	MaaContextRunAction            func(context uintptr, entry, pipelineOverride string, box uintptr, recoDetail string) int64
 	MaaContextRunRecognitionDirect func(context uintptr, recoType, recoParam string, image uintptr) int64
-	MaaContextRunActionDirect     func(context uintptr, actionType, actionParam string, box uintptr, recoDetail string) int64
-	MaaContextOverridePipeline    func(context uintptr, pipelineOverride string) bool
-	MaaContextOverrideNext        func(context uintptr, nodeName string, nextList uintptr) bool
-	MaaContextOverrideImage       func(context uintptr, imageName string, image uintptr) bool
-	MaaContextGetNodeData         func(context uintptr, nodeName string, buffer uintptr) bool
-	MaaContextGetTaskId           func(context uintptr) int64
-	MaaContextGetTasker           func(context uintptr) uintptr
-	MaaContextClone               func(context uintptr) uintptr
-	MaaContextSetAnchor           func(context uintptr, anchorName, nodeName string) bool
-	MaaContextGetAnchor           func(context uintptr, anchorName string, buffer uintptr) bool
-	MaaContextGetHitCount         func(context uintptr, nodeName string, count *uint64) bool
-	MaaContextClearHitCount       func(context uintptr, nodeName string) bool
+	MaaContextRunActionDirect      func(context uintptr, actionType, actionParam string, box uintptr, recoDetail string) int64
+	MaaContextOverridePipeline     func(context uintptr, pipelineOverride string) bool
+	MaaContextOverrideNext         func(context uintptr, nodeName string, nextList uintptr) bool
+	MaaContextOverrideImage        func(context uintptr, imageName string, image uintptr) bool
+	MaaContextGetNodeData          func(context uintptr, nodeName string, buffer uintptr) bool
+	MaaContextGetTaskId            func(context uintptr) int64
+	MaaContextGetTasker            func(context uintptr) uintptr
+	MaaContextClone                func(context uintptr) uintptr
+	MaaContextSetAnchor            func(context uintptr, anchorName, nodeName string) bool
+	MaaContextGetAnchor            func(context uintptr, anchorName string, buffer uintptr) bool
+	MaaContextGetHitCount          func(context uintptr, nodeName string, count *uint64) bool
+	MaaContextClearHitCount        func(context uintptr, nodeName string) bool
 )
 
 var (
@@ -250,16 +250,16 @@ var (
 	MaaStringListBufferRemove  func(handle uintptr, index uint64) bool
 	MaaStringListBufferClear   func(handle uintptr) bool
 
-	MaaImageBufferCreate          func() uintptr
-	MaaImageBufferDestroy         func(handle uintptr)
-	MaaImageBufferIsEmpty         func(handle uintptr) bool
-	MaaImageBufferClear           func(handle uintptr) bool
-	MaaImageBufferGetRawData      func(handle uintptr) unsafe.Pointer
-	MaaImageBufferWidth           func(handle uintptr) int32
-	MaaImageBufferHeight          func(handle uintptr) int32
-	MaaImageBufferChannels        func(handle uintptr) int32
-	MaaImageBufferType            func(handle uintptr) int32
-	MaaImageBufferSetRawData      func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
+	MaaImageBufferCreate     func() uintptr
+	MaaImageBufferDestroy    func(handle uintptr)
+	MaaImageBufferIsEmpty    func(handle uintptr) bool
+	MaaImageBufferClear      func(handle uintptr) bool
+	MaaImageBufferGetRawData func(handle uintptr) unsafe.Pointer
+	MaaImageBufferWidth      func(handle uintptr) int32
+	MaaImageBufferHeight     func(handle uintptr) int32
+	MaaImageBufferChannels   func(handle uintptr) int32
+	MaaImageBufferType       func(handle uintptr) int32
+	MaaImageBufferSetRawData func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
 	// NOTE: MaaImageBufferGetEncoded, MaaImageBufferGetEncodedSize, and MaaImageBufferSetEncoded are intentionally
 	// NOT implemented in Go binding. Go handles image encoding/decoding natively through the standard library.
 	// Do not add encoded image buffer bindings here.
