@@ -186,6 +186,107 @@ if err != nil {
 }
 ```
 
+### Controller
+
+- `NewAdbController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewPlayCoverController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewWin32Controller` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewGamepadController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewCustomController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewCarouselImageController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewBlankController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+
+迁移示例：
+
+```go
+// 旧 API
+ctrl := maa.NewAdbController(
+    adbPath,
+    address,
+    screencapMethod,
+    inputMethod,
+    config,
+    agentPath,
+)
+
+// 新 API
+ctrl, err := maa.NewAdbController(
+    adbPath,
+    address,
+    screencapMethod,
+    inputMethod,
+    config,
+    agentPath,
+)
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+ctrl := maa.NewPlayCoverController(address, uuid)
+
+// 新 API
+ctrl, err := maa.NewPlayCoverController(address, uuid)
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+ctrl := maa.NewWin32Controller(
+    hWnd,
+    screencapMethod,
+    mouseMethod,
+    keyboardMethod,
+)
+
+// 新 API
+ctrl, err := maa.NewWin32Controller(
+    hWnd,
+    screencapMethod,
+    mouseMethod,
+    keyboardMethod,
+)
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+ctrl := maa.NewGamepadController(hWnd, gamepadType, screencapMethod)
+
+// 新 API
+ctrl, err := maa.NewGamepadController(hWnd, gamepadType, screencapMethod)
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+ctrl := maa.NewCustomController(customCtrl)
+
+// 新 API
+ctrl, err := maa.NewCustomController(customCtrl)
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+ctrl := maa.NewCarouselImageController(path)
+
+// 新 API
+ctrl, err := maa.NewCarouselImageController(path)
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+ctrl := maa.NewBlankController()
+
+// 新 API
+ctrl, err := maa.NewBlankController()
+if err != nil {
+    // 处理错误
+}
+```
+
 ### Tasker
 
 - `GetLatestNode` 现在返回 `(*NodeDetail, error)` 而非 `*NodeDetail`
