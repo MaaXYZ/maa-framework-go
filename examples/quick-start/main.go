@@ -14,7 +14,7 @@ func main() {
 	defer tasker.Destroy()
 
 	device := maa.FindAdbDevices()[0]
-	ctrl := maa.NewAdbController(
+	ctrl, err := maa.NewAdbController(
 		device.AdbPath,
 		device.Address,
 		device.ScreencapMethod,
@@ -22,6 +22,10 @@ func main() {
 		device.Config,
 		"path/to/MaaAgentBinary",
 	)
+	if err != nil {
+		fmt.Println("Failed to create ADB controller")
+		os.Exit(1)
+	}
 	defer ctrl.Destroy()
 	ctrl.PostConnect().Wait()
 	tasker.BindController(ctrl)

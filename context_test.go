@@ -57,7 +57,8 @@ type testContextRunRecognitionAct struct {
 }
 
 func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) bool {
-	img := ctx.GetTasker().GetController().CacheImage()
+	img, err := ctx.GetTasker().GetController().CacheImage()
+	require.NoError(t.t, err)
 	require.NotNil(t.t, img)
 
 	pipeline := NewPipeline()
@@ -1231,7 +1232,8 @@ func (a *testContextGetNodeDataAct) testNodeAttributes(ctx *Context) {
 }
 
 func TestContext_GetNodeData(t *testing.T) {
-	ctrl := NewBlankController()
+	ctrl, err := NewBlankController()
+	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
 	connected := ctrl.PostConnect().Wait().Success()
@@ -1376,7 +1378,8 @@ type testContextRunRecognitionDirectAct struct {
 }
 
 func (a *testContextRunRecognitionDirectAct) Run(ctx *Context, _ *CustomActionArg) bool {
-	img := ctx.GetTasker().GetController().CacheImage()
+	img, err := ctx.GetTasker().GetController().CacheImage()
+	require.NoError(a.t, err)
 	require.NotNil(a.t, img)
 
 	// Test RunRecognitionDirect with DirectHit recognition type

@@ -186,6 +186,80 @@ if err != nil {
 }
 ```
 
+### Controller
+
+- `NewAdbController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewPlayCoverController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewWin32Controller` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewGamepadController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewCustomController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewCarouselImageController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `NewBlankController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `SetScreenshotTargetLongSide`、`SetScreenshotTargetShortSide`、`SetScreenshotUseRawSize` 已移除
+- 新增 `SetScreenshot(opts ...ScreenshotOption) error` 与配套选项函数
+
+迁移示例：
+
+```go
+// 旧 API
+ctrl := maa.NewAdbController(adbPath, address, screencapMethod, inputMethod, config, agentPath)
+
+// 新 API
+ctrl, err := maa.NewAdbController(adbPath, address, screencapMethod, inputMethod, config, agentPath)
+// 其他 New*Controller 迁移方式相同
+
+// 旧 API
+ok := ctrl.SetScreenshotTargetLongSide(1280)
+
+// 新 API
+err := ctrl.SetScreenshot(maa.WithScreenshotTargetLongSide(1280))
+```
+
+- `GetShellOutput` 现在返回 `(string, error)` 而非 `(string, bool)`
+- `CacheImage` 现在返回 `(image.Image, error)` 而非 `image.Image`
+- `GetUUID` 现在返回 `(string, error)` 而非 `(string, bool)`
+- `GetResolution` 现在返回 `(width, height int32, error)` 而非 `(width, height int32, bool)`
+
+迁移示例：
+
+```go
+// 旧 API
+output, ok := ctrl.GetShellOutput()
+
+// 新 API
+output, err := ctrl.GetShellOutput()
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+img := ctrl.CacheImage()
+
+// 新 API
+img, err := ctrl.CacheImage()
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+uuid, ok := ctrl.GetUUID()
+
+// 新 API
+uuid, err := ctrl.GetUUID()
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
+width, height, ok := ctrl.GetResolution()
+
+// 新 API
+width, height, err := ctrl.GetResolution()
+if err != nil {
+    // 处理错误
+}
+```
+
 ### Tasker
 
 - `GetLatestNode` 现在返回 `(*NodeDetail, error)` 而非 `*NodeDetail`
