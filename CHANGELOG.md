@@ -44,42 +44,7 @@ detail, err := ctx.RunTask("MyTask", pipeline)
 if err != nil {
     // 处理错误
 }
-
-// 旧 API
-detail := ctx.RunRecognition("MyRec", img, pipeline)
-
-// 新 API
-detail, err := ctx.RunRecognition("MyRec", img, pipeline)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-detail := ctx.RunAction("MyAct", box, recDetail, pipeline)
-
-// 新 API
-detail, err := ctx.RunAction("MyAct", box, recDetail, pipeline)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-detail := ctx.RunRecognitionDirect(NodeRecognitionTypeDirectHit, param, img)
-
-// 新 API
-detail, err := ctx.RunRecognitionDirect(NodeRecognitionTypeDirectHit, param, img)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-detail := ctx.RunActionDirect(NodeActionTypeClick, param, box, recDetail)
-
-// 新 API
-detail, err := ctx.RunActionDirect(NodeActionTypeClick, param, box, recDetail)
-if err != nil {
-    // 处理错误
-}
+// 其他 Run 系列方法迁移方式相同
 ```
 
 **Override 方法返回值变更**
@@ -96,7 +61,7 @@ if err != nil {
 迁移示例：
 
 ```go
-// 旧 API
+// 旧 API (error 返回类型)
 ok := ctx.OverridePipeline(pipeline)
 
 // 新 API
@@ -105,25 +70,7 @@ if err != nil {
     // 处理错误
 }
 
-// 旧 API
-ok := ctx.OverrideNext(name, nextList)
-
-// 新 API
-err := ctx.OverrideNext(name, nextList)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-ok := ctx.OverrideImage(imageName, image)
-
-// 新 API
-err := ctx.OverrideImage(imageName, image)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
+// 旧 API ((T, error) 返回类型)
 data, ok := ctx.GetNodeJSON(name)
 
 // 新 API
@@ -131,42 +78,7 @@ data, err := ctx.GetNodeJSON(name)
 if err != nil {
     // 处理错误
 }
-
-// 旧 API
-ok := ctx.SetAnchor(anchorName, nodeName)
-
-// 新 API
-err := ctx.SetAnchor(anchorName, nodeName)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-anchor, ok := ctx.GetAnchor(anchorName)
-
-// 新 API
-anchor, err := ctx.GetAnchor(anchorName)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-count, ok := ctx.GetHitCount(nodeName)
-
-// 新 API
-count, err := ctx.GetHitCount(nodeName)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-ok := ctx.ClearHitCount(nodeName)
-
-// 新 API
-err := ctx.ClearHitCount(nodeName)
-if err != nil {
-    // 处理错误
-}
+// 其他 Override 系列方法迁移方式相同
 ```
 
 ### TaskJob
@@ -233,24 +145,6 @@ if err != nil {
 }
 
 // 旧 API
-img := ctrl.CacheImage()
-
-// 新 API
-img, err := ctrl.CacheImage()
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-uuid, ok := ctrl.GetUUID()
-
-// 新 API
-uuid, err := ctrl.GetUUID()
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
 width, height, ok := ctrl.GetResolution()
 
 // 新 API
@@ -258,6 +152,7 @@ width, height, err := ctrl.GetResolution()
 if err != nil {
     // 处理错误
 }
+// 其他 Get 系列方法迁移方式相同
 ```
 
 ### Tasker
