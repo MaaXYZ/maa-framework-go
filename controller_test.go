@@ -9,7 +9,8 @@ import (
 
 func createCarouselImageController(t *testing.T) *Controller {
 	testingPath := "./test/data_set/PipelineSmoking/Screenshot"
-	ctrl := NewCarouselImageController(testingPath)
+	ctrl, err := NewCarouselImageController(testingPath)
+	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	return ctrl
 }

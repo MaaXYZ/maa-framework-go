@@ -10,7 +10,8 @@ import (
 func TestRunWithoutFile(t *testing.T) {
 	testingPath := "./data_set/PipelineSmoking/Screenshot"
 
-	ctrl := maa.NewCarouselImageController(testingPath)
+	ctrl, err := maa.NewCarouselImageController(testingPath)
+	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()

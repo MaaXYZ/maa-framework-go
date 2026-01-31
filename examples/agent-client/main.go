@@ -21,7 +21,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctrl := maa.NewBlankController()
+	ctrl, err := maa.NewBlankController()
+	if err != nil {
+		fmt.Println("Failed to create blank controller")
+		os.Exit(1)
+	}
 	defer ctrl.Destroy()
 
 	ctrl.PostConnect().Wait()

@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"errors"
 	"image"
 	"time"
 	"unsafe"
@@ -31,7 +32,7 @@ func NewAdbController(
 	screencapMethod adb.ScreencapMethod,
 	inputMethod adb.InputMethod,
 	config, agentPath string,
-) *Controller {
+) (*Controller, error) {
 	handle := native.MaaAdbControllerCreate(
 		adbPath,
 		address,
@@ -41,30 +42,30 @@ func NewAdbController(
 		agentPath,
 	)
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create ADB controller")
 	}
 
 	initControllerStore(handle)
 
 	return &Controller{
 		handle: handle,
-	}
+	}, nil
 }
 
 // NewPlayCoverController creates a new PlayCover controller.
 func NewPlayCoverController(
 	address, uuid string,
-) *Controller {
+) (*Controller, error) {
 	handle := native.MaaPlayCoverControllerCreate(address, uuid)
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create PlayCover controller")
 	}
 
 	initControllerStore(handle)
 
 	return &Controller{
 		handle: handle,
-	}
+	}, nil
 }
 
 // NewWin32Controller creates a win32 controller instance.
@@ -73,7 +74,7 @@ func NewWin32Controller(
 	screencapMethod win32.ScreencapMethod,
 	mouseMethod win32.InputMethod,
 	keyboardMethod win32.InputMethod,
-) *Controller {
+) (*Controller, error) {
 	handle := native.MaaWin32ControllerCreate(
 		hWnd,
 		uint64(screencapMethod),
@@ -81,14 +82,14 @@ func NewWin32Controller(
 		uint64(keyboardMethod),
 	)
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create Win32 controller")
 	}
 
 	initControllerStore(handle)
 
 	return &Controller{
 		handle: handle,
-	}
+	}, nil
 }
 
 // GamepadType defines the type of virtual gamepad.
@@ -112,23 +113,27 @@ func NewGamepadController(
 	hWnd unsafe.Pointer,
 	gamepadType GamepadType,
 	screencapMethod win32.ScreencapMethod,
-) *Controller {
+) (*Controller, error) {
 	handle := native.MaaGamepadControllerCreate(hWnd, gamepadType, uint64(screencapMethod))
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create Gamepad controller")
 	}
 
 	initControllerStore(handle)
 
 	return &Controller{
 		handle: handle,
-	}
+	}, nil
 }
 
 // NewCustomController creates a custom controller instance.
 func NewCustomController(
 	ctrl CustomController,
-) *Controller {
+) (*Controller, error) {
+	if ctrl == nil {
+		return nil, errors.New("custom controller is nil")
+	}
+
 	ctrlID := registerCustomControllerCallbacks(ctrl)
 	handle := native.MaaCustomControllerCreate(
 		unsafe.Pointer(customControllerCallbacksHandle),
@@ -137,7 +142,7 @@ func NewCustomController(
 		uintptr(ctrlID),
 	)
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create Custom controller")
 	}
 
 	initControllerStore(handle)
@@ -148,7 +153,7 @@ func NewCustomController(
 
 	return &Controller{
 		handle: handle,
-	}
+	}, nil
 }
 
 // NOTE: MaaDbgController is intentionally NOT implemented in Go binding.

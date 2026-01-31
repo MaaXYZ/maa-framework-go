@@ -1231,7 +1231,8 @@ func (a *testContextGetNodeDataAct) testNodeAttributes(ctx *Context) {
 }
 
 func TestContext_GetNodeData(t *testing.T) {
-	ctrl := NewBlankController()
+	ctrl, err := NewBlankController()
+	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
 	connected := ctrl.PostConnect().Wait().Success()
