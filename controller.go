@@ -91,32 +91,6 @@ func NewWin32Controller(
 	}
 }
 
-// NewCustomController creates a custom controller instance.
-func NewCustomController(
-	ctrl CustomController,
-) *Controller {
-	ctrlID := registerCustomControllerCallbacks(ctrl)
-	handle := native.MaaCustomControllerCreate(
-		unsafe.Pointer(customControllerCallbacksHandle),
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		uintptr(ctrlID),
-	)
-	if handle == 0 {
-		return nil
-	}
-
-	initControllerStore(handle)
-
-	store.CtrlStore.Update(handle, func(v *store.CtrlStoreValue) {
-		v.CustomControllerCallbacksID = ctrlID
-	})
-
-	return &Controller{
-		handle: handle,
-	}
-}
-
 // GamepadType defines the type of virtual gamepad.
 type GamepadType = native.MaaGamepadType
 
@@ -145,6 +119,32 @@ func NewGamepadController(
 	}
 
 	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}
+}
+
+// NewCustomController creates a custom controller instance.
+func NewCustomController(
+	ctrl CustomController,
+) *Controller {
+	ctrlID := registerCustomControllerCallbacks(ctrl)
+	handle := native.MaaCustomControllerCreate(
+		unsafe.Pointer(customControllerCallbacksHandle),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		uintptr(ctrlID),
+	)
+	if handle == 0 {
+		return nil
+	}
+
+	initControllerStore(handle)
+
+	store.CtrlStore.Update(handle, func(v *store.CtrlStoreValue) {
+		v.CustomControllerCallbacksID = ctrlID
+	})
 
 	return &Controller{
 		handle: handle,
