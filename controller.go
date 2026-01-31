@@ -383,16 +383,33 @@ func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
+
+	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
+		v.SinkIDToEventCallbackID[sinkId] = id
+	})
+
 	return sinkId
 }
 
 // RemoveSink removes a event callback sink by sink ID.
 func (c *Controller) RemoveSink(sinkId int64) {
+	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
+		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
+		delete(v.SinkIDToEventCallbackID, sinkId)
+	})
+
 	native.MaaControllerRemoveSink(c.handle, sinkId)
 }
 
 // ClearSinks clears all event callback sinks.
 func (c *Controller) ClearSinks() {
+	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
+		for _, id := range v.SinkIDToEventCallbackID {
+			unregisterEventCallback(id)
+		}
+		v.SinkIDToEventCallbackID = make(map[int64]uint64)
+	})
+
 	native.MaaControllerClearSinks(c.handle)
 }
 
