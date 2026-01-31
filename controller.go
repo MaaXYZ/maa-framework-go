@@ -242,7 +242,7 @@ func (c *Controller) PostSwipeV2(x1, y1, x2, y2 int32, duration time.Duration, c
 	return newJob(id, c.status, c.wait)
 }
 
-// PostPressKey posts a click key.
+// PostClickKey posts a click key.
 func (c *Controller) PostClickKey(keycode int32) *Job {
 	id := native.MaaControllerPostClickKey(c.handle, keycode)
 	return newJob(id, c.status, c.wait)
