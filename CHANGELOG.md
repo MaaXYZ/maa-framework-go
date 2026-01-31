@@ -200,91 +200,19 @@ if err != nil {
 
 ```go
 // 旧 API
-ctrl := maa.NewAdbController(
-    adbPath,
-    address,
-    screencapMethod,
-    inputMethod,
-    config,
-    agentPath,
-)
+ctrl := maa.NewAdbController(adbPath, address, screencapMethod, inputMethod, config, agentPath)
 
 // 新 API
-ctrl, err := maa.NewAdbController(
-    adbPath,
-    address,
-    screencapMethod,
-    inputMethod,
-    config,
-    agentPath,
-)
-if err != nil {
-    // 处理错误
-}
+ctrl, err := maa.NewAdbController(adbPath, address, screencapMethod, inputMethod, config, agentPath)
+if err != nil { /* 处理错误 */ }
 
-// 旧 API
-ctrl := maa.NewPlayCoverController(address, uuid)
-
-// 新 API
+// 其他所有 New*Controller 函数同理
 ctrl, err := maa.NewPlayCoverController(address, uuid)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-ctrl := maa.NewWin32Controller(
-    hWnd,
-    screencapMethod,
-    mouseMethod,
-    keyboardMethod,
-)
-
-// 新 API
-ctrl, err := maa.NewWin32Controller(
-    hWnd,
-    screencapMethod,
-    mouseMethod,
-    keyboardMethod,
-)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-ctrl := maa.NewGamepadController(hWnd, gamepadType, screencapMethod)
-
-// 新 API
+ctrl, err := maa.NewWin32Controller(hWnd, screencapMethod, mouseMethod, keyboardMethod)
 ctrl, err := maa.NewGamepadController(hWnd, gamepadType, screencapMethod)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-ctrl := maa.NewCustomController(customCtrl)
-
-// 新 API
 ctrl, err := maa.NewCustomController(customCtrl)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-ctrl := maa.NewCarouselImageController(path)
-
-// 新 API
 ctrl, err := maa.NewCarouselImageController(path)
-if err != nil {
-    // 处理错误
-}
-
-// 旧 API
-ctrl := maa.NewBlankController()
-
-// 新 API
 ctrl, err := maa.NewBlankController()
-if err != nil {
-    // 处理错误
-}
 ```
 
 ### Tasker
