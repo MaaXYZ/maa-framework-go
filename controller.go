@@ -2,6 +2,7 @@ package maa
 
 import (
 	"errors"
+	"fmt"
 	"image"
 	"time"
 	"unsafe"
@@ -175,41 +176,100 @@ func (c *Controller) Destroy() {
 }
 
 // setOption sets options for controller instance.
-func (c *Controller) setOption(key native.MaaCtrlOption, value unsafe.Pointer, valSize uintptr) bool {
-	return native.MaaControllerSetOption(c.handle, key, value, uint64(valSize))
+func (c *Controller) setOption(key native.MaaCtrlOption, value unsafe.Pointer, valSize uintptr) error {
+	if native.MaaControllerSetOption(c.handle, key, value, uint64(valSize)) {
+		return nil
+	}
+	return fmt.Errorf("failed to set controller option: %v", key)
 }
 
-// SetScreenshotTargetLongSide sets screenshot target long side.
+type screenshotOptionKind int
+
+const (
+	screenshotOptionUnset screenshotOptionKind = iota
+	screenshotOptionLongSide
+	screenshotOptionShortSide
+	screenshotOptionRawSize
+)
+
+type screenshotOptionConfig struct {
+	kind            screenshotOptionKind
+	targetLongSide  int32
+	targetShortSide int32
+	useRawSize      bool
+}
+
+// ScreenshotOption configures how the screenshot is resized.
+// If multiple options are provided, only the last one is applied.
+type ScreenshotOption func(*screenshotOptionConfig)
+
+// WithScreenshotTargetLongSide sets screenshot target long side.
 // Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
 //
 // eg: 1280
-func (c *Controller) SetScreenshotTargetLongSide(targetLongSide int32) bool {
-	return c.setOption(
-		native.MaaCtrlOption_ScreenshotTargetLongSide,
-		unsafe.Pointer(&targetLongSide),
-		unsafe.Sizeof(targetLongSide),
-	)
+func WithScreenshotTargetLongSide(targetLongSide int32) ScreenshotOption {
+	return func(cfg *screenshotOptionConfig) {
+		cfg.kind = screenshotOptionLongSide
+		cfg.targetLongSide = targetLongSide
+	}
 }
 
-// SetScreenshotTargetShortSide sets screenshot target short side.
+// WithScreenshotTargetShortSide sets screenshot target short side.
 // Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
 //
 // eg: 720
-func (c *Controller) SetScreenshotTargetShortSide(targetShortSide int32) bool {
-	return c.setOption(
-		native.MaaCtrlOption_ScreenshotTargetShortSide,
-		unsafe.Pointer(&targetShortSide),
-		unsafe.Sizeof(targetShortSide),
-	)
+func WithScreenshotTargetShortSide(targetShortSide int32) ScreenshotOption {
+	return func(cfg *screenshotOptionConfig) {
+		cfg.kind = screenshotOptionShortSide
+		cfg.targetShortSide = targetShortSide
+	}
 }
 
-// SetScreenshotUseRawSize sets whether the screenshot uses the raw size without scaling.
-func (c *Controller) SetScreenshotUseRawSize(enabled bool) bool {
-	return c.setOption(
-		native.MaaCtrlOption_ScreenshotUseRawSize,
-		unsafe.Pointer(&enabled),
-		unsafe.Sizeof(enabled),
-	)
+// WithScreenshotUseRawSize sets whether the screenshot uses the raw size without scaling.
+func WithScreenshotUseRawSize(enabled bool) ScreenshotOption {
+	return func(cfg *screenshotOptionConfig) {
+		cfg.kind = screenshotOptionRawSize
+		cfg.useRawSize = enabled
+	}
+}
+
+// SetScreenshot applies screenshot options to controller instance.
+// Only the last option is applied when multiple options are provided.
+func (c *Controller) SetScreenshot(opts ...ScreenshotOption) error {
+	cfg := screenshotOptionConfig{
+		kind: screenshotOptionUnset,
+	}
+
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&cfg)
+		}
+	}
+
+	switch cfg.kind {
+	case screenshotOptionUnset:
+		return nil
+	case screenshotOptionLongSide:
+		return c.setOption(
+			native.MaaCtrlOption_ScreenshotTargetLongSide,
+			unsafe.Pointer(&cfg.targetLongSide),
+			unsafe.Sizeof(cfg.targetLongSide),
+		)
+	case screenshotOptionShortSide:
+		return c.setOption(
+			native.MaaCtrlOption_ScreenshotTargetShortSide,
+			unsafe.Pointer(&cfg.targetShortSide),
+			unsafe.Sizeof(cfg.targetShortSide),
+		)
+	case screenshotOptionRawSize:
+		return c.setOption(
+			native.MaaCtrlOption_ScreenshotUseRawSize,
+			unsafe.Pointer(&cfg.useRawSize),
+			unsafe.Sizeof(cfg.useRawSize),
+		)
+	default:
+		return fmt.Errorf("unknown screenshot option kind: %v", cfg.kind)
+	}
 }
 
 // PostConnect posts a connection.

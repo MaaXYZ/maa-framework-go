@@ -195,6 +195,8 @@ if err != nil {
 - `NewCustomController` 现在返回 `(*Controller, error)` 而非 `*Controller`
 - `NewCarouselImageController` 现在返回 `(*Controller, error)` 而非 `*Controller`
 - `NewBlankController` 现在返回 `(*Controller, error)` 而非 `*Controller`
+- `SetScreenshotTargetLongSide`、`SetScreenshotTargetShortSide`、`SetScreenshotUseRawSize` 已移除
+- 新增 `SetScreenshot(opts ...ScreenshotOption) error` 与配套选项函数
 
 迁移示例：
 
@@ -204,15 +206,13 @@ ctrl := maa.NewAdbController(adbPath, address, screencapMethod, inputMethod, con
 
 // 新 API
 ctrl, err := maa.NewAdbController(adbPath, address, screencapMethod, inputMethod, config, agentPath)
-if err != nil { /* 处理错误 */ }
+// 其他 New*Controller 迁移方式相同
 
-// 其他所有 New*Controller 函数同理
-ctrl, err := maa.NewPlayCoverController(address, uuid)
-ctrl, err := maa.NewWin32Controller(hWnd, screencapMethod, mouseMethod, keyboardMethod)
-ctrl, err := maa.NewGamepadController(hWnd, gamepadType, screencapMethod)
-ctrl, err := maa.NewCustomController(customCtrl)
-ctrl, err := maa.NewCarouselImageController(path)
-ctrl, err := maa.NewBlankController()
+// 旧 API
+ok := ctrl.SetScreenshotTargetLongSide(1280)
+
+// 新 API
+err := ctrl.SetScreenshot(maa.WithScreenshotTargetLongSide(1280))
 ```
 
 ### Tasker

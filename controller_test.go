@@ -29,15 +29,15 @@ func TestController_Handle(t *testing.T) {
 func TestController_SetScreenshotTargetLongSide(t *testing.T) {
 	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
-	got := ctrl.SetScreenshotTargetLongSide(1280)
-	require.True(t, got)
+	err := ctrl.SetScreenshot(WithScreenshotTargetLongSide(1280))
+	require.NoError(t, err)
 }
 
 func TestController_SetScreenshotTargetShortSide(t *testing.T) {
 	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
-	got := ctrl.SetScreenshotTargetShortSide(720)
-	require.True(t, got)
+	err := ctrl.SetScreenshot(WithScreenshotTargetShortSide(720))
+	require.NoError(t, err)
 }
 
 func TestController_SetScreenshotUseRawSize(t *testing.T) {
@@ -60,8 +60,8 @@ func TestController_SetScreenshotUseRawSize(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := createCarouselImageController(t)
 			defer ctrl.Destroy()
-			got := ctrl.SetScreenshotUseRawSize(tc.enabled)
-			require.True(t, got)
+			err := ctrl.SetScreenshot(WithScreenshotUseRawSize(tc.enabled))
+			require.NoError(t, err)
 		})
 	}
 }
