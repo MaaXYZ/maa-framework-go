@@ -16,10 +16,10 @@ type Tasker struct {
 }
 
 // NewTasker creates a new tasker.
-func NewTasker() *Tasker {
+func NewTasker() (*Tasker, error) {
 	handle := native.MaaTaskerCreate()
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create tasker")
 	}
 
 	store.TaskerStore.Lock()
@@ -29,7 +29,9 @@ func NewTasker() *Tasker {
 	})
 	store.TaskerStore.Unlock()
 
-	return &Tasker{handle: handle}
+	return &Tasker{
+		handle: handle,
+	}, nil
 }
 
 // Destroy free the tasker.
@@ -49,13 +51,21 @@ func (t *Tasker) Destroy() {
 }
 
 // BindResource binds the tasker to an initialized resource.
-func (t *Tasker) BindResource(res *Resource) bool {
-	return native.MaaTaskerBindResource(t.handle, res.handle)
+func (t *Tasker) BindResource(res *Resource) error {
+	ok := native.MaaTaskerBindResource(t.handle, res.handle)
+	if !ok {
+		return errors.New("failed to bind resource")
+	}
+	return nil
 }
 
 // BindController binds the tasker to an initialized controller.
-func (t *Tasker) BindController(ctrl *Controller) bool {
-	return native.MaaTaskerBindController(t.handle, ctrl.handle)
+func (t *Tasker) BindController(ctrl *Controller) error {
+	ok := native.MaaTaskerBindController(t.handle, ctrl.handle)
+	if !ok {
+		return errors.New("failed to bind controller")
+	}
+	return nil
 }
 
 // Initialized checks if the tasker is initialized.
@@ -164,11 +174,15 @@ func (t *Tasker) GetController() *Controller {
 }
 
 // ClearCache clears runtime cache.
-func (t *Tasker) ClearCache() bool {
-	return native.MaaTaskerClearCache(t.handle)
+func (t *Tasker) ClearCache() error {
+	ok := native.MaaTaskerClearCache(t.handle)
+	if !ok {
+		return errors.New("failed to clear cache")
+	}
+	return nil
 }
 
-func (t *Tasker) overridePipeline(taskId int64, override any) bool {
+func (t *Tasker) overridePipeline(taskId int64, override any) error {
 	var overrideStr string
 	switch v := override.(type) {
 	case string:
@@ -181,12 +195,16 @@ func (t *Tasker) overridePipeline(taskId int64, override any) bool {
 		} else {
 			jsonBytes, err := json.Marshal(v)
 			if err != nil {
-				return false
+				return err
 			}
 			overrideStr = string(jsonBytes)
 		}
 	}
-	return native.MaaTaskerOverridePipeline(t.handle, taskId, overrideStr)
+	ok := native.MaaTaskerOverridePipeline(t.handle, taskId, overrideStr)
+	if !ok {
+		return errors.New("failed to override pipeline")
+	}
+	return nil
 }
 
 type RecognitionDetail struct {

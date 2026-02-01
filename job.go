@@ -70,7 +70,7 @@ func (j *Job) Wait() *Job {
 type TaskJob struct {
 	*Job
 	getTaskDetailFunc    func(id int64) (*TaskDetail, error)
-	overridePipelineFunc func(id int64, override any) bool
+	overridePipelineFunc func(id int64, override any) error
 }
 
 func newTaskJob(
@@ -78,7 +78,7 @@ func newTaskJob(
 	statusFunc func(id int64) Status,
 	waitFunc func(id int64) Status,
 	getTaskDetailFunc func(id int64) (*TaskDetail, error),
-	overridePipelineFunc func(id int64, override any) bool,
+	overridePipelineFunc func(id int64, override any) error,
 ) *TaskJob {
 	job := newJob(id, statusFunc, waitFunc)
 	return &TaskJob{
@@ -104,9 +104,9 @@ func (j *TaskJob) GetDetail() (*TaskDetail, error) {
 
 // OverridePipeline overrides the pipeline for a running task.
 // The `override` parameter can be a JSON string or any data type that can be marshaled to JSON.
-func (j *TaskJob) OverridePipeline(override any) bool {
+func (j *TaskJob) OverridePipeline(override any) error {
 	if j.overridePipelineFunc == nil {
-		return false
+		return errors.New("overridePipelineFunc is nil")
 	}
 	return j.overridePipelineFunc(j.id, override)
 }

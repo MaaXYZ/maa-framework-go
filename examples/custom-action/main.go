@@ -10,7 +10,11 @@ import (
 func main() {
 	maa.Init()
 	maa.ConfigInitOption("./", "{}")
-	tasker := maa.NewTasker()
+	tasker, err := maa.NewTasker()
+	if err != nil {
+		fmt.Println("Failed to create tasker")
+		os.Exit(1)
+	}
 	defer tasker.Destroy()
 
 	device := maa.FindAdbDevices()[0]
