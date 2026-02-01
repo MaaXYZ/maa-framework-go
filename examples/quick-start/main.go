@@ -30,7 +30,11 @@ func main() {
 	ctrl.PostConnect().Wait()
 	tasker.BindController(ctrl)
 
-	res := maa.NewResource()
+	res, err := maa.NewResource()
+	if err != nil {
+		fmt.Println("Failed to create resource")
+		os.Exit(1)
+	}
 	defer res.Destroy()
 	res.PostBundle("./resource").Wait()
 	tasker.BindResource(res)

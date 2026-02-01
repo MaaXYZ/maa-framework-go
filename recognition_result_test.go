@@ -380,12 +380,12 @@ func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomRecognition("TestRecognitionDetail_Custom", &testRecognitionDetailCustomRec{})
-	require.True(t, ok)
+	err := res.RegisterCustomRecognition("TestRecognitionDetail_Custom", &testRecognitionDetailCustomRec{})
+	require.NoError(t, err)
 
 	act := &testRecognitionDetailFromRecognitionAct{t: t}
-	ok = res.RegisterCustomAction("TestRecognitionDetail_ResultMatchesRawAct", act)
-	require.True(t, ok)
+	err = res.RegisterCustomAction("TestRecognitionDetail_ResultMatchesRawAct", act)
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testNode := NewNode("TestRecognitionDetail_ResultMatchesRaw",

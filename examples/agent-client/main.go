@@ -13,7 +13,11 @@ func main() {
 	tasker := maa.NewTasker()
 	defer tasker.Destroy()
 
-	res := maa.NewResource()
+	res, err := maa.NewResource()
+	if err != nil {
+		fmt.Println("Failed to create resource")
+		os.Exit(1)
+	}
 	defer res.Destroy()
 
 	if !tasker.BindResource(res) {

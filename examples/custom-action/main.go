@@ -30,7 +30,11 @@ func main() {
 	ctrl.PostConnect().Wait()
 	tasker.BindController(ctrl)
 
-	res := maa.NewResource()
+	res, err := maa.NewResource()
+	if err != nil {
+		fmt.Println("Failed to create resource:", err)
+		os.Exit(1)
+	}
 	defer res.Destroy()
 	res.PostBundle("./resource").Wait()
 	tasker.BindResource(res)
@@ -39,7 +43,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	res.RegisterCustomAction("MyAct", &MyAct{})
+	if err := res.RegisterCustomAction("MyAct", &MyAct{}); err != nil {
+		fmt.Println("Failed to register custom action:", err)
+		os.Exit(1)
+	}
 
 	detail, err := tasker.PostTask("Startup").Wait().GetDetail()
 	if err != nil {
