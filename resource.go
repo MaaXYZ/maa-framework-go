@@ -112,9 +112,9 @@ func (r *Resource) UseCPU() error {
 type InferenceDevice = native.MaaInferenceDevice
 
 const (
-	InferenceDeviceAuto int32 = -1
-	InferenceDevice0    int32 = 0
-	InferenceDevice1    int32 = 1
+	InferenceDeviceAuto InferenceDevice = -1
+	InferenceDevice0    InferenceDevice = 0
+	InferenceDevice1    InferenceDevice = 1
 	// and more gpu id or flag...
 )
 
