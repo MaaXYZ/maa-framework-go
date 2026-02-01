@@ -305,7 +305,7 @@ if err != nil {
     // 处理错误
 }
 
-// 旧 API ((T, error) 返回类型)
+ // 旧 API (T, bool 返回类型)
 hash, ok := res.GetHash()
 
 // 新 API
