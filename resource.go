@@ -355,7 +355,7 @@ func (r *Resource) OverrideNext(name string, nextList []string) error {
 			item.Destroy()
 		}
 	}()
-	if native.MaaContextOverrideNext(r.handle, name, list.Handle()) {
+	if native.MaaResourceOverrideNext(r.handle, name, list.Handle()) {
 		return nil
 	}
 	return errors.New("failed to override next")
