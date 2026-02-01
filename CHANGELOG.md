@@ -188,3 +188,101 @@ if err != nil {
     // 处理错误
 }
 ```
+
+### Resource
+
+- `NewResource` 现在返回 `(*Resource, error)` 而非 `*Resource`
+
+迁移示例：
+
+```go
+// 旧 API
+res := maa.NewResource()
+
+// 新 API
+res, err := maa.NewResource()
+if err != nil {
+    // 处理错误
+}
+```
+
+**设置方法返回值变更**
+
+- `UseCPU` 现在返回 `error` 而非 `bool`
+- `UseDirectml` 现在返回 `error` 而非 `bool`
+- `UseCoreml` 现在返回 `error` 而非 `bool`
+- `UseAutoExecutionProvider` 现在返回 `error` 而非 `bool`
+
+迁移示例：
+
+```go
+// 旧 API
+ok := res.UseCPU()
+
+// 新 API
+err := res.UseCPU()
+if err != nil {
+    // 处理错误
+}
+// 其他设置方法迁移方式相同
+```
+
+**自定义识别和操作方法返回值变更**
+
+- `RegisterCustomRecognition` 现在返回 `error` 而非 `bool`
+- `UnregisterCustomRecognition` 现在返回 `error` 而非 `bool`
+- `ClearCustomRecognition` 现在返回 `error` 而非 `bool`
+- `RegisterCustomAction` 现在返回 `error` 而非 `bool`
+- `UnregisterCustomAction` 现在返回 `error` 而非 `bool`
+- `ClearCustomAction` 现在返回 `error` 而非 `bool`
+
+迁移示例：
+
+```go
+// 旧 API
+ok := res.RegisterCustomRecognition("MyRec", &MyRecognition{})
+
+// 新 API
+err := res.RegisterCustomRecognition("MyRec", &MyRecognition{})
+if err != nil {
+    // 处理错误
+}
+// 其他自定义方法迁移方式相同
+```
+
+**覆盖和查询方法返回值变更**
+
+- `OverridePipeline` 现在返回 `error` 而非 `bool`
+- `OverrideNext` 现在返回 `error` 而非 `bool`
+- `OverriderImage` 现在返回 `error` 而非 `bool`
+- `GetNodeJSON` 现在返回 `(string, error)` 而非 `(string, bool)`
+- `GetHash` 现在返回 `(string, error)` 而非 `(string, bool)`
+- `GetNodeList` 现在返回 `([]string, error)` 而非 `([]string, bool)`
+- `GetCustomRecognitionList` 现在返回 `([]string, error)` 而非 `([]string, bool)`
+- `GetCustomActionList` 现在返回 `([]string, error)` 而非 `([]string, bool)`
+- `GetDefaultRecognitionParam` 现在返回 `(NodeRecognitionParam, error)` 而非 `(aNodeRecognitionParam, bool)`
+- `GetDefaultActionParam` 现在返回 `(NodeActionParam, error)` 而非 `(NodeActionParam, bool)`
+- `Clear` 现在返回 `error` 而非 `bool`
+
+迁移示例：
+
+```go
+// 旧 API (error 返回类型)
+ok := res.OverridePipeline(pipeline)
+
+// 新 API
+err := res.OverridePipeline(pipeline)
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API ((T, error) 返回类型)
+hash, ok := res.GetHash()
+
+// 新 API
+hash, err := res.GetHash()
+if err != nil {
+    // 处理错误
+}
+// 其他查询方法迁移方式相同
+```
