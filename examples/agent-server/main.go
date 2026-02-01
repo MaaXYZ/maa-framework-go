@@ -31,6 +31,6 @@ func (a *AgentServerAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool
 	return true
 }
 
-func NewAgentServerAction() maa.CustomAction {
+func NewAgentServerAction() maa.CustomActionRunner {
 	return &AgentServerAction{}
 }
