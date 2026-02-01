@@ -290,8 +290,8 @@ func TestActionDetail_ResultMatchesRaw(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestActionDetail_ResultMatchesRawAct", &testActionDetailFromActionAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestActionDetail_ResultMatchesRawAct", &testActionDetailFromActionAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testNode := NewNode("TestActionDetail_ResultMatchesRaw",

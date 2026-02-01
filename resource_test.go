@@ -2,12 +2,14 @@ package maa
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
 func createResource(t *testing.T) *Resource {
-	res := NewResource()
+	res, err := NewResource()
+	require.NoError(t, err)
 	require.NotNil(t, res)
 	return res
 }
@@ -36,8 +38,8 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	got1 := res.RegisterCustomRecognition("TestRec", &testResourceTestRec{})
-	require.True(t, got1)
+	err := res.RegisterCustomRecognition("TestRec", &testResourceTestRec{})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testResource_RegisterCustomRecognitionNode := NewNode("TestResource_RegisterCustomRecognition",
@@ -63,12 +65,13 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	got1 := res.RegisterCustomRecognition("TestRec", &testResourceTestRec{})
-	require.True(t, got1)
+	err := res.RegisterCustomRecognition("TestRec", &testResourceTestRec{})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testResource_UnregisterCustomRecognitionNode := NewNode("TestResource_UnregisterCustomRecognition",
 		WithRecognition(RecCustom("TestRec")),
+		WithTimeout(0*time.Second),
 	)
 	pipeline.AddNode(testResource_UnregisterCustomRecognitionNode)
 
@@ -76,8 +79,8 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 		Wait().Success()
 	require.True(t, got2)
 
-	got3 := res.UnregisterCustomRecognition("TestRec")
-	require.True(t, got3)
+	err = res.UnregisterCustomRecognition("TestRec")
+	require.NoError(t, err)
 
 	got4 := tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline).
 		Wait().Failure()
@@ -97,20 +100,22 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	got1 := res.RegisterCustomRecognition("TestRec1", &testResourceTestRec{})
-	require.True(t, got1)
-	got2 := res.RegisterCustomRecognition("TestRec2", &testResourceTestRec{})
-	require.True(t, got2)
+	err := res.RegisterCustomRecognition("TestRec1", &testResourceTestRec{})
+	require.NoError(t, err)
+	err = res.RegisterCustomRecognition("TestRec2", &testResourceTestRec{})
+	require.NoError(t, err)
 
 	pipeline1 := NewPipeline()
 	testResource_ClearCustomRecognitionNode1 := NewNode("TestResource_ClearCustomRecognition",
 		WithRecognition(RecCustom("TestRec1")),
+		WithTimeout(0*time.Second),
 	)
 	pipeline1.AddNode(testResource_ClearCustomRecognitionNode1)
 
 	pipeline2 := NewPipeline()
 	testResource_ClearCustomRecognitionNode2 := NewNode("TestResource_ClearCustomRecognition",
 		WithRecognition(RecCustom("TestRec2")),
+		WithTimeout(0*time.Second),
 	)
 	pipeline2.AddNode(testResource_ClearCustomRecognitionNode2)
 	got3 := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1).
@@ -120,8 +125,8 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 		Wait().Success()
 	require.True(t, got4)
 
-	got5 := res.ClearCustomRecognition()
-	require.True(t, got5)
+	err = res.ClearCustomRecognition()
+	require.NoError(t, err)
 
 	got6 := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1).
 		Wait().Failure()
@@ -150,8 +155,8 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	registered := res.RegisterCustomAction("TestAct", &testResourceTestAct{})
-	require.True(t, registered)
+	err := res.RegisterCustomAction("TestAct", &testResourceTestAct{})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testResource_RegisterCustomActionNode := NewNode("TestResource_RegisterCustomAction",
@@ -177,8 +182,8 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	registered := res.RegisterCustomAction("TestAct", &testResourceTestAct{})
-	require.True(t, registered)
+	err := res.RegisterCustomAction("TestAct", &testResourceTestAct{})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testResource_UnregisterCustomActionNode := NewNode("TestResource_UnregisterCustomAction",
@@ -190,8 +195,8 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 		Wait().Success()
 	require.True(t, got1)
 
-	unregistered := res.UnregisterCustomAction("TestAct")
-	require.True(t, unregistered)
+	err = res.UnregisterCustomAction("TestAct")
+	require.NoError(t, err)
 
 	got2 := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline).
 		Wait().Failure()
@@ -211,10 +216,10 @@ func TestResource_ClearCustomAction(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	registered1 := res.RegisterCustomAction("TestAct1", &testResourceTestAct{})
-	require.True(t, registered1)
-	registered2 := res.RegisterCustomAction("TestAct2", &testResourceTestAct{})
-	require.True(t, registered2)
+	err := res.RegisterCustomAction("TestAct1", &testResourceTestAct{})
+	require.NoError(t, err)
+	err = res.RegisterCustomAction("TestAct2", &testResourceTestAct{})
+	require.NoError(t, err)
 
 	pipeline1 := NewPipeline()
 	testResource_ClearCustomActionNode1 := NewNode("TestResource_ClearCustomAction",
@@ -235,8 +240,8 @@ func TestResource_ClearCustomAction(t *testing.T) {
 		Wait().Success()
 	require.True(t, got2)
 
-	cleared := res.ClearCustomAction()
-	require.True(t, cleared)
+	err = res.ClearCustomAction()
+	require.NoError(t, err)
 
 	got3 := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1).
 		Wait().Failure()
@@ -260,8 +265,8 @@ func TestResource_Clear(t *testing.T) {
 	resDir := "./test/data_set/PipelineSmoking/resource"
 	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
-	cleared := res.Clear()
-	require.True(t, cleared)
+	err := res.Clear()
+	require.NoError(t, err)
 }
 
 func TestResource_Loaded(t *testing.T) {
@@ -280,8 +285,8 @@ func TestResource_GetHash(t *testing.T) {
 	resDir := "./test/data_set/PipelineSmoking/resource"
 	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
-	hash, ok := res.GetHash()
-	require.True(t, ok)
+	hash, err := res.GetHash()
+	require.NoError(t, err)
 	require.NotEqual(t, "0", hash)
 }
 
@@ -291,8 +296,8 @@ func TestResource_GetNodeList(t *testing.T) {
 	resDir := "./test/data_set/PipelineSmoking/resource"
 	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
-	taskList, ok := res.GetNodeList()
-	require.True(t, ok)
+	taskList, err := res.GetNodeList()
+	require.NoError(t, err)
 	require.NotEmpty(t, taskList)
 }
 
@@ -301,15 +306,15 @@ func TestResource_GetDefaultRecognitionParam(t *testing.T) {
 	defer res.Destroy()
 
 	// Test getting default recognition parameters for DirectHit type
-	param, ok := res.GetDefaultRecognitionParam(NodeRecognitionTypeDirectHit)
-	require.True(t, ok)
+	param, err := res.GetDefaultRecognitionParam(NodeRecognitionTypeDirectHit)
+	require.NoError(t, err)
 	require.NotNil(t, param)
 	_, isDirectHit := param.(*NodeDirectHitParam)
 	require.True(t, isDirectHit, "param should be *NodeDirectHitParam")
 
 	// Test getting default recognition parameters for OCR type
-	param2, ok2 := res.GetDefaultRecognitionParam(NodeRecognitionTypeOCR)
-	require.True(t, ok2)
+	param2, err := res.GetDefaultRecognitionParam(NodeRecognitionTypeOCR)
+	require.NoError(t, err)
 	require.NotNil(t, param2)
 	_, isOCR := param2.(*NodeOCRParam)
 	require.True(t, isOCR, "param2 should be *NodeOCRParam")
@@ -320,15 +325,15 @@ func TestResource_GetDefaultActionParam(t *testing.T) {
 	defer res.Destroy()
 
 	// Test getting default action parameters for Click type
-	param, ok := res.GetDefaultActionParam(NodeActionTypeClick)
-	require.True(t, ok)
+	param, err := res.GetDefaultActionParam(NodeActionTypeClick)
+	require.NoError(t, err)
 	require.NotNil(t, param)
 	_, isClick := param.(*NodeClickParam)
 	require.True(t, isClick, "param should be *NodeClickParam")
 
 	// Test getting default action parameters for DoNothing type
-	param2, ok2 := res.GetDefaultActionParam(NodeActionTypeDoNothing)
-	require.True(t, ok2)
+	param2, err := res.GetDefaultActionParam(NodeActionTypeDoNothing)
+	require.NoError(t, err)
 	require.NotNil(t, param2)
 	_, isDoNothing := param2.(*NodeDoNothingParam)
 	require.True(t, isDoNothing, "param2 should be *NodeDoNothingParam")

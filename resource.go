@@ -2,6 +2,8 @@ package maa
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"image"
 	"unsafe"
 
@@ -15,10 +17,10 @@ type Resource struct {
 }
 
 // NewResource creates a new resource.
-func NewResource() *Resource {
+func NewResource() (*Resource, error) {
 	handle := native.MaaResourceCreate()
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create resource")
 	}
 
 	store.ResStore.Lock()
@@ -31,7 +33,7 @@ func NewResource() *Resource {
 
 	return &Resource{
 		handle: handle,
-	}
+	}, nil
 }
 
 // Destroy frees the resource.
@@ -53,37 +55,52 @@ func (r *Resource) Destroy() {
 	native.MaaResourceDestroy(r.handle)
 }
 
-func (r *Resource) setOption(key native.MaaResOption, value unsafe.Pointer, valSize uintptr) bool {
-	return native.MaaResourceSetOption(
+func (r *Resource) setOption(key native.MaaResOption, value unsafe.Pointer, valSize uintptr) error {
+	if native.MaaResourceSetOption(
 		r.handle,
 		key,
 		value,
 		uint64(valSize),
-	)
+	) {
+		return nil
+	}
+	return fmt.Errorf("failed to set resource option: %v", key)
 }
 
-func (r *Resource) setInferenceDevice(device native.MaaInferenceDevice) bool {
-	return r.setOption(
+func (r *Resource) setInferenceDevice(device native.MaaInferenceDevice) error {
+	if err := r.setOption(
 		native.MaaResOption_InferenceDevice,
 		unsafe.Pointer(&device),
 		unsafe.Sizeof(device),
-	)
+	); err != nil {
+		return fmt.Errorf("failed to set inference device: %w", err)
+	}
+	return nil
 }
 
-func (r *Resource) setInferenceExecutionProvider(ep native.MaaInferenceExecutionProvider) bool {
-	return r.setOption(
+func (r *Resource) setInferenceExecutionProvider(ep native.MaaInferenceExecutionProvider) error {
+	if err := r.setOption(
 		native.MaaResOption_InferenceExecutionProvider,
 		unsafe.Pointer(&ep),
 		unsafe.Sizeof(ep),
-	)
+	); err != nil {
+		return fmt.Errorf("failed to set inference execution provider: %w", err)
+	}
+	return nil
 }
 
-func (r *Resource) setInference(ep native.MaaInferenceExecutionProvider, deviceID native.MaaInferenceDevice) bool {
-	return r.setInferenceExecutionProvider(ep) && r.setInferenceDevice(deviceID)
+func (r *Resource) setInference(ep native.MaaInferenceExecutionProvider, deviceID native.MaaInferenceDevice) error {
+	if err := r.setInferenceExecutionProvider(ep); err != nil {
+		return err
+	}
+	if err := r.setInferenceDevice(deviceID); err != nil {
+		return err
+	}
+	return nil
 }
 
 // UseCPU
-func (r *Resource) UseCPU() bool {
+func (r *Resource) UseCPU() error {
 	return r.setInference(native.MaaInferenceExecutionProvider_CPU, native.MaaInferenceDevice_CPU)
 }
 
@@ -97,32 +114,25 @@ const (
 )
 
 // UseDirectml
-func (r *Resource) UseDirectml(deviceID InterenceDevice) bool {
+func (r *Resource) UseDirectml(deviceID InterenceDevice) error {
 	return r.setInference(native.MaaInferenceExecutionProvider_DirectML, deviceID)
 }
 
 // UseCoreml
-func (r *Resource) UseCoreml(coremlFlag InterenceDevice) bool {
+func (r *Resource) UseCoreml(coremlFlag InterenceDevice) error {
 	return r.setInference(native.MaaInferenceExecutionProvider_CoreML, coremlFlag)
 }
 
 // UseAutoExecutionProvider
-func (r *Resource) UseAutoExecutionProvider() bool {
+func (r *Resource) UseAutoExecutionProvider() error {
 	return r.setInference(native.MaaInferenceExecutionProvider_Auto, native.MaaInferenceDevice_Auto)
 }
 
 // RegisterCustomRecognition registers a custom recognition runner to the resource.
-func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognitionRunner) bool {
+func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognitionRunner) error {
 	id := registerCustomRecognition(recognition)
 
-	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
-		if oldID, ok := v.CustomRecognizersCallbackID[name]; ok {
-			unregisterCustomRecognition(oldID)
-		}
-		v.CustomRecognizersCallbackID[name] = id
-	})
-
-	return native.MaaResourceRegisterCustomRecognition(
+	ok := native.MaaResourceRegisterCustomRecognition(
 		r.handle,
 		name,
 		_MaaCustomRecognitionCallbackAgent,
@@ -130,48 +140,76 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 		// and will not actually dereference this pointer.
 		uintptr(id),
 	)
+	if !ok {
+		unregisterCustomRecognition(id)
+		return fmt.Errorf("failed to register custom recognition: %s", name)
+	}
+
+	var oldID uint64
+	var hadOld bool
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		if existing, ok := v.CustomRecognizersCallbackID[name]; ok {
+			oldID = existing
+			hadOld = true
+		}
+		v.CustomRecognizersCallbackID[name] = id
+	})
+	if hadOld {
+		unregisterCustomRecognition(oldID)
+	}
+	return nil
 }
 
 // UnregisterCustomRecognition unregisters a custom recognition runner from the resource.
-func (r *Resource) UnregisterCustomRecognition(name string) bool {
-	var found bool
+func (r *Resource) UnregisterCustomRecognition(name string) error {
+	var (
+		found bool
+		id    uint64
+	)
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
-		if id, ok := v.CustomRecognizersCallbackID[name]; ok {
-			unregisterCustomRecognition(id)
-			delete(v.CustomRecognizersCallbackID, name)
+		if storedID, ok := v.CustomRecognizersCallbackID[name]; ok {
+			id = storedID
 			found = true
 		}
 	})
 	if !found {
-		return false
+		return fmt.Errorf("custom recognition not found: %s", name)
 	}
-	return native.MaaResourceUnregisterCustomRecognition(r.handle, name)
+	if !native.MaaResourceUnregisterCustomRecognition(r.handle, name) {
+		return fmt.Errorf("failed to unregister custom recognition: %s", name)
+	}
+
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		delete(v.CustomRecognizersCallbackID, name)
+	})
+	unregisterCustomRecognition(id)
+	return nil
 }
 
 // ClearCustomRecognition clears all custom recognitions runner registered from the resource.
-func (r *Resource) ClearCustomRecognition() bool {
+func (r *Resource) ClearCustomRecognition() error {
+	if !native.MaaResourceClearCustomRecognition(r.handle) {
+		return errors.New("failed to clear custom recognition")
+	}
+
+	var ids []uint64
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
 		for _, id := range v.CustomRecognizersCallbackID {
-			unregisterCustomRecognition(id)
+			ids = append(ids, id)
 		}
 		v.CustomRecognizersCallbackID = make(map[string]uint64)
 	})
-
-	return native.MaaResourceClearCustomRecognition(r.handle)
+	for _, id := range ids {
+		unregisterCustomRecognition(id)
+	}
+	return nil
 }
 
 // RegisterCustomAction registers a custom action runner to the resource.
-func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) bool {
+func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) error {
 	id := registerCustomAction(action)
 
-	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
-		if oldID, ok := v.CustomActionsCallbackID[name]; ok {
-			unregisterCustomAction(oldID)
-		}
-		v.CustomActionsCallbackID[name] = id
-	})
-
-	return native.MaaResourceRegisterCustomAction(
+	ok := native.MaaResourceRegisterCustomAction(
 		r.handle,
 		name,
 		_MaaCustomActionCallbackAgent,
@@ -179,34 +217,69 @@ func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) 
 		// and will not actually dereference this pointer.
 		uintptr(id),
 	)
+	if !ok {
+		unregisterCustomAction(id)
+		return fmt.Errorf("failed to register custom action: %s", name)
+	}
+
+	var oldID uint64
+	var hadOld bool
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		if existing, ok := v.CustomActionsCallbackID[name]; ok {
+			oldID = existing
+			hadOld = true
+		}
+		v.CustomActionsCallbackID[name] = id
+	})
+	if hadOld {
+		unregisterCustomAction(oldID)
+	}
+	return nil
 }
 
 // UnregisterCustomAction unregisters a custom action runner from the resource.
-func (r *Resource) UnregisterCustomAction(name string) bool {
-	var found bool
+func (r *Resource) UnregisterCustomAction(name string) error {
+	var (
+		found bool
+		id    uint64
+	)
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
-		if id, ok := v.CustomActionsCallbackID[name]; ok {
-			unregisterCustomAction(id)
-			delete(v.CustomActionsCallbackID, name)
+		if storedID, ok := v.CustomActionsCallbackID[name]; ok {
+			id = storedID
 			found = true
 		}
 	})
 	if !found {
-		return false
+		return fmt.Errorf("custom action not found: %s", name)
 	}
-	return native.MaaResourceUnregisterCustomAction(r.handle, name)
+	if !native.MaaResourceUnregisterCustomAction(r.handle, name) {
+		return fmt.Errorf("failed to unregister custom action: %s", name)
+	}
+
+	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
+		delete(v.CustomActionsCallbackID, name)
+	})
+	unregisterCustomAction(id)
+	return nil
 }
 
 // ClearCustomAction clears all custom actions runners registered from the resource.
-func (r *Resource) ClearCustomAction() bool {
+func (r *Resource) ClearCustomAction() error {
+	if !native.MaaResourceClearCustomAction(r.handle) {
+		return errors.New("failed to clear custom action")
+	}
+
+	var ids []uint64
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
 		for _, id := range v.CustomActionsCallbackID {
-			unregisterCustomAction(id)
+			ids = append(ids, id)
 		}
 		v.CustomActionsCallbackID = make(map[string]uint64)
 	})
-
-	return native.MaaResourceClearCustomAction(r.handle)
+	for _, id := range ids {
+		unregisterCustomAction(id)
+	}
+	return nil
 }
 
 // PostBundle adds a path to the resource loading paths.
@@ -234,13 +307,16 @@ func (r *Resource) PostImage(path string) *Job {
 	return newJob(id, r.status, r.wait)
 }
 
-func (r *Resource) overridePipeline(override string) bool {
-	return native.MaaResourceOverridePipeline(r.handle, override)
+func (r *Resource) overridePipeline(override string) error {
+	if native.MaaResourceOverridePipeline(r.handle, override) {
+		return nil
+	}
+	return errors.New("failed to override pipeline")
 }
 
 // OverridePipeline overrides pipeline.
 // The `override` parameter can be a JSON string or any data type that can be marshaled to JSON.
-func (r *Resource) OverridePipeline(override any) bool {
+func (r *Resource) OverridePipeline(override any) error {
 	switch v := override.(type) {
 	case string:
 		return r.overridePipeline(v)
@@ -249,14 +325,14 @@ func (r *Resource) OverridePipeline(override any) bool {
 	default:
 		jsonBytes, err := json.Marshal(v)
 		if err != nil {
-			return false
+			return fmt.Errorf("failed to marshal override: %w", err)
 		}
 		return r.overridePipeline(string(jsonBytes))
 	}
 }
 
 // OverrideNext overrides the next list of task by name.
-func (r *Resource) OverrideNext(name string, nextList []string) bool {
+func (r *Resource) OverrideNext(name string, nextList []string) error {
 	list := buffer.NewStringListBuffer()
 	defer list.Destroy()
 	size := len(nextList)
@@ -271,27 +347,39 @@ func (r *Resource) OverrideNext(name string, nextList []string) bool {
 			item.Destroy()
 		}
 	}()
-	return native.MaaContextOverrideNext(r.handle, name, list.Handle())
+	if native.MaaContextOverrideNext(r.handle, name, list.Handle()) {
+		return nil
+	}
+	return errors.New("failed to override next")
 }
 
-func (r *Resource) OverriderImage(imageName string, image image.Image) bool {
+func (r *Resource) OverriderImage(imageName string, image image.Image) error {
 	img := buffer.NewImageBuffer()
 	defer img.Destroy()
 	img.Set(image)
-	return native.MaaResourceOverrideImage(r.handle, imageName, img.Handle())
+	if native.MaaResourceOverrideImage(r.handle, imageName, img.Handle()) {
+		return nil
+	}
+	return errors.New("failed to override image")
 }
 
 // GetNodeJSON gets the node JSON by name.
-func (r *Resource) GetNodeJSON(name string) (string, bool) {
+func (r *Resource) GetNodeJSON(name string) (string, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaResourceGetNodeData(r.handle, name, buf.Handle())
-	return buf.Get(), ok
+	if !ok {
+		return "", fmt.Errorf("failed to get node data: %s", name)
+	}
+	return buf.Get(), nil
 }
 
 // Clear clears the resource loading paths.
-func (r *Resource) Clear() bool {
-	return native.MaaResourceClear(r.handle)
+func (r *Resource) Clear() error {
+	if native.MaaResourceClear(r.handle) {
+		return nil
+	}
+	return errors.New("failed to clear resource")
 }
 
 // status returns the loading status of a resource identified by id.
@@ -309,71 +397,71 @@ func (r *Resource) Loaded() bool {
 }
 
 // GetHash returns the hash of the resource.
-func (r *Resource) GetHash() (string, bool) {
+func (r *Resource) GetHash() (string, error) {
 	hash := buffer.NewStringBuffer()
 	defer hash.Destroy()
 
 	got := native.MaaResourceGetHash(r.handle, hash.Handle())
 	if !got {
-		return "", false
+		return "", errors.New("failed to get resource hash")
 	}
-	return hash.Get(), true
+	return hash.Get(), nil
 }
 
 // GetNodeList returns the node list of the resource.
-func (r *Resource) GetNodeList() ([]string, bool) {
+func (r *Resource) GetNodeList() ([]string, error) {
 	taskList := buffer.NewStringListBuffer()
 	defer taskList.Destroy()
 
 	got := native.MaaResourceGetNodeList(r.handle, taskList.Handle())
 	if !got {
-		return []string{}, false
+		return []string{}, errors.New("failed to get node list")
 	}
 	taskListArr := taskList.GetAll()
 
-	return taskListArr, true
+	return taskListArr, nil
 }
 
 // GetCustomRecognitionList returns the custom recognition list of the resource.
-func (r *Resource) GetCustomRecognitionList() ([]string, bool) {
+func (r *Resource) GetCustomRecognitionList() ([]string, error) {
 	recognitionList := buffer.NewStringListBuffer()
 	defer recognitionList.Destroy()
 
 	got := native.MaaResourceGetCustomRecognitionList(r.handle, recognitionList.Handle())
 	if !got {
-		return []string{}, false
+		return []string{}, errors.New("failed to get custom recognition list")
 	}
 
-	return recognitionList.GetAll(), true
+	return recognitionList.GetAll(), nil
 }
 
 // GetCustomActionList returns the custom action list of the resource.
-func (r *Resource) GetCustomActionList() ([]string, bool) {
+func (r *Resource) GetCustomActionList() ([]string, error) {
 	actionList := buffer.NewStringListBuffer()
 	defer actionList.Destroy()
 
 	got := native.MaaResourceGetCustomActionList(r.handle, actionList.Handle())
 	if !got {
-		return []string{}, false
+		return []string{}, errors.New("failed to get custom action list")
 	}
 
-	return actionList.GetAll(), true
+	return actionList.GetAll(), nil
 }
 
 // GetDefaultRecognitionParam returns the default recognition parameters for the specified type from DefaultPipelineMgr.
 // recoType is a recognition type (e.g., NodeRecognitionTypeOCR, NodeRecognitionTypeTemplateMatch).
-// Returns the parsed NodeRecognitionParam interface and a boolean indicating success.
-func (r *Resource) GetDefaultRecognitionParam(recoType NodeRecognitionType) (NodeRecognitionParam, bool) {
+// Returns the parsed NodeRecognitionParam interface.
+func (r *Resource) GetDefaultRecognitionParam(recoType NodeRecognitionType) (NodeRecognitionParam, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaResourceGetDefaultRecognitionParam(r.handle, string(recoType), buf.Handle())
 	if !ok {
-		return nil, false
+		return nil, fmt.Errorf("failed to get default recognition param: %s", recoType)
 	}
 
 	jsonStr := buf.Get()
 	if jsonStr == "" {
-		return nil, false
+		return nil, errors.New("default recognition param is empty")
 	}
 
 	// Create the appropriate param type based on recoType
@@ -400,31 +488,31 @@ func (r *Resource) GetDefaultRecognitionParam(recoType NodeRecognitionType) (Nod
 	case NodeRecognitionTypeCustom:
 		param = &NodeCustomRecognitionParam{}
 	default:
-		return nil, false
+		return nil, fmt.Errorf("unknown recognition type: %s", recoType)
 	}
 
 	// Unmarshal the JSON string into the param
 	if err := json.Unmarshal([]byte(jsonStr), param); err != nil {
-		return nil, false
+		return nil, fmt.Errorf("failed to unmarshal default recognition param: %w", err)
 	}
 
-	return param, true
+	return param, nil
 }
 
 // GetDefaultActionParam returns the default action parameters for the specified type from DefaultPipelineMgr.
 // actionType is an action type (e.g., NodeActionTypeClick, NodeActionTypeSwipe).
-// Returns the parsed NodeActionParam interface and a boolean indicating success.
-func (r *Resource) GetDefaultActionParam(actionType NodeActionType) (NodeActionParam, bool) {
+// Returns the parsed NodeActionParam interface.
+func (r *Resource) GetDefaultActionParam(actionType NodeActionType) (NodeActionParam, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaResourceGetDefaultActionParam(r.handle, string(actionType), buf.Handle())
 	if !ok {
-		return nil, false
+		return nil, fmt.Errorf("failed to get default action param: %s", actionType)
 	}
 
 	jsonStr := buf.Get()
 	if jsonStr == "" {
-		return nil, false
+		return nil, errors.New("default action param is empty")
 	}
 
 	// Create the appropriate param type based on actionType
@@ -471,15 +559,15 @@ func (r *Resource) GetDefaultActionParam(actionType NodeActionType) (NodeActionP
 	case NodeActionTypeCustom:
 		param = &NodeCustomActionParam{}
 	default:
-		return nil, false
+		return nil, fmt.Errorf("unknown action type: %s", actionType)
 	}
 
 	// Unmarshal the JSON string into the param
 	if err := json.Unmarshal([]byte(jsonStr), param); err != nil {
-		return nil, false
+		return nil, fmt.Errorf("failed to unmarshal default action param: %w", err)
 	}
 
-	return param, true
+	return param, nil
 }
 
 // AddSink adds a event callback sink and returns the sink ID.

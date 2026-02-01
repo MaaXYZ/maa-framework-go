@@ -38,8 +38,8 @@ func TestContext_RunTask(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_RunPipelineAct", &testContextRunTaskAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_RunPipelineAct", &testContextRunTaskAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_RunPipelineNode := NewNode("TestContext_RunPipeline",
@@ -88,8 +88,8 @@ func TestContext_RunRecognition(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_RunRecognitionAct", &testContextRunRecognitionAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_RunRecognitionAct", &testContextRunRecognitionAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_RunRecognitionNode := NewNode("TestContext_RunRecognition").
@@ -140,8 +140,8 @@ func TestContext_RunAction(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_RunActionAct", &testContextRunActionAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_RunActionAct", &testContextRunActionAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_RunActionNode := NewNode("TestContext_RunAction",
@@ -201,8 +201,8 @@ func TestContext_OverridePipeline(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_OverridePipelineAct", &testContextOverriderPipelineAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_OverridePipelineAct", &testContextOverriderPipelineAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_OverridePipelineNode := NewNode("TestContext_OverridePipeline",
@@ -257,8 +257,8 @@ func TestContext_OverrideNext(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_OverrideNextAct", &testContextOverrideNextAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_OverrideNextAct", &testContextOverrideNextAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_OverrideNextNode := NewNode("TestContext_OverrideNext",
@@ -1247,8 +1247,8 @@ func TestContext_GetNodeData(t *testing.T) {
 
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_GetNodeDataAct", &testContextGetNodeDataAct{t})
-	require.True(t, ok)
+	err = res.RegisterCustomAction("TestContext_GetNodeDataAct", &testContextGetNodeDataAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	launchNode := NewNode("launch",
@@ -1285,8 +1285,8 @@ func TestContext_GetTaskJob(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_GetTaskJobAct", &testContextGetTaskJobAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_GetTaskJobAct", &testContextGetTaskJobAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_GetTaskJobNode := NewNode("TestContext_GetTaskJob",
@@ -1322,8 +1322,8 @@ func TestContext_GetTasker(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextGetTaskerAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextGetTaskerAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_GetTaskerNode := NewNode("TestContext_GetTasker",
@@ -1359,8 +1359,8 @@ func TestContext_Clone(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextCloneAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextCloneAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_CloneNode := NewNode("TestContext_Clone",
@@ -1403,8 +1403,8 @@ func TestContext_RunRecognitionDirect(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_RunRecognitionDirectAct", &testContextRunRecognitionDirectAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_RunRecognitionDirectAct", &testContextRunRecognitionDirectAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_RunRecognitionDirectNode := NewNode("TestContext_RunRecognitionDirect",
@@ -1445,8 +1445,8 @@ func TestContext_RunActionDirect(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_RunActionDirectAct", &testContextRunActionDirectAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_RunActionDirectAct", &testContextRunActionDirectAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_RunActionDirectNode := NewNode("TestContext_RunActionDirect",

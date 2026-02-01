@@ -17,7 +17,8 @@ func TestRunWithoutFile(t *testing.T) {
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := maa.NewResource()
+	res, err := maa.NewResource()
+	require.NoError(t, err)
 	require.NotNil(t, res)
 	defer res.Destroy()
 
@@ -29,8 +30,8 @@ func TestRunWithoutFile(t *testing.T) {
 	isCtrlBound := tasker.BindController(ctrl)
 	require.True(t, isCtrlBound)
 
-	ok := res.RegisterCustomAction("MyAct", &MyAct{t})
-	require.True(t, ok)
+	err = res.RegisterCustomAction("MyAct", &MyAct{t})
+	require.NoError(t, err)
 
 	pipeline := maa.NewPipeline()
 	myTaskNode := maa.NewNode("MyTask",
