@@ -12,6 +12,11 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/store"
 )
 
+// Resource manages the loading and configuration of resources required by Tasker.
+// It handles pipeline definitions, OCR models, images, and inference device settings.
+// Resource also provides registration of custom recognitions and actions.
+//
+// A Resource must be created with NewResource and should be destroyed with Destroy when no longer needed.
 type Resource struct {
 	handle uintptr
 }
