@@ -99,7 +99,7 @@ func (r *Resource) setInference(ep native.MaaInferenceExecutionProvider, deviceI
 	return nil
 }
 
-// UseCPU
+// UseCPU uses CPU for inference.
 func (r *Resource) UseCPU() error {
 	return r.setInference(native.MaaInferenceExecutionProvider_CPU, native.MaaInferenceDevice_CPU)
 }
@@ -113,17 +113,19 @@ const (
 	// and more gpu id or flag...
 )
 
-// UseDirectml
+// UseDirectml uses DirectML for inference.
+// deviceID is the device id; use InterenceDeviceAuto for auto selection.
 func (r *Resource) UseDirectml(deviceID InterenceDevice) error {
 	return r.setInference(native.MaaInferenceExecutionProvider_DirectML, deviceID)
 }
 
-// UseCoreml
+// UseCoreml uses CoreML for inference.
+// coremlFlag is the CoreML flag; use InterenceDeviceAuto for auto selection.
 func (r *Resource) UseCoreml(coremlFlag InterenceDevice) error {
 	return r.setInference(native.MaaInferenceExecutionProvider_CoreML, coremlFlag)
 }
 
-// UseAutoExecutionProvider
+// UseAutoExecutionProvider automatically selects the inference execution provider and device.
 func (r *Resource) UseAutoExecutionProvider() error {
 	return r.setInference(native.MaaInferenceExecutionProvider_Auto, native.MaaInferenceDevice_Auto)
 }
@@ -282,26 +284,31 @@ func (r *Resource) ClearCustomAction() error {
 	return nil
 }
 
-// PostBundle adds a path to the resource loading paths.
-// Return id of the resource.
+// PostBundle asynchronously loads resource paths and returns a Job.
+// This is an async operation that immediately returns a Job, which can be queried via status/wait.
 func (r *Resource) PostBundle(path string) *Job {
 	id := native.MaaResourcePostBundle(r.handle, path)
 	return newJob(id, r.status, r.wait)
 }
 
-// PostOcrModel adds an OCR model to the resource loading paths.
+// PostOcrModel asynchronously loads an OCR model directory and returns a Job.
+// This is an async operation that immediately returns a Job, which can be queried via status/wait.
 func (r *Resource) PostOcrModel(path string) *Job {
 	id := native.MaaResourcePostOcrModel(r.handle, path)
 	return newJob(id, r.status, r.wait)
 }
 
-// PostPipeline adds a pipeline to the resource loading paths.
+// PostPipeline asynchronously loads a pipeline and returns a Job.
+// Supports loading a directory or a single json/jsonc file.
+// This is an async operation that immediately returns a Job, which can be queried via status/wait.
 func (r *Resource) PostPipeline(path string) *Job {
 	id := native.MaaResourcePostPipeline(r.handle, path)
 	return newJob(id, r.status, r.wait)
 }
 
-// PostImage adds an image to the resource loading paths.
+// PostImage asynchronously loads image resources and returns a Job.
+// Supports loading a directory or a single image file.
+// This is an async operation that immediately returns a Job, which can be queried via status/wait.
 func (r *Resource) PostImage(path string) *Job {
 	id := native.MaaResourcePostImage(r.handle, path)
 	return newJob(id, r.status, r.wait)
@@ -314,8 +321,8 @@ func (r *Resource) overridePipeline(override string) error {
 	return errors.New("failed to override pipeline")
 }
 
-// OverridePipeline overrides pipeline.
-// The `override` parameter can be a JSON string or any data type that can be marshaled to JSON.
+// OverridePipeline overrides the pipeline.
+// override can be a JSON string or any value that can be marshaled to JSON.
 func (r *Resource) OverridePipeline(override any) error {
 	switch v := override.(type) {
 	case string:
@@ -331,7 +338,8 @@ func (r *Resource) OverridePipeline(override any) error {
 	}
 }
 
-// OverrideNext overrides the next list of task by name.
+// OverrideNext overrides the next list of a task by name.
+// It sets the list directly and will create the node if it doesn't exist.
 func (r *Resource) OverrideNext(name string, nextList []string) error {
 	list := buffer.NewStringListBuffer()
 	defer list.Destroy()
@@ -353,6 +361,7 @@ func (r *Resource) OverrideNext(name string, nextList []string) error {
 	return errors.New("failed to override next")
 }
 
+// OverriderImage overrides the image data for the specified image name.
 func (r *Resource) OverriderImage(imageName string, image image.Image) error {
 	img := buffer.NewImageBuffer()
 	defer img.Destroy()
@@ -363,7 +372,7 @@ func (r *Resource) OverriderImage(imageName string, image image.Image) error {
 	return errors.New("failed to override image")
 }
 
-// GetNodeJSON gets the node JSON by name.
+// GetNodeJSON gets the task definition JSON by name.
 func (r *Resource) GetNodeJSON(name string) (string, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
@@ -374,7 +383,8 @@ func (r *Resource) GetNodeJSON(name string) (string, error) {
 	return buf.Get(), nil
 }
 
-// Clear clears the resource loading paths.
+// Clear clears loaded content.
+// This method fails if resources are currently loading.
 func (r *Resource) Clear() error {
 	if native.MaaResourceClear(r.handle) {
 		return nil
