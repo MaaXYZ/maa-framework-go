@@ -54,7 +54,7 @@ func _MaaCustomActionCallbackAgent(
 	recoId int64,
 	box uintptr,
 	transArg uintptr,
-) uint8 {
+) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(transArg)

@@ -51,9 +51,9 @@ var (
 	MaaTaskerOverridePipeline     func(tasker uintptr, taskId int64, pipelineOverride string) bool
 )
 
-type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi, transArg, outBox, outDetail uintptr) uint8
+type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi, transArg, outBox, outDetail uintptr) uintptr
 
-type MaaCustomActionCallback func(context uintptr, taskId int64, currentTaskName, customActionName, customActionParam *byte, recoId int64, box, transArg uintptr) uint8
+type MaaCustomActionCallback func(context uintptr, taskId int64, currentTaskName, customActionName, customActionParam *byte, recoId int64, box, transArg uintptr) uintptr
 
 type MaaInferenceDevice int32
 
