@@ -250,7 +250,7 @@ if err != nil {
 // 其他自定义方法迁移方式相同
 ```
 
-**覆盖和查询方法返回值变更**
+**覆盖方法返回值变更**
 
 - `OverridePipeline` 现在返回 `error` 而非 `bool`
 - `OverrideNext` 现在返回 `error` 而非 `bool`
@@ -261,7 +261,7 @@ if err != nil {
 - `InterenceDevice` 类型别名已重命名为 `InferenceDevice`（修正拼写错误）
 - `InterenceDeviceAuto` 常量已重命名为 `InferenceDeviceAuto`
 
-`迁移示例：
+迁移示例：
 
 ```go
 // 旧 API
@@ -289,7 +289,7 @@ err := res.OverrideImage("name", img)
 - `GetNodeList` 现在返回 `([]string, error)` 而非 `([]string, bool)`
 - `GetCustomRecognitionList` 现在返回 `([]string, error)` 而非 `([]string, bool)`
 - `GetCustomActionList` 现在返回 `([]string, error)` 而非 `([]string, bool)`
-- `GetDefaultRecognitionParam` 现在返回 `(NodeRecognitionParam, error)` 而非 `(aNodeRecognitionParam, bool)`
+- `GetDefaultRecognitionParam` 现在返回 `(NodeRecognitionParam, error)` 而非 `(NodeRecognitionParam, bool)`
 - `GetDefaultActionParam` 现在返回 `(NodeActionParam, error)` 而非 `(NodeActionParam, bool)`
 - `Clear` 现在返回 `error` 而非 `bool`
 
