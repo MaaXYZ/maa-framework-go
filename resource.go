@@ -420,14 +420,14 @@ func (r *Resource) GetHash() (string, error) {
 
 // GetNodeList returns the node list of the resource.
 func (r *Resource) GetNodeList() ([]string, error) {
-	taskList := buffer.NewStringListBuffer()
-	defer taskList.Destroy()
+	nodeList := buffer.NewStringListBuffer()
+	defer nodeList.Destroy()
 
-	got := native.MaaResourceGetNodeList(r.handle, taskList.Handle())
+	got := native.MaaResourceGetNodeList(r.handle, nodeList.Handle())
 	if !got {
 		return []string{}, errors.New("failed to get node list")
 	}
-	taskListArr := taskList.GetAll()
+	taskListArr := nodeList.GetAll()
 
 	return taskListArr, nil
 }
