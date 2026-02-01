@@ -104,24 +104,24 @@ func (r *Resource) UseCPU() error {
 	return r.setInference(native.MaaInferenceExecutionProvider_CPU, native.MaaInferenceDevice_CPU)
 }
 
-type InterenceDevice = native.MaaInferenceDevice
+type InferenceDevice = native.MaaInferenceDevice
 
 const (
-	InterenceDeviceAuto int32 = -1
+	InferenceDeviceAuto int32 = -1
 	InferenceDevice0    int32 = 0
 	InferenceDevice1    int32 = 1
 	// and more gpu id or flag...
 )
 
 // UseDirectml uses DirectML for inference.
-// deviceID is the device id; use InterenceDeviceAuto for auto selection.
-func (r *Resource) UseDirectml(deviceID InterenceDevice) error {
+// deviceID is the device id; use InferenceDeviceAuto for auto selection.
+func (r *Resource) UseDirectml(deviceID InferenceDevice) error {
 	return r.setInference(native.MaaInferenceExecutionProvider_DirectML, deviceID)
 }
 
 // UseCoreml uses CoreML for inference.
-// coremlFlag is the CoreML flag; use InterenceDeviceAuto for auto selection.
-func (r *Resource) UseCoreml(coremlFlag InterenceDevice) error {
+// coremlFlag is the CoreML flag; use InferenceDeviceAuto for auto selection.
+func (r *Resource) UseCoreml(coremlFlag InferenceDevice) error {
 	return r.setInference(native.MaaInferenceExecutionProvider_CoreML, coremlFlag)
 }
 

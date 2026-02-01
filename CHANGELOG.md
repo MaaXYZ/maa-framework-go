@@ -256,6 +256,21 @@ if err != nil {
 - `OverrideNext` 现在返回 `error` 而非 `bool`
 - `OverrideImage` 现在返回 `error` 而非 `bool`
 
+**类型名称修正**
+
+- `InterenceDevice` 类型别名已重命名为 `InferenceDevice`（修正拼写错误）
+- `InterenceDeviceAuto` 常量已重命名为 `InferenceDeviceAuto`
+
+`迁移示例：
+
+```go
+// 旧 API
+res.UseDirectml(maa.InterenceDeviceAuto)
+
+// 新 API
+res.UseDirectml(maa.InferenceDeviceAuto)
+```
+
 **方法重命名**
 
 - `OverriderImage` 已重命名为 `OverrideImage`（修正拼写错误）
