@@ -278,11 +278,14 @@ res.UseDirectml(maa.InferenceDeviceAuto)
 迁移示例：
 
 ```go
-// 旧 API
-err := res.OverriderImage("name", img)
+// 旧 API (bool 返回类型)
+ok := res.OverriderImage("name", img)
 
-// 新 API
+// 新 API (error 返回类型)
 err := res.OverrideImage("name", img)
+if err != nil {
+    // 处理错误
+}
 ```
 - `GetNodeJSON` 现在返回 `(string, error)` 而非 `(string, bool)`
 - `GetHash` 现在返回 `(string, error)` 而非 `(string, bool)`
