@@ -425,7 +425,7 @@ func (r *Resource) GetNodeList() ([]string, error) {
 
 	got := native.MaaResourceGetNodeList(r.handle, nodeList.Handle())
 	if !got {
-		return []string{}, errors.New("failed to get node list")
+		return nil, errors.New("failed to get node list")
 	}
 	taskListArr := nodeList.GetAll()
 
@@ -439,7 +439,7 @@ func (r *Resource) GetCustomRecognitionList() ([]string, error) {
 
 	got := native.MaaResourceGetCustomRecognitionList(r.handle, recognitionList.Handle())
 	if !got {
-		return []string{}, errors.New("failed to get custom recognition list")
+		return nil, errors.New("failed to get custom recognition list")
 	}
 
 	return recognitionList.GetAll(), nil
@@ -452,7 +452,7 @@ func (r *Resource) GetCustomActionList() ([]string, error) {
 
 	got := native.MaaResourceGetCustomActionList(r.handle, actionList.Handle())
 	if !got {
-		return []string{}, errors.New("failed to get custom action list")
+		return nil, errors.New("failed to get custom action list")
 	}
 
 	return actionList.GetAll(), nil
