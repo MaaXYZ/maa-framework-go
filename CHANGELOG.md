@@ -254,7 +254,21 @@ if err != nil {
 
 - `OverridePipeline` 现在返回 `error` 而非 `bool`
 - `OverrideNext` 现在返回 `error` 而非 `bool`
-- `OverriderImage` 现在返回 `error` 而非 `bool`
+- `OverrideImage` 现在返回 `error` 而非 `bool`
+
+**方法重命名**
+
+- `OverriderImage` 已重命名为 `OverrideImage`（修正拼写错误）
+
+迁移示例：
+
+```go
+// 旧 API
+err := res.OverriderImage("name", img)
+
+// 新 API
+err := res.OverrideImage("name", img)
+```
 - `GetNodeJSON` 现在返回 `(string, error)` 而非 `(string, bool)`
 - `GetHash` 现在返回 `(string, error)` 而非 `(string, bool)`
 - `GetNodeList` 现在返回 `([]string, error)` 而非 `([]string, bool)`

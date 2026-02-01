@@ -361,8 +361,8 @@ func (r *Resource) OverrideNext(name string, nextList []string) error {
 	return errors.New("failed to override next")
 }
 
-// OverriderImage overrides the image data for the specified image name.
-func (r *Resource) OverriderImage(imageName string, image image.Image) error {
+// OverrideImage overrides the image data for the specified image name.
+func (r *Resource) OverrideImage(imageName string, image image.Image) error {
 	img := buffer.NewImageBuffer()
 	defer img.Destroy()
 	img.Set(image)
