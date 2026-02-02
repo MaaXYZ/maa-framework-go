@@ -294,7 +294,7 @@ func (ctx *Context) OverrideImage(imageName string, image image.Image) error {
 func (ctx *Context) GetNodeJSON(name string) (string, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
-	ok := native.MaaResourceGetNodeData(ctx.handle, name, buf.Handle())
+	ok := native.MaaContextGetNodeData(ctx.handle, name, buf.Handle())
 	if !ok {
 		return "", errors.New("failed to get node JSON")
 	}
