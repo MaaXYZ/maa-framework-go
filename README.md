@@ -52,7 +52,7 @@ Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-p
 ### 1. Install Go Package
 
 ```shell
-go get github.com/MaaXYZ/maa-framework-go/v3
+go get github.com/MaaXYZ/maa-framework-go/v4
 ```
 
 ### 2. Download MaaFramework
@@ -93,7 +93,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/MaaXYZ/maa-framework-go/v3"
+	"github.com/MaaXYZ/maa-framework-go/v4"
 )
 
 func main() {

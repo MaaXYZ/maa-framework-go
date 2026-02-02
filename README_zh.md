@@ -10,11 +10,11 @@
     <a href="https://github.com/MaaXYZ/maa-framework-go/blob/main/LICENSE.md">
       <img alt="license" src="https://img.shields.io/github/license/MaaXYZ/maa-framework-go">
     </a>
-    <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v3">
-      <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go/v3.svg">
+    <a href="https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4">
+      <img alt="go reference" src="https://pkg.go.dev/badge/github.com/MaaXYZ/maa-framework-go/v4.svg">
     </a>
-    <a href="https://goreportcard.com/report/github.com/MaaXYZ/maa-framework-go/v3">
-      <img alt="go report" src="https://goreportcard.com/badge/github.com/MaaXYZ/maa-framework-go/v3">
+    <a href="https://goreportcard.com/report/github.com/MaaXYZ/maa-framework-go/v4">
+      <img alt="go report" src="https://goreportcard.com/badge/github.com/MaaXYZ/maa-framework-go/v4">
     </a>
   </div>
   <div>
@@ -52,7 +52,7 @@
 ### 1. 安装 Go 包
 
 ```shell
-go get github.com/MaaXYZ/maa-framework-go/v3
+go get github.com/MaaXYZ/maa-framework-go/v4
 ```
 
 ### 2. 下载 MaaFramework
@@ -93,7 +93,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/MaaXYZ/maa-framework-go/v3"
+	"github.com/MaaXYZ/maa-framework-go/v4"
 )
 
 func main() {
