@@ -10,8 +10,17 @@ import (
 var (
 	inited bool
 
-	ErrAlreadyInitialized = errors.New("maa framework already initialized")
-	ErrNotInitialized     = errors.New("maa framework not initialized")
+	ErrAlreadyInitialized     = errors.New("maa framework already initialized")
+	ErrNotInitialized         = errors.New("maa framework not initialized")
+	ErrSetLogDir              = errors.New("failed to set log directory")
+	ErrSetSaveDraw            = errors.New("failed to set save draw option")
+	ErrSetStdoutLevel         = errors.New("failed to set stdout level")
+	ErrSetDebugMode           = errors.New("failed to set debug mode")
+	ErrSetSaveOnError         = errors.New("failed to set save on error option")
+	ErrSetDrawQuality         = errors.New("failed to set draw quality")
+	ErrSetRecoImageCacheLimit = errors.New("failed to set recognition image cache limit")
+	ErrLoadPlugin             = errors.New("failed to load plugin")
+	ErrEmptyLogDir            = errors.New("log directory path is empty")
 )
 
 // InitConfig contains configuration options for initializing the MAA framework.
@@ -124,13 +133,23 @@ func Init(opts ...InitOption) error {
 		return err
 	}
 
-	SetLogDir(cfg.LogDir)
-	SetSaveDraw(cfg.SaveDraw)
-	SetStdoutLevel(cfg.StdoutLevel)
-	SetDebugMode(cfg.DebugMode)
+	if err := SetLogDir(cfg.LogDir); err != nil {
+		return err
+	}
+	if err := SetSaveDraw(cfg.SaveDraw); err != nil {
+		return err
+	}
+	if err := SetStdoutLevel(cfg.StdoutLevel); err != nil {
+		return err
+	}
+	if err := SetDebugMode(cfg.DebugMode); err != nil {
+		return err
+	}
 
 	for _, path := range cfg.PluginPaths {
-		LoadPlugin(path)
+		if err := LoadPlugin(path); err != nil {
+			return err
+		}
 	}
 
 	inited = true
@@ -165,16 +184,22 @@ func setGlobalOption(key native.MaaGlobalOption, value unsafe.Pointer, valSize u
 }
 
 // SetLogDir sets the log directory.
-func SetLogDir(path string) bool {
+func SetLogDir(path string) error {
 	if path == "" {
-		return false
+		return ErrEmptyLogDir
 	}
-	return setGlobalOption(native.MaaGlobalOption_LogDir, unsafe.Pointer(&[]byte(path)[0]), uintptr(len(path)))
+	if !setGlobalOption(native.MaaGlobalOption_LogDir, unsafe.Pointer(&[]byte(path)[0]), uintptr(len(path))) {
+		return ErrSetLogDir
+	}
+	return nil
 }
 
 // SetSaveDraw sets whether to save draw.
-func SetSaveDraw(enabled bool) bool {
-	return setGlobalOption(native.MaaGlobalOption_SaveDraw, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled))
+func SetSaveDraw(enabled bool) error {
+	if !setGlobalOption(native.MaaGlobalOption_SaveDraw, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled)) {
+		return ErrSetSaveDraw
+	}
+	return nil
 }
 
 type LoggingLevel int32
@@ -192,36 +217,54 @@ const (
 )
 
 // SetStdoutLevel sets the level of log output to stdout.
-func SetStdoutLevel(level LoggingLevel) bool {
-	return setGlobalOption(native.MaaGlobalOption_StdoutLevel, unsafe.Pointer(&level), unsafe.Sizeof(level))
+func SetStdoutLevel(level LoggingLevel) error {
+	if !setGlobalOption(native.MaaGlobalOption_StdoutLevel, unsafe.Pointer(&level), unsafe.Sizeof(level)) {
+		return ErrSetStdoutLevel
+	}
+	return nil
 }
 
 // SetDebugMode sets whether to enable debug mode.
-func SetDebugMode(enabled bool) bool {
-	return setGlobalOption(native.MaaGlobalOption_DebugMode, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled))
+func SetDebugMode(enabled bool) error {
+	if !setGlobalOption(native.MaaGlobalOption_DebugMode, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled)) {
+		return ErrSetDebugMode
+	}
+	return nil
 }
 
 // SetSaveOnError sets whether to save screenshot on error.
-func SetSaveOnError(enabled bool) bool {
-	return setGlobalOption(native.MaaGlobalOption_SaveOnError, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled))
+func SetSaveOnError(enabled bool) error {
+	if !setGlobalOption(native.MaaGlobalOption_SaveOnError, unsafe.Pointer(&enabled), unsafe.Sizeof(enabled)) {
+		return ErrSetSaveOnError
+	}
+	return nil
 }
 
 // SetDrawQuality sets image quality for draw images.
 // Default value is 85, range: [0, 100].
-func SetDrawQuality(quality int32) bool {
-	return setGlobalOption(native.MaaGlobalOption_DrawQuality, unsafe.Pointer(&quality), unsafe.Sizeof(quality))
+func SetDrawQuality(quality int32) error {
+	if !setGlobalOption(native.MaaGlobalOption_DrawQuality, unsafe.Pointer(&quality), unsafe.Sizeof(quality)) {
+		return ErrSetDrawQuality
+	}
+	return nil
 }
 
 // SetRecoImageCacheLimit sets recognition image cache limit.
 // Default value is 4096.
-func SetRecoImageCacheLimit(limit uint64) bool {
-	return setGlobalOption(native.MaaGlobalOption_RecoImageCacheLimit, unsafe.Pointer(&limit), unsafe.Sizeof(limit))
+func SetRecoImageCacheLimit(limit uint64) error {
+	if !setGlobalOption(native.MaaGlobalOption_RecoImageCacheLimit, unsafe.Pointer(&limit), unsafe.Sizeof(limit)) {
+		return ErrSetRecoImageCacheLimit
+	}
+	return nil
 }
 
 // LoadPlugin loads a plugin specified by path.
 // The path may be a full filesystem path or just a plugin name.
 // When only a name is provided, the function searches system directories and the current working directory for a matching plugin.
 // If the path refers to a directory, plugins inside that directory are searched recursively.
-func LoadPlugin(path string) bool {
-	return native.MaaGlobalLoadPlugin(path)
+func LoadPlugin(path string) error {
+	if !native.MaaGlobalLoadPlugin(path) {
+		return ErrLoadPlugin
+	}
+	return nil
 }
