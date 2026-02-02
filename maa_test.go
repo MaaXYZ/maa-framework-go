@@ -112,6 +112,8 @@ func TestSetStdoutLevel(t *testing.T) {
 			require.Equal(t, tc.expectedErr, err)
 		})
 	}
+
+	SetStdoutLevel(LoggingLevelOff)
 }
 
 func TestSetDebugMode(t *testing.T) {
