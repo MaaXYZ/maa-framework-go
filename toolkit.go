@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"errors"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/controller/adb"
@@ -25,12 +26,15 @@ type DesktopWindow struct {
 }
 
 // ConfigInitOption inits the toolkit config option.
-func ConfigInitOption(userPath, defaultJson string) bool {
-	return native.MaaToolkitConfigInitOption(userPath, defaultJson)
+func ConfigInitOption(userPath, defaultJson string) error {
+	if !native.MaaToolkitConfigInitOption(userPath, defaultJson) {
+		return errors.New("failed to init toolkit config option")
+	}
+	return nil
 }
 
 // FindAdbDevices finds adb devices.
-func FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
+func FindAdbDevices(specifiedAdb ...string) ([]*AdbDevice, error) {
 	listHandle := native.MaaToolkitAdbDeviceListCreate()
 	defer native.MaaToolkitAdbDeviceListDestroy(listHandle)
 	var got bool
@@ -40,7 +44,7 @@ func FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
 		got = native.MaaToolkitAdbDeviceFind(listHandle)
 	}
 	if !got {
-		return nil
+		return nil, errors.New("failed to find adb devices")
 	}
 
 	size := native.MaaToolkitAdbDeviceListSize(listHandle)
@@ -62,16 +66,16 @@ func FindAdbDevices(specifiedAdb ...string) []*AdbDevice {
 			Config:          config,
 		}
 	}
-	return list
+	return list, nil
 }
 
 // FindDesktopWindows finds desktop windows.
-func FindDesktopWindows() []*DesktopWindow {
+func FindDesktopWindows() ([]*DesktopWindow, error) {
 	listHandle := native.MaaToolkitDesktopWindowListCreate()
 	defer native.MaaToolkitDesktopWindowListDestroy(listHandle)
 	got := native.MaaToolkitDesktopWindowFindAll(listHandle)
 	if !got {
-		return nil
+		return nil, errors.New("failed to find desktop windows")
 	}
 
 	size := native.MaaToolkitDesktopWindowListSize(listHandle)
@@ -87,5 +91,5 @@ func FindDesktopWindows() []*DesktopWindow {
 			WindowName: windowName,
 		}
 	}
-	return list
+	return list, nil
 }

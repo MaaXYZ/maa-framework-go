@@ -389,3 +389,34 @@ if err != nil {
 }
 // 其他查询方法迁移方式相同
 ```
+
+### Toolkit
+
+**初始化和查找方法返回值变更**
+
+- `ConfigInitOption` 现在返回 `error` 而非 `bool`
+- `FindAdbDevices` 现在返回 `([]*AdbDevice, error)` 而非 `[]*AdbDevice`
+- `FindDesktopWindows` 现在返回 `([]*DesktopWindow, error)` 而非 `[]*DesktopWindow`
+
+迁移示例：
+
+```go
+// 旧 API (bool 返回类型)
+ok := maa.ConfigInitOption("./", "{}")
+
+// 新 API
+err := maa.ConfigInitOption("./", "{}")
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API (直接返回列表)
+devices := maa.FindAdbDevices()
+
+// 新 API
+devices, err := maa.FindAdbDevices()
+if err != nil {
+    // 处理错误
+}
+// FindDesktopWindows 迁移方式相同
+```

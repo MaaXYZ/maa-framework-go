@@ -9,7 +9,10 @@ import (
 
 func main() {
 	maa.Init()
-	maa.ConfigInitOption("./", "{}")
+	if err := maa.ConfigInitOption("./", "{}"); err != nil {
+		fmt.Println("Failed to init config:", err)
+		os.Exit(1)
+	}
 	tasker, err := maa.NewTasker()
 	if err != nil {
 		fmt.Println("Failed to create tasker")
@@ -17,7 +20,12 @@ func main() {
 	}
 	defer tasker.Destroy()
 
-	device := maa.FindAdbDevices()[0]
+	devices, err := maa.FindAdbDevices()
+	if err != nil {
+		fmt.Println("Failed to find adb devices:", err)
+		os.Exit(1)
+	}
+	device := devices[0]
 	ctrl, err := maa.NewAdbController(
 		device.AdbPath,
 		device.Address,
