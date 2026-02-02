@@ -12,9 +12,15 @@ func main() {
 
 	socketID := os.Args[1]
 
-	maa.AgentServerRegisterCustomAction("TestAgentServer", NewAgentServerAction())
+	if err := maa.AgentServerRegisterCustomAction("TestAgentServer", NewAgentServerAction()); err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	maa.AgentServerStartUp(socketID)
+	if err := maa.AgentServerStartUp(socketID); err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	maa.AgentServerJoin()
 
