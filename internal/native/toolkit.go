@@ -40,13 +40,16 @@ var (
 )
 
 func initToolkit(libDir string) error {
-
 	libName := getMaaToolkitLibrary()
 	libPath := filepath.Join(libDir, libName)
 
 	handle, err := openLibrary(libPath)
 	if err != nil {
-		return err
+		return &LibraryLoadError{
+			LibraryName: "MaaToolkit",
+			LibraryPath: libPath,
+			Err:         err,
+		}
 	}
 
 	maaToolkit = handle

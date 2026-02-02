@@ -23,6 +23,11 @@ var (
 	ErrEmptyLogDir            = errors.New("log directory path is empty")
 )
 
+// LibraryLoadError represents an error that occurs when loading a MAA dynamic library.
+// This error type provides detailed information about which library failed to load,
+// including the library name, the full path attempted, and the underlying system error.
+type LibraryLoadError = native.LibraryLoadError
+
 // InitConfig contains configuration options for initializing the MAA framework.
 // It specifies various settings that control the framework's behavior,
 // logging, debugging, and resource locations.

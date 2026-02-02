@@ -34,7 +34,11 @@ func initAgentClient(libDir string) error {
 
 	handle, err := openLibrary(libPath)
 	if err != nil {
-		return err
+		return &LibraryLoadError{
+			LibraryName: "MaaAgentClient",
+			LibraryPath: libPath,
+			Err:         err,
+		}
 	}
 
 	maaAgentClient = handle

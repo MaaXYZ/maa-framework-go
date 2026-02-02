@@ -337,7 +337,11 @@ func initFramework(libDir string) error {
 
 	handle, err := openLibrary(libPath)
 	if err != nil {
-		return err
+		return &LibraryLoadError{
+			LibraryName: "MaaFramework",
+			LibraryPath: libPath,
+			Err:         err,
+		}
 	}
 
 	maaFramework = handle
