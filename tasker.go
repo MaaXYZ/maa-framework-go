@@ -7,9 +7,9 @@ import (
 	"image"
 	"unsafe"
 
-	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
-	"github.com/MaaXYZ/maa-framework-go/v3/internal/store"
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/store"
 )
 
 // Tasker is the main task executor that coordinates resources and controllers

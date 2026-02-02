@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/MaaXYZ/maa-framework-go/v3/internal/rect"
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/rect"
 )
 
 type targetType int

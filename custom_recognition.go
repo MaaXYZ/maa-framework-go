@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/buffer"
 )
 
 var (

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/MaaXYZ/maa-framework-go/v3/internal/rect"
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/rect"
 	"github.com/stretchr/testify/require"
 )
 

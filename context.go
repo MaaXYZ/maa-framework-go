@@ -6,8 +6,8 @@ import (
 	"image"
 	"time"
 
-	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
-	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 )
 
 // Context provides the runtime context for custom actions/recognitions
