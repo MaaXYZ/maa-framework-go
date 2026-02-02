@@ -68,7 +68,7 @@ func (j *Job) Wait() *Job {
 // TaskJob extends Job with task-specific functionality.
 // It provides additional methods to retrieve task details.
 type TaskJob struct {
-	*Job
+	job                  *Job
 	getTaskDetailFunc    func(id int64) (*TaskDetail, error)
 	overridePipelineFunc func(id int64, override any) error
 	err                  error
@@ -84,7 +84,7 @@ func newTaskJob(
 ) *TaskJob {
 	job := newJob(id, statusFunc, waitFunc)
 	return &TaskJob{
-		Job:                  job,
+		job:                  job,
 		getTaskDetailFunc:    getTaskDetailFunc,
 		overridePipelineFunc: overridePipelineFunc,
 		err:                  err,
@@ -97,13 +97,13 @@ func (j *TaskJob) Status() Status {
 	if j.err != nil {
 		return StatusFailure
 	}
-	return j.Job.Status()
+	return j.job.Status()
 }
 
 // Wait blocks until the task job completes and returns the TaskJob instance.
 func (j *TaskJob) Wait() *TaskJob {
 	if j.err == nil {
-		j.Job.Wait()
+		j.job.Wait()
 	}
 	return j
 }
@@ -151,7 +151,7 @@ func (j *TaskJob) GetDetail() (*TaskDetail, error) {
 	if j.getTaskDetailFunc == nil {
 		return nil, errors.New("getTaskDetailFunc is nil")
 	}
-	return j.getTaskDetailFunc(j.id)
+	return j.getTaskDetailFunc(j.job.id)
 }
 
 // OverridePipeline overrides the pipeline for a running task.
@@ -163,5 +163,5 @@ func (j *TaskJob) OverridePipeline(override any) error {
 	if j.overridePipelineFunc == nil {
 		return errors.New("overridePipelineFunc is nil")
 	}
-	return j.overridePipelineFunc(j.id, override)
+	return j.overridePipelineFunc(j.job.id, override)
 }
