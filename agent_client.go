@@ -2,6 +2,7 @@ package maa
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/buffer"
@@ -14,6 +15,14 @@ import (
 type AgentClient struct {
 	handle uintptr
 }
+
+var (
+	ErrInvalidAgentClient = errors.New("invalid agent client")
+	ErrInvalidResource    = errors.New("invalid resource")
+	ErrInvalidController  = errors.New("invalid controller")
+	ErrInvalidTasker      = errors.New("invalid tasker")
+	ErrInvalidTimeout     = errors.New("timeout must be non-negative")
+)
 
 const (
 	agentClientCreationModeIdentifier = "identifier"
@@ -88,84 +97,171 @@ func NewAgentClient(opts ...AgentClientOption) (*AgentClient, error) {
 	}, nil
 }
 
+func (ac *AgentClient) ensureValid() error {
+	if ac == nil || ac.handle == 0 {
+		return ErrInvalidAgentClient
+	}
+	return nil
+}
+
+func agentClientOpError(op string) error {
+	return fmt.Errorf("agent client %s failed", op)
+}
+
 // Destroy releases underlying resources.
 func (ac *AgentClient) Destroy() {
 	native.MaaAgentClientDestroy(ac.handle)
 }
 
 // Identifier returns the identifier of the current agent client.
-func (ac *AgentClient) Identifier() (string, bool) {
+func (ac *AgentClient) Identifier() (string, error) {
+	if err := ac.ensureValid(); err != nil {
+		return "", err
+	}
+
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
-	ok := native.MaaAgentClientIdentifier(ac.handle, buf.Handle())
-	return buf.Get(), ok
+	if !native.MaaAgentClientIdentifier(ac.handle, buf.Handle()) {
+		return "", agentClientOpError("get identifier")
+	}
+	return buf.Get(), nil
 }
 
 // BindResource links the Agent client to the specified resource.
-func (ac *AgentClient) BindResource(res *Resource) bool {
-	return native.MaaAgentClientBindResource(ac.handle, res.handle)
+func (ac *AgentClient) BindResource(res *Resource) error {
+	if err := ac.ensureValid(); err != nil {
+		return err
+	}
+	if res == nil || res.handle == 0 {
+		return ErrInvalidResource
+	}
+	if !native.MaaAgentClientBindResource(ac.handle, res.handle) {
+		return agentClientOpError("bind resource")
+	}
+	return nil
 }
 
 // RegisterResourceSink registers resource events for the resource.
-func (ac *AgentClient) RegisterResourceSink(res *Resource) bool {
-	return native.MaaAgentClientRegisterResourceSink(ac.handle, res.handle)
+func (ac *AgentClient) RegisterResourceSink(res *Resource) error {
+	if err := ac.ensureValid(); err != nil {
+		return err
+	}
+	if res == nil || res.handle == 0 {
+		return ErrInvalidResource
+	}
+	if !native.MaaAgentClientRegisterResourceSink(ac.handle, res.handle) {
+		return agentClientOpError("register resource sink")
+	}
+	return nil
 }
 
 // RegisterControllerSink registers controller events for the controller.
-func (ac *AgentClient) RegisterControllerSink(ctrl Controller) bool {
-	return native.MaaAgentClientRegisterControllerSink(ac.handle, ctrl.handle)
+func (ac *AgentClient) RegisterControllerSink(ctrl Controller) error {
+	if err := ac.ensureValid(); err != nil {
+		return err
+	}
+	if ctrl.handle == 0 {
+		return ErrInvalidController
+	}
+	if !native.MaaAgentClientRegisterControllerSink(ac.handle, ctrl.handle) {
+		return agentClientOpError("register controller sink")
+	}
+	return nil
 }
 
 // RegisterTaskerSink registers tasker events for the tasker.
-func (ac *AgentClient) RegisterTaskerSink(tasker Tasker) bool {
-	return native.MaaAgentClientRegisterTaskerSink(ac.handle, tasker.handle)
+func (ac *AgentClient) RegisterTaskerSink(tasker Tasker) error {
+	if err := ac.ensureValid(); err != nil {
+		return err
+	}
+	if tasker.handle == 0 {
+		return ErrInvalidTasker
+	}
+	if !native.MaaAgentClientRegisterTaskerSink(ac.handle, tasker.handle) {
+		return agentClientOpError("register tasker sink")
+	}
+	return nil
 }
 
 // Connect connects to the Agent server.
-func (ac *AgentClient) Connect() bool {
-	return native.MaaAgentClientConnect(ac.handle)
+func (ac *AgentClient) Connect() error {
+	if err := ac.ensureValid(); err != nil {
+		return err
+	}
+	if !native.MaaAgentClientConnect(ac.handle) {
+		return agentClientOpError("connect")
+	}
+	return nil
 }
 
 // Disconnect disconnects from the Agent server.
-func (ac *AgentClient) Disconnect() bool {
-	return native.MaaAgentClientDisconnect(ac.handle)
+func (ac *AgentClient) Disconnect() error {
+	if err := ac.ensureValid(); err != nil {
+		return err
+	}
+	if !native.MaaAgentClientDisconnect(ac.handle) {
+		return agentClientOpError("disconnect")
+	}
+	return nil
 }
 
 // Connected checks if the client is connected to the Agent server.
 func (ac *AgentClient) Connected() bool {
+	if ac == nil || ac.handle == 0 {
+		return false
+	}
 	return native.MaaAgentClientConnected(ac.handle)
 }
 
 // Alive checks if the Agent server is still responsive.
 func (ac *AgentClient) Alive() bool {
+	if ac == nil || ac.handle == 0 {
+		return false
+	}
 	return native.MaaAgentClientAlive(ac.handle)
 }
 
 // SetTimeout sets the timeout duration for the Agent server.
-func (ac *AgentClient) SetTimeout(duration time.Duration) bool {
+func (ac *AgentClient) SetTimeout(duration time.Duration) error {
+	if err := ac.ensureValid(); err != nil {
+		return err
+	}
 	if duration < 0 {
-		return false
+		return ErrInvalidTimeout
 	}
 
 	milliseconds := duration.Milliseconds()
 
-	return native.MaaAgentClientSetTimeout(ac.handle, milliseconds)
+	if !native.MaaAgentClientSetTimeout(ac.handle, milliseconds) {
+		return agentClientOpError("set timeout")
+	}
+	return nil
 }
 
 // GetCustomRecognitionList returns the custom recognition name list of the agent client.
-func (ac *AgentClient) GetCustomRecognitionList() ([]string, bool) {
+func (ac *AgentClient) GetCustomRecognitionList() ([]string, error) {
+	if err := ac.ensureValid(); err != nil {
+		return nil, err
+	}
 	buf := buffer.NewStringListBuffer()
 	defer buf.Destroy()
 
-	ok := native.MaaAgentClientGetCustomRecognitionList(ac.handle, buf.Handle())
-	return buf.GetAll(), ok
+	if !native.MaaAgentClientGetCustomRecognitionList(ac.handle, buf.Handle()) {
+		return nil, agentClientOpError("get custom recognition list")
+	}
+	return buf.GetAll(), nil
 }
 
 // GetCustomActionList returns the custom action name list of the agent client.
-func (ac *AgentClient) GetCustomActionList() ([]string, bool) {
+func (ac *AgentClient) GetCustomActionList() ([]string, error) {
+	if err := ac.ensureValid(); err != nil {
+		return nil, err
+	}
 	buf := buffer.NewStringListBuffer()
 	defer buf.Destroy()
 
-	ok := native.MaaAgentClientGetCustomActionList(ac.handle, buf.Handle())
-	return buf.GetAll(), ok
+	if !native.MaaAgentClientGetCustomActionList(ac.handle, buf.Handle()) {
+		return nil, agentClientOpError("get custom action list")
+	}
+	return buf.GetAll(), nil
 }

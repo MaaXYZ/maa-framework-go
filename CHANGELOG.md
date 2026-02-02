@@ -23,6 +23,42 @@ client := maa.NewAgentClientTcp(7788)
 client, err := maa.NewAgentClient(maa.WithTcpPort(7788))
 ```
 
+**方法返回值变更**
+
+- `Identifier` 现在返回 `(string, error)` 而非 `(string, bool)`
+- `BindResource` 现在返回 `error` 而非 `bool`
+- `RegisterResourceSink` 现在返回 `error` 而非 `bool`
+- `RegisterControllerSink` 现在返回 `error` 而非 `bool`
+- `RegisterTaskerSink` 现在返回 `error` 而非 `bool`
+- `Connect` 现在返回 `error` 而非 `bool`
+- `Disconnect` 现在返回 `error` 而非 `bool`
+- `SetTimeout` 现在返回 `error` 而非 `bool`
+- `GetCustomRecognitionList` 现在返回 `([]string, error)` 而非 `([]string, bool)`
+- `GetCustomActionList` 现在返回 `([]string, error)` 而非 `([]string, bool)`
+
+迁移示例：
+
+```go
+// 旧 API (T, bool 返回类型)
+id, ok := client.Identifier()
+
+// 新 API
+id, err := client.Identifier()
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API (bool 返回类型)
+ok := client.Connect()
+
+// 新 API
+err := client.Connect()
+if err != nil {
+    // 处理错误
+}
+// 其他方法迁移方式相同
+```
+
 ### Context
 
 **Run 方法返回值变更**
