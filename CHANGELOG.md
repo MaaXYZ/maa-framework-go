@@ -390,6 +390,45 @@ if err != nil {
 // 其他查询方法迁移方式相同
 ```
 
+### Global Configuration
+
+**全局配置方法返回值变更**
+
+- `SetLogDir` 现在返回 `error` 而非 `bool`
+- `SetSaveDraw` 现在返回 `error` 而非 `bool`
+- `SetStdoutLevel` 现在返回 `error` 而非 `bool`
+- `SetDebugMode` 现在返回 `error` 而非 `bool`
+- `SetSaveOnError` 现在返回 `error` 而非 `bool`
+- `SetDrawQuality` 现在返回 `error` 而非 `bool`
+- `SetRecoImageCacheLimit` 现在返回 `error` 而非 `bool`
+- `LoadPlugin` 现在返回 `error` 而非 `bool`
+
+迁移示例：
+
+```go
+// 旧 API (bool 返回类型)
+ok := maa.SetLogDir("./logs")
+
+// 新 API
+err := maa.SetLogDir("./logs")
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API (忽略返回值)
+maa.SetSaveDraw(true)
+
+// 新 API
+if err := maa.SetSaveDraw(true); err != nil {
+    // 处理错误
+}
+
+// LoadPlugin 迁移方式相同
+if err := maa.LoadPlugin("./plugin.so"); err != nil {
+    // 处理错误
+}
+```
+
 ### Toolkit
 
 **初始化和查找方法返回值变更**
