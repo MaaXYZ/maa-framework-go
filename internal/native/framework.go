@@ -51,9 +51,9 @@ var (
 	MaaTaskerOverridePipeline     func(tasker uintptr, taskId int64, pipelineOverride string) bool
 )
 
-type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi uintptr, transArg uintptr, outBox, outDetail uintptr) uint64
+type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi, transArg, outBox, outDetail uintptr) uintptr
 
-type MaaCustomActionCallback func(context uintptr, taskId int64, currentTaskName, customActionName, customActionParam *byte, recoId int64, box uintptr, transArg uintptr) uint64
+type MaaCustomActionCallback func(context uintptr, taskId int64, currentTaskName, customActionName, customActionParam *byte, recoId int64, box, transArg uintptr) uintptr
 
 type MaaInferenceDevice int32
 
@@ -188,16 +188,16 @@ var (
 	MaaControllerPostClick       func(ctrl uintptr, x, y int32) int64
 	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
 	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
-	MaaControllerPostClickV2   func(ctrl uintptr, x, y, contact, pressure int32) int64
-	MaaControllerPostSwipe     func(ctrl uintptr, x1, y1, x2, y2, duration int32) int64
-	MaaControllerPostSwipeV2   func(ctrl uintptr, x1, y1, x2, y2, duration, contact, pressure int32) int64
-	MaaControllerPostClickKey  func(ctrl uintptr, keycode int32) int64
-	MaaControllerPostInputText func(ctrl uintptr, text string) int64
-	MaaControllerPostStartApp  func(ctrl uintptr, intent string) int64
-	MaaControllerPostStopApp   func(ctrl uintptr, intent string) int64
-	MaaControllerPostTouchDown func(ctrl uintptr, contact, x, y, pressure int32) int64
-	MaaControllerPostTouchMove func(ctrl uintptr, contact, x, y, pressure int32) int64
-	MaaControllerPostTouchUp   func(ctrl uintptr, contact int32) int64
+	MaaControllerPostClickV2    func(ctrl uintptr, x, y, contact, pressure int32) int64
+	MaaControllerPostSwipe      func(ctrl uintptr, x1, y1, x2, y2, duration int32) int64
+	MaaControllerPostSwipeV2    func(ctrl uintptr, x1, y1, x2, y2, duration, contact, pressure int32) int64
+	MaaControllerPostClickKey   func(ctrl uintptr, keycode int32) int64
+	MaaControllerPostInputText  func(ctrl uintptr, text string) int64
+	MaaControllerPostStartApp   func(ctrl uintptr, intent string) int64
+	MaaControllerPostStopApp    func(ctrl uintptr, intent string) int64
+	MaaControllerPostTouchDown  func(ctrl uintptr, contact, x, y, pressure int32) int64
+	MaaControllerPostTouchMove  func(ctrl uintptr, contact, x, y, pressure int32) int64
+	MaaControllerPostTouchUp    func(ctrl uintptr, contact int32) int64
 	MaaControllerPostKeyDown    func(ctrl uintptr, keycode int32) int64
 	MaaControllerPostKeyUp      func(ctrl uintptr, keycode int32) int64
 	MaaControllerPostScreencap  func(ctrl uintptr) int64
@@ -339,7 +339,11 @@ func initFramework(libDir string) error {
 
 	handle, err := openLibrary(libPath)
 	if err != nil {
-		return err
+		return &LibraryLoadError{
+			LibraryName: "MaaFramework",
+			LibraryPath: libPath,
+			Err:         err,
+		}
 	}
 
 	maaFramework = handle

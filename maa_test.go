@@ -8,134 +8,134 @@ import (
 
 func TestSetLogDir(t *testing.T) {
 	testCases := []struct {
-		name     string
-		path     string
-		expected bool
+		name        string
+		path        string
+		expectedErr error
 	}{
 		{
-			name:     "ValidPath",
-			path:     "./test/debug",
-			expected: true,
+			name:        "ValidPath",
+			path:        "./test/debug",
+			expectedErr: nil,
 		},
 		{
-			name:     "EmptyPath",
-			path:     "",
-			expected: false,
+			name:        "EmptyPath",
+			path:        "",
+			expectedErr: ErrEmptyLogDir,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := SetLogDir(tc.path)
-			require.Equal(t, tc.expected, result)
+			err := SetLogDir(tc.path)
+			require.Equal(t, tc.expectedErr, err)
 		})
 	}
 }
 
 func TestSetSaveDraw(t *testing.T) {
 	testCases := []struct {
-		name     string
-		enabled  bool
-		expected bool
+		name        string
+		enabled     bool
+		expectedErr error
 	}{
 		{
-			name:     "EnableSaveDraw",
-			enabled:  true,
-			expected: true,
+			name:        "EnableSaveDraw",
+			enabled:     true,
+			expectedErr: nil,
 		},
 		{
-			name:     "DisableSaveDraw",
-			enabled:  false,
-			expected: true,
+			name:        "DisableSaveDraw",
+			enabled:     false,
+			expectedErr: nil,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := SetSaveDraw(tc.enabled)
-			require.Equal(t, tc.expected, result)
+			err := SetSaveDraw(tc.enabled)
+			require.Equal(t, tc.expectedErr, err)
 		})
 	}
 }
 
 func TestSetStdoutLevel(t *testing.T) {
 	testCases := []struct {
-		name     string
-		level    LoggingLevel
-		expected bool
+		name        string
+		level       LoggingLevel
+		expectedErr error
 	}{
 		{
-			name:     "SetLevelOff",
-			level:    LoggingLevelOff,
-			expected: true,
+			name:        "SetLevelOff",
+			level:       LoggingLevelOff,
+			expectedErr: nil,
 		},
 		{
-			name:     "SetLevelFatal",
-			level:    LoggingLevelFatal,
-			expected: true,
+			name:        "SetLevelFatal",
+			level:       LoggingLevelFatal,
+			expectedErr: nil,
 		},
 		{
-			name:     "SetLevelError",
-			level:    LoggingLevelError,
-			expected: true,
+			name:        "SetLevelError",
+			level:       LoggingLevelError,
+			expectedErr: nil,
 		},
 		{
-			name:     "SetLevelWarn",
-			level:    LoggingLevelWarn,
-			expected: true,
+			name:        "SetLevelWarn",
+			level:       LoggingLevelWarn,
+			expectedErr: nil,
 		},
 		{
-			name:     "SetLevelInfo",
-			level:    LoggingLevelInfo,
-			expected: true,
+			name:        "SetLevelInfo",
+			level:       LoggingLevelInfo,
+			expectedErr: nil,
 		},
 		{
-			name:     "SetLevelDebug",
-			level:    LoggingLevelDebug,
-			expected: true,
+			name:        "SetLevelDebug",
+			level:       LoggingLevelDebug,
+			expectedErr: nil,
 		},
 		{
-			name:     "SetLevelTrace",
-			level:    LoggingLevelTrace,
-			expected: true,
+			name:        "SetLevelTrace",
+			level:       LoggingLevelTrace,
+			expectedErr: nil,
 		},
 		{
-			name:     "SetLevelAll",
-			level:    LoggingLevelAll,
-			expected: true,
+			name:        "SetLevelAll",
+			level:       LoggingLevelAll,
+			expectedErr: nil,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := SetStdoutLevel(tc.level)
-			require.Equal(t, tc.expected, result)
+			err := SetStdoutLevel(tc.level)
+			require.Equal(t, tc.expectedErr, err)
 		})
 	}
 }
 
 func TestSetDebugMode(t *testing.T) {
 	testCases := []struct {
-		name     string
-		enabled  bool
-		expected bool
+		name        string
+		enabled     bool
+		expectedErr error
 	}{
 		{
-			name:     "EnableDebugMode",
-			enabled:  true,
-			expected: true,
+			name:        "EnableDebugMode",
+			enabled:     true,
+			expectedErr: nil,
 		},
 		{
-			name:     "DisableDebugMode",
-			enabled:  false,
-			expected: true,
+			name:        "DisableDebugMode",
+			enabled:     false,
+			expectedErr: nil,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := SetDebugMode(tc.enabled)
-			require.Equal(t, tc.expected, result)
+			err := SetDebugMode(tc.enabled)
+			require.Equal(t, tc.expectedErr, err)
 		})
 	}
 }

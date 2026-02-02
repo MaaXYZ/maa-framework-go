@@ -1,35 +1,48 @@
 package maa
 
 import (
+	"fmt"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
-// AgentServerRegisterCustomRecognition registers a custom recognition runner with the given name.
-func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognitionRunner) bool {
+// AgentServerRegisterCustomRecognition registers a custom recognition runner.
+// The name should match the custom_recognition field in Pipeline.
+func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognitionRunner) error {
 	id := registerCustomRecognition(recognition)
 
-	return native.MaaAgentServerRegisterCustomRecognition(
+	ok := native.MaaAgentServerRegisterCustomRecognition(
 		name,
 		_MaaCustomRecognitionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
 	)
+	if !ok {
+		unregisterCustomRecognition(id)
+		return fmt.Errorf("failed to register custom recognition: %s", name)
+	}
+	return nil
 }
 
-// AgentServerRegisterCustomAction registers a custom action runner with the given name.
-func AgentServerRegisterCustomAction(name string, action CustomActionRunner) bool {
+// AgentServerRegisterCustomAction registers a custom action runner.
+// The name should match the custom_action field in Pipeline.
+func AgentServerRegisterCustomAction(name string, action CustomActionRunner) error {
 	id := registerCustomAction(action)
 
-	return native.MaaAgentServerRegisterCustomAction(
+	ok := native.MaaAgentServerRegisterCustomAction(
 		name,
 		_MaaCustomActionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
 		unsafe.Pointer(uintptr(id)),
 	)
+	if !ok {
+		unregisterCustomAction(id)
+		return fmt.Errorf("failed to register custom action: %s", name)
+	}
+	return nil
 }
 
 // AgentServerAddResourceSink adds a resource event callback sink and returns the sink ID.
@@ -81,8 +94,12 @@ func AgentServerAddContextSink(sink ContextEventSink) int64 {
 }
 
 // AgentServerStartUp starts the MAA Agent Server with the given identifier.
-func AgentServerStartUp(identifier string) bool {
-	return native.MaaAgentServerStartUp(identifier)
+// The identifier is used to match with AgentClient.
+func AgentServerStartUp(identifier string) error {
+	if !native.MaaAgentServerStartUp(identifier) {
+		return fmt.Errorf("failed to start agent server: %s", identifier)
+	}
+	return nil
 }
 
 // AgentServerShutDown shuts down the MAA Agent Server.
@@ -90,12 +107,14 @@ func AgentServerShutDown() {
 	native.MaaAgentServerShutDown()
 }
 
-// AgentServerJoin waits synchronously for the service thread to finish
+// AgentServerJoin waits for the agent service to end.
+// It blocks the current goroutine until the service ends.
 func AgentServerJoin() {
 	native.MaaAgentServerJoin()
 }
 
-// AgentServerDetach detaches the service thread to run independently
+// AgentServerDetach detaches the service thread to run independently.
+// It allows the service to run in the background without blocking.
 func AgentServerDetach() {
 	native.MaaAgentServerDetach()
 }

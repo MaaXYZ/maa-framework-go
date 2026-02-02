@@ -19,7 +19,8 @@ func (t *testContextRunTaskAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	)
 	pipeline.AddNode(testNode)
 
-	detail := ctx.RunTask(testNode.Name, pipeline)
+	detail, err := ctx.RunTask(testNode.Name, pipeline)
+	require.NoError(t.t, err)
 	require.NotNil(t.t, detail)
 	return true
 }
@@ -37,8 +38,8 @@ func TestContext_RunTask(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_RunPipelineAct", &testContextRunTaskAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_RunPipelineAct", &testContextRunTaskAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_RunPipelineNode := NewNode("TestContext_RunPipeline",
@@ -56,7 +57,8 @@ type testContextRunRecognitionAct struct {
 }
 
 func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) bool {
-	img := ctx.GetTasker().GetController().CacheImage()
+	img, err := ctx.GetTasker().GetController().CacheImage()
+	require.NoError(t.t, err)
 	require.NotNil(t.t, img)
 
 	pipeline := NewPipeline()
@@ -67,7 +69,9 @@ func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) boo
 	)
 	pipeline.AddNode(testNode)
 
-	_ = ctx.RunRecognition("Test", img, pipeline)
+	detail, err := ctx.RunRecognition("Test", img, pipeline)
+	require.NoError(t.t, err)
+	require.NotNil(t.t, detail)
 	return true
 }
 
@@ -84,8 +88,8 @@ func TestContext_RunRecognition(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_RunRecognitionAct", &testContextRunRecognitionAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_RunRecognitionAct", &testContextRunRecognitionAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_RunRecognitionNode := NewNode("TestContext_RunRecognition").
@@ -117,7 +121,8 @@ func (a testContextRunActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
 	)
 	pipeline.AddNode(testNode)
 
-	detail := ctx.RunAction(testNode.Name, arg.Box, arg.RecognitionDetail.DetailJson, pipeline)
+	detail, err := ctx.RunAction(testNode.Name, arg.Box, arg.RecognitionDetail.DetailJson, pipeline)
+	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 	return true
 }
@@ -135,8 +140,8 @@ func TestContext_RunAction(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_RunActionAct", &testContextRunActionAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_RunActionAct", &testContextRunActionAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_RunActionNode := NewNode("TestContext_RunAction",
@@ -162,7 +167,8 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 	)
 	pipeline1.AddNode(testNode1)
 
-	detail1 := ctx.RunTask(testNode1.Name, pipeline1)
+	detail1, err := ctx.RunTask(testNode1.Name, pipeline1)
+	require.NoError(t.t, err)
 	require.NotNil(t.t, detail1)
 
 	pipeline2 := NewPipeline()
@@ -173,10 +179,11 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 	)
 	pipeline2.AddNode(testNode2)
 
-	ok := ctx.OverridePipeline(pipeline2)
-	require.True(t.t, ok)
+	err = ctx.OverridePipeline(pipeline2)
+	require.NoError(t.t, err)
 
-	detail2 := ctx.RunTask("Test")
+	detail2, err2 := ctx.RunTask("Test")
+	require.NoError(t.t, err2)
 	require.NotNil(t.t, detail2)
 	return true
 }
@@ -194,8 +201,8 @@ func TestContext_OverridePipeline(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_OverridePipelineAct", &testContextOverriderPipelineAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_OverridePipelineAct", &testContextOverriderPipelineAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_OverridePipelineNode := NewNode("TestContext_OverridePipeline",
@@ -225,13 +232,14 @@ func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool 
 	taskBNode := NewNode("TaskB")
 	pipeline.AddNode(taskBNode)
 
-	ok1 := ctx.OverridePipeline(pipeline)
-	require.True(t.t, ok1)
+	err := ctx.OverridePipeline(pipeline)
+	require.NoError(t.t, err)
 
-	ok2 := ctx.OverrideNext(testNode.Name, []string{"TaskB"})
-	require.True(t.t, ok2)
+	err = ctx.OverrideNext(testNode.Name, []string{"TaskB"})
+	require.NoError(t.t, err)
 
-	detail := ctx.RunTask(testNode.Name, pipeline)
+	detail, err2 := ctx.RunTask(testNode.Name, pipeline)
+	require.NoError(t.t, err2)
 	require.NotNil(t.t, detail)
 	return true
 }
@@ -249,8 +257,8 @@ func TestContext_OverrideNext(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_OverrideNextAct", &testContextOverrideNextAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_OverrideNextAct", &testContextOverrideNextAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_OverrideNextNode := NewNode("TestContext_OverrideNext",
@@ -1224,7 +1232,8 @@ func (a *testContextGetNodeDataAct) testNodeAttributes(ctx *Context) {
 }
 
 func TestContext_GetNodeData(t *testing.T) {
-	ctrl := NewBlankController()
+	ctrl, err := NewBlankController()
+	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
 	connected := ctrl.PostConnect().Wait().Success()
@@ -1238,8 +1247,8 @@ func TestContext_GetNodeData(t *testing.T) {
 
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_GetNodeDataAct", &testContextGetNodeDataAct{t})
-	require.True(t, ok)
+	err = res.RegisterCustomAction("TestContext_GetNodeDataAct", &testContextGetNodeDataAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	launchNode := NewNode("launch",
@@ -1276,8 +1285,8 @@ func TestContext_GetTaskJob(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_GetTaskJobAct", &testContextGetTaskJobAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_GetTaskJobAct", &testContextGetTaskJobAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_GetTaskJobNode := NewNode("TestContext_GetTaskJob",
@@ -1313,8 +1322,8 @@ func TestContext_GetTasker(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextGetTaskerAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextGetTaskerAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_GetTaskerNode := NewNode("TestContext_GetTasker",
@@ -1350,8 +1359,8 @@ func TestContext_Clone(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextCloneAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextCloneAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_CloneNode := NewNode("TestContext_Clone",
@@ -1369,11 +1378,13 @@ type testContextRunRecognitionDirectAct struct {
 }
 
 func (a *testContextRunRecognitionDirectAct) Run(ctx *Context, _ *CustomActionArg) bool {
-	img := ctx.GetTasker().GetController().CacheImage()
+	img, err := ctx.GetTasker().GetController().CacheImage()
+	require.NoError(a.t, err)
 	require.NotNil(a.t, img)
 
 	// Test RunRecognitionDirect with DirectHit recognition type
-	detail := ctx.RunRecognitionDirect(NodeRecognitionTypeDirectHit, &NodeDirectHitParam{}, img)
+	detail, err := ctx.RunRecognitionDirect(NodeRecognitionTypeDirectHit, &NodeDirectHitParam{}, img)
+	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 	require.True(a.t, detail.Hit)
 	return true
@@ -1392,8 +1403,8 @@ func TestContext_RunRecognitionDirect(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_RunRecognitionDirectAct", &testContextRunRecognitionDirectAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_RunRecognitionDirectAct", &testContextRunRecognitionDirectAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_RunRecognitionDirectNode := NewNode("TestContext_RunRecognitionDirect",
@@ -1415,7 +1426,8 @@ func (a *testContextRunActionDirectAct) Run(ctx *Context, arg *CustomActionArg) 
 	clickParam := &NodeClickParam{
 		Target: NewTargetRect(Rect{100, 100, 10, 10}),
 	}
-	detail := ctx.RunActionDirect(NodeActionTypeClick, clickParam, arg.Box, arg.RecognitionDetail)
+	detail, err := ctx.RunActionDirect(NodeActionTypeClick, clickParam, arg.Box, arg.RecognitionDetail)
+	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 	return true
 }
@@ -1433,8 +1445,8 @@ func TestContext_RunActionDirect(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestContext_RunActionDirectAct", &testContextRunActionDirectAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestContext_RunActionDirectAct", &testContextRunActionDirectAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testContext_RunActionDirectNode := NewNode("TestContext_RunActionDirect",

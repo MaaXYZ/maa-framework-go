@@ -23,77 +23,37 @@ jobs:
   meta:
     uses: ./.github/workflows/meta.yml
 
-  windows:
-    runs-on: windows-latest
+  test:
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     strategy:
       matrix:
-        arch: [ x86_64 ]
+        include:
+          - os: windows-latest
+            arch: x86_64
+            maa_prefix: MAA-win
+            container: null
+          - os: ubuntu-latest
+            arch: x86_64
+            maa_prefix: MAA-linux
+            container: archlinux:base-devel
+          - os: macos-latest
+            arch: aarch64
+            maa_prefix: MAA-macos
+            container: null
       fail-fast: false
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-
-      - name: Download MaaFramework
-        uses: robinraju/release-downloader@v1
-        with:
-          repository: MaaXYZ/MaaFramework
-          latest: true
-          preRelease: true
-          fileName: "MAA-win-${{ matrix.arch }}*"
-          out-file-path: "${{ github.workspace }}/deps"
-          extract: true
-
-      - name: Setup Test Environment
-        run: |
-          echo "${{ github.workspace }}/deps/bin;%PATH%" | Out-File -FilePath $env:GITHUB_PATH -Append
-
-      - name: Prepare Test Data
-        run: |
-          mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
-          cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
-          mkdir -p test/data_set/PipelineSmoking/resource/model/classify
-          cp -r test/classifier.onnx test/data_set/PipelineSmoking/resource/model/classify
-
-      - name: Run Tests
-        env:
-          CGO_ENABLED: 0
-        run: |
-          go test -v ./...
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: MAA-win-${{ matrix.arch }}-text_log
-          path: "test/debug/*.log"
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: MAA-win-${{ matrix.arch }}-full_log
-          path: "test/debug"
-
-  ubuntu:
-    runs-on: ubuntu-latest
-    container: archlinux:base-devel
-    strategy:
-      matrix:
-        arch: [ x86_64 ]
-      fail-fast: false
+    env:
+      ARCH: ${{ matrix.arch }}
+      MAA_FILE_PREFIX: ${{ matrix.maa_prefix }}
 
     steps:
       - name: Update system
+        if: matrix.os == 'ubuntu-latest'
         run: |
           pacman -Syu --noconfirm
 
       - name: Install dep
+        if: matrix.os == 'ubuntu-latest'
         run: |
           pacman -Sy
           pacman -S --noconfirm git
@@ -103,64 +63,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-
-      - name: Download MaaFramework
-        uses: robinraju/release-downloader@v1
-        with:
-          repository: MaaXYZ/MaaFramework
-          latest: true
-          preRelease: true
-          fileName: "MAA-linux-${{ matrix.arch }}*"
-          out-file-path: "deps"
-          extract: true
-      
-      - name: Setup Test Environment
-        run: |
-          echo "LD_LIBRARY_PATH=${{ github.workspace }}/deps/bin:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-
-      - name: Prepare Test Data
-        run: |
-          mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
-          cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
-          mkdir -p test/data_set/PipelineSmoking/resource/model/classify
-          cp -r test/classifier.onnx test/data_set/PipelineSmoking/resource/model/classify
-
-      - name: Run Tests
-        env:
-          CGO_ENABLED: 0
-        run: |
-          go test -v ./...
-          
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: MAA-linux-${{ matrix.arch }}-text_log
-          path: "test/debug/*.log"
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: MAA-linux-${{ matrix.arch }}-full_log
-          path: "test/debug"
-
-  macos:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        arch: [ aarch64 ]
-      fail-fast: false
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
       - name: Install LLVM
+        if: matrix.os == 'macos-latest'
         run: brew install llvm
 
       - name: Setup Go
@@ -174,11 +78,22 @@ jobs:
           repository: MaaXYZ/MaaFramework
           latest: true
           preRelease: true
-          fileName: "MAA-macos-${{ matrix.arch }}*"
+          fileName: "${{ env.MAA_FILE_PREFIX }}-${{ env.ARCH }}*"
           out-file-path: "deps"
           extract: true
-      
-      - name: Setup Test Environment
+
+      - name: Setup Test Environment (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          echo "${{ github.workspace }}/deps/bin;%PATH%" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Setup Test Environment (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo "LD_LIBRARY_PATH=${{ github.workspace }}/deps/bin:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+      - name: Setup Test Environment (macOS)
+        if: runner.os == 'macOS'
         run: |
           echo "DYLD_LIBRARY_PATH=${{ github.workspace }}/deps/bin:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
 
@@ -188,7 +103,7 @@ jobs:
           cp -r test/data_set/MaaCommonAssets/OCR/ppocr_v4/zh_cn/* test/data_set/PipelineSmoking/resource/model/ocr
           mkdir -p test/data_set/PipelineSmoking/resource/model/classify
           cp -r test/classifier.onnx test/data_set/PipelineSmoking/resource/model/classify
-        
+
       - name: Run Tests
         env:
           CGO_ENABLED: 0
@@ -198,18 +113,18 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: MAA-macos-${{ matrix.arch }}-text_log
+          name: ${{ env.MAA_FILE_PREFIX }}-${{ env.ARCH }}-text_log
           path: "test/debug/*.log"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: MAA-macos-${{ matrix.arch }}-full_log
+          name: ${{ env.MAA_FILE_PREFIX }}-${{ env.ARCH }}-full_log
           path: "test/debug"
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, windows, ubuntu, macos]
+    needs: [meta, test]
     runs-on: ubuntu-latest
 
     steps:

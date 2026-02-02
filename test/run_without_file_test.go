@@ -10,26 +10,29 @@ import (
 func TestRunWithoutFile(t *testing.T) {
 	testingPath := "./data_set/PipelineSmoking/Screenshot"
 
-	ctrl := maa.NewCarouselImageController(testingPath)
+	ctrl, err := maa.NewCarouselImageController(testingPath)
+	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 
-	res := maa.NewResource()
+	res, err := maa.NewResource()
+	require.NoError(t, err)
 	require.NotNil(t, res)
 	defer res.Destroy()
 
-	tasker := maa.NewTasker()
+	tasker, err := maa.NewTasker()
+	require.NoError(t, err)
 	require.NotNil(t, tasker)
 	defer tasker.Destroy()
-	isResBound := tasker.BindResource(res)
-	require.True(t, isResBound)
-	isCtrlBound := tasker.BindController(ctrl)
-	require.True(t, isCtrlBound)
+	err = tasker.BindResource(res)
+	require.NoError(t, err)
+	err = tasker.BindController(ctrl)
+	require.NoError(t, err)
 
-	ok := res.RegisterCustomAction("MyAct", &MyAct{t})
-	require.True(t, ok)
+	err = res.RegisterCustomAction("MyAct", &MyAct{t})
+	require.NoError(t, err)
 
 	pipeline := maa.NewPipeline()
 	myTaskNode := maa.NewNode("MyTask",
@@ -52,7 +55,8 @@ func (a *MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	require.NotNil(a.t, tasker)
 	ctrl := tasker.GetController()
 	require.NotNil(a.t, ctrl)
-	img := ctrl.CacheImage()
+	img, err := ctrl.CacheImage()
+	require.NoError(a.t, err)
 	require.NotNil(a.t, img)
 
 	pipeline := maa.NewPipeline()
@@ -64,7 +68,8 @@ func (a *MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	)
 	pipeline.AddNode(myColorMatchingNode)
 
-	detail := ctx.RunRecognition("MyColorMatching", img, pipeline)
+	detail, err := ctx.RunRecognition("MyColorMatching", img, pipeline)
+	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 
 	return true

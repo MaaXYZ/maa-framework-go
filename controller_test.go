@@ -9,7 +9,8 @@ import (
 
 func createCarouselImageController(t *testing.T) *Controller {
 	testingPath := "./test/data_set/PipelineSmoking/Screenshot"
-	ctrl := NewCarouselImageController(testingPath)
+	ctrl, err := NewCarouselImageController(testingPath)
+	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	return ctrl
 }
@@ -28,15 +29,15 @@ func TestController_Handle(t *testing.T) {
 func TestController_SetScreenshotTargetLongSide(t *testing.T) {
 	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
-	got := ctrl.SetScreenshotTargetLongSide(1280)
-	require.True(t, got)
+	err := ctrl.SetScreenshot(WithScreenshotTargetLongSide(1280))
+	require.NoError(t, err)
 }
 
 func TestController_SetScreenshotTargetShortSide(t *testing.T) {
 	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
-	got := ctrl.SetScreenshotTargetShortSide(720)
-	require.True(t, got)
+	err := ctrl.SetScreenshot(WithScreenshotTargetShortSide(720))
+	require.NoError(t, err)
 }
 
 func TestController_SetScreenshotUseRawSize(t *testing.T) {
@@ -59,8 +60,8 @@ func TestController_SetScreenshotUseRawSize(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := createCarouselImageController(t)
 			defer ctrl.Destroy()
-			got := ctrl.SetScreenshotUseRawSize(tc.enabled)
-			require.True(t, got)
+			err := ctrl.SetScreenshot(WithScreenshotUseRawSize(tc.enabled))
+			require.NoError(t, err)
 		})
 	}
 }
@@ -204,7 +205,8 @@ func TestController_CacheImage(t *testing.T) {
 	require.True(t, isConnected)
 	screencaped := ctrl.PostScreencap().Wait().Success()
 	require.True(t, screencaped)
-	img := ctrl.CacheImage()
+	img, err := ctrl.CacheImage()
+	require.NoError(t, err)
 	require.NotNil(t, img)
 }
 
@@ -213,7 +215,7 @@ func TestController_GetUUID(t *testing.T) {
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
-	uuid, oK := ctrl.GetUUID()
-	require.True(t, oK)
+	uuid, err := ctrl.GetUUID()
+	require.NoError(t, err)
 	require.NotEmpty(t, uuid)
 }

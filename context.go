@@ -10,6 +10,8 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v3/internal/native"
 )
 
+// Context provides the runtime context for custom actions/recognitions
+// and exposes task, recognition, action, and pipeline operations.
 type Context struct {
 	handle uintptr
 }
@@ -33,10 +35,10 @@ func (ctx *Context) handleOverride(override ...any) string {
 	return string(str)
 }
 
-func (ctx *Context) runTask(entry, override string) *TaskDetail {
+func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {
 	taskId := native.MaaContextRunTask(ctx.handle, entry, override)
 	if taskId == 0 {
-		return nil
+		return nil, errors.New("failed to run task")
 	}
 	tasker := ctx.GetTasker()
 	return tasker.getTaskDetail(taskId)
@@ -59,28 +61,28 @@ func (ctx *Context) runTask(entry, override string) *TaskDetail {
 //	        "target": []int{100, 200, 100, 100},
 //		}
 //	})
-func (ctx *Context) RunTask(entry string, override ...any) *TaskDetail {
+func (ctx *Context) RunTask(entry string, override ...any) (*TaskDetail, error) {
 	return ctx.runTask(entry, ctx.handleOverride(override...))
 }
 
-func (ctx *Context) runRecognition(entry, override string, img image.Image) *RecognitionDetail {
+func (ctx *Context) runRecognition(
+	entry, override string,
+	img image.Image,
+) (*RecognitionDetail, error) {
 	imgBuf := buffer.NewImageBuffer()
 	imgBuf.Set(img)
 	defer imgBuf.Destroy()
 
 	recId := native.MaaContextRunRecognition(ctx.handle, entry, override, imgBuf.Handle())
 	if recId == 0 {
-		return nil
+		return nil, errors.New("failed to run recognition")
 	}
 	tasker := ctx.GetTasker()
 	recognitionDetail, err := tasker.getRecognitionDetail(recId)
-	if err != nil {
-		return nil
-	}
-	return recognitionDetail
+	return recognitionDetail, err
 }
 
-// RunRecognition run a recognition and return its detail.
+// RunRecognition runs a recognition and returns its detail.
 // It accepts an entry string and an optional override parameter which can be
 // a JSON string or any data type that can be marshaled to JSON.
 // If multiple overrides are provided, only the first one will be used.
@@ -97,28 +99,39 @@ func (ctx *Context) runRecognition(entry, override string, img image.Image) *Rec
 //	        "expected": "Hello",
 //		}
 //	})
-func (ctx *Context) RunRecognition(entry string, img image.Image, override ...any) *RecognitionDetail {
+func (ctx *Context) RunRecognition(
+	entry string,
+	img image.Image,
+	override ...any,
+) (*RecognitionDetail, error) {
 	return ctx.runRecognition(entry, ctx.handleOverride(override...), img)
 }
 
-func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetail string) *ActionDetail {
+func (ctx *Context) runAction(
+	entry, override string,
+	box Rect,
+	recognitionDetail string,
+) (*ActionDetail, error) {
 	rectBuf := buffer.NewRectBuffer()
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
 
-	actId := native.MaaContextRunAction(ctx.handle, entry, override, rectBuf.Handle(), recognitionDetail)
+	actId := native.MaaContextRunAction(
+		ctx.handle,
+		entry,
+		override,
+		rectBuf.Handle(),
+		recognitionDetail,
+	)
 	if actId == 0 {
-		return nil
+		return nil, errors.New("failed to run action")
 	}
 	tasker := ctx.GetTasker()
 	actionDetail, err := tasker.getActionDetail(actId)
-	if err != nil {
-		return nil
-	}
-	return actionDetail
+	return actionDetail, err
 }
 
-// RunAction run an action and return its detail.
+// RunAction runs an action and returns its detail.
 // It accepts an entry string and an optional override parameter which can be
 // a JSON string or any data type that can be marshaled to JSON.
 // If multiple overrides are provided, only the first one will be used.
@@ -135,71 +148,98 @@ func (ctx *Context) runAction(entry, override string, box Rect, recognitionDetai
 //	        "target": []int{100, 200, 100, 100},
 //		}
 //	})
-func (ctx *Context) RunAction(entry string, box Rect, recognitionDetail string, override ...any) *ActionDetail {
-	return ctx.runAction(entry, ctx.handleOverride(override...), box, recognitionDetail)
+func (ctx *Context) RunAction(
+	entry string,
+	box Rect,
+	recognitionDetail string,
+	override ...any,
+) (*ActionDetail, error) {
+	return ctx.runAction(
+		entry,
+		ctx.handleOverride(override...),
+		box,
+		recognitionDetail,
+	)
 }
 
 // RunRecognitionDirect runs recognition directly with type and parameters, without requiring a pipeline entry.
 // It accepts a recognition type string (e.g., "OCR", "TemplateMatch"), recognition parameters as JSON,
 // and an image to recognize.
-func (ctx *Context) RunRecognitionDirect(recoType NodeRecognitionType, recoParam NodeRecognitionParam, img image.Image) *RecognitionDetail {
+func (ctx *Context) RunRecognitionDirect(
+	recoType NodeRecognitionType,
+	recoParam NodeRecognitionParam,
+	img image.Image,
+) (*RecognitionDetail, error) {
 	imgBuf := buffer.NewImageBuffer()
 	imgBuf.Set(img)
 	defer imgBuf.Destroy()
 
 	recParamJSON, err := json.Marshal(recoParam)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
-	recId := native.MaaContextRunRecognitionDirect(ctx.handle, string(recoType), string(recParamJSON), imgBuf.Handle())
+	recId := native.MaaContextRunRecognitionDirect(
+		ctx.handle,
+		string(recoType),
+		string(recParamJSON),
+		imgBuf.Handle(),
+	)
 	if recId == 0 {
-		return nil
+		return nil, errors.New("failed to run recognition direct")
 	}
 	tasker := ctx.GetTasker()
 	recognitionDetail, err := tasker.getRecognitionDetail(recId)
-	if err != nil {
-		return nil
-	}
-	return recognitionDetail
+	return recognitionDetail, err
 }
 
 // RunActionDirect runs action directly with type and parameters, without requiring a pipeline entry.
 // It accepts an action type string (e.g., "Click", "Swipe"), action parameters as JSON,
 // a box for the action position, and recognition details.
-func (ctx *Context) RunActionDirect(actionType NodeActionType, actionParam NodeActionParam, box Rect, recoDetail *RecognitionDetail) *ActionDetail {
+func (ctx *Context) RunActionDirect(
+	actionType NodeActionType,
+	actionParam NodeActionParam,
+	box Rect,
+	recoDetail *RecognitionDetail,
+) (*ActionDetail, error) {
 	rectBuf := buffer.NewRectBuffer()
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
 
 	actParamJSON, err := json.Marshal(actionParam)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	recoDetailJSON, err := json.Marshal(recoDetail)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
-	actId := native.MaaContextRunActionDirect(ctx.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
+	actId := native.MaaContextRunActionDirect(
+		ctx.handle,
+		string(actionType),
+		string(actParamJSON),
+		rectBuf.Handle(),
+		string(recoDetailJSON),
+	)
 	if actId == 0 {
-		return nil
+		return nil, errors.New("failed to run action direct")
 	}
 	tasker := ctx.GetTasker()
 	actionDetail, err := tasker.getActionDetail(actId)
-	if err != nil {
-		return nil
-	}
-	return actionDetail
+	return actionDetail, err
 }
 
-func (ctx *Context) overridePipeline(override string) bool {
-	return native.MaaContextOverridePipeline(ctx.handle, override)
+func (ctx *Context) overridePipeline(override string) error {
+	if !native.MaaContextOverridePipeline(ctx.handle, override) {
+		return errors.New("failed to override pipeline")
+	}
+	return nil
 }
 
 // OverridePipeline overrides pipeline.
 // The `override` parameter can be a JSON string or any data type that can be marshaled to JSON.
-func (ctx *Context) OverridePipeline(override any) bool {
+func (ctx *Context) OverridePipeline(override any) error {
 	switch v := override.(type) {
 	case string:
 		return ctx.overridePipeline(v)
@@ -212,14 +252,14 @@ func (ctx *Context) OverridePipeline(override any) bool {
 
 		jsonBytes, err := json.Marshal(v)
 		if err != nil {
-			return false
+			return err
 		}
 		return ctx.overridePipeline(string(jsonBytes))
 	}
 }
 
 // OverrideNext overrides the next list of task by name.
-func (ctx *Context) OverrideNext(name string, nextList []string) bool {
+func (ctx *Context) OverrideNext(name string, nextList []string) error {
 	list := buffer.NewStringListBuffer()
 	defer list.Destroy()
 	size := len(nextList)
@@ -234,32 +274,41 @@ func (ctx *Context) OverrideNext(name string, nextList []string) bool {
 			item.Destroy()
 		}
 	}()
-	return native.MaaContextOverrideNext(ctx.handle, name, list.Handle())
+	if !native.MaaContextOverrideNext(ctx.handle, name, list.Handle()) {
+		return errors.New("failed to override next")
+	}
+	return nil
 }
 
-func (ctx *Context) OverrideImage(imageName string, image image.Image) bool {
+func (ctx *Context) OverrideImage(imageName string, image image.Image) error {
 	img := buffer.NewImageBuffer()
 	defer img.Destroy()
 	img.Set(image)
-	return native.MaaContextOverrideImage(ctx.handle, imageName, img.Handle())
+	if !native.MaaContextOverrideImage(ctx.handle, imageName, img.Handle()) {
+		return errors.New("failed to override image")
+	}
+	return nil
 }
 
 // GetNodeJSON gets the node JSON by name.
-func (ctx *Context) GetNodeJSON(name string) (string, bool) {
+func (ctx *Context) GetNodeJSON(name string) (string, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
-	ok := native.MaaResourceGetNodeData(ctx.handle, name, buf.Handle())
-	return buf.Get(), ok
+	ok := native.MaaContextGetNodeData(ctx.handle, name, buf.Handle())
+	if !ok {
+		return "", errors.New("failed to get node JSON")
+	}
+	return buf.Get(), nil
 }
 
 func (ctx *Context) GetNodeData(name string) (*Node, error) {
-	raw, ok := ctx.GetNodeJSON(name)
-	if !ok {
-		return nil, errors.New("node not found")
+	raw, err := ctx.GetNodeJSON(name)
+	if err != nil {
+		return nil, err
 	}
 
 	var node Node
-	err := json.Unmarshal([]byte(raw), &node)
+	err = json.Unmarshal([]byte(raw), &node)
 	if err != nil {
 		return nil, err
 	}
@@ -270,10 +319,17 @@ func (ctx *Context) GetNodeData(name string) (*Node, error) {
 func (ctx *Context) GetTaskJob() *TaskJob {
 	tasker := ctx.GetTasker()
 	taskId := native.MaaContextGetTaskId(ctx.handle)
-	return newTaskJob(taskId, tasker.status, tasker.wait, tasker.getTaskDetail, tasker.overridePipeline)
+	return newTaskJob(
+		taskId,
+		tasker.status,
+		tasker.wait,
+		tasker.getTaskDetail,
+		tasker.overridePipeline,
+		nil,
+	)
 }
 
-// GetTasker return current Tasker.
+// GetTasker returns the current Tasker.
 func (ctx *Context) GetTasker() *Tasker {
 	handle := native.MaaContextGetTasker(ctx.handle)
 	return &Tasker{handle: handle}
@@ -303,26 +359,38 @@ func (ctx *Context) Clone() *Context {
 }
 
 // SetAnchor sets an anchor by name.
-func (ctx *Context) SetAnchor(anchorName, nodeName string) bool {
-	return native.MaaContextSetAnchor(ctx.handle, anchorName, nodeName)
+func (ctx *Context) SetAnchor(anchorName, nodeName string) error {
+	if !native.MaaContextSetAnchor(ctx.handle, anchorName, nodeName) {
+		return errors.New("failed to set anchor")
+	}
+	return nil
 }
 
 // GetAnchor gets an anchor by name.
-func (ctx *Context) GetAnchor(anchorName string) (string, bool) {
+func (ctx *Context) GetAnchor(anchorName string) (string, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaContextGetAnchor(ctx.handle, anchorName, buf.Handle())
-	return buf.Get(), ok
+	if !ok {
+		return "", errors.New("failed to get anchor")
+	}
+	return buf.Get(), nil
 }
 
 // GetHitCount gets the hit count of a node by name.
-func (ctx *Context) GetHitCount(nodeName string) (uint64, bool) {
+func (ctx *Context) GetHitCount(nodeName string) (uint64, error) {
 	var count uint64
 	ok := native.MaaContextGetHitCount(ctx.handle, nodeName, &count)
-	return count, ok
+	if !ok {
+		return 0, errors.New("failed to get hit count")
+	}
+	return count, nil
 }
 
 // ClearHitCount clears the hit count of a node by name.
-func (ctx *Context) ClearHitCount(nodeName string) bool {
-	return native.MaaContextClearHitCount(ctx.handle, nodeName)
+func (ctx *Context) ClearHitCount(nodeName string) error {
+	if !native.MaaContextClearHitCount(ctx.handle, nodeName) {
+		return errors.New("failed to clear hit count")
+	}
+	return nil
 }

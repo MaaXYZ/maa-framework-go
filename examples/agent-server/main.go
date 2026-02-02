@@ -12,9 +12,15 @@ func main() {
 
 	socketID := os.Args[1]
 
-	maa.AgentServerRegisterCustomAction("TestAgentServer", NewAgentServerAction())
+	if err := maa.AgentServerRegisterCustomAction("TestAgentServer", NewAgentServerAction()); err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	maa.AgentServerStartUp(socketID)
+	if err := maa.AgentServerStartUp(socketID); err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	maa.AgentServerJoin()
 
@@ -31,6 +37,6 @@ func (a *AgentServerAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool
 	return true
 }
 
-func NewAgentServerAction() maa.CustomAction {
+func NewAgentServerAction() maa.CustomActionRunner {
 	return &AgentServerAction{}
 }

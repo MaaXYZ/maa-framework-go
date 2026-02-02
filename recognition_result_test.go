@@ -180,7 +180,8 @@ type testRecognitionDetailFromRecognitionAct struct {
 }
 
 func (a *testRecognitionDetailFromRecognitionAct) Run(ctx *Context, _ *CustomActionArg) bool {
-	img := ctx.GetTasker().GetController().CacheImage()
+	img, err := ctx.GetTasker().GetController().CacheImage()
+	require.NoError(a.t, err)
 	require.NotNil(a.t, img)
 
 	assertions := map[string]func(t *testing.T, detail *RecognitionDetail){
@@ -257,7 +258,8 @@ func (a *testRecognitionDetailFromRecognitionAct) Run(ctx *Context, _ *CustomAct
 	}
 
 	runRecognition := func(t *testing.T, name string, recoType NodeRecognitionType, param NodeRecognitionParam) {
-		detail := ctx.RunRecognitionDirect(recoType, param, img)
+		detail, err := ctx.RunRecognitionDirect(recoType, param, img)
+		require.NoError(t, err)
 		require.NotNil(t, detail)
 
 		switch recoType {
@@ -378,12 +380,12 @@ func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomRecognition("TestRecognitionDetail_Custom", &testRecognitionDetailCustomRec{})
-	require.True(t, ok)
+	err := res.RegisterCustomRecognition("TestRecognitionDetail_Custom", &testRecognitionDetailCustomRec{})
+	require.NoError(t, err)
 
 	act := &testRecognitionDetailFromRecognitionAct{t: t}
-	ok = res.RegisterCustomAction("TestRecognitionDetail_ResultMatchesRawAct", act)
-	require.True(t, ok)
+	err = res.RegisterCustomAction("TestRecognitionDetail_ResultMatchesRawAct", act)
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testNode := NewNode("TestRecognitionDetail_ResultMatchesRaw",

@@ -14,7 +14,8 @@ type testActionDetailFromActionAct struct {
 
 func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
 	runAction := func(actionType NodeActionType, param NodeActionParam) *ActionDetail {
-		detail := ctx.RunActionDirect(actionType, param, arg.Box, arg.RecognitionDetail)
+		detail, err := ctx.RunActionDirect(actionType, param, arg.Box, arg.RecognitionDetail)
+		require.NoError(a.t, err)
 		require.NotNil(a.t, detail)
 		require.NotEmpty(a.t, detail.DetailJson)
 		require.NotNil(a.t, detail.Result)
@@ -289,8 +290,8 @@ func TestActionDetail_ResultMatchesRaw(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := res.RegisterCustomAction("TestActionDetail_ResultMatchesRawAct", &testActionDetailFromActionAct{t})
-	require.True(t, ok)
+	err := res.RegisterCustomAction("TestActionDetail_ResultMatchesRawAct", &testActionDetailFromActionAct{t})
+	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	testNode := NewNode("TestActionDetail_ResultMatchesRaw",

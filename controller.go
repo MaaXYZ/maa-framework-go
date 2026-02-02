@@ -1,6 +1,8 @@
 package maa
 
 import (
+	"errors"
+	"fmt"
 	"image"
 	"time"
 	"unsafe"
@@ -31,7 +33,7 @@ func NewAdbController(
 	screencapMethod adb.ScreencapMethod,
 	inputMethod adb.InputMethod,
 	config, agentPath string,
-) *Controller {
+) (*Controller, error) {
 	handle := native.MaaAdbControllerCreate(
 		adbPath,
 		address,
@@ -41,30 +43,30 @@ func NewAdbController(
 		agentPath,
 	)
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create ADB controller")
 	}
 
 	initControllerStore(handle)
 
 	return &Controller{
 		handle: handle,
-	}
+	}, nil
 }
 
 // NewPlayCoverController creates a new PlayCover controller.
 func NewPlayCoverController(
 	address, uuid string,
-) *Controller {
+) (*Controller, error) {
 	handle := native.MaaPlayCoverControllerCreate(address, uuid)
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create PlayCover controller")
 	}
 
 	initControllerStore(handle)
 
 	return &Controller{
 		handle: handle,
-	}
+	}, nil
 }
 
 // NewWin32Controller creates a win32 controller instance.
@@ -73,7 +75,7 @@ func NewWin32Controller(
 	screencapMethod win32.ScreencapMethod,
 	mouseMethod win32.InputMethod,
 	keyboardMethod win32.InputMethod,
-) *Controller {
+) (*Controller, error) {
 	handle := native.MaaWin32ControllerCreate(
 		hWnd,
 		uint64(screencapMethod),
@@ -81,41 +83,14 @@ func NewWin32Controller(
 		uint64(keyboardMethod),
 	)
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create Win32 controller")
 	}
 
 	initControllerStore(handle)
 
 	return &Controller{
 		handle: handle,
-	}
-}
-
-// NewCustomController creates a custom controller instance.
-func NewCustomController(
-	ctrl CustomController,
-) *Controller {
-	ctrlID := registerCustomControllerCallbacks(ctrl)
-	handle := native.MaaCustomControllerCreate(
-		unsafe.Pointer(customControllerCallbacksHandle),
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		uintptr(ctrlID),
-	)
-	if handle == 0 {
-		return nil
-	}
-
-	store.CtrlStore.Lock()
-	store.CtrlStore.Set(handle, store.CtrlStoreValue{
-		SinkIDToEventCallbackID:     make(map[int64]uint64),
-		CustomControllerCallbacksID: ctrlID,
-	})
-	store.CtrlStore.Unlock()
-
-	return &Controller{
-		handle: handle,
-	}
+	}, nil
 }
 
 // GamepadType defines the type of virtual gamepad.
@@ -139,17 +114,47 @@ func NewGamepadController(
 	hWnd unsafe.Pointer,
 	gamepadType GamepadType,
 	screencapMethod win32.ScreencapMethod,
-) *Controller {
+) (*Controller, error) {
 	handle := native.MaaGamepadControllerCreate(hWnd, gamepadType, uint64(screencapMethod))
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create Gamepad controller")
 	}
 
 	initControllerStore(handle)
 
 	return &Controller{
 		handle: handle,
+	}, nil
+}
+
+// NewCustomController creates a custom controller instance.
+func NewCustomController(
+	ctrl CustomController,
+) (*Controller, error) {
+	if ctrl == nil {
+		return nil, errors.New("custom controller is nil")
 	}
+
+	ctrlID := registerCustomControllerCallbacks(ctrl)
+	handle := native.MaaCustomControllerCreate(
+		unsafe.Pointer(customControllerCallbacksHandle),
+		// Here, we are simply passing the uint64 value as a pointer
+		// and will not actually dereference this pointer.
+		uintptr(ctrlID),
+	)
+	if handle == 0 {
+		return nil, errors.New("failed to create Custom controller")
+	}
+
+	initControllerStore(handle)
+
+	store.CtrlStore.Update(handle, func(v *store.CtrlStoreValue) {
+		v.CustomControllerCallbacksID = ctrlID
+	})
+
+	return &Controller{
+		handle: handle,
+	}, nil
 }
 
 // NOTE: MaaDbgController is intentionally NOT implemented in Go binding.
@@ -171,41 +176,100 @@ func (c *Controller) Destroy() {
 }
 
 // setOption sets options for controller instance.
-func (c *Controller) setOption(key native.MaaCtrlOption, value unsafe.Pointer, valSize uintptr) bool {
-	return native.MaaControllerSetOption(c.handle, key, value, uint64(valSize))
+func (c *Controller) setOption(key native.MaaCtrlOption, value unsafe.Pointer, valSize uintptr) error {
+	if native.MaaControllerSetOption(c.handle, key, value, uint64(valSize)) {
+		return nil
+	}
+	return fmt.Errorf("failed to set controller option: %v", key)
 }
 
-// SetScreenshotTargetLongSide sets screenshot target long side.
+type screenshotOptionKind int
+
+const (
+	screenshotOptionUnset screenshotOptionKind = iota
+	screenshotOptionLongSide
+	screenshotOptionShortSide
+	screenshotOptionRawSize
+)
+
+type screenshotOptionConfig struct {
+	kind            screenshotOptionKind
+	targetLongSide  int32
+	targetShortSide int32
+	useRawSize      bool
+}
+
+// ScreenshotOption configures how the screenshot is resized.
+// If multiple options are provided, only the last one is applied.
+type ScreenshotOption func(*screenshotOptionConfig)
+
+// WithScreenshotTargetLongSide sets screenshot target long side.
 // Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
 //
 // eg: 1280
-func (c *Controller) SetScreenshotTargetLongSide(targetLongSide int32) bool {
-	return c.setOption(
-		native.MaaCtrlOption_ScreenshotTargetLongSide,
-		unsafe.Pointer(&targetLongSide),
-		unsafe.Sizeof(targetLongSide),
-	)
+func WithScreenshotTargetLongSide(targetLongSide int32) ScreenshotOption {
+	return func(cfg *screenshotOptionConfig) {
+		cfg.kind = screenshotOptionLongSide
+		cfg.targetLongSide = targetLongSide
+	}
 }
 
-// SetScreenshotTargetShortSide sets screenshot target short side.
+// WithScreenshotTargetShortSide sets screenshot target short side.
 // Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
 //
 // eg: 720
-func (c *Controller) SetScreenshotTargetShortSide(targetShortSide int32) bool {
-	return c.setOption(
-		native.MaaCtrlOption_ScreenshotTargetShortSide,
-		unsafe.Pointer(&targetShortSide),
-		unsafe.Sizeof(targetShortSide),
-	)
+func WithScreenshotTargetShortSide(targetShortSide int32) ScreenshotOption {
+	return func(cfg *screenshotOptionConfig) {
+		cfg.kind = screenshotOptionShortSide
+		cfg.targetShortSide = targetShortSide
+	}
 }
 
-// SetScreenshotUseRawSize sets whether the screenshot uses the raw size without scaling.
-func (c *Controller) SetScreenshotUseRawSize(enabled bool) bool {
-	return c.setOption(
-		native.MaaCtrlOption_ScreenshotUseRawSize,
-		unsafe.Pointer(&enabled),
-		unsafe.Sizeof(enabled),
-	)
+// WithScreenshotUseRawSize sets whether the screenshot uses the raw size without scaling.
+func WithScreenshotUseRawSize(enabled bool) ScreenshotOption {
+	return func(cfg *screenshotOptionConfig) {
+		cfg.kind = screenshotOptionRawSize
+		cfg.useRawSize = enabled
+	}
+}
+
+// SetScreenshot applies screenshot options to controller instance.
+// Only the last option is applied when multiple options are provided.
+func (c *Controller) SetScreenshot(opts ...ScreenshotOption) error {
+	cfg := screenshotOptionConfig{
+		kind: screenshotOptionUnset,
+	}
+
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&cfg)
+		}
+	}
+
+	switch cfg.kind {
+	case screenshotOptionUnset:
+		return nil
+	case screenshotOptionLongSide:
+		return c.setOption(
+			native.MaaCtrlOption_ScreenshotTargetLongSide,
+			unsafe.Pointer(&cfg.targetLongSide),
+			unsafe.Sizeof(cfg.targetLongSide),
+		)
+	case screenshotOptionShortSide:
+		return c.setOption(
+			native.MaaCtrlOption_ScreenshotTargetShortSide,
+			unsafe.Pointer(&cfg.targetShortSide),
+			unsafe.Sizeof(cfg.targetShortSide),
+		)
+	case screenshotOptionRawSize:
+		return c.setOption(
+			native.MaaCtrlOption_ScreenshotUseRawSize,
+			unsafe.Pointer(&cfg.useRawSize),
+			unsafe.Sizeof(cfg.useRawSize),
+		)
+	default:
+		return fmt.Errorf("unknown screenshot option kind: %v", cfg.kind)
+	}
 }
 
 // PostConnect posts a connection.
@@ -242,7 +306,7 @@ func (c *Controller) PostSwipeV2(x1, y1, x2, y2 int32, duration time.Duration, c
 	return newJob(id, c.status, c.wait)
 }
 
-// PostPressKey posts a click key.
+// PostClickKey posts a click key.
 func (c *Controller) PostClickKey(keycode int32) *Job {
 	id := native.MaaControllerPostClickKey(c.handle, keycode)
 	return newJob(id, c.status, c.wait)
@@ -314,15 +378,15 @@ func (c *Controller) PostShell(cmd string, timeout time.Duration) *Job {
 }
 
 // GetShellOutput gets the output of the last shell command.
-func (c *Controller) GetShellOutput() (string, bool) {
+func (c *Controller) GetShellOutput() (string, error) {
 	output := buffer.NewStringBuffer()
 	defer output.Destroy()
 
 	got := native.MaaControllerGetShellOutput(c.handle, output.Handle())
 	if !got {
-		return "", false
+		return "", errors.New("failed to get shell output")
 	}
-	return output.Get(), true
+	return output.Get(), nil
 }
 
 // status gets the status of a request identified by the given id.
@@ -340,38 +404,41 @@ func (c *Controller) Connected() bool {
 }
 
 // CacheImage gets the image buffer of the last screencap request.
-func (c *Controller) CacheImage() image.Image {
+func (c *Controller) CacheImage() (image.Image, error) {
 	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 
 	got := native.MaaControllerCachedImage(c.handle, imgBuffer.Handle())
 	if !got {
-		return nil
+		return nil, errors.New("failed to get cached image")
 	}
 
 	img := imgBuffer.Get()
 
-	return img
+	return img, nil
 }
 
 // GetUUID gets the UUID of the controller.
-func (c *Controller) GetUUID() (string, bool) {
+func (c *Controller) GetUUID() (string, error) {
 	uuid := buffer.NewStringBuffer()
 	defer uuid.Destroy()
 	got := native.MaaControllerGetUuid(c.handle, uuid.Handle())
 	if !got {
-		return "", false
+		return "", errors.New("failed to get UUID")
 	}
-	return uuid.Get(), true
+	return uuid.Get(), nil
 }
 
 // GetResolution gets the raw (unscaled) device resolution.
-// Returns the width and height, and whether the resolution is available.
+// Returns the width and height. Returns an error if the resolution is not available.
 // Note: This returns the actual device screen resolution before any scaling.
 // The screenshot obtained via CacheImage is scaled according to the screenshot target size settings.
-func (c *Controller) GetResolution() (width, height int32, ok bool) {
-	ok = native.MaaControllerGetResolution(c.handle, &width, &height)
-	return
+func (c *Controller) GetResolution() (width, height int32, err error) {
+	got := native.MaaControllerGetResolution(c.handle, &width, &height)
+	if !got {
+		return 0, 0, fmt.Errorf("failed to get resolution")
+	}
+	return width, height, nil
 }
 
 // AddSink adds a event callback sink and returns the sink ID.
@@ -383,16 +450,33 @@ func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
+
+	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
+		v.SinkIDToEventCallbackID[sinkId] = id
+	})
+
 	return sinkId
 }
 
 // RemoveSink removes a event callback sink by sink ID.
 func (c *Controller) RemoveSink(sinkId int64) {
+	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
+		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
+		delete(v.SinkIDToEventCallbackID, sinkId)
+	})
+
 	native.MaaControllerRemoveSink(c.handle, sinkId)
 }
 
 // ClearSinks clears all event callback sinks.
 func (c *Controller) ClearSinks() {
+	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
+		for _, id := range v.SinkIDToEventCallbackID {
+			unregisterEventCallback(id)
+		}
+		v.SinkIDToEventCallbackID = make(map[int64]uint64)
+	})
+
 	native.MaaControllerClearSinks(c.handle)
 }
 
@@ -400,13 +484,17 @@ type ControllerEventSink interface {
 	OnControllerAction(ctrl *Controller, event EventStatus, detail ControllerActionDetail)
 }
 
-// ControllerEventSinkAdapter is a lightweight adapter that makes it easy to register
+// ctrlEventSinkAdapter is a lightweight adapter that makes it easy to register
 // a single-event handler via a callback function.
-type ControllerEventSinkAdapter struct {
+type ctrlEventSinkAdapter struct {
 	onControllerAction func(EventStatus, ControllerActionDetail)
 }
 
-func (a *ControllerEventSinkAdapter) OnControllerAction(ctrl *Controller, status EventStatus, detail ControllerActionDetail) {
+func (a *ctrlEventSinkAdapter) OnControllerAction(
+	ctrl *Controller,
+	status EventStatus,
+	detail ControllerActionDetail,
+) {
 	if a == nil || a.onControllerAction == nil {
 		return
 	}
@@ -415,7 +503,9 @@ func (a *ControllerEventSinkAdapter) OnControllerAction(ctrl *Controller, status
 
 // OnControllerAction registers a callback sink that only handles Controller.Action events and returns the sink ID.
 // The sink ID can be used to remove the sink later.
-func (c *Controller) OnControllerAction(fn func(EventStatus, ControllerActionDetail)) int64 {
-	sink := &ControllerEventSinkAdapter{onControllerAction: fn}
+func (c *Controller) OnControllerAction(
+	fn func(EventStatus, ControllerActionDetail),
+) int64 {
+	sink := &ctrlEventSinkAdapter{onControllerAction: fn}
 	return c.AddSink(sink)
 }

@@ -47,11 +47,6 @@ type CustomActionRunner interface {
 	Run(ctx *Context, arg *CustomActionArg) bool
 }
 
-// CustomAction is an alias for CustomActionRunner for backward compatibility.
-//
-// Deprecated: Use CustomActionRunner instead. This type will be removed in the future.
-type CustomAction = CustomActionRunner
-
 func _MaaCustomActionCallbackAgent(
 	context uintptr,
 	taskId int64,
@@ -59,7 +54,7 @@ func _MaaCustomActionCallbackAgent(
 	recoId int64,
 	box uintptr,
 	transArg uintptr,
-) uint64 {
+) uintptr {
 	// Here, we are simply passing the uint64 value as a pointer
 	// and will not actually dereference this pointer.
 	id := uint64(transArg)
@@ -74,7 +69,10 @@ func _MaaCustomActionCallbackAgent(
 
 	ctx := &Context{handle: context}
 	tasker := ctx.GetTasker()
-	taskDetail := tasker.getTaskDetail(taskId)
+	taskDetail, err := tasker.getTaskDetail(taskId)
+	if err != nil {
+		return 0
+	}
 	recognitionDetail, err := tasker.getRecognitionDetail(recoId)
 	if err != nil {
 		return 0

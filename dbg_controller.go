@@ -18,7 +18,7 @@ type CarouselImageController struct {
 	connected  atomic.Bool
 }
 
-func NewCarouselImageController(path string) *Controller {
+func NewCarouselImageController(path string) (*Controller, error) {
 	return NewCustomController(&CarouselImageController{
 		path: path,
 	})
@@ -174,7 +174,7 @@ func (c *CarouselImageController) Scroll(dx int32, dy int32) bool {
 
 type BlankController struct{}
 
-func NewBlankController() *Controller {
+func NewBlankController() (*Controller, error) {
 	return NewCustomController(&BlankController{})
 }
 

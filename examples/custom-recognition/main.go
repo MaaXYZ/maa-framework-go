@@ -9,12 +9,24 @@ import (
 
 func main() {
 	maa.Init()
-	maa.ConfigInitOption("./", "{}")
-	tasker := maa.NewTasker()
+	if err := maa.ConfigInitOption("./", "{}"); err != nil {
+		fmt.Println("Failed to init config:", err)
+		os.Exit(1)
+	}
+	tasker, err := maa.NewTasker()
+	if err != nil {
+		fmt.Println("Failed to create tasker")
+		os.Exit(1)
+	}
 	defer tasker.Destroy()
 
-	device := maa.FindAdbDevices()[0]
-	ctrl := maa.NewAdbController(
+	devices, err := maa.FindAdbDevices()
+	if err != nil {
+		fmt.Println("Failed to find adb devices:", err)
+		os.Exit(1)
+	}
+	device := devices[0]
+	ctrl, err := maa.NewAdbController(
 		device.AdbPath,
 		device.Address,
 		device.ScreencapMethod,
@@ -22,11 +34,19 @@ func main() {
 		device.Config,
 		"path/to/MaaAgentBinary",
 	)
+	if err != nil {
+		fmt.Println("Failed to create ADB controller")
+		os.Exit(1)
+	}
 	defer ctrl.Destroy()
 	ctrl.PostConnect().Wait()
 	tasker.BindController(ctrl)
 
-	res := maa.NewResource()
+	res, err := maa.NewResource()
+	if err != nil {
+		fmt.Println("Failed to create resource:", err)
+		os.Exit(1)
+	}
 	defer res.Destroy()
 	res.PostBundle("./resource").Wait()
 	tasker.BindResource(res)
@@ -35,9 +55,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	res.RegisterCustomRecognition("MyRec", &MyRec{})
+	if err := res.RegisterCustomRecognition("MyRec", &MyRec{}); err != nil {
+		fmt.Println("Failed to register custom recognition:", err)
+		os.Exit(1)
+	}
 
-	detail := tasker.PostTask("Startup").Wait().GetDetail()
+	detail, err := tasker.PostTask("Startup").Wait().GetDetail()
+	if err != nil {
+		fmt.Println("Failed to get task detail:", err)
+		os.Exit(1)
+	}
 	fmt.Println(detail)
 }
 
