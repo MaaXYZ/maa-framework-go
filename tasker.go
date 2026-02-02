@@ -401,7 +401,7 @@ func (t *Tasker) getNodeDetail(nodeId int64) (*NodeDetail, error) {
 		Recognition:  recognitionDetail,
 		Action:       actionDetail,
 		RunCompleted: runCompletedByte != 0,
-	}
+	}, nil
 }
 
 // TaskDetail contains task information.
