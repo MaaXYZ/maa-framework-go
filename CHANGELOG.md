@@ -84,6 +84,16 @@ if err != nil {
 ### TaskJob
 
 - `GetDetail` 现在返回 `(*TaskDetail, error)` 而非 `*TaskDetail`
+- `OverridePipeline` 现在返回 `error` 而非 `bool`
+- 新增 `Error() error` 方法，用于获取任务创建阶段的错误（如 JSON 序列化失败）
+
+**错误处理增强**
+
+当任务创建过程中发生错误（如 JSON 序列化失败）时，`TaskJob` 会保存该错误而非静默忽略。此时：
+- `Status()` 返回 `StatusFailure`
+- `Error()` 返回具体的错误信息
+- `Wait()` 会跳过等待直接返回
+- `GetDetail()` 和 `OverridePipeline()` 会返回保存的错误
 
 迁移示例：
 
@@ -95,6 +105,21 @@ detail := taskJob.Wait().GetDetail()
 detail, err := taskJob.Wait().GetDetail()
 if err != nil {
     // 处理错误
+}
+
+// 旧 API
+ok := taskJob.OverridePipeline(pipeline)
+
+// 新 API
+err := taskJob.OverridePipeline(pipeline)
+if err != nil {
+    // 处理错误
+}
+
+// 新增：检查任务创建阶段的错误
+job := tasker.PostTask("entry", invalidOverride)
+if err := job.Error(); err != nil {
+    // 处理任务创建错误（如 JSON 序列化失败）
 }
 ```
 
@@ -174,16 +199,62 @@ var _ maa.CustomRecognitionRunner = &MyRecognition{}
 
 ### Tasker
 
+- `NewTasker` 现在返回 `(*Tasker, error)` 而非 `*Tasker`
 - `GetLatestNode` 现在返回 `(*NodeDetail, error)` 而非 `*NodeDetail`
 
 迁移示例：
 
 ```go
 // 旧 API
+tasker := maa.NewTasker()
+
+// 新 API
+tasker, err := maa.NewTasker()
+if err != nil {
+    // 处理错误
+}
+
+// 旧 API
 detail := tasker.GetLatestNode("MyTaskName")
 
 // 新 API
 detail, err := tasker.GetLatestNode("MyTaskName")
+if err != nil {
+    // 处理错误
+}
+```
+
+**绑定方法返回值变更**
+
+- `BindResource` 现在返回 `error` 而非 `bool`
+- `BindController` 现在返回 `error` 而非 `bool`
+
+迁移示例：
+
+```go
+// 旧 API
+ok := tasker.BindResource(res)
+
+// 新 API
+err := tasker.BindResource(res)
+if err != nil {
+    // 处理错误
+}
+// BindController 迁移方式相同
+```
+
+**清除方法返回值变更**
+
+- `ClearCache` 现在返回 `error` 而非 `bool`
+
+迁移示例：
+
+```go
+// 旧 API
+ok := tasker.ClearCache()
+
+// 新 API
+err := tasker.ClearCache()
 if err != nil {
     // 处理错误
 }

@@ -324,6 +324,7 @@ func (ctx *Context) GetTaskJob() *TaskJob {
 		tasker.wait,
 		tasker.getTaskDetail,
 		tasker.overridePipeline,
+		nil,
 	)
 }
 

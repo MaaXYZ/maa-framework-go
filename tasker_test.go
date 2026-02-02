@@ -8,16 +8,17 @@ import (
 )
 
 func createTasker(t *testing.T) *Tasker {
-	tasker := NewTasker()
+	tasker, err := NewTasker()
+	require.NoError(t, err)
 	require.NotNil(t, tasker)
 	return tasker
 }
 
 func taskerBind(t *testing.T, tasker *Tasker, ctrl *Controller, res *Resource) {
-	isResBound := tasker.BindResource(res)
-	require.True(t, isResBound)
-	isCtrlBound := tasker.BindController(ctrl)
-	require.True(t, isCtrlBound)
+	err := tasker.BindResource(res)
+	require.NoError(t, err)
+	err = tasker.BindController(ctrl)
+	require.NoError(t, err)
 }
 
 func TestNewTasker(t *testing.T) {
@@ -31,8 +32,8 @@ func TestTasker_BindResource(t *testing.T) {
 
 	tasker := createTasker(t)
 	defer tasker.Destroy()
-	bound := tasker.BindResource(res)
-	require.True(t, bound)
+	err := tasker.BindResource(res)
+	require.NoError(t, err)
 }
 
 func TestTasker_BindController(t *testing.T) {
@@ -41,8 +42,8 @@ func TestTasker_BindController(t *testing.T) {
 
 	tasker := createTasker(t)
 	defer tasker.Destroy()
-	bound := tasker.BindController(ctrl)
-	require.True(t, bound)
+	err := tasker.BindController(ctrl)
+	require.NoError(t, err)
 }
 
 func TestTasker_Initialized(t *testing.T) {
@@ -131,8 +132,8 @@ func TestTasker_GetResource(t *testing.T) {
 
 	tasker := createTasker(t)
 	defer tasker.Destroy()
-	bound := tasker.BindResource(res1)
-	require.True(t, bound)
+	err := tasker.BindResource(res1)
+	require.NoError(t, err)
 
 	res2 := tasker.GetResource()
 	require.NotNil(t, res2)
@@ -145,8 +146,8 @@ func TestTasker_GetController(t *testing.T) {
 
 	tasker := createTasker(t)
 	defer tasker.Destroy()
-	bound := tasker.BindController(ctrl1)
-	require.True(t, bound)
+	err := tasker.BindController(ctrl1)
+	require.NoError(t, err)
 
 	ctrl2 := tasker.GetController()
 	require.NotNil(t, ctrl2)
@@ -166,8 +167,8 @@ func TestTasker_ClearCache(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	got := tasker.ClearCache()
-	require.True(t, got)
+	err := tasker.ClearCache()
+	require.NoError(t, err)
 }
 
 func TestTasker_GetLatestNode(t *testing.T) {

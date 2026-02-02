@@ -10,7 +10,11 @@ import (
 func main() {
 	maa.Init()
 
-	tasker := maa.NewTasker()
+	tasker, err := maa.NewTasker()
+	if err != nil {
+		fmt.Println("Failed to create tasker")
+		os.Exit(1)
+	}
 	defer tasker.Destroy()
 
 	res, err := maa.NewResource()
@@ -20,7 +24,7 @@ func main() {
 	}
 	defer res.Destroy()
 
-	if !tasker.BindResource(res) {
+	if err := tasker.BindResource(res); err != nil {
 		fmt.Println("Failed to bind resource to MAA Tasker")
 		os.Exit(1)
 	}
@@ -34,7 +38,7 @@ func main() {
 
 	ctrl.PostConnect().Wait()
 
-	if !tasker.BindController(ctrl) {
+	if err := tasker.BindController(ctrl); err != nil {
 		fmt.Println("Failed to bind controller to MAA Tasker")
 		os.Exit(1)
 	}
