@@ -133,6 +133,13 @@ func Init(opts ...InitOption) error {
 		return err
 	}
 
+	success := false
+	defer func() {
+		if !success {
+			_ = native.Release()
+		}
+	}()
+
 	if err := SetLogDir(cfg.LogDir); err != nil {
 		return err
 	}
@@ -153,6 +160,7 @@ func Init(opts ...InitOption) error {
 	}
 
 	inited = true
+	success = true
 
 	return nil
 }
