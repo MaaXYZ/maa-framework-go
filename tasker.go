@@ -3,6 +3,7 @@ package maa
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	"unsafe"
 
@@ -91,7 +92,8 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 
 		jsonBytes, err := json.Marshal(v)
 		if err != nil {
-			return postFunc(entry, "{}")
+			return newTaskJob(0, nil, nil, nil, nil,
+				fmt.Errorf("failed to marshal override: %w", err))
 		}
 		return postFunc(entry, string(jsonBytes))
 	}
@@ -99,7 +101,7 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 
 func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
 	id := native.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline)
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline, nil)
 }
 
 // PostTask posts a task to the tasker.
@@ -116,10 +118,14 @@ func (t *Tasker) PostRecognition(recType NodeRecognitionType, recParam NodeRecog
 	defer imgBuf.Destroy()
 	imgBuf.Set(img)
 
-	recParamJSON, _ := json.Marshal(recParam)
+	recParamJSON, err := json.Marshal(recParam)
+	if err != nil {
+		return newTaskJob(0, nil, nil, nil, nil,
+			fmt.Errorf("failed to marshal recognition param: %w", err))
+	}
 
 	id := native.MaaTaskerPostRecognition(t.handle, string(recType), string(recParamJSON), imgBuf.Handle())
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline)
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline, nil)
 }
 
 // PostAction posts an action to the tasker.
@@ -128,11 +134,20 @@ func (t *Tasker) PostAction(actionType NodeActionType, actionParam NodeActionPar
 	defer rectBuf.Destroy()
 	rectBuf.Set(box)
 
-	actParamJSON, _ := json.Marshal(actionParam)
-	recoDetailJSON, _ := json.Marshal(recoDetail)
+	actParamJSON, err := json.Marshal(actionParam)
+	if err != nil {
+		return newTaskJob(0, nil, nil, nil, nil,
+			fmt.Errorf("failed to marshal action param: %w", err))
+	}
+
+	recoDetailJSON, err := json.Marshal(recoDetail)
+	if err != nil {
+		return newTaskJob(0, nil, nil, nil, nil,
+			fmt.Errorf("failed to marshal recognition detail: %w", err))
+	}
 
 	id := native.MaaTaskerPostAction(t.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline)
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline, nil)
 }
 
 // Stopping checks whether the tasker is stopping.
@@ -158,7 +173,7 @@ func (t *Tasker) Running() bool {
 // PostStop posts a stop signal to the tasker.
 func (t *Tasker) PostStop() *TaskJob {
 	id := native.MaaTaskerPostStop(t.handle)
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline)
+	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline, nil)
 }
 
 // GetResource returns the resource handle of the tasker.
