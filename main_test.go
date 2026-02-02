@@ -8,7 +8,6 @@ import (
 func TestMain(m *testing.M) {
 	Init(
 		WithLogDir("./test/debug"),
-		WithSaveDraw(true),
 		WithStdoutLevel(LoggingLevelOff),
 	)
 
