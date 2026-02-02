@@ -246,7 +246,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	defer name.Destroy()
 	algorithm := buffer.NewStringBuffer()
 	defer algorithm.Destroy()
-	var hit bool
+	var hitByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
 	box := buffer.NewRectBuffer()
 	defer box.Destroy()
 	detailJson := buffer.NewStringBuffer()
@@ -260,7 +260,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 		recId,
 		name.Handle(),
 		algorithm.Handle(),
-		&hit,
+		(*bool)(unsafe.Pointer(&hitByte)), // Convert uint8* to bool* for FFI call
 		box.Handle(),
 		detailJson.Handle(),
 		raw.Handle(),
@@ -296,7 +296,7 @@ func (t *Tasker) getRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 		ID:             recId,
 		Name:           name.Get(),
 		Algorithm:      algorithmStr,
-		Hit:            hit,
+		Hit:            hitByte != 0,
 		Box:            box.Get(),
 		DetailJson:     detailJsonStr,
 		Results:        results,
@@ -324,7 +324,7 @@ func (t *Tasker) getActionDetail(actionId int64) (*ActionDetail, error) {
 	defer action.Destroy()
 	box := buffer.NewRectBuffer()
 	defer box.Destroy()
-	var success bool
+	var successByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
 	detailJson := buffer.NewStringBuffer()
 	defer detailJson.Destroy()
 	got := native.MaaTaskerGetActionDetail(
@@ -333,7 +333,7 @@ func (t *Tasker) getActionDetail(actionId int64) (*ActionDetail, error) {
 		name.Handle(),
 		action.Handle(),
 		box.Handle(),
-		&success,
+		(*bool)(unsafe.Pointer(&successByte)), // Convert uint8* to bool* for FFI call
 		detailJson.Handle(),
 	)
 
@@ -352,7 +352,7 @@ func (t *Tasker) getActionDetail(actionId int64) (*ActionDetail, error) {
 		Name:       name.Get(),
 		Action:     action.Get(),
 		Box:        box.Get(),
-		Success:    success,
+		Success:    successByte != 0,
 		DetailJson: detailJsonStr,
 		Result:     result,
 	}, nil
@@ -372,14 +372,14 @@ func (t *Tasker) getNodeDetail(nodeId int64) (*NodeDetail, error) {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId, actionId int64
-	var runCompleted bool
+	var runCompletedByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
 	got := native.MaaTaskerGetNodeDetail(
 		t.handle,
 		nodeId,
 		name.Handle(),
 		&recId,
 		&actionId,
-		&runCompleted,
+		(*bool)(unsafe.Pointer(&runCompletedByte)), // Convert uint8* to bool* for FFI call
 	)
 	if !got {
 		return nil, errors.New("failed to get node detail")
@@ -400,8 +400,8 @@ func (t *Tasker) getNodeDetail(nodeId int64) (*NodeDetail, error) {
 		Name:         name.Get(),
 		Recognition:  recognitionDetail,
 		Action:       actionDetail,
-		RunCompleted: runCompleted,
-	}, nil
+		RunCompleted: runCompletedByte != 0,
+	}
 }
 
 // TaskDetail contains task information.

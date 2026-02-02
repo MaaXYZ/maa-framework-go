@@ -218,6 +218,7 @@ var (
 	MaaContextRunAction            func(context uintptr, entry, pipelineOverride string, box uintptr, recoDetail string) int64
 	MaaContextRunRecognitionDirect func(context uintptr, recoType, recoParam string, image uintptr) int64
 	MaaContextRunActionDirect      func(context uintptr, actionType, actionParam string, box uintptr, recoDetail string) int64
+	MaaContextWaitFreezes          func(context uintptr, time uint64, box uintptr, waitFreezesParam string) bool
 	MaaContextOverridePipeline     func(context uintptr, pipelineOverride string) bool
 	MaaContextOverrideNext         func(context uintptr, nodeName string, nextList uintptr) bool
 	MaaContextOverrideImage        func(context uintptr, imageName string, image uintptr) bool
@@ -250,16 +251,17 @@ var (
 	MaaStringListBufferRemove  func(handle uintptr, index uint64) bool
 	MaaStringListBufferClear   func(handle uintptr) bool
 
-	MaaImageBufferCreate     func() uintptr
-	MaaImageBufferDestroy    func(handle uintptr)
-	MaaImageBufferIsEmpty    func(handle uintptr) bool
-	MaaImageBufferClear      func(handle uintptr) bool
-	MaaImageBufferGetRawData func(handle uintptr) unsafe.Pointer
-	MaaImageBufferWidth      func(handle uintptr) int32
-	MaaImageBufferHeight     func(handle uintptr) int32
-	MaaImageBufferChannels   func(handle uintptr) int32
-	MaaImageBufferType       func(handle uintptr) int32
-	MaaImageBufferSetRawData func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
+	MaaImageBufferCreate          func() uintptr
+	MaaImageBufferDestroy         func(handle uintptr)
+	MaaImageBufferIsEmpty         func(handle uintptr) bool
+	MaaImageBufferClear           func(handle uintptr) bool
+	MaaImageBufferGetRawData      func(handle uintptr) unsafe.Pointer
+	MaaImageBufferWidth           func(handle uintptr) int32
+	MaaImageBufferHeight          func(handle uintptr) int32
+	MaaImageBufferChannels        func(handle uintptr) int32
+	MaaImageBufferType            func(handle uintptr) int32
+	MaaImageBufferSetRawData      func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
+	MaaImageBufferResize          func(handle uintptr, width, height int32) bool
 	// NOTE: MaaImageBufferGetEncoded, MaaImageBufferGetEncodedSize, and MaaImageBufferSetEncoded are intentionally
 	// NOT implemented in Go binding. Go handles image encoding/decoding natively through the standard library.
 	// Do not add encoded image buffer bindings here.
@@ -468,6 +470,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaContextRunAction, maaFramework, "MaaContextRunAction")
 	purego.RegisterLibFunc(&MaaContextRunRecognitionDirect, maaFramework, "MaaContextRunRecognitionDirect")
 	purego.RegisterLibFunc(&MaaContextRunActionDirect, maaFramework, "MaaContextRunActionDirect")
+	purego.RegisterLibFunc(&MaaContextWaitFreezes, maaFramework, "MaaContextWaitFreezes")
 	purego.RegisterLibFunc(&MaaContextOverridePipeline, maaFramework, "MaaContextOverridePipeline")
 	purego.RegisterLibFunc(&MaaContextOverrideNext, maaFramework, "MaaContextOverrideNext")
 	purego.RegisterLibFunc(&MaaContextOverrideImage, maaFramework, "MaaContextOverrideImage")
@@ -506,6 +509,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaImageBufferChannels, maaFramework, "MaaImageBufferChannels")
 	purego.RegisterLibFunc(&MaaImageBufferType, maaFramework, "MaaImageBufferType")
 	purego.RegisterLibFunc(&MaaImageBufferSetRawData, maaFramework, "MaaImageBufferSetRawData")
+	purego.RegisterLibFunc(&MaaImageBufferResize, maaFramework, "MaaImageBufferResize")
 	purego.RegisterLibFunc(&MaaImageListBufferCreate, maaFramework, "MaaImageListBufferCreate")
 	purego.RegisterLibFunc(&MaaImageListBufferDestroy, maaFramework, "MaaImageListBufferDestroy")
 	purego.RegisterLibFunc(&MaaImageListBufferIsEmpty, maaFramework, "MaaImageListBufferIsEmpty")
