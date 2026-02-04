@@ -35,6 +35,8 @@
 | 设置方法 | `OverridePipeline`, `OverrideNext`, `OverrideImage`, `SetAnchor`, `ClearHitCount` |
 | 查询方法 | `GetNodeJSON`, `GetAnchor`, `GetHitCount` |
 
+**补充说明**：`OverrideNext` 现改为接收 `[]NodeNextItem`。
+
 #### TaskJob
 
 | 变更类型 | 受影响的方法 |
@@ -156,6 +158,19 @@ detail, err := ctx.RunTask("MyTask", pipeline)
 if err != nil {
     // 处理错误
 }
+```
+
+#### OverrideNext 迁移（[]string → []NodeNextItem）
+
+```go
+// 旧 API
+err := ctx.OverrideNext("Entry", []string{"TaskA", "[JumpBack]TaskB"})
+
+// 新 API
+err := ctx.OverrideNext("Entry", []maa.NodeNextItem{
+    {Name: "TaskA"},
+    {Name: "TaskB", JumpBack: true},
+})
 ```
 
 #### 任务创建错误处理

@@ -330,14 +330,14 @@ func (ctx *Context) OverridePipeline(override any) error {
 
 // OverrideNext overrides the next list of a node by name.
 // If the underlying call fails (e.g., node not found or list invalid), it returns an error.
-func (ctx *Context) OverrideNext(name string, nextList []string) error {
+func (ctx *Context) OverrideNext(name string, nextList []NodeNextItem) error {
 	list := buffer.NewStringListBuffer()
 	defer list.Destroy()
 	size := len(nextList)
 	items := make([]*buffer.StringBuffer, size)
 	for i := 0; i < size; i++ {
 		items[i] = buffer.NewStringBuffer()
-		items[i].Set(nextList[i])
+		items[i].Set(nextList[i].FormatName())
 		list.Append(items[i])
 	}
 	defer func() {

@@ -235,7 +235,7 @@ func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool 
 	err := ctx.OverridePipeline(pipeline)
 	require.NoError(t.t, err)
 
-	err = ctx.OverrideNext(testNode.Name, []string{"TaskB"})
+	err = ctx.OverrideNext(testNode.Name, []NodeNextItem{{Name: "TaskB"}})
 	require.NoError(t.t, err)
 
 	detail, err2 := ctx.RunTask(testNode.Name, pipeline)

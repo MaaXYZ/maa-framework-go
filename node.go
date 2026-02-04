@@ -326,6 +326,18 @@ type NodeNextItem struct {
 	Anchor bool `json:"anchor"`
 }
 
+// FormatName returns the name with attribute prefixes, e.g. [JumpBack]NodeA.
+func (i NodeNextItem) FormatName() string {
+	name := i.Name
+	if i.JumpBack {
+		name = "[JumpBack]" + name
+	}
+	if i.Anchor {
+		name = "[Anchor]" + name
+	}
+	return name
+}
+
 // NodeAttributeOption is a functional option for configuring NodeNextItem attributes.
 type NodeAttributeOption func(*NodeNextItem)
 
