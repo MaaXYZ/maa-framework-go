@@ -329,7 +329,7 @@ func (ctx *Context) OverridePipeline(override any) error {
 }
 
 // OverrideNext overrides the next list of a node by name.
-// It returns an error if the node does not exist or the list is invalid.
+// If the underlying call fails (e.g., node not found or list invalid), it returns an error.
 func (ctx *Context) OverrideNext(name string, nextList []string) error {
 	list := buffer.NewStringListBuffer()
 	defer list.Destroy()
