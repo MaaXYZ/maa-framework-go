@@ -78,6 +78,8 @@
 | 设置方法 | `UseCPU`, `UseDirectml`, `UseCoreml`, `UseAutoExecutionProvider`, `RegisterCustomRecognition`, `UnregisterCustomRecognition`, `ClearCustomRecognition`, `RegisterCustomAction`, `UnregisterCustomAction`, `ClearCustomAction`, `OverridePipeline`, `OverrideNext`, `OverrideImage`, `Clear` |
 | 查询方法 | `GetNodeJSON`, `GetHash`, `GetNodeList`, `GetCustomRecognitionList`, `GetCustomActionList`, `GetDefaultRecognitionParam`, `GetDefaultActionParam` |
 
+**补充说明**：`OverrideNext` 现改为接收 `[]NodeNextItem`。
+
 #### Custom Action and Recognition
 
 | 变更类型 | 旧 API | 新 API |

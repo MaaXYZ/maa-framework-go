@@ -259,6 +259,49 @@ func TestResource_PostPath(t *testing.T) {
 	require.True(t, isPathSet)
 }
 
+func TestResource_OverrideNext(t *testing.T) {
+	res := createResource(t)
+	defer res.Destroy()
+	resDir := "./test/data_set/PipelineSmoking/resource"
+	isPathSet := res.PostBundle(resDir).Wait().Success()
+	require.True(t, isPathSet)
+
+	override := []NodeNextItem{
+		{Name: "StartGame"},
+		{Name: "Sub_BackButton", JumpBack: true},
+		{Name: "HomeFlag", Anchor: true},
+	}
+	err := res.OverrideNext("StartUp", override)
+	require.NoError(t, err)
+
+	node, err := res.GetNode("StartUp")
+	require.NoError(t, err)
+	require.NotNil(t, node)
+	require.Len(t, node.Next, len(override))
+
+	findNextItem := func(name string) NodeNextItem {
+		for _, item := range node.Next {
+			if item.Name == name {
+				return item
+			}
+		}
+		require.FailNowf(t, "next item not found", "name=%s", name)
+		return NodeNextItem{}
+	}
+
+	startGame := findNextItem("StartGame")
+	require.False(t, startGame.JumpBack)
+	require.False(t, startGame.Anchor)
+
+	backButton := findNextItem("Sub_BackButton")
+	require.True(t, backButton.JumpBack)
+	require.False(t, backButton.Anchor)
+
+	homeFlag := findNextItem("HomeFlag")
+	require.False(t, homeFlag.JumpBack)
+	require.True(t, homeFlag.Anchor)
+}
+
 func TestResource_Clear(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()
