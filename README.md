@@ -41,6 +41,8 @@ Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-p
 
 - **ADB Controller** - Android device automation via ADB
 - **Win32 Controller** - Windows desktop application automation
+- **PlayCover Controller** - Control iOS apps via PlayCover on macOS
+- **Virtual Gamepad Controller** - Gamepad automation via ViGEm (Windows only)
 - **Image Recognition** - Template matching, OCR, feature detection and more
 - **Custom Recognition** - Implement custom image recognition algorithms
 - **Custom Actions** - Define your own automation logic
