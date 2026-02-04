@@ -44,23 +44,34 @@ func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {
 	return tasker.getTaskDetail(taskId)
 }
 
-// RunTask runs a task and returns its detail.
+// RunTask runs a pipeline task by entry name and returns its detail.
 // It accepts an entry string and an optional override parameter which can be
-// a JSON string or any data type that can be marshaled to JSON.
-// If multiple overrides are provided, only the first one will be used.
+// a JSON string or any data type that can be marshaled to JSON. The override
+// must be a JSON object (map). If the override value is nil, an empty JSON
+// object will be used. If multiple overrides are provided, only the first one
+// will be used.
 //
 // Example 1:
 //
-//	ctx.RunTask("Task", `{"Task":{"action":"Click","target":[100, 200, 100, 100]}}`)
+//	pipeline := NewPipeline()
+//	node := NewNode("Task",
+//		WithAction(ActClick(WithClickTarget(NewTargetRect(Rect{100, 200, 100, 100})))),
+//	)
+//	pipeline.AddNode(node)
+//	ctx.RunTask(node.Name, pipeline)
 //
 // Example 2:
 //
-//	ctx.RunTask("Task", map[string]interface{}{
-//	    "Task": map[string]interface{}{
+//	ctx.RunTask("Task", map[string]any{
+//	    "Task": map[string]any{
 //	        "action": "Click",
 //	        "target": []int{100, 200, 100, 100},
 //		}
 //	})
+//
+// Example 3:
+//
+//	ctx.RunTask("Task", `{"Task":{"action":"Click","target":[100, 200, 100, 100]}}`)
 func (ctx *Context) RunTask(entry string, override ...any) (*TaskDetail, error) {
 	return ctx.runTask(entry, ctx.handleOverride(override...))
 }
@@ -82,23 +93,34 @@ func (ctx *Context) runRecognition(
 	return recognitionDetail, err
 }
 
-// RunRecognition runs a recognition and returns its detail.
+// RunRecognition runs a recognition by entry name and returns its detail.
 // It accepts an entry string and an optional override parameter which can be
-// a JSON string or any data type that can be marshaled to JSON.
-// If multiple overrides are provided, only the first one will be used.
+// a JSON string or any data type that can be marshaled to JSON. The override
+// must be a JSON object (map). If the override value is nil, an empty JSON
+// object will be used. If multiple overrides are provided, only the first one
+// will be used.
 //
 // Example 1:
 //
-//	ctx.RunRecognition("Task", img, `{"Task":{"recognition":"OCR","expected":"Hello"}}`)
+//	pipeline := NewPipeline()
+//	node := NewNode("Task",
+//		WithRecognition(RecOCR(WithRecognitionExpected("Hello"))),
+//	)
+//	pipeline.AddNode(node)
+//	ctx.RunRecognition(node.Name, img, pipeline)
 //
 // Example 2:
 //
-//	ctx.RunRecognition("Task", img, map[string]interface{}{
-//	    "Task": map[string]interface{}{
+//	ctx.RunRecognition("Task", img, map[string]any{
+//	    "Task": map[string]any{
 //	        "recognition": "OCR",
 //	        "expected": "Hello",
 //		}
 //	})
+//
+// Example 3:
+//
+//	ctx.RunRecognition("Task", img, `{"Task":{"recognition":"OCR","expected":"Hello"}}`)
 func (ctx *Context) RunRecognition(
 	entry string,
 	img image.Image,
@@ -131,23 +153,36 @@ func (ctx *Context) runAction(
 	return actionDetail, err
 }
 
-// RunAction runs an action and returns its detail.
+// RunAction runs an action by entry name and returns its detail.
 // It accepts an entry string and an optional override parameter which can be
-// a JSON string or any data type that can be marshaled to JSON.
-// If multiple overrides are provided, only the first one will be used.
+// a JSON string or any data type that can be marshaled to JSON. The override
+// must be a JSON object (map). If the override value is nil, an empty JSON
+// object will be used. If multiple overrides are provided, only the first one
+// will be used.
+// recognitionDetail should be a JSON string for the previous recognition
+// detail (e.g., RecognitionDetail.DetailJson). Pass "" if not available.
 //
 // Example 1:
 //
-//	ctx.RunAction("Task", box, recognitionDetail, `{"Task":{"action":"Click","target":[100, 200, 100, 100]}}`)
+//	pipeline := NewPipeline()
+//	node := NewNode("Task",
+//		WithAction(ActClick(WithClickTarget(NewTargetRect(Rect{100, 200, 100, 100})))),
+//	)
+//	pipeline.AddNode(node)
+//	ctx.RunAction(node.Name, box, recognitionDetail, pipeline)
 //
 // Example 2:
 //
-//	ctx.RunAction("Task", box, recognitionDetail, map[string]interface{}{
-//	    "Task": map[string]interface{}{
+//	ctx.RunAction("Task", box, recognitionDetail, map[string]any{
+//	    "Task": map[string]any{
 //	        "action": "Click",
 //	        "target": []int{100, 200, 100, 100},
 //		}
 //	})
+//
+// Example 3:
+//
+//	ctx.RunAction("Task", box, recognitionDetail, `{"Task":{"action":"Click","target":[100, 200, 100, 100]}}`)
 func (ctx *Context) RunAction(
 	entry string,
 	box Rect,
@@ -162,9 +197,15 @@ func (ctx *Context) RunAction(
 	)
 }
 
-// RunRecognitionDirect runs recognition directly with type and parameters, without requiring a pipeline entry.
-// It accepts a recognition type string (e.g., "OCR", "TemplateMatch"), recognition parameters as JSON,
-// and an image to recognize.
+// RunRecognitionDirect runs recognition directly by type and parameters, without a pipeline entry.
+// It accepts a recognition type string (e.g., "OCR", "TemplateMatch"), a recognition parameter that
+// will be marshaled to JSON, and an image to recognize. If the parameter is nil, it will be
+// marshaled to JSON null.
+//
+// Example:
+//
+//	recParam := &NodeOCRParam{Expected: []string{"Hello"}}
+//	ctx.RunRecognitionDirect(NodeRecognitionTypeOCR, recParam, img)
 func (ctx *Context) RunRecognitionDirect(
 	recoType NodeRecognitionType,
 	recoParam NodeRecognitionParam,
@@ -193,9 +234,16 @@ func (ctx *Context) RunRecognitionDirect(
 	return recognitionDetail, err
 }
 
-// RunActionDirect runs action directly with type and parameters, without requiring a pipeline entry.
-// It accepts an action type string (e.g., "Click", "Swipe"), action parameters as JSON,
-// a box for the action position, and recognition details.
+// RunActionDirect runs action directly by type and parameters, without a pipeline entry.
+// It accepts an action type string (e.g., "Click", "Swipe"), an action parameter that will be
+// marshaled to JSON, a box for the action position, and recognition details. If action parameters
+// or recognition details are nil, they will be marshaled to JSON null.
+//
+// Example:
+//
+//	actParam := &NodeClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}
+//	box := Rect{100, 200, 100, 100}
+//	ctx.RunActionDirect(NodeActionTypeClick, actParam, box, nil)
 func (ctx *Context) RunActionDirect(
 	actionType NodeActionType,
 	actionParam NodeActionParam,
@@ -237,8 +285,30 @@ func (ctx *Context) overridePipeline(override string) error {
 	return nil
 }
 
-// OverridePipeline overrides pipeline.
-// The `override` parameter can be a JSON string or any data type that can be marshaled to JSON.
+// OverridePipeline overrides the current pipeline definition.
+// The override parameter can be a JSON string, raw JSON bytes, a Pipeline, or any
+// data type that can be marshaled to JSON. The resulting JSON must be an object
+// or an array of objects. If override is nil, an empty JSON object will be used.
+//
+// Example 1:
+//
+//	pipeline := NewPipeline()
+//	node := NewNode("Task", WithAction(ActDoNothing()))
+//	pipeline.AddNode(node)
+//	ctx.OverridePipeline(pipeline)
+//
+// Example 2:
+//
+//	ctx.OverridePipeline(map[string]any{
+//		"Task": map[string]any{
+//			"action": "Click",
+//			"target": []int{100, 200, 100, 100},
+//		},
+//	})
+//
+// Example 3:
+//
+//	ctx.OverridePipeline(`{"Task":{"action":"Click","target":[100,200,100,100]}}`)
 func (ctx *Context) OverridePipeline(override any) error {
 	switch v := override.(type) {
 	case string:
@@ -258,7 +328,8 @@ func (ctx *Context) OverridePipeline(override any) error {
 	}
 }
 
-// OverrideNext overrides the next list of task by name.
+// OverrideNext overrides the next list of a node by name.
+// It returns an error if the node does not exist or the list is invalid.
 func (ctx *Context) OverrideNext(name string, nextList []string) error {
 	list := buffer.NewStringListBuffer()
 	defer list.Destroy()
@@ -280,6 +351,7 @@ func (ctx *Context) OverrideNext(name string, nextList []string) error {
 	return nil
 }
 
+// OverrideImage overrides an image by name.
 func (ctx *Context) OverrideImage(imageName string, image image.Image) error {
 	img := buffer.NewImageBuffer()
 	defer img.Destroy()
@@ -301,6 +373,8 @@ func (ctx *Context) GetNodeJSON(name string) (string, error) {
 	return buf.Get(), nil
 }
 
+// GetNodeData returns the node definition by name.
+// It fetches the node JSON via GetNodeJSON and unmarshals it into a Node struct.
 func (ctx *Context) GetNodeData(name string) (*Node, error) {
 	raw, err := ctx.GetNodeJSON(name)
 	if err != nil {
@@ -339,7 +413,8 @@ func (ctx *Context) GetTasker() *Tasker {
 // duration: The duration that the screen must remain stable.
 // box: The recognition hit box, used when target is "Self" to calculate the ROI. If nil, uses entire screen.
 // waitFreezesParam: Additional wait_freezes parameters. Can be a JSON string or any data type that can be marshaled to JSON.
-// Returns true if the screen stabilized within the timeout, false otherwise.
+// duration and waitFreezesParam.time are mutually exclusive, and one of them must be non-zero.
+// Returns true if the screen stabilized within the timeout, false on timeout or failure.
 func (ctx *Context) WaitFreezes(duration time.Duration, box *Rect, waitFreezesParam ...any) bool {
 	var boxHandle uintptr
 	if box != nil {
