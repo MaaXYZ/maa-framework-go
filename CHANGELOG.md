@@ -106,6 +106,10 @@
 | `InterenceDeviceAuto` | `InferenceDeviceAuto` |
 | `OverriderImage` | `OverrideImage` |
 
+### 方法重命名
+
+- `Context.GetNodeData` → `Context.GetNode`
+
 ### 迁移示例
 
 #### 构造函数迁移
@@ -182,3 +186,7 @@ if err := job.Error(); err != nil {
     // 处理任务创建错误（如 JSON 序列化失败）
 }
 ```
+
+## Added
+
+- `Resource.GetNode`

@@ -301,6 +301,20 @@ func TestResource_GetNodeList(t *testing.T) {
 	require.NotEmpty(t, taskList)
 }
 
+func TestResource_GetNode(t *testing.T) {
+	res := createResource(t)
+	defer res.Destroy()
+	resDir := "./test/data_set/PipelineSmoking/resource"
+	isPathSet := res.PostBundle(resDir).Wait().Success()
+	require.True(t, isPathSet)
+
+	node, err := res.GetNode("StartGame")
+	require.NoError(t, err)
+	require.NotNil(t, node)
+	require.NotNil(t, node.Recognition)
+	require.NotNil(t, node.Action)
+}
+
 func TestResource_GetDefaultRecognitionParam(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()

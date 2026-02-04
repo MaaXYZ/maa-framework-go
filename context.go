@@ -373,9 +373,9 @@ func (ctx *Context) GetNodeJSON(name string) (string, error) {
 	return buf.Get(), nil
 }
 
-// GetNodeData returns the node definition by name.
+// GetNode returns the node definition by name.
 // It fetches the node JSON via GetNodeJSON and unmarshals it into a Node struct.
-func (ctx *Context) GetNodeData(name string) (*Node, error) {
+func (ctx *Context) GetNode(name string) (*Node, error) {
 	raw, err := ctx.GetNodeJSON(name)
 	if err != nil {
 		return nil, err

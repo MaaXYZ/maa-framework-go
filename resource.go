@@ -388,6 +388,21 @@ func (r *Resource) GetNodeJSON(name string) (string, error) {
 	return buf.Get(), nil
 }
 
+// GetNode returns the node definition by name.
+// It fetches the node JSON via GetNodeJSON and unmarshals it into a Node struct.
+func (r *Resource) GetNode(name string) (*Node, error) {
+	raw, err := r.GetNodeJSON(name)
+	if err != nil {
+		return nil, err
+	}
+
+	var node Node
+	if err := json.Unmarshal([]byte(raw), &node); err != nil {
+		return nil, err
+	}
+	return &node, nil
+}
+
 // Clear clears loaded content.
 // This method fails if resources are currently loading.
 func (r *Resource) Clear() error {

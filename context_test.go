@@ -423,7 +423,7 @@ func (a *testContextGetNodeDataAct) testClickAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_click")
+	nodeData, err := ctx.GetNode("test_click")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeClick, nodeData.Action.Type)
@@ -443,7 +443,7 @@ func (a *testContextGetNodeDataAct) testDirectHitRecognition(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_direct_hit")
+	nodeData, err := ctx.GetNode("test_direct_hit")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeRecognitionTypeDirectHit, nodeData.Recognition.Type)
@@ -469,7 +469,7 @@ func (a *testContextGetNodeDataAct) testTemplateMatchRecognition(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_template")
+	nodeData, err := ctx.GetNode("test_template")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeRecognitionTypeTemplateMatch, nodeData.Recognition.Type)
@@ -504,7 +504,7 @@ func (a *testContextGetNodeDataAct) testFeatureMatchRecognition(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_feature")
+	nodeData, err := ctx.GetNode("test_feature")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeRecognitionTypeFeatureMatch, nodeData.Recognition.Type)
@@ -537,7 +537,7 @@ func (a *testContextGetNodeDataAct) testColorMatchRecognition(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_color")
+	nodeData, err := ctx.GetNode("test_color")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeRecognitionTypeColorMatch, nodeData.Recognition.Type)
@@ -571,7 +571,7 @@ func (a *testContextGetNodeDataAct) testOCRRecognition(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_ocr")
+	nodeData, err := ctx.GetNode("test_ocr")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeRecognitionTypeOCR, nodeData.Recognition.Type)
@@ -603,7 +603,7 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkClassifyRecognition(ctx *Co
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_nn_classify")
+	nodeData, err := ctx.GetNode("test_nn_classify")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeRecognitionTypeNeuralNetworkClassify, nodeData.Recognition.Type)
@@ -633,7 +633,7 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkDetectRecognition(ctx *Cont
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_nn_detect")
+	nodeData, err := ctx.GetNode("test_nn_detect")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeRecognitionTypeNeuralNetworkDetect, nodeData.Recognition.Type)
@@ -662,7 +662,7 @@ func (a *testContextGetNodeDataAct) testCustomRecognition(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_custom_rec")
+	nodeData, err := ctx.GetNode("test_custom_rec")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeRecognitionTypeCustom, nodeData.Recognition.Type)
@@ -683,7 +683,7 @@ func (a *testContextGetNodeDataAct) testDoNothingAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_do_nothing")
+	nodeData, err := ctx.GetNode("test_do_nothing")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeDoNothing, nodeData.Action.Type)
@@ -704,7 +704,7 @@ func (a *testContextGetNodeDataAct) testLongPressAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_long_press")
+	nodeData, err := ctx.GetNode("test_long_press")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeLongPress, nodeData.Action.Type)
@@ -734,7 +734,7 @@ func (a *testContextGetNodeDataAct) testSwipeAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_swipe")
+	nodeData, err := ctx.GetNode("test_swipe")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeSwipe, nodeData.Action.Type)
@@ -773,7 +773,7 @@ func (a *testContextGetNodeDataAct) testMultiSwipeAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_multi_swipe")
+	nodeData, err := ctx.GetNode("test_multi_swipe")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeMultiSwipe, nodeData.Action.Type)
@@ -800,7 +800,7 @@ func (a *testContextGetNodeDataAct) testTouchDownAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_touch_down")
+	nodeData, err := ctx.GetNode("test_touch_down")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeTouchDown, nodeData.Action.Type)
@@ -825,7 +825,7 @@ func (a *testContextGetNodeDataAct) testTouchMoveAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_touch_move")
+	nodeData, err := ctx.GetNode("test_touch_move")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeTouchMove, nodeData.Action.Type)
@@ -848,7 +848,7 @@ func (a *testContextGetNodeDataAct) testTouchUpAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_touch_up")
+	nodeData, err := ctx.GetNode("test_touch_up")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeTouchUp, nodeData.Action.Type)
@@ -871,7 +871,7 @@ func (a *testContextGetNodeDataAct) testClickKeyAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_click_key")
+	nodeData, err := ctx.GetNode("test_click_key")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeClickKey, nodeData.Action.Type)
@@ -895,7 +895,7 @@ func (a *testContextGetNodeDataAct) testLongPressKeyAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_long_press_key")
+	nodeData, err := ctx.GetNode("test_long_press_key")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeLongPressKey, nodeData.Action.Type)
@@ -919,7 +919,7 @@ func (a *testContextGetNodeDataAct) testKeyDownAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_key_down")
+	nodeData, err := ctx.GetNode("test_key_down")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeKeyDown, nodeData.Action.Type)
@@ -942,7 +942,7 @@ func (a *testContextGetNodeDataAct) testKeyUpAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_key_up")
+	nodeData, err := ctx.GetNode("test_key_up")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeKeyUp, nodeData.Action.Type)
@@ -965,7 +965,7 @@ func (a *testContextGetNodeDataAct) testInputTextAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_input_text")
+	nodeData, err := ctx.GetNode("test_input_text")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeInputText, nodeData.Action.Type)
@@ -988,7 +988,7 @@ func (a *testContextGetNodeDataAct) testStartAppAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_start_app")
+	nodeData, err := ctx.GetNode("test_start_app")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeStartApp, nodeData.Action.Type)
@@ -1011,7 +1011,7 @@ func (a *testContextGetNodeDataAct) testStopAppAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_stop_app")
+	nodeData, err := ctx.GetNode("test_stop_app")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeStopApp, nodeData.Action.Type)
@@ -1031,7 +1031,7 @@ func (a *testContextGetNodeDataAct) testStopTaskAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_stop_task")
+	nodeData, err := ctx.GetNode("test_stop_task")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeStopTask, nodeData.Action.Type)
@@ -1052,7 +1052,7 @@ func (a *testContextGetNodeDataAct) testCommandAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_command")
+	nodeData, err := ctx.GetNode("test_command")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeCommand, nodeData.Action.Type)
@@ -1078,7 +1078,7 @@ func (a *testContextGetNodeDataAct) testScrollAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_scroll")
+	nodeData, err := ctx.GetNode("test_scroll")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeScroll, nodeData.Action.Type)
@@ -1104,7 +1104,7 @@ func (a *testContextGetNodeDataAct) testCustomAction(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_custom_act")
+	nodeData, err := ctx.GetNode("test_custom_act")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 	require.Equal(a.t, NodeActionTypeCustom, nodeData.Action.Type)
@@ -1173,7 +1173,7 @@ func (a *testContextGetNodeDataAct) testNodeAttributes(ctx *Context) {
 	}
 	ctx.OverridePipeline(raw)
 
-	nodeData, err := ctx.GetNodeData("test_attributes")
+	nodeData, err := ctx.GetNode("test_attributes")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
 
@@ -1231,7 +1231,7 @@ func (a *testContextGetNodeDataAct) testNodeAttributes(ctx *Context) {
 	require.Equal(a.t, []string{"MyAnchor", "AnotherAnchor"}, nodeData.Anchor)
 }
 
-func TestContext_GetNodeData(t *testing.T) {
+func TestContext_GetNode(t *testing.T) {
 	ctrl, err := NewBlankController()
 	require.NoError(t, err)
 	require.NotNil(t, ctrl)
@@ -1247,12 +1247,12 @@ func TestContext_GetNodeData(t *testing.T) {
 
 	taskerBind(t, tasker, ctrl, res)
 
-	err = res.RegisterCustomAction("TestContext_GetNodeDataAct", &testContextGetNodeDataAct{t})
+	err = res.RegisterCustomAction("TestContext_GetNodeAct", &testContextGetNodeDataAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
 	launchNode := NewNode("launch",
-		WithAction(ActCustom("TestContext_GetNodeDataAct")),
+		WithAction(ActCustom("TestContext_GetNodeAct")),
 	)
 	pipeline.AddNode(launchNode)
 
