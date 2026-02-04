@@ -251,7 +251,7 @@ func TestResource_ClearCustomAction(t *testing.T) {
 	require.True(t, got4)
 }
 
-func TestResource_PostPath(t *testing.T) {
+func TestResource_PostBundle(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
