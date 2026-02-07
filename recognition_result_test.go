@@ -279,7 +279,6 @@ func (a *testRecognitionDetailFromRecognitionAct) Run(ctx *Context, _ *CustomAct
 	}
 
 	for _, tc := range recognitionDetailTestCases() {
-		tc := tc
 		a.t.Run(tc.name, func(t *testing.T) {
 			runRecognition(t, tc.name, tc.typ, tc.param)
 		})
