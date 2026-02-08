@@ -39,3 +39,27 @@ func (p *Pipeline) AddNode(node *Node) *Pipeline {
 	p.nodes[node.Name] = node
 	return p
 }
+
+// RemoveNode removes a node by name and returns the pipeline for chaining.
+func (p *Pipeline) RemoveNode(name string) *Pipeline {
+	delete(p.nodes, name)
+	return p
+}
+
+// Clear resets the pipeline nodes; preserves chaining behavior.
+func (p *Pipeline) Clear() *Pipeline {
+	p.nodes = make(map[string]*Node)
+	return p
+}
+
+// GetNode returns a node by name with an existence flag.
+func (p *Pipeline) GetNode(name string) (*Node, bool) {
+	node, ok := p.nodes[name]
+	return node, ok
+}
+
+// HasNode reports whether a node with the given name exists.
+func (p *Pipeline) HasNode(name string) bool {
+	_, ok := p.nodes[name]
+	return ok
+}
