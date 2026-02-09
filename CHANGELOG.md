@@ -192,3 +192,7 @@ if err := job.Error(); err != nil {
 ## Added
 
 - `Resource.GetNode`
+- `Pipeline.GetNode`
+- `Pipeline.HasNode`
+- `Pipeline.RemoveNode`
+- `Pipeline.Len`
