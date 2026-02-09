@@ -63,3 +63,8 @@ func (p *Pipeline) HasNode(name string) bool {
 	_, ok := p.nodes[name]
 	return ok
 }
+
+// Len returns the number of nodes in the pipeline.
+func (p *Pipeline) Len() int {
+	return len(p.nodes)
+}
