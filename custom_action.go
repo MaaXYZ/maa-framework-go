@@ -35,7 +35,7 @@ func unregisterCustomAction(id uint64) bool {
 }
 
 type CustomActionArg struct {
-	TaskDetail        *TaskDetail
+	TaskID            int64
 	CurrentTaskName   string
 	CustomActionName  string
 	CustomActionParam string
@@ -67,12 +67,8 @@ func _MaaCustomActionCallbackAgent(
 		return 0
 	}
 
-	ctx := &Context{handle: context}
-	tasker := ctx.GetTasker()
-	taskDetail, err := tasker.getTaskDetail(taskId)
-	if err != nil {
-		return 0
-	}
+	tasker := (&Context{handle: context}).GetTasker()
+	var err error
 	recognitionDetail, err := tasker.getRecognitionDetail(recoId)
 	if err != nil {
 		return 0
@@ -82,7 +78,7 @@ func _MaaCustomActionCallbackAgent(
 	ok := action.Run(
 		&Context{handle: context},
 		&CustomActionArg{
-			TaskDetail:        taskDetail,
+			TaskID:            taskId,
 			CurrentTaskName:   cStringToString(currentTaskName),
 			CustomActionName:  cStringToString(customActionName),
 			CustomActionParam: cStringToString(customActionParam),

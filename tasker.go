@@ -412,6 +412,11 @@ type TaskDetail struct {
 	Status      Status
 }
 
+// GetTaskDetail queries task detail by task ID.
+func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
+	return t.getTaskDetail(taskId)
+}
+
 // getTaskDetail queries task detail.
 func (t *Tasker) getTaskDetail(taskId int64) (*TaskDetail, error) {
 	entry := buffer.NewStringBuffer()

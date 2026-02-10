@@ -36,7 +36,7 @@ func unregisterCustomRecognition(id uint64) bool {
 }
 
 type CustomRecognitionArg struct {
-	TaskDetail             *TaskDetail
+	TaskID                 int64
 	CurrentTaskName        string
 	CustomRecognitionName  string
 	CustomRecognitionParam string
@@ -73,19 +73,13 @@ func _MaaCustomRecognitionCallbackAgent(
 		return 0
 	}
 
-	ctx := Context{handle: context}
-	tasker := ctx.GetTasker()
-	taskDetail, err := tasker.getTaskDetail(taskId)
-	if err != nil {
-		return 0
-	}
 	imgBuffer := buffer.NewImageBufferByHandle(image)
 	imgImg := imgBuffer.Get()
 
 	ret, ok := recognition.Run(
 		&Context{handle: context},
 		&CustomRecognitionArg{
-			TaskDetail:             taskDetail,
+			TaskID:                 taskId,
 			CurrentTaskName:        cStringToString(currentTaskName),
 			CustomRecognitionName:  cStringToString(customRecognitionName),
 			CustomRecognitionParam: cStringToString(customRecognitionParam),
