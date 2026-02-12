@@ -105,7 +105,7 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 
 func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
 	id := native.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline, nil)
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil)
 }
 
 // PostTask posts a task to the tasker asynchronously.
@@ -127,7 +127,7 @@ func (t *Tasker) PostRecognition(recType NodeRecognitionType, recParam NodeRecog
 	}
 
 	id := native.MaaTaskerPostRecognition(t.handle, string(recType), string(recParamJSON), imgBuf.Handle())
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline, nil)
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil)
 }
 
 // PostAction posts an action to the tasker asynchronously.
@@ -150,7 +150,7 @@ func (t *Tasker) PostAction(actionType NodeActionType, actionParam NodeActionPar
 	}
 
 	id := native.MaaTaskerPostAction(t.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline, nil)
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil)
 }
 
 // Stopping checks if the tasker is in the process of stopping (not yet fully stopped).
@@ -177,7 +177,7 @@ func (t *Tasker) Running() bool {
 // It interrupts the currently running task and stops resource loading and controller operations.
 func (t *Tasker) PostStop() *TaskJob {
 	id := native.MaaTaskerPostStop(t.handle)
-	return newTaskJob(id, t.status, t.wait, t.getTaskDetail, t.overridePipeline, nil)
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil)
 }
 
 // GetResource returns the bound resource of the tasker.
@@ -414,11 +414,6 @@ type TaskDetail struct {
 
 // GetTaskDetail queries task detail by task ID.
 func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
-	return t.getTaskDetail(taskId)
-}
-
-// getTaskDetail queries task detail.
-func (t *Tasker) getTaskDetail(taskId int64) (*TaskDetail, error) {
 	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
