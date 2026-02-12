@@ -35,7 +35,7 @@ func unregisterCustomAction(id uint64) bool {
 }
 
 type CustomActionArg struct {
-	TaskID            int64
+	TaskID            int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
 	CurrentTaskName   string
 	CustomActionName  string
 	CustomActionParam string

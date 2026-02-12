@@ -36,7 +36,7 @@ func unregisterCustomRecognition(id uint64) bool {
 }
 
 type CustomRecognitionArg struct {
-	TaskID                 int64
+	TaskID                 int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
 	CurrentTaskName        string
 	CustomRecognitionName  string
 	CustomRecognitionParam string
