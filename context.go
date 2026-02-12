@@ -41,7 +41,7 @@ func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {
 		return nil, errors.New("failed to run task")
 	}
 	tasker := ctx.GetTasker()
-	return tasker.getTaskDetail(taskId)
+	return tasker.GetTaskDetail(taskId)
 }
 
 // RunTask runs a pipeline task by entry name and returns its detail.
@@ -397,7 +397,7 @@ func (ctx *Context) GetTaskJob() *TaskJob {
 		taskId,
 		tasker.status,
 		tasker.wait,
-		tasker.getTaskDetail,
+		tasker.GetTaskDetail,
 		tasker.overridePipeline,
 		nil,
 	)

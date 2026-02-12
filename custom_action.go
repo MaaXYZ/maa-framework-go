@@ -35,7 +35,7 @@ func unregisterCustomAction(id uint64) bool {
 }
 
 type CustomActionArg struct {
-	TaskDetail        *TaskDetail
+	TaskID            int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
 	CurrentTaskName   string
 	CustomActionName  string
 	CustomActionParam string
@@ -69,10 +69,6 @@ func _MaaCustomActionCallbackAgent(
 
 	ctx := &Context{handle: context}
 	tasker := ctx.GetTasker()
-	taskDetail, err := tasker.getTaskDetail(taskId)
-	if err != nil {
-		return 0
-	}
 	recognitionDetail, err := tasker.getRecognitionDetail(recoId)
 	if err != nil {
 		return 0
@@ -80,9 +76,9 @@ func _MaaCustomActionCallbackAgent(
 	curBoxRectBuffer := buffer.NewRectBufferByHandle(box)
 
 	ok := action.Run(
-		&Context{handle: context},
+		ctx,
 		&CustomActionArg{
-			TaskDetail:        taskDetail,
+			TaskID:            taskId,
 			CurrentTaskName:   cStringToString(currentTaskName),
 			CustomActionName:  cStringToString(customActionName),
 			CustomActionParam: cStringToString(customActionParam),

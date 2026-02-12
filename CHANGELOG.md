@@ -67,7 +67,7 @@
 | 变更类型 | 受影响的方法 |
 |---------|-------------|
 | 构造函数 | `NewTasker` |
-| 查询方法 | `GetLatestNode` |
+| 查询方法 | `GetLatestNode`, `GetTaskDetail` |
 | 设置方法 | `BindResource`, `BindController`, `ClearCache` |
 
 #### Resource
@@ -86,6 +86,10 @@
 |---------|--------|--------|
 | 类型别名 | `CustomAction` | `CustomActionRunner` |
 | 类型别名 | `CustomRecognition` | `CustomRecognitionRunner` |
+| 回调参数 | `CustomActionArg.TaskDetail *TaskDetail` | `CustomActionArg.TaskID int64` |
+| 回调参数 | `CustomRecognitionArg.TaskDetail *TaskDetail` | `CustomRecognitionArg.TaskID int64` |
+
+**补充说明**：自定义识别与动作回调默认不再预取任务详情。若确有需要，请通过 `Tasker.GetTaskDetail(taskId int64)` 按需查询。
 
 #### Global Configuration
 
