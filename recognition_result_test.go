@@ -108,7 +108,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			name: "and",
 			typ:  NodeRecognitionTypeAnd,
 			param: &NodeAndRecognitionParam{
-				AllOf: []NodeAndRecognitionItem{
+				AllOf: []*NodeAndRecognitionItem{
 					AndItem("template", RecTemplateMatch(
 						[]string{"Wilderness/EnterWilderness.png"},
 						WithTemplateMatchThreshold([]float64{0.01}),

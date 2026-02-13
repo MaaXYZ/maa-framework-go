@@ -125,6 +125,7 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 
 	// Verify first sub-recognition item (TemplateMatch)
 	templateMatchItem := andParam.AllOf[0]
+	require.NotNil(t, templateMatchItem, "first sub-item should not be nil")
 	require.Equal(t, "CreditIcon", templateMatchItem.SubName, "first sub-item name should be CreditIcon")
 	require.Equal(t, NodeRecognitionTypeTemplateMatch, templateMatchItem.Type, "first sub-item type should be TemplateMatch")
 	templateParam, ok := templateMatchItem.Param.(*NodeTemplateMatchParam)
@@ -134,6 +135,7 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 
 	// Verify second sub-recognition item (ColorMatch)
 	colorMatchItem := andParam.AllOf[1]
+	require.NotNil(t, colorMatchItem, "second sub-item should not be nil")
 	require.Equal(t, "NotSoldOut", colorMatchItem.SubName, "second sub-item name should be NotSoldOut")
 	require.Equal(t, NodeRecognitionTypeColorMatch, colorMatchItem.Type, "second sub-item type should be ColorMatch")
 	colorParam, ok := colorMatchItem.Param.(*NodeColorMatchParam)
@@ -143,6 +145,7 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 
 	// Verify third sub-recognition item (OCR)
 	ocrItem := andParam.AllOf[2]
+	require.NotNil(t, ocrItem, "third sub-item should not be nil")
 	require.Equal(t, "BuyFirstOCR", ocrItem.SubName, "third sub-item name should be BuyFirstOCR")
 	require.Equal(t, NodeRecognitionTypeOCR, ocrItem.Type, "third sub-item type should be OCR")
 	ocrParam, ok := ocrItem.Param.(*NodeOCRParam)
@@ -151,6 +154,7 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 
 	// Verify fourth sub-recognition item (ColorMatch)
 	affordableItem := andParam.AllOf[3]
+	require.NotNil(t, affordableItem, "fourth sub-item should not be nil")
 	require.Equal(t, "Affordable", affordableItem.SubName, "fourth sub-item name should be Affordable")
 	require.Equal(t, NodeRecognitionTypeColorMatch, affordableItem.Type, "fourth sub-item type should be ColorMatch")
 	affordableParam, ok := affordableItem.Param.(*NodeColorMatchParam)

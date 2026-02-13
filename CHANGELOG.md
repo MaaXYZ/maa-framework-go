@@ -116,6 +116,23 @@
 
 - `Context.GetNodeData` → `Context.GetNode`
 
+### NodeRecognition API 变更
+
+#### And Recognition
+
+| 变更类型 | 旧 API | 新 API |
+|---------|--------|--------|
+| 函数返回类型 | `AndItem(...) NodeAndRecognitionItem` | `AndItem(...) *NodeAndRecognitionItem` |
+| 函数参数类型 | `RecAnd([]NodeAndRecognitionItem, ...)` | `RecAnd([]*NodeAndRecognitionItem, ...)` |
+| 字段类型 | `AllOf []NodeAndRecognitionItem` | `AllOf []*NodeAndRecognitionItem` |
+
+**变更原因**：与 `Or` 识别保持一致的设计模式（`AnyOf []*NodeRecognition`），使用指针数组可避免复制大结构体，提高性能并支持共享引用。
+
+**受影响的方法**：
+- `AndItem(subName string, recognition *NodeRecognition)`
+- `RecAnd(allOf []*NodeAndRecognitionItem, opts ...AndRecognitionOption)`
+- `NodeAndRecognitionParam.AllOf`
+
 ### 迁移示例
 
 #### 构造函数迁移
@@ -191,6 +208,22 @@ job := tasker.PostTask("entry", invalidOverride)
 if err := job.Error(); err != nil {
     // 处理任务创建错误（如 JSON 序列化失败）
 }
+```
+
+#### And Recognition 迁移（值数组 → 指针数组）
+
+```go
+// 旧 API
+rec := maa.RecAnd([]maa.NodeAndRecognitionItem{
+    maa.AndItem("template", maa.RecTemplateMatch(...)),
+    maa.AndItem("color", maa.RecColorMatch(...)),
+})
+
+// 新 API
+rec := maa.RecAnd([]*maa.NodeAndRecognitionItem{
+    maa.AndItem("template", maa.RecTemplateMatch(...)),
+    maa.AndItem("color", maa.RecColorMatch(...)),
+})
 ```
 
 ## Added

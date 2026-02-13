@@ -766,8 +766,8 @@ func (n *NodeAndRecognitionItem) UnmarshalJSON(data []byte) error {
 
 // AndItem creates a NodeAndRecognitionItem with the given sub-name and recognition.
 // If subName is empty, only the recognition will be used.
-func AndItem(subName string, recognition *NodeRecognition) NodeAndRecognitionItem {
-	return NodeAndRecognitionItem{
+func AndItem(subName string, recognition *NodeRecognition) *NodeAndRecognitionItem {
+	return &NodeAndRecognitionItem{
 		SubName:         subName,
 		NodeRecognition: *recognition,
 	}
@@ -775,8 +775,8 @@ func AndItem(subName string, recognition *NodeRecognition) NodeAndRecognitionIte
 
 // NodeAndRecognitionParam defines parameters for AND recognition.
 type NodeAndRecognitionParam struct {
-	AllOf    []NodeAndRecognitionItem `json:"all_of,omitempty"`
-	BoxIndex int                      `json:"box_index,omitempty"`
+	AllOf    []*NodeAndRecognitionItem `json:"all_of,omitempty"`
+	BoxIndex int                       `json:"box_index,omitempty"`
 }
 
 func (n NodeAndRecognitionParam) isRecognitionParam() {}
@@ -792,7 +792,7 @@ func WithAndRecognitionBoxIndex(boxIndex int) AndRecognitionOption {
 }
 
 // RecAnd creates an AND recognition that requires all sub-recognitions to succeed.
-func RecAnd(allOf []NodeAndRecognitionItem, opts ...AndRecognitionOption) *NodeRecognition {
+func RecAnd(allOf []*NodeAndRecognitionItem, opts ...AndRecognitionOption) *NodeRecognition {
 	param := &NodeAndRecognitionParam{
 		AllOf: slices.Clone(allOf),
 	}
