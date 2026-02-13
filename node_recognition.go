@@ -744,8 +744,24 @@ func RecNeuralNetworkDetect(model string, opts ...NeuralDetectOption) *NodeRecog
 }
 
 type NodeAndRecognitionItem struct {
-	SubName          string `json:"sub_name,omitempty"`
-	*NodeRecognition `json:"recognition,omitempty"`
+	SubName string `json:"sub_name,omitempty"`
+	NodeRecognition
+}
+
+func (n *NodeAndRecognitionItem) UnmarshalJSON(data []byte) error {
+	type Alias struct {
+		SubName string `json:"sub_name,omitempty"`
+	}
+	var alias Alias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+	n.SubName = alias.SubName
+
+	if err := json.Unmarshal(data, &n.NodeRecognition); err != nil {
+		return err
+	}
+	return nil
 }
 
 // AndItem creates a NodeAndRecognitionItem with the given sub-name and recognition.
@@ -753,7 +769,7 @@ type NodeAndRecognitionItem struct {
 func AndItem(subName string, recognition *NodeRecognition) NodeAndRecognitionItem {
 	return NodeAndRecognitionItem{
 		SubName:         subName,
-		NodeRecognition: recognition,
+		NodeRecognition: *recognition,
 	}
 }
 
