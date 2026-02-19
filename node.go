@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"maps"
 	"slices"
 	"time"
 )
@@ -9,8 +10,8 @@ import (
 type Node struct {
 	Name string `json:"-"`
 
-	// Anchor specifies the anchor name that can be referenced in next or on_error lists via [Anchor] attribute.
-	Anchor []string `json:"anchor,omitempty"`
+	// Anchor maps anchor name to target node name. This matches GetNodeData output format.
+	Anchor map[string]string `json:"anchor,omitempty"`
 
 	// Recognition defines how this node recognizes targets on screen.
 	Recognition *NodeRecognition `json:"recognition,omitempty"`
@@ -198,8 +199,20 @@ func NewNode(name string, opts ...NodeOption) *Node {
 }
 
 // SetAnchor sets the anchor for the node and returns the node for chaining.
-func (n *Node) SetAnchor(anchor []string) *Node {
-	n.Anchor = slices.Clone(anchor)
+func (n *Node) SetAnchor(anchor map[string]string) *Node {
+	n.Anchor = maps.Clone(anchor)
+	return n
+}
+
+// SetAnchorTarget sets an anchor to a specific target node and returns the node for chaining.
+func (n *Node) SetAnchorTarget(anchor, nodeName string) *Node {
+	if anchor == "" {
+		return n
+	}
+	if n.Anchor == nil {
+		n.Anchor = make(map[string]string)
+	}
+	n.Anchor[anchor] = nodeName
 	return n
 }
 
@@ -357,19 +370,14 @@ func WithAnchor() NodeAttributeOption {
 	}
 }
 
-// AddAnchor appends an anchor to the node and returns the node for chaining.
+// AddAnchor sets an anchor to the current node and returns the node for chaining.
 func (n *Node) AddAnchor(anchor string) *Node {
-	if anchor == "" {
-		return n
-	}
+	return n.SetAnchorTarget(anchor, n.Name)
+}
 
-	for _, a := range n.Anchor {
-		if a == anchor {
-			return n
-		}
-	}
-	n.Anchor = append(n.Anchor, anchor)
-	return n
+// ClearAnchor marks an anchor as cleared and returns the node for chaining.
+func (n *Node) ClearAnchor(anchor string) *Node {
+	return n.SetAnchorTarget(anchor, "")
 }
 
 // RemoveAnchor removes an anchor from the node and returns the node for chaining.
@@ -378,9 +386,7 @@ func (n *Node) RemoveAnchor(anchor string) *Node {
 		return n
 	}
 
-	n.Anchor = slices.DeleteFunc(n.Anchor, func(a string) bool {
-		return a == anchor
-	})
+	delete(n.Anchor, anchor)
 
 	return n
 }

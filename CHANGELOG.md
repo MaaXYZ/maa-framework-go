@@ -116,6 +116,16 @@
 
 - `Context.GetNodeData` → `Context.GetNode`
 
+### Node Anchor API 变更
+
+- `Node.Anchor`：`[]string` → `map[string]string`（与 C++ `GetNodeData` 输出一致，`anchor` 为对象）
+- `Node.SetAnchor`：`SetAnchor([]string)` → `SetAnchor(map[string]string)`
+- 不再兼容旧的 `anchor` 字符串/字符串数组语义，统一为对象语义：
+  - `{"A":"CurrentNode"}` 表示锚点指向目标节点
+  - `{"A":""}` 表示显式清除锚点
+- `Node.AddAnchor(anchor)` 语义明确为快捷写法：设置 `anchor -> 当前节点名`
+- `Node.RemoveAnchor(anchor)` 保持为删除该配置项（移除 key）
+
 ### NodeRecognition API 变更
 
 #### And Recognition
@@ -226,6 +236,25 @@ rec := maa.RecAnd([]*maa.NodeAndRecognitionItem{
 })
 ```
 
+#### Node Anchor 迁移（[]string → map[string]string）
+
+```go
+// 旧 API
+node.SetAnchor([]string{"X", "Y"})
+
+// 新 API（指向当前节点）
+node.SetAnchor(map[string]string{
+    "X": node.Name,
+    "Y": node.Name,
+})
+
+// 新 API（指向指定节点）
+node.SetAnchorTarget("X", "TargetNode")
+
+// 新 API（显式清除锚点）
+node.ClearAnchor("X") // 等价于 node.SetAnchorTarget("X", "")
+```
+
 ## Added
 
 - `Resource.GetNode`
@@ -233,3 +262,5 @@ rec := maa.RecAnd([]*maa.NodeAndRecognitionItem{
 - `Pipeline.HasNode`
 - `Pipeline.RemoveNode`
 - `Pipeline.Len`
+- `Node.SetAnchorTarget`
+- `Node.ClearAnchor`

@@ -11,30 +11,74 @@ func TestNode_AddAnchor(t *testing.T) {
 	require.NotNil(t, node)
 
 	node.AddAnchor("test1")
-	require.Equal(t, []string{"test1"}, node.Anchor)
+	require.Equal(t, map[string]string{"test1": "test"}, node.Anchor)
 
 	node.AddAnchor("test1")
-	require.Equal(t, []string{"test1"}, node.Anchor)
+	require.Equal(t, map[string]string{"test1": "test"}, node.Anchor)
 
 	node.AddAnchor("test2")
-	require.Equal(t, []string{"test1", "test2"}, node.Anchor)
+	require.Equal(t, map[string]string{"test1": "test", "test2": "test"}, node.Anchor)
 }
 
 func TestNode_RemoveAnchor(t *testing.T) {
 	node := NewNode("test")
 	require.NotNil(t, node)
 
-	node.SetAnchor([]string{"test1", "test2", "test3", "test4"})
-	require.Equal(t, []string{"test1", "test2", "test3", "test4"}, node.Anchor)
+	node.SetAnchor(map[string]string{
+		"test1": "test",
+		"test2": "test",
+		"test3": "test",
+		"test4": "test",
+	})
+	require.Equal(t, map[string]string{
+		"test1": "test",
+		"test2": "test",
+		"test3": "test",
+		"test4": "test",
+	}, node.Anchor)
 
 	node.RemoveAnchor("test2")
-	require.Equal(t, []string{"test1", "test3", "test4"}, node.Anchor)
+	require.Equal(t, map[string]string{
+		"test1": "test",
+		"test3": "test",
+		"test4": "test",
+	}, node.Anchor)
 
 	node.RemoveAnchor("test2")
-	require.Equal(t, []string{"test1", "test3", "test4"}, node.Anchor)
+	require.Equal(t, map[string]string{
+		"test1": "test",
+		"test3": "test",
+		"test4": "test",
+	}, node.Anchor)
 
 	node.RemoveAnchor("test4")
-	require.Equal(t, []string{"test1", "test3"}, node.Anchor)
+	require.Equal(t, map[string]string{
+		"test1": "test",
+		"test3": "test",
+	}, node.Anchor)
+}
+
+func TestNode_SetAnchorTarget(t *testing.T) {
+	node := NewNode("test")
+	require.NotNil(t, node)
+
+	node.SetAnchorTarget("anchorA", "NodeA")
+	node.SetAnchorTarget("anchorB", "NodeB")
+	require.Equal(t, map[string]string{
+		"anchorA": "NodeA",
+		"anchorB": "NodeB",
+	}, node.Anchor)
+}
+
+func TestNode_ClearAnchor(t *testing.T) {
+	node := NewNode("test")
+	require.NotNil(t, node)
+
+	node.AddAnchor("anchorA")
+	node.ClearAnchor("anchorA")
+	require.Equal(t, map[string]string{
+		"anchorA": "",
+	}, node.Anchor)
 }
 
 func TestNode_AddNext(t *testing.T) {
@@ -98,3 +142,4 @@ func TestNode_RemoveOnError(t *testing.T) {
 	node.RemoveOnError("test4")
 	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test3"}}, node.OnError)
 }
+
