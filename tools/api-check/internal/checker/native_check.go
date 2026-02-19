@@ -2,10 +2,14 @@ package checker
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -47,24 +51,53 @@ func checkNativeAPICoverage(headerDir string, blacklist map[string]struct{}) ([]
 
 func parseGoRegistrations() (map[string]map[string]struct{}, error) {
 	result := map[string]map[string]struct{}{}
-	re := regexp.MustCompile(`RegisterLibFunc\(&[A-Za-z0-9_]+,\s*[A-Za-z0-9_]+,\s*"([A-Za-z0-9_]+)"\)`)
+	fset := token.NewFileSet()
 
 	for module, files := range nativeFilesByModule {
 		if _, ok := result[module]; !ok {
 			result[module] = map[string]struct{}{}
 		}
 		for _, file := range files {
-			data, err := os.ReadFile(file)
+			parsedFile, err := parser.ParseFile(fset, file, nil, 0)
 			if err != nil {
-				return nil, fmt.Errorf("read %s: %w", file, err)
+				return nil, fmt.Errorf("parse %s: %w", file, err)
 			}
-			matches := re.FindAllStringSubmatch(string(data), -1)
-			for _, m := range matches {
-				if len(m) < 2 {
-					continue
+
+			ast.Inspect(parsedFile, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok {
+					return true
 				}
-				result[module][m[1]] = struct{}{}
-			}
+
+				switch fun := call.Fun.(type) {
+				case *ast.Ident:
+					if fun.Name != "RegisterLibFunc" {
+						return true
+					}
+				case *ast.SelectorExpr:
+					if fun.Sel == nil || fun.Sel.Name != "RegisterLibFunc" {
+						return true
+					}
+				default:
+					return true
+				}
+
+				if len(call.Args) < 3 {
+					return true
+				}
+
+				lit, ok := call.Args[2].(*ast.BasicLit)
+				if !ok || lit.Kind != token.STRING {
+					return true
+				}
+
+				name, err := strconv.Unquote(lit.Value)
+				if err != nil || name == "" {
+					return true
+				}
+				result[module][name] = struct{}{}
+				return true
+			})
 		}
 	}
 

@@ -45,13 +45,23 @@ func checkCustomControllerConsistency(headerPath string) ([]issue, error) {
 		if !ok {
 			continue
 		}
-		if !sameStringSlice(goSig.params, cSig.params) {
+		if unsupportedType, found := findUnsupportedType(goSig.params); found {
+			issues = append(issues, issue{
+				section: sectionController,
+				message: fmt.Sprintf("%s has unsupported Go param type expression: %s (normalized=%v)", name, unsupportedType, goSig.params),
+			})
+		} else if !sameStringSlice(goSig.params, cSig.params) {
 			issues = append(issues, issue{
 				section: sectionController,
 				message: fmt.Sprintf("%s param mismatch: go=%v c=%v", name, goSig.params, cSig.params),
 			})
 		}
-		if !sameStringSlice(goSig.returns, cSig.returns) {
+		if unsupportedType, found := findUnsupportedType(goSig.returns); found {
+			issues = append(issues, issue{
+				section: sectionController,
+				message: fmt.Sprintf("%s has unsupported Go return type expression: %s (normalized=%v)", name, unsupportedType, goSig.returns),
+			})
+		} else if !sameStringSlice(goSig.returns, cSig.returns) {
 			issues = append(issues, issue{
 				section: sectionController,
 				message: fmt.Sprintf("%s return mismatch: go=%v c=%v", name, goSig.returns, cSig.returns),
@@ -159,7 +169,7 @@ func exprToString(expr ast.Expr) string {
 	case *ast.SelectorExpr:
 		return exprToString(t.X) + "." + t.Sel.Name
 	default:
-		return ""
+		return fmt.Sprintf("<unsupported:%T>", expr)
 	}
 }
 
@@ -212,7 +222,7 @@ func parseCustomControllerHeader(headerPath string) (map[string]methodSig, error
 }
 
 func removeCComments(s string) string {
-	re := regexp.MustCompile(`/\*[^*]*\*/`)
+	re := regexp.MustCompile(`(?s)/\*.*?\*/`)
 	return re.ReplaceAllString(s, "")
 }
 
@@ -321,4 +331,13 @@ func sameStringSlice(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func findUnsupportedType(types []string) (string, bool) {
+	for _, t := range types {
+		if strings.HasPrefix(t, "<unsupported:") {
+			return t, true
+		}
+	}
+	return "", false
 }
