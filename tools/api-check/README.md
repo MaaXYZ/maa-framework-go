@@ -68,8 +68,8 @@ go run . --config config.ci.yaml
 ## Config resolution
 
 - If `--config` is provided, that file is required and will be loaded.
-- If `--config` is not provided, tool tries `config.yaml` in current working directory, then `tools/api-check/config.yaml` under detected repo root.
-- If no config file is found, tool uses built-in defaults.
+- If `--config` is not provided, the tool tries `config.yaml` in the current working directory, then `tools/api-check/config.yaml` under detected repo root.
+- If no config file is found, the tool uses built-in defaults.
 - Priority is: `CLI flags > config file > defaults`.
 
 Defaults:
