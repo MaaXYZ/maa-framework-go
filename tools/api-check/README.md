@@ -26,51 +26,57 @@ It checks both symbol coverage and function signatures.
 
 Working directory:
 
-- Run commands from repository root (`maa-framework-go`).
-- If you run inside `tools/api-check`, use `go run .` and adjust relative paths accordingly.
+- Recommended: run commands from `tools/api-check`.
+- If you run from repository root, use `-C tools/api-check` with `go`.
 
 Run with defaults:
 
 ```bash
-go run ./tools/api-check
+go run .
 ```
 
 Run with explicit config file:
 
 ```bash
-go run ./tools/api-check --config tools/api-check/config.yaml
+go run . --config config.yaml
 ```
 
 Override header directory for one run:
 
 ```bash
-go run ./tools/api-check --header-dir ../MaaFramework/include
+go run . --header-dir ../../deps/include
 ```
 
 Add blacklist entries from CLI:
 
 ```bash
-go run ./tools/api-check --blacklist MaaDbgControllerCreate --blacklist MaaDbgControllerType
+go run . --blacklist MaaDbgControllerCreate --blacklist MaaDbgControllerType
 ```
 
 CI-style config file path:
 
 ```bash
-go run ./tools/api-check --config tools/api-check/config.ci.yaml
+go run . --config config.ci.yaml
+```
+
+Equivalent from repository root:
+
+```bash
+go -C tools/api-check run . --config config.ci.yaml
 ```
 
 ## Config resolution
 
 - If `--config` is provided, that file is required and will be loaded.
-- If `--config` is not provided, tool tries `tools/api-check/config.yaml`.
+- If `--config` is not provided, tool tries `config.yaml` in current working directory.
 - If no config file is found, tool uses built-in defaults.
 - Priority is: `CLI flags > config file > defaults`.
 
 Defaults:
 
-- `header_dir: deps/include`
+- `header_dir: ../../deps/include`
 - `blacklist: []`
 
 ## Config template
 
-Copy `tools/api-check/config.example.yaml` to `tools/api-check/config.yaml` and edit as needed.
+Copy `config.example.yaml` to `config.yaml` in `tools/api-check` and edit as needed.

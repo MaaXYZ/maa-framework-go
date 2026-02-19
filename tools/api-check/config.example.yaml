@@ -1,4 +1,4 @@
-header_dir: deps/include
+header_dir: ../../deps/include
 blacklist:
   # Known intentional exceptions can be listed here.
   # - MaaDbgControllerCreate

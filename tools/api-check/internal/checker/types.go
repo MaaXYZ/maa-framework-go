@@ -3,29 +3,29 @@ package checker
 import "strings"
 
 const (
-	defaultHeaderDir = "deps/include"
-	autoConfigPath   = "tools/api-check/config.yaml"
+	defaultHeaderDir = "../../deps/include"
+	autoConfigPath   = "config.yaml"
 )
 
 const (
 	sectionNativeAPI    = "Native API Coverage"
 	sectionController   = "CustomController Consistency"
-	customControllerRel = "custom_controller.go"
+	customControllerRel = "../../custom_controller.go"
 	controllerHeaderRel = "MaaFramework/Instance/MaaCustomController.h"
 )
 
 var nativeFilesByModule = map[string][]string{
 	"framework": {
-		"internal/native/framework.go",
+		"../../internal/native/framework.go",
 	},
 	"toolkit": {
-		"internal/native/toolkit.go",
+		"../../internal/native/toolkit.go",
 	},
 	"agent_server": {
-		"internal/native/agent_server.go",
+		"../../internal/native/agent_server.go",
 	},
 	"agent_client": {
-		"internal/native/agent_client.go",
+		"../../internal/native/agent_client.go",
 	},
 }
 
