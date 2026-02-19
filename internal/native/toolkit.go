@@ -23,8 +23,8 @@ var (
 	MaaToolkitAdbDeviceGetName             func(device uintptr) string
 	MaaToolkitAdbDeviceGetAdbPath          func(device uintptr) string
 	MaaToolkitAdbDeviceGetAddress          func(device uintptr) string
-	MaaToolkitAdbDeviceGetScreencapMethods func(device uintptr) int32
-	MaaToolkitAdbDeviceGetInputMethods     func(device uintptr) int32
+	MaaToolkitAdbDeviceGetScreencapMethods func(device uintptr) uint64
+	MaaToolkitAdbDeviceGetInputMethods     func(device uintptr) uint64
 	MaaToolkitAdbDeviceGetConfig           func(device uintptr) string
 )
 
