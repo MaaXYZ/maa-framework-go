@@ -317,13 +317,23 @@ func normalizeCTypeCanonical(raw string, aliases map[string]string) string {
 		}
 		return "bool"
 	}
+	converged := false
 	for i := 0; i < 16; i++ {
 		base, ptrCount := splitCBaseAndPtr(typ)
-		if alias, ok := aliases[base]; ok {
-			typ = normalizeSpaces(alias + strings.Repeat("*", ptrCount))
-			continue
+		alias, ok := aliases[base]
+		if !ok {
+			converged = true
+			break
 		}
-		break
+		newTyp := normalizeSpaces(alias + strings.Repeat("*", ptrCount))
+		if newTyp == typ {
+			converged = true
+			break
+		}
+		typ = newTyp
+	}
+	if !converged {
+		return "<unsupported:c-alias:" + origBase + ">"
 	}
 	base, ptrCount := splitCBaseAndPtr(typ)
 	if base == "char" && ptrCount > 0 {

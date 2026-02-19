@@ -32,6 +32,11 @@ func Run() int {
 	if cfg.HeaderDir == "" {
 		cfg.HeaderDir = defaultHeaderDir
 	}
+	controllerHeaderPath := filepath.Join(cfg.HeaderDir, controllerHeaderRel)
+	if err := validateRequiredPaths(cfg.HeaderDir, controllerHeaderPath); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to resolve required input paths: %v\n", err)
+		return 2
+	}
 
 	blacklistSet := mergeBlacklist(cfg.Blacklist, cliBlacklist)
 
@@ -51,7 +56,6 @@ func Run() int {
 		return 2
 	}
 
-	controllerHeaderPath := filepath.Join(cfg.HeaderDir, controllerHeaderRel)
 	controllerIssues, err := checkCustomControllerConsistency(controllerHeaderPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to check CustomController consistency: %v\n", err)
@@ -63,4 +67,46 @@ func Run() int {
 	issues = append(issues, controllerIssues...)
 
 	return printReport(report, issues)
+}
+
+func validateRequiredPaths(headerDir string, controllerHeaderPath string) error {
+	if err := requireDir(headerDir); err != nil {
+		return fmt.Errorf("header-dir %q: %w", filepath.Clean(headerDir), err)
+	}
+	if err := requireFile(controllerHeaderPath); err != nil {
+		return fmt.Errorf("controller header %q: %w", filepath.Clean(controllerHeaderPath), err)
+	}
+	if err := requireFile(customControllerRel); err != nil {
+		return fmt.Errorf("custom controller source %q: %w", filepath.Clean(customControllerRel), err)
+	}
+	for module, files := range nativeFilesByModule {
+		for _, file := range files {
+			if err := requireFile(file); err != nil {
+				return fmt.Errorf("native source [%s] %q: %w", module, filepath.Clean(file), err)
+			}
+		}
+	}
+	return nil
+}
+
+func requireDir(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("not a directory")
+	}
+	return nil
+}
+
+func requireFile(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return fmt.Errorf("is a directory")
+	}
+	return nil
 }

@@ -10,6 +10,7 @@ const (
 const (
 	sectionNativeAPI    = "Native API Coverage"
 	sectionController   = "CustomController Consistency"
+	customControllerRel = "custom_controller.go"
 	controllerHeaderRel = "MaaFramework/Instance/MaaCustomController.h"
 )
 

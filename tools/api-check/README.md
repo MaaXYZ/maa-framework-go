@@ -19,7 +19,7 @@ It checks both symbol coverage and function signatures.
   - compare params/returns with strict arity/order
   - C types are normalized with typedef expansion (for example `MaaTaskId -> MaaId -> int64_t`)
 - CustomController consistency:
-  - method existence in both sides
+  - method existence on both sides
   - method signature consistency using the same canonical type rules
 
 ## Usage

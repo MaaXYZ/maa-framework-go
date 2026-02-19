@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 )
 
 func checkNativeAPICoverage(headerDir string, blacklist map[string]struct{}) ([]issue, error) {
@@ -199,21 +198,6 @@ func extractRegisterFuncVarName(arg ast.Expr) string {
 			return ""
 		}
 		return x.Sel.Name
-	default:
-		return ""
-	}
-}
-
-func moduleFromHeaderStmt(stmt string) string {
-	switch {
-	case strings.Contains(stmt, "MAA_FRAMEWORK_API"):
-		return "framework"
-	case strings.Contains(stmt, "MAA_TOOLKIT_API"):
-		return "toolkit"
-	case strings.Contains(stmt, "MAA_AGENT_SERVER_API"):
-		return "agent_server"
-	case strings.Contains(stmt, "MAA_AGENT_CLIENT_API"):
-		return "agent_client"
 	default:
 		return ""
 	}

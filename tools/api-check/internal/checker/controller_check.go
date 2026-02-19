@@ -81,9 +81,9 @@ func checkCustomControllerConsistency(headerPath string) ([]issue, error) {
 
 func parseCustomControllerGo() (map[string]methodSig, error) {
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "custom_controller.go", nil, parser.ParseComments)
+	file, err := parser.ParseFile(fset, customControllerRel, nil, parser.ParseComments)
 	if err != nil {
-		return nil, fmt.Errorf("parse custom_controller.go: %w", err)
+		return nil, fmt.Errorf("parse %s: %w", customControllerRel, err)
 	}
 
 	result := map[string]methodSig{}
@@ -160,30 +160,135 @@ func parseCustomControllerHeader(headerPath string, aliases map[string]string) (
 	close += open
 
 	block := content[open+1 : close]
-	lineRe := regexp.MustCompile(`(?m)^\s*([A-Za-z0-9_]+)\s*\(\s*\*\s*([a-z_]+)\s*\)\s*\(([^)]*)\)\s*;`)
-	matches := lineRe.FindAllStringSubmatch(block, -1)
-	if len(matches) == 0 {
+	callbacks := parseControllerCallbackFields(block)
+	if len(callbacks) == 0 {
 		return nil, fmt.Errorf("no callback field found in callbacks struct")
 	}
 
-	result := make(map[string]methodSig, len(matches))
-	for _, m := range matches {
-		if len(m) < 4 {
-			continue
-		}
-		retType := strings.TrimSpace(m[1])
-		cName := strings.TrimSpace(m[2])
-		paramsRaw := strings.TrimSpace(m[3])
-
-		goName := callbackNameToGoMethod(cName)
-		params := parseControllerParams(paramsRaw, aliases)
-		returns := deriveControllerReturns(retType, params, aliases)
+	result := make(map[string]methodSig, len(callbacks))
+	for _, cb := range callbacks {
+		goName := callbackNameToGoMethod(cb.name)
+		params := parseControllerParams(cb.paramsRaw, aliases)
+		returns := deriveControllerReturns(cb.retType, params, aliases)
 		goParams := deriveControllerParams(params)
 
 		result[goName] = methodSig{params: goParams, returns: returns}
 	}
 
 	return result, nil
+}
+
+type controllerCallbackField struct {
+	retType   string
+	name      string
+	paramsRaw string
+}
+
+func parseControllerCallbackFields(block string) []controllerCallbackField {
+	cleaned := removeCComments(block)
+	stmts := splitControllerFieldStatements(cleaned)
+	out := make([]controllerCallbackField, 0, len(stmts))
+	for _, stmt := range stmts {
+		retType, name, paramsRaw, ok := parseControllerCallbackField(stmt)
+		if !ok {
+			continue
+		}
+		out = append(out, controllerCallbackField{
+			retType:   retType,
+			name:      name,
+			paramsRaw: paramsRaw,
+		})
+	}
+	return out
+}
+
+func splitControllerFieldStatements(block string) []string {
+	parts := make([]string, 0)
+	var current strings.Builder
+	depth := 0
+	for _, ch := range block {
+		switch ch {
+		case '(':
+			depth++
+		case ')':
+			if depth > 0 {
+				depth--
+			}
+		case ';':
+			if depth == 0 {
+				stmt := normalizeSpaces(current.String())
+				if stmt != "" {
+					parts = append(parts, stmt)
+				}
+				current.Reset()
+				continue
+			}
+		}
+		current.WriteRune(ch)
+	}
+	if tail := normalizeSpaces(current.String()); tail != "" {
+		parts = append(parts, tail)
+	}
+	return parts
+}
+
+func parseControllerCallbackField(stmt string) (retType string, name string, paramsRaw string, ok bool) {
+	s := normalizeSpaces(stmt)
+	if s == "" {
+		return "", "", "", false
+	}
+
+	openPtr := strings.Index(s, "(*")
+	if openPtr < 0 {
+		return "", "", "", false
+	}
+	retType = strings.TrimSpace(s[:openPtr])
+	if retType == "" {
+		return "", "", "", false
+	}
+
+	rest := strings.TrimSpace(s[openPtr+2:])
+	closeName := strings.IndexByte(rest, ')')
+	if closeName < 0 {
+		return "", "", "", false
+	}
+	name = strings.TrimSpace(rest[:closeName])
+	if name == "" {
+		return "", "", "", false
+	}
+
+	afterName := strings.TrimSpace(rest[closeName+1:])
+	if afterName == "" || afterName[0] != '(' {
+		return "", "", "", false
+	}
+	closeParams := findMatchingParen(afterName, 0)
+	if closeParams <= 0 {
+		return "", "", "", false
+	}
+	paramsRaw = strings.TrimSpace(afterName[1:closeParams])
+	if trailing := strings.TrimSpace(afterName[closeParams+1:]); trailing != "" {
+		return "", "", "", false
+	}
+	return retType, name, paramsRaw, true
+}
+
+func findMatchingParen(s string, start int) int {
+	if start < 0 || start >= len(s) || s[start] != '(' {
+		return -1
+	}
+	depth := 0
+	for i := start; i < len(s); i++ {
+		switch s[i] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 type controllerParam struct {
