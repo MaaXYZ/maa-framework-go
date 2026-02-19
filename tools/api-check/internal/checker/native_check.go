@@ -10,8 +10,8 @@ import (
 	"strconv"
 )
 
-func checkNativeAPICoverage(headerDir string, blacklist map[string]struct{}) ([]issue, error) {
-	goRegistered, goSigs, goRegisterLocs, goDeclLocs, registerIssues, err := parseGoRegistrations()
+func checkNativeAPICoverage(headerDir string, nativeFiles map[string][]string, blacklist map[string]struct{}) ([]issue, error) {
+	goRegistered, goSigs, goRegisterLocs, goDeclLocs, registerIssues, err := parseGoRegistrations(nativeFiles)
 	if err != nil {
 		return nil, fmt.Errorf("parse Go registrations: %w", err)
 	}
@@ -98,7 +98,7 @@ func checkNativeAPICoverage(headerDir string, blacklist map[string]struct{}) ([]
 	return issues, nil
 }
 
-func parseGoRegistrations() (map[string]map[string]struct{}, map[string]map[string]methodSig, map[string]map[string]goRegistrationLoc, map[string]map[string]goVarDeclLoc, []issue, error) {
+func parseGoRegistrations(nativeFiles map[string][]string) (map[string]map[string]struct{}, map[string]map[string]methodSig, map[string]map[string]goRegistrationLoc, map[string]map[string]goVarDeclLoc, []issue, error) {
 	result := map[string]map[string]struct{}{}
 	goSigs := map[string]map[string]methodSig{}
 	goRegisterLocs := map[string]map[string]goRegistrationLoc{}
@@ -106,7 +106,7 @@ func parseGoRegistrations() (map[string]map[string]struct{}, map[string]map[stri
 	issues := make([]issue, 0)
 	fset := token.NewFileSet()
 
-	for module, files := range nativeFilesByModule {
+	for module, files := range nativeFiles {
 		if _, ok := result[module]; !ok {
 			result[module] = map[string]struct{}{}
 		}

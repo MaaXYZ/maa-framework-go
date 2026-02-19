@@ -20,7 +20,13 @@ func Run() int {
 	flag.Var(&cliBlacklist, "blacklist", "Function name blacklist (repeatable)")
 	flag.Parse()
 
-	cfg, loadedConfigPath, err := resolveConfig(configPath)
+	repoRoot, err := detectRepoRoot()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to detect repository root: %v\n", err)
+		return 2
+	}
+
+	cfg, loadedConfigPath, err := resolveConfig(configPath, repoRoot)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
 		return 2
@@ -29,11 +35,11 @@ func Run() int {
 	if strings.TrimSpace(headerDirFlag) != "" {
 		cfg.HeaderDir = strings.TrimSpace(headerDirFlag)
 	}
-	if cfg.HeaderDir == "" {
-		cfg.HeaderDir = defaultHeaderDir
-	}
-	controllerHeaderPath := filepath.Join(cfg.HeaderDir, controllerHeaderRel)
-	if err := validateRequiredPaths(cfg.HeaderDir, controllerHeaderPath); err != nil {
+	resolvedHeaderDir := resolveHeaderDir(repoRoot, cfg.HeaderDir)
+	controllerHeaderPath := filepath.Join(resolvedHeaderDir, controllerHeaderRel)
+	customControllerPath := resolveFromRepoRoot(repoRoot, customControllerRel)
+	resolvedNativeFiles := resolveNativeFiles(repoRoot)
+	if err := validateRequiredPaths(repoRoot, resolvedHeaderDir, controllerHeaderPath, customControllerPath, resolvedNativeFiles); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to resolve required input paths: %v\n", err)
 		return 2
 	}
@@ -41,7 +47,8 @@ func Run() int {
 	blacklistSet := mergeBlacklist(cfg.Blacklist, cliBlacklist)
 
 	report := []string{
-		fmt.Sprintf("header_dir: %s", filepath.Clean(cfg.HeaderDir)),
+		fmt.Sprintf("repo_root: %s", filepath.Clean(repoRoot)),
+		fmt.Sprintf("header_dir: %s", filepath.Clean(resolvedHeaderDir)),
 		fmt.Sprintf("blacklist_size: %d", len(blacklistSet)),
 	}
 	if loadedConfigPath != "" {
@@ -50,13 +57,13 @@ func Run() int {
 		report = append([]string{"config: <none> (using defaults)"}, report...)
 	}
 
-	nativeIssues, err := checkNativeAPICoverage(cfg.HeaderDir, blacklistSet)
+	nativeIssues, err := checkNativeAPICoverage(resolvedHeaderDir, resolvedNativeFiles, blacklistSet)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to check native API coverage: %v\n", err)
 		return 2
 	}
 
-	controllerIssues, err := checkCustomControllerConsistency(controllerHeaderPath)
+	controllerIssues, err := checkCustomControllerConsistency(controllerHeaderPath, customControllerPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to check CustomController consistency: %v\n", err)
 		return 2
@@ -69,20 +76,26 @@ func Run() int {
 	return printReport(report, issues)
 }
 
-func validateRequiredPaths(headerDir string, controllerHeaderPath string) error {
+func validateRequiredPaths(
+	repoRoot string,
+	headerDir string,
+	controllerHeaderPath string,
+	customControllerPath string,
+	nativeFiles map[string][]string,
+) error {
 	if err := requireDir(headerDir); err != nil {
-		return fmt.Errorf("header-dir %q: %w", filepath.Clean(headerDir), err)
+		return fmt.Errorf("repo_root=%q header-dir %q: %w", filepath.Clean(repoRoot), filepath.Clean(headerDir), err)
 	}
 	if err := requireFile(controllerHeaderPath); err != nil {
-		return fmt.Errorf("controller header %q: %w", filepath.Clean(controllerHeaderPath), err)
+		return fmt.Errorf("repo_root=%q controller header %q: %w", filepath.Clean(repoRoot), filepath.Clean(controllerHeaderPath), err)
 	}
-	if err := requireFile(customControllerRel); err != nil {
-		return fmt.Errorf("custom controller source %q: %w", filepath.Clean(customControllerRel), err)
+	if err := requireFile(customControllerPath); err != nil {
+		return fmt.Errorf("repo_root=%q custom controller source %q: %w", filepath.Clean(repoRoot), filepath.Clean(customControllerPath), err)
 	}
-	for module, files := range nativeFilesByModule {
+	for module, files := range nativeFiles {
 		for _, file := range files {
 			if err := requireFile(file); err != nil {
-				return fmt.Errorf("native source [%s] %q: %w", module, filepath.Clean(file), err)
+				return fmt.Errorf("repo_root=%q native source [%s] %q: %w", filepath.Clean(repoRoot), module, filepath.Clean(file), err)
 			}
 		}
 	}

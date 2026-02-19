@@ -98,9 +98,8 @@ jobs:
           echo "DYLD_LIBRARY_PATH=${{ github.workspace }}/deps/bin:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Run API Check
-        working-directory: tools/api-check
         run: |
-          go run . --config config.ci.yaml
+          go -C tools/api-check run . --config config.ci.yaml
 
       - name: Prepare Test Data
         run: |

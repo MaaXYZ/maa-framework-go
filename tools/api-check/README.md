@@ -26,55 +26,55 @@ It checks both symbol coverage and function signatures.
 
 Working directory:
 
-- Recommended: run commands from `tools/api-check`.
-- If you run from repository root, use `-C tools/api-check` with `go`.
+- The tool is repo-root aware and can be run from repository root or any subdirectory.
+- You can still run it from `tools/api-check` if preferred.
 
 Run with defaults:
 
 ```bash
-go run .
+go -C tools/api-check run .
 ```
 
 Run with explicit config file:
 
 ```bash
-go run . --config config.yaml
+go -C tools/api-check run . --config config.yaml
 ```
 
 Override header directory for one run:
 
 ```bash
-go run . --header-dir ../../deps/include
+go -C tools/api-check run . --header-dir deps/include
 ```
 
 Add blacklist entries from CLI:
 
 ```bash
-go run . --blacklist MaaDbgControllerCreate --blacklist MaaDbgControllerType
+go -C tools/api-check run . --blacklist MaaDbgControllerCreate --blacklist MaaDbgControllerType
 ```
 
 CI-style config file path:
 
 ```bash
-go run . --config config.ci.yaml
+go -C tools/api-check run . --config config.ci.yaml
 ```
 
-Equivalent from repository root:
+Equivalent from `tools/api-check`:
 
 ```bash
-go -C tools/api-check run . --config config.ci.yaml
+go run . --config config.ci.yaml
 ```
 
 ## Config resolution
 
 - If `--config` is provided, that file is required and will be loaded.
-- If `--config` is not provided, tool tries `config.yaml` in current working directory.
+- If `--config` is not provided, tool tries `config.yaml` in current working directory, then `tools/api-check/config.yaml` under detected repo root.
 - If no config file is found, tool uses built-in defaults.
 - Priority is: `CLI flags > config file > defaults`.
 
 Defaults:
 
-- `header_dir: ../../deps/include`
+- `header_dir: deps/include`
 - `blacklist: []`
 
 ## Config template

@@ -11,8 +11,8 @@ import (
 	"strings"
 )
 
-func checkCustomControllerConsistency(headerPath string) ([]issue, error) {
-	goSigs, err := parseCustomControllerGo()
+func checkCustomControllerConsistency(headerPath string, customControllerPath string) ([]issue, error) {
+	goSigs, err := parseCustomControllerGo(customControllerPath)
 	if err != nil {
 		return nil, err
 	}
@@ -79,11 +79,11 @@ func checkCustomControllerConsistency(headerPath string) ([]issue, error) {
 	return issues, nil
 }
 
-func parseCustomControllerGo() (map[string]methodSig, error) {
+func parseCustomControllerGo(customControllerPath string) (map[string]methodSig, error) {
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, customControllerRel, nil, parser.ParseComments)
+	file, err := parser.ParseFile(fset, customControllerPath, nil, parser.ParseComments)
 	if err != nil {
-		return nil, fmt.Errorf("parse %s: %w", customControllerRel, err)
+		return nil, fmt.Errorf("parse %s: %w", customControllerPath, err)
 	}
 
 	result := map[string]methodSig{}
