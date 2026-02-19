@@ -1,0 +1,6 @@
+header_dir: deps/include
+blacklist:
+  - MaaDbgControllerCreate
+  - MaaImageBufferGetEncoded
+  - MaaImageBufferGetEncodedSize
+  - MaaImageBufferSetEncoded
