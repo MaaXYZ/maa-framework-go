@@ -5,21 +5,23 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 )
 
 func checkNativeAPICoverage(headerDir string, blacklist map[string]struct{}) ([]issue, error) {
-	goRegistered, registerIssues, err := parseGoRegistrations()
+	goRegistered, goSigs, goRegisterLocs, goDeclLocs, registerIssues, err := parseGoRegistrations()
 	if err != nil {
 		return nil, fmt.Errorf("parse Go registrations: %w", err)
 	}
 
-	headerFuncs, err := parseHeaderFunctions(headerDir)
+	aliases, err := parseCTypedefAliases(headerDir)
+	if err != nil {
+		return nil, fmt.Errorf("parse C typedef aliases: %w", err)
+	}
+	headerSigs, err := parseHeaderFunctionSignatures(headerDir, aliases)
 	if err != nil {
 		return nil, fmt.Errorf("parse C headers: %w", err)
 	}
@@ -28,7 +30,7 @@ func checkNativeAPICoverage(headerDir string, blacklist map[string]struct{}) ([]
 	issues = append(issues, registerIssues...)
 	for _, module := range moduleOrder {
 		goSet := goRegistered[module]
-		headerSet := headerFuncs[module]
+		headerSet := sigKeys(headerSigs[module])
 
 		headerOnly := setDiff(headerSet, goSet, blacklist)
 		goOnly := setDiff(goSet, headerSet, blacklist)
@@ -40,18 +42,68 @@ func checkNativeAPICoverage(headerDir string, blacklist map[string]struct{}) ([]
 			})
 		}
 		for _, fn := range goOnly {
+			loc := formatGoLocation(goDeclLocs[module][fn], goRegisterLocs[module][fn])
 			issues = append(issues, issue{
 				section: sectionNativeAPI,
-				message: fmt.Sprintf("[%s] Go registers function not found in headers: %s", module, fn),
+				message: fmt.Sprintf("[%s] Go registers function not found in headers: %s%s", module, fn, loc),
 			})
+		}
+		for fn := range goSet {
+			if _, ignored := blacklist[fn]; ignored {
+				continue
+			}
+			goSig, ok1 := goSigs[module][fn]
+			cSig, ok2 := headerSigs[module][fn]
+			if !ok1 || !ok2 {
+				continue
+			}
+			if unsupportedType, found := findUnsupportedType(goSig.params); found {
+				loc := formatGoLocation(goDeclLocs[module][fn], goRegisterLocs[module][fn])
+				issues = append(issues, issue{
+					section: sectionNativeAPI,
+					message: fmt.Sprintf("[%s] %s has unsupported Go param type expression: %s (normalized=%v)%s", module, fn, unsupportedType, goSig.params, loc),
+				})
+				continue
+			}
+			if unsupportedType, found := findUnsupportedType(goSig.returns); found {
+				loc := formatGoLocation(goDeclLocs[module][fn], goRegisterLocs[module][fn])
+				issues = append(issues, issue{
+					section: sectionNativeAPI,
+					message: fmt.Sprintf("[%s] %s has unsupported Go return type expression: %s (normalized=%v)%s", module, fn, unsupportedType, goSig.returns, loc),
+				})
+				continue
+			}
+			if !sameStringSlice(goSig.params, cSig.params) || !sameStringSlice(goSig.returns, cSig.returns) {
+				locLine := formatLocationLine(goDeclLocs[module][fn], goRegisterLocs[module][fn])
+				issues = append(issues, issue{
+					section: sectionNativeAPI,
+					message: fmt.Sprintf(
+						"[%s] signature mismatch for %s\n"+
+							"go params: %v\n"+
+							"go returns: %v\n"+
+							"c  params: %v\n"+
+							"c  returns: %v%s",
+						module,
+						fn,
+						goSig.params,
+						goSig.returns,
+						cSig.params,
+						cSig.returns,
+						locLine,
+					),
+				})
+			}
 		}
 	}
 
 	return issues, nil
 }
 
-func parseGoRegistrations() (map[string]map[string]struct{}, []issue, error) {
+func parseGoRegistrations() (map[string]map[string]struct{}, map[string]map[string]methodSig, map[string]map[string]goRegistrationLoc, map[string]map[string]goVarDeclLoc, []issue, error) {
 	result := map[string]map[string]struct{}{}
+	goSigs := map[string]map[string]methodSig{}
+	goRegisterLocs := map[string]map[string]goRegistrationLoc{}
+	goDeclLocs := map[string]map[string]goVarDeclLoc{}
 	issues := make([]issue, 0)
 	fset := token.NewFileSet()
 
@@ -59,11 +111,21 @@ func parseGoRegistrations() (map[string]map[string]struct{}, []issue, error) {
 		if _, ok := result[module]; !ok {
 			result[module] = map[string]struct{}{}
 		}
+		if _, ok := goSigs[module]; !ok {
+			goSigs[module] = map[string]methodSig{}
+		}
+		if _, ok := goRegisterLocs[module]; !ok {
+			goRegisterLocs[module] = map[string]goRegistrationLoc{}
+		}
+		if _, ok := goDeclLocs[module]; !ok {
+			goDeclLocs[module] = map[string]goVarDeclLoc{}
+		}
 		for _, file := range files {
 			parsedFile, err := parser.ParseFile(fset, file, nil, 0)
 			if err != nil {
-				return nil, nil, fmt.Errorf("parse %s: %w", file, err)
+				return nil, nil, nil, nil, nil, fmt.Errorf("parse %s: %w", file, err)
 			}
+			varSigs, varDeclLocs := parseGoVarFuncSignaturesWithLoc(parsedFile, fset, file)
 
 			ast.Inspect(parsedFile, func(n ast.Node) bool {
 				call, ok := n.(*ast.CallExpr)
@@ -98,20 +160,30 @@ func parseGoRegistrations() (map[string]map[string]struct{}, []issue, error) {
 				if err != nil || name == "" {
 					return true
 				}
+				pos := fset.Position(call.Pos())
 				if funcVar != "" && funcVar != name {
-					pos := fset.Position(call.Pos())
 					issues = append(issues, issue{
 						section: sectionNativeAPI,
 						message: fmt.Sprintf("[%s] RegisterLibFunc argument mismatch in %s:%d: var=%s symbol=%s", module, filepath.Clean(file), pos.Line, funcVar, name),
 					})
 				}
 				result[module][name] = struct{}{}
+				if sig, ok := varSigs[funcVar]; ok {
+					goSigs[module][name] = sig
+				}
+				if declLoc, ok := varDeclLocs[funcVar]; ok {
+					goDeclLocs[module][name] = declLoc
+				}
+				goRegisterLocs[module][name] = goRegistrationLoc{
+					file: filepath.Clean(file),
+					line: pos.Line,
+				}
 				return true
 			})
 		}
 	}
 
-	return result, issues, nil
+	return result, goSigs, goRegisterLocs, goDeclLocs, issues, nil
 }
 
 func extractRegisterFuncVarName(arg ast.Expr) string {
@@ -132,59 +204,6 @@ func extractRegisterFuncVarName(arg ast.Expr) string {
 	}
 }
 
-func parseHeaderFunctions(headerDir string) (map[string]map[string]struct{}, error) {
-	result := map[string]map[string]struct{}{
-		"framework":    {},
-		"toolkit":      {},
-		"agent_server": {},
-		"agent_client": {},
-	}
-
-	err := filepath.WalkDir(headerDir, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if d.IsDir() || filepath.Ext(path) != ".h" {
-			return nil
-		}
-
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		content := string(data)
-		chunks := strings.Split(content, ";")
-		for _, chunk := range chunks {
-			stmt := strings.TrimSpace(chunk)
-			if stmt == "" || !strings.Contains(stmt, "MAA_") {
-				continue
-			}
-			if !strings.Contains(stmt, "_API") {
-				continue
-			}
-			if strings.Contains(stmt, "MAA_DEPRECATED") {
-				continue
-			}
-
-			module := moduleFromHeaderStmt(stmt)
-			if module == "" {
-				continue
-			}
-			name := extractFuncNameFromDecl(stmt)
-			if name == "" {
-				continue
-			}
-			result[module][name] = struct{}{}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
 func moduleFromHeaderStmt(stmt string) string {
 	switch {
 	case strings.Contains(stmt, "MAA_FRAMEWORK_API"):
@@ -200,19 +219,6 @@ func moduleFromHeaderStmt(stmt string) string {
 	}
 }
 
-func extractFuncNameFromDecl(stmt string) string {
-	re := regexp.MustCompile(`\b(Maa[A-Za-z0-9_]+)\s*\(`)
-	matches := re.FindAllStringSubmatch(stmt, -1)
-	if len(matches) == 0 {
-		return ""
-	}
-	last := matches[len(matches)-1]
-	if len(last) < 2 {
-		return ""
-	}
-	return strings.TrimSpace(last[1])
-}
-
 func setDiff(left, right map[string]struct{}, blacklist map[string]struct{}) []string {
 	out := make([]string, 0)
 	for k := range left {
@@ -225,4 +231,62 @@ func setDiff(left, right map[string]struct{}, blacklist map[string]struct{}) []s
 	}
 	sort.Strings(out)
 	return out
+}
+
+func sigKeys(m map[string]methodSig) map[string]struct{} {
+	out := make(map[string]struct{}, len(m))
+	for k := range m {
+		out[k] = struct{}{}
+	}
+	return out
+}
+
+type goRegistrationLoc struct {
+	file string
+	line int
+}
+
+func formatRegisteredAt(loc goRegistrationLoc) string {
+	if loc.file == "" || loc.line <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("registered at %s:%d", loc.file, loc.line)
+}
+
+func formatDeclAt(loc goVarDeclLoc) string {
+	if loc.file == "" || loc.line <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("decl at %s:%d", loc.file, loc.line)
+}
+
+func formatGoLocation(decl goVarDeclLoc, reg goRegistrationLoc) string {
+	plain := formatGoLocationPlain(decl, reg)
+	if plain == "" {
+		return ""
+	}
+	return fmt.Sprintf(" (%s)", plain)
+}
+
+func formatGoLocationPlain(decl goVarDeclLoc, reg goRegistrationLoc) string {
+	declMsg := formatDeclAt(decl)
+	regMsg := formatRegisteredAt(reg)
+	if declMsg == "" && regMsg == "" {
+		return ""
+	}
+	if declMsg != "" && regMsg != "" {
+		return fmt.Sprintf("%s, %s", declMsg, regMsg)
+	}
+	if declMsg != "" {
+		return declMsg
+	}
+	return regMsg
+}
+
+func formatLocationLine(decl goVarDeclLoc, reg goRegistrationLoc) string {
+	plain := formatGoLocationPlain(decl, reg)
+	if plain == "" {
+		return ""
+	}
+	return "\nlocation: " + plain
 }

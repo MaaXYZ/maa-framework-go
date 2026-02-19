@@ -3,6 +3,7 @@ package checker
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 func printReport(report []string, issues []issue) int {
@@ -30,11 +31,22 @@ func printReport(report []string, issues []issue) int {
 		sort.Strings(msgs)
 		fmt.Printf("## %s\n", section)
 		for _, msg := range msgs {
-			fmt.Printf("- %s\n", msg)
+			printIssue(msg)
 		}
 		fmt.Println()
 	}
 
 	fmt.Printf("FAIL: found %d inconsistency(s).\n", len(issues))
 	return 1
+}
+
+func printIssue(msg string) {
+	lines := strings.Split(msg, "\n")
+	if len(lines) == 0 {
+		return
+	}
+	fmt.Printf("- %s\n", lines[0])
+	for _, line := range lines[1:] {
+		fmt.Printf("  %s\n", line)
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -16,7 +17,13 @@ func checkCustomControllerConsistency(headerPath string) ([]issue, error) {
 		return nil, err
 	}
 
-	headerSigs, err := parseCustomControllerHeader(headerPath)
+	headerRoot := filepath.Clean(filepath.Join(filepath.Dir(headerPath), "..", ".."))
+	aliases, err := parseCTypedefAliases(headerRoot)
+	if err != nil {
+		return nil, fmt.Errorf("parse C typedef aliases: %w", err)
+	}
+
+	headerSigs, err := parseCustomControllerHeader(headerPath, aliases)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +87,7 @@ func parseCustomControllerGo() (map[string]methodSig, error) {
 	}
 
 	result := map[string]methodSig{}
+	typeDefs := collectGoTypeDefs(file)
 	found := false
 
 	for _, decl := range file.Decls {
@@ -105,8 +113,8 @@ func parseCustomControllerGo() (map[string]methodSig, error) {
 					continue
 				}
 				name := m.Names[0].Name
-				params := parseGoFieldTypes(fnType.Params)
-				returns := parseGoFieldTypes(fnType.Results)
+				params := parseGoFieldTypesCanonical(fnType.Params, typeDefs)
+				returns := parseGoFieldTypesCanonical(fnType.Results, typeDefs)
 				result[name] = methodSig{params: params, returns: returns}
 			}
 			found = true
@@ -117,49 +125,6 @@ func parseCustomControllerGo() (map[string]methodSig, error) {
 		return nil, fmt.Errorf("CustomController interface not found")
 	}
 	return result, nil
-}
-
-func parseGoFieldTypes(fields *ast.FieldList) []string {
-	if fields == nil || len(fields.List) == 0 {
-		return []string{}
-	}
-	out := make([]string, 0)
-	for _, f := range fields.List {
-		t := normalizeGoTypeExpr(f.Type)
-		count := 1
-		if len(f.Names) > 0 {
-			count = len(f.Names)
-		}
-		for i := 0; i < count; i++ {
-			out = append(out, t)
-		}
-	}
-	return out
-}
-
-func normalizeGoTypeExpr(expr ast.Expr) string {
-	switch t := expr.(type) {
-	case *ast.Ident:
-		switch t.Name {
-		case "bool":
-			return "bool"
-		case "string":
-			return "string"
-		case "int32":
-			return "int32"
-		case "ControllerFeature":
-			return "controller_feature"
-		default:
-			return t.Name
-		}
-	case *ast.SelectorExpr:
-		if x, ok := t.X.(*ast.Ident); ok && x.Name == "image" && t.Sel.Name == "Image" {
-			return "image"
-		}
-		return fmt.Sprintf("%s.%s", exprToString(t.X), t.Sel.Name)
-	default:
-		return exprToString(expr)
-	}
 }
 
 func exprToString(expr ast.Expr) string {
@@ -173,7 +138,7 @@ func exprToString(expr ast.Expr) string {
 	}
 }
 
-func parseCustomControllerHeader(headerPath string) (map[string]methodSig, error) {
+func parseCustomControllerHeader(headerPath string, aliases map[string]string) (map[string]methodSig, error) {
 	data, err := os.ReadFile(headerPath)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", headerPath, err)
@@ -208,12 +173,12 @@ func parseCustomControllerHeader(headerPath string) (map[string]methodSig, error
 		}
 		retType := strings.TrimSpace(m[1])
 		cName := strings.TrimSpace(m[2])
-		paramsRaw := removeCComments(strings.TrimSpace(m[3]))
+		paramsRaw := strings.TrimSpace(m[3])
 
 		goName := callbackNameToGoMethod(cName)
-		params := parseCParams(paramsRaw)
-		returns := deriveGoReturnsFromC(retType, params)
-		goParams := deriveGoParamsFromC(params)
+		params := parseControllerParams(paramsRaw, aliases)
+		returns := deriveControllerReturns(retType, params, aliases)
+		goParams := deriveControllerParams(params)
 
 		result[goName] = methodSig{params: goParams, returns: returns}
 	}
@@ -221,86 +186,85 @@ func parseCustomControllerHeader(headerPath string) (map[string]methodSig, error
 	return result, nil
 }
 
-func removeCComments(s string) string {
-	re := regexp.MustCompile(`(?s)/\*.*?\*/`)
-	return re.ReplaceAllString(s, "")
+type controllerParam struct {
+	name      string
+	raw       string
+	canonical string
 }
 
-func parseCParams(raw string) []string {
-	raw = strings.TrimSpace(raw)
-	if raw == "" || raw == "void" {
+func parseControllerParams(raw string, aliases map[string]string) []controllerParam {
+	cleaned := removeCComments(raw)
+	if strings.TrimSpace(cleaned) == "" || strings.TrimSpace(cleaned) == "void" {
+		return []controllerParam{}
+	}
+	parts := splitCSV(cleaned)
+	out := make([]controllerParam, 0, len(parts))
+	for _, part := range parts {
+		p := strings.TrimSpace(part)
+		out = append(out, controllerParam{
+			name:      extractCParamName(p),
+			raw:       p,
+			canonical: normalizeCTypeCanonical(stripCParamName(p), aliases),
+		})
+	}
+	return out
+}
+
+func extractCParamName(raw string) string {
+	s := normalizeSpaces(strings.TrimSpace(raw))
+	if s == "" {
+		return ""
+	}
+	if strings.Contains(s, "(*") {
+		return ""
+	}
+	m := regexp.MustCompile(`([A-Za-z_][A-Za-z0-9_]*)$`).FindStringSubmatch(s)
+	if len(m) == 2 {
+		return m[1]
+	}
+	return ""
+}
+
+func deriveControllerParams(params []controllerParam) []string {
+	out := make([]string, 0, len(params))
+	for _, p := range params {
+		if p.name == "trans_arg" {
+			continue
+		}
+		if strings.Contains(p.raw, "MaaStringBuffer") || strings.Contains(p.raw, "MaaImageBuffer") {
+			continue
+		}
+		out = append(out, p.canonical)
+	}
+	return out
+}
+
+func deriveControllerReturns(cReturn string, params []controllerParam, aliases map[string]string) []string {
+	ret := normalizeCTypeCanonical(cReturn, aliases)
+	if ret == "void" {
 		return []string{}
 	}
-	parts := strings.Split(raw, ",")
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		t := normalizeCParamType(strings.TrimSpace(p))
-		if t == "" {
-			continue
-		}
-		out = append(out, t)
-	}
-	return out
-}
-
-func normalizeCParamType(param string) string {
-	switch {
-	case strings.Contains(param, "void* trans_arg"):
-		return "trans_arg"
-	case strings.Contains(param, "const char*"):
-		return "string"
-	case strings.Contains(param, "int32_t"):
-		return "int32"
-	case strings.Contains(param, "MaaStringBuffer*"):
-		return "string_buffer"
-	case strings.Contains(param, "MaaImageBuffer*"):
-		return "image_buffer"
-	default:
-		return "unknown"
-	}
-}
-
-func deriveGoParamsFromC(cParams []string) []string {
-	out := make([]string, 0, len(cParams))
-	for _, p := range cParams {
-		switch p {
-		case "trans_arg", "string_buffer", "image_buffer":
-			continue
-		case "string", "int32":
-			out = append(out, p)
-		default:
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
-func deriveGoReturnsFromC(cReturn string, cParams []string) []string {
-	switch cReturn {
-	case "MaaControllerFeature":
-		return []string{"controller_feature"}
-	case "MaaBool":
+	if ret == "bool" {
 		hasStringBuffer := false
 		hasImageBuffer := false
-		for _, p := range cParams {
-			if p == "string_buffer" {
+		for _, p := range params {
+			if strings.Contains(p.raw, "MaaStringBuffer") {
 				hasStringBuffer = true
 			}
-			if p == "image_buffer" {
+			if strings.Contains(p.raw, "MaaImageBuffer") {
 				hasImageBuffer = true
 			}
 		}
 		switch {
 		case hasStringBuffer:
-			return []string{"string", "bool"}
+			return []string{"cstring", "bool"}
 		case hasImageBuffer:
 			return []string{"image", "bool"}
 		default:
 			return []string{"bool"}
 		}
-	default:
-		return []string{"unknown"}
 	}
+	return []string{ret}
 }
 
 func callbackNameToGoMethod(name string) string {
