@@ -109,6 +109,7 @@ jobs:
           cp -r test/classifier.onnx test/data_set/PipelineSmoking/resource/model/classify
 
       - name: Run Tests
+        id: run_tests
         continue-on-error: true
         env:
           CGO_ENABLED: 0
@@ -120,6 +121,12 @@ jobs:
         with:
           name: ${{ env.MAA_FILE_PREFIX }}-${{ env.ARCH }}-full_log
           path: "test/debug"
+
+      - name: Fail job if tests failed
+        if: always() && steps.run_tests.outcome == 'failure'
+        run: |
+          echo "Tests failed. Check uploaded logs for details."
+          exit 1
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
