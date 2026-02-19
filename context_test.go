@@ -1162,12 +1162,19 @@ func (a *testContextGetNodeDataAct) testNodeAttributes(ctx *Context) {
 			"attach": map[string]any{
 				"custom_key": "custom_value",
 			},
-			"anchor": []string{"MyAnchor", "AnotherAnchor"},
+			"anchor": map[string]any{
+				"MyAnchor":      "test_attributes",
+				"AnotherAnchor": "test_attributes",
+				"ClearedAnchor": "",
+			},
 		},
 		"NodeA": map[string]any{},
 		"NodeB": map[string]any{},
 		"NodeC": map[string]any{
-			"anchor": []string{"AnchorX"},
+			"anchor": map[string]any{
+				"AnchorX":       "NodeC",
+				"ClearedAnchor": "",
+			},
 		},
 		"ErrorHandler": map[string]any{},
 	}
@@ -1227,8 +1234,12 @@ func (a *testContextGetNodeDataAct) testNodeAttributes(ctx *Context) {
 	require.NotNil(a.t, nodeData.Attach)
 	require.Equal(a.t, "custom_value", nodeData.Attach["custom_key"])
 
-	// Check anchor
-	require.Equal(a.t, []string{"MyAnchor", "AnotherAnchor"}, nodeData.Anchor)
+	// Check anchor (GetNodeData outputs anchor as object map)
+	require.Equal(a.t, map[string]string{
+		"MyAnchor":      "test_attributes",
+		"AnotherAnchor": "test_attributes",
+		"ClearedAnchor": "",
+	}, nodeData.Anchor)
 }
 
 func TestContext_GetNode(t *testing.T) {
