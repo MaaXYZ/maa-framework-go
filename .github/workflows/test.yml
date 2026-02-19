@@ -97,6 +97,10 @@ jobs:
         run: |
           echo "DYLD_LIBRARY_PATH=${{ github.workspace }}/deps/bin:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
 
+      - name: Run API Check
+        run: |
+          go run ./tools/api-check --config tools/api-check/config.ci.yaml
+
       - name: Prepare Test Data
         run: |
           mkdir -p test/data_set/PipelineSmoking/resource/model/ocr
