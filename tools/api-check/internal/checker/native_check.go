@@ -14,7 +14,7 @@ import (
 )
 
 func checkNativeAPICoverage(headerDir string, blacklist map[string]struct{}) ([]issue, error) {
-	goRegistered, err := parseGoRegistrations()
+	goRegistered, registerIssues, err := parseGoRegistrations()
 	if err != nil {
 		return nil, fmt.Errorf("parse Go registrations: %w", err)
 	}
@@ -24,7 +24,8 @@ func checkNativeAPICoverage(headerDir string, blacklist map[string]struct{}) ([]
 		return nil, fmt.Errorf("parse C headers: %w", err)
 	}
 
-	issues := make([]issue, 0)
+	issues := make([]issue, 0, len(registerIssues))
+	issues = append(issues, registerIssues...)
 	for _, module := range moduleOrder {
 		goSet := goRegistered[module]
 		headerSet := headerFuncs[module]
@@ -49,8 +50,9 @@ func checkNativeAPICoverage(headerDir string, blacklist map[string]struct{}) ([]
 	return issues, nil
 }
 
-func parseGoRegistrations() (map[string]map[string]struct{}, error) {
+func parseGoRegistrations() (map[string]map[string]struct{}, []issue, error) {
 	result := map[string]map[string]struct{}{}
+	issues := make([]issue, 0)
 	fset := token.NewFileSet()
 
 	for module, files := range nativeFilesByModule {
@@ -60,7 +62,7 @@ func parseGoRegistrations() (map[string]map[string]struct{}, error) {
 		for _, file := range files {
 			parsedFile, err := parser.ParseFile(fset, file, nil, 0)
 			if err != nil {
-				return nil, fmt.Errorf("parse %s: %w", file, err)
+				return nil, nil, fmt.Errorf("parse %s: %w", file, err)
 			}
 
 			ast.Inspect(parsedFile, func(n ast.Node) bool {
@@ -86,6 +88,7 @@ func parseGoRegistrations() (map[string]map[string]struct{}, error) {
 					return true
 				}
 
+				funcVar := extractRegisterFuncVarName(call.Args[0])
 				lit, ok := call.Args[2].(*ast.BasicLit)
 				if !ok || lit.Kind != token.STRING {
 					return true
@@ -95,13 +98,38 @@ func parseGoRegistrations() (map[string]map[string]struct{}, error) {
 				if err != nil || name == "" {
 					return true
 				}
+				if funcVar != "" && funcVar != name {
+					pos := fset.Position(call.Pos())
+					issues = append(issues, issue{
+						section: sectionNativeAPI,
+						message: fmt.Sprintf("[%s] RegisterLibFunc argument mismatch in %s:%d: var=%s symbol=%s", module, filepath.Clean(file), pos.Line, funcVar, name),
+					})
+				}
 				result[module][name] = struct{}{}
 				return true
 			})
 		}
 	}
 
-	return result, nil
+	return result, issues, nil
+}
+
+func extractRegisterFuncVarName(arg ast.Expr) string {
+	u, ok := arg.(*ast.UnaryExpr)
+	if !ok || u.Op != token.AND {
+		return ""
+	}
+	switch x := u.X.(type) {
+	case *ast.Ident:
+		return x.Name
+	case *ast.SelectorExpr:
+		if x.Sel == nil {
+			return ""
+		}
+		return x.Sel.Name
+	default:
+		return ""
+	}
 }
 
 func parseHeaderFunctions(headerDir string) (map[string]map[string]struct{}, error) {
