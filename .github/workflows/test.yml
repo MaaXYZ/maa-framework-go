@@ -32,7 +32,7 @@ jobs:
           - os: windows-latest
             arch: x86_64
             maa_prefix: MAA-win
-            container: null
+            container: ""
           - os: ubuntu-latest
             arch: x86_64
             maa_prefix: MAA-linux
@@ -40,7 +40,7 @@ jobs:
           - os: macos-latest
             arch: aarch64
             maa_prefix: MAA-macos
-            container: null
+            container: ""
       fail-fast: false
     env:
       ARCH: ${{ matrix.arch }}
