@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"slices"
@@ -743,12 +744,88 @@ func RecNeuralNetworkDetect(model string, opts ...NeuralDetectOption) *NodeRecog
 	}
 }
 
-type NodeAndRecognitionItem struct {
+// SubRecognitionItem is one element of And all_of / Or any_of.
+// It is either a node name (string reference) or an inline recognition (object with type, param, sub_name).
+// GetNodeData from C++ outputs: all_of/any_of as array of string | object; this type supports both.
+type SubRecognitionItem struct {
+	// NodeName is set when the JSON value is a string (reference to another node by name).
+	NodeName string
+	// Inline is set when the JSON value is an object (inline recognition with type, param, sub_name).
+	// Used for both And all_of and Or any_of; name matches C++ InlineSubRecognition.
+	Inline *InlineSubRecognition
+}
+
+// UnmarshalJSON supports both string (node name) and object (inline recognition).
+func (s *SubRecognitionItem) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil
+	}
+	if trimmed[0] == '"' {
+		var nodeName string
+		if err := json.Unmarshal(data, &nodeName); err != nil {
+			return err
+		}
+		s.NodeName = nodeName
+		s.Inline = nil
+		return nil
+	}
+	if trimmed[0] == '{' {
+		inline := &InlineSubRecognition{}
+		if err := json.Unmarshal(data, inline); err != nil {
+			return err
+		}
+		s.NodeName = ""
+		s.Inline = inline
+		return nil
+	}
+	return errors.New("SubRecognitionItem: expected string or object")
+}
+
+// MarshalJSON outputs a string when NodeName is set, otherwise the inline object.
+func (s SubRecognitionItem) MarshalJSON() ([]byte, error) {
+	if s.NodeName != "" {
+		return json.Marshal(s.NodeName)
+	}
+	if s.Inline != nil {
+		return json.Marshal(s.Inline)
+	}
+	return []byte("null"), nil
+}
+
+// SubRecognitionRef returns a SubRecognitionItem that references another node by name.
+func SubRecognitionRef(nodeName string) SubRecognitionItem {
+	return SubRecognitionItem{NodeName: nodeName}
+}
+
+// Ref is a short alias for SubRecognitionRef. Use with RecAnd/RecOr: RecAnd(Ref("NodeA"), Inline(...)).
+func Ref(nodeName string) SubRecognitionItem {
+	return SubRecognitionItem{NodeName: nodeName}
+}
+
+// SubRecognitionInline returns a SubRecognitionItem with inline recognition (type, param, sub_name).
+func SubRecognitionInline(inline *InlineSubRecognition) SubRecognitionItem {
+	return SubRecognitionItem{Inline: inline}
+}
+
+// Inline builds a SubRecognitionItem from a recognition; optional name is the sub_name (omit for Or when not needed).
+// Example: RecOr(Inline(RecTemplateMatch(...)), Inline(RecColorMatch(...))) or RecAnd(Ref("A"), Inline(RecDirectHit(), "sub1")).
+func Inline(rec *NodeRecognition, name ...string) SubRecognitionItem {
+	subName := ""
+	if len(name) > 0 {
+		subName = name[0]
+	}
+	return SubRecognitionItem{Inline: AndItem(subName, rec)}
+}
+
+// InlineSubRecognition is an inline sub-recognition element (object form in all_of/any_of).
+// It has sub_name plus type and param; used for both And and Or. Name matches C++ InlineSubRecognition.
+type InlineSubRecognition struct {
 	SubName string `json:"sub_name,omitempty"`
 	NodeRecognition
 }
 
-func (n *NodeAndRecognitionItem) UnmarshalJSON(data []byte) error {
+func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
 	type Alias struct {
 		SubName string `json:"sub_name,omitempty"`
 	}
@@ -764,19 +841,20 @@ func (n *NodeAndRecognitionItem) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// AndItem creates a NodeAndRecognitionItem with the given sub-name and recognition.
-// If subName is empty, only the recognition will be used.
-func AndItem(subName string, recognition *NodeRecognition) *NodeAndRecognitionItem {
-	return &NodeAndRecognitionItem{
+// AndItem creates an InlineSubRecognition with the given sub-name and recognition.
+// Used for both And all_of and Or any_of when building inline items. If subName is empty, only the recognition is used.
+func AndItem(subName string, recognition *NodeRecognition) *InlineSubRecognition {
+	return &InlineSubRecognition{
 		SubName:         subName,
 		NodeRecognition: *recognition,
 	}
 }
 
 // NodeAndRecognitionParam defines parameters for AND recognition.
+// AllOf elements are either node name strings or inline recognitions (GetNodeData output matches C++ JAnd).
 type NodeAndRecognitionParam struct {
-	AllOf    []*NodeAndRecognitionItem `json:"all_of,omitempty"`
-	BoxIndex int                       `json:"box_index,omitempty"`
+	AllOf    []SubRecognitionItem `json:"all_of,omitempty"`
+	BoxIndex int                 `json:"box_index,omitempty"`
 }
 
 func (n NodeAndRecognitionParam) isRecognitionParam() {}
@@ -792,28 +870,33 @@ func WithAndRecognitionBoxIndex(boxIndex int) AndRecognitionOption {
 }
 
 // RecAnd creates an AND recognition that requires all sub-recognitions to succeed.
-func RecAnd(allOf []*NodeAndRecognitionItem, opts ...AndRecognitionOption) *NodeRecognition {
-	param := &NodeAndRecognitionParam{
-		AllOf: slices.Clone(allOf),
-	}
+// Items are Ref/Inline (use RecAndItems to build from variadic); opts are WithAndRecognitionBoxIndex etc.
+// Example: RecAnd(RecAndItems(Ref("NodeA"), Inline(RecDirectHit(), "sub1")), WithAndRecognitionBoxIndex(2)).
+func RecAnd(items []SubRecognitionItem, opts ...AndRecognitionOption) *NodeRecognition {
+	param := &NodeAndRecognitionParam{AllOf: slices.Clone(items)}
 	for _, opt := range opts {
 		opt(param)
 	}
-	return &NodeRecognition{
-		Type:  NodeRecognitionTypeAnd,
-		Param: param,
-	}
+	return &NodeRecognition{Type: NodeRecognitionTypeAnd, Param: param}
+}
+
+// RecAndItems builds the first argument for RecAnd from Ref/Inline, so IDE can suggest SubRecognitionItem.
+// Example: RecAnd(RecAndItems(Ref("NodeA"), Inline(RecDirectHit(), "sub1")), WithAndRecognitionBoxIndex(2)).
+func RecAndItems(items ...SubRecognitionItem) []SubRecognitionItem {
+	return items
 }
 
 // NodeOrRecognitionParam defines parameters for OR recognition.
+// AnyOf elements are either node name strings or inline recognitions (GetNodeData output matches C++ JOr).
 type NodeOrRecognitionParam struct {
-	AnyOf []*NodeRecognition `json:"any_of,omitempty"`
+	AnyOf []SubRecognitionItem `json:"any_of,omitempty"`
 }
 
 func (n NodeOrRecognitionParam) isRecognitionParam() {}
 
 // RecOr creates an OR recognition that succeeds if any sub-recognition succeeds.
-func RecOr(anyOf []*NodeRecognition) *NodeRecognition {
+// Accepts variadic Ref/Inline so you can write RecOr(Inline(RecTemplateMatch(...)), Inline(RecColorMatch(...))) without a slice.
+func RecOr(anyOf ...SubRecognitionItem) *NodeRecognition {
 	param := &NodeOrRecognitionParam{
 		AnyOf: slices.Clone(anyOf),
 	}

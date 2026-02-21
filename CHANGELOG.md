@@ -128,20 +128,31 @@
 
 ### NodeRecognition API 变更
 
-#### And Recognition
+#### And/Or 识别：SubRecognitionItem 与 C++ GetNodeData 对齐
+
+与 C++ 端 `GetNodeData` 输出一致：`all_of` / `any_of` 数组元素为 **节点名字符串** 或 **内联识别对象**。Go 侧引入统一类型并调整 And/Or 构造方式。
 
 | 变更类型 | 旧 API | 新 API |
 |---------|--------|--------|
-| 函数返回类型 | `AndItem(...) NodeAndRecognitionItem` | `AndItem(...) *NodeAndRecognitionItem` |
-| 函数参数类型 | `RecAnd([]NodeAndRecognitionItem, ...)` | `RecAnd([]*NodeAndRecognitionItem, ...)` |
-| 字段类型 | `AllOf []NodeAndRecognitionItem` | `AllOf []*NodeAndRecognitionItem` |
+| 子项类型（And） | `AllOf []*NodeAndRecognitionItem` | `AllOf []SubRecognitionItem` |
+| 子项类型（Or） | `AnyOf []*NodeRecognition` | `AnyOf []SubRecognitionItem` |
+| 内联项类型名 | `NodeAndRecognitionItem` | `InlineSubRecognition`（And/Or 通用） |
+| RecAnd 签名 | `RecAnd([]*NodeAndRecognitionItem, opts ...)` | `RecAnd(items []SubRecognitionItem, opts ...AndRecognitionOption)` |
+| RecOr 签名 | `RecOr(anyOf []SubRecognitionItem)` | `RecOr(anyOf ...SubRecognitionItem)` |
 
-**变更原因**：与 `Or` 识别保持一致的设计模式（`AnyOf []*NodeRecognition`），使用指针数组可避免复制大结构体，提高性能并支持共享引用。
+**新增类型与函数**：
+- `SubRecognitionItem`：表示一项子识别，可为节点名引用（`NodeName`）或内联识别（`Inline *InlineSubRecognition`），JSON 为 string 或 object。
+- `InlineSubRecognition`：内联子识别（含 `sub_name`、`type`、`param`），与 C++ `InlineSubRecognition` 对应。
+- `Ref(nodeName string) SubRecognitionItem`：按节点名引用。
+- `Inline(rec *NodeRecognition, name ...string) SubRecognitionItem`：内联识别，`name` 可选（Or 常省略）。
+- `RecAndItems(items ...SubRecognitionItem) []SubRecognitionItem`：拼出 `RecAnd` 的第一个参数，便于 IDE 提示。
 
-**受影响的方法**：
-- `AndItem(subName string, recognition *NodeRecognition)`
-- `RecAnd(allOf []*NodeAndRecognitionItem, opts ...AndRecognitionOption)`
-- `NodeAndRecognitionParam.AllOf`
+**受影响的方法与字段**：
+- `RecAnd(items []SubRecognitionItem, opts ...AndRecognitionOption)`
+- `RecOr(anyOf ...SubRecognitionItem)`
+- `NodeAndRecognitionParam.AllOf`、`NodeOrRecognitionParam.AnyOf`
+- `AndItem` 返回 `*InlineSubRecognition`（原 `*NodeAndRecognitionItem`）
+- `SubRecognitionRef` / `SubRecognitionInline` 保留；`Ref` / `Inline` 为简短写法。
 
 ### 迁移示例
 
@@ -220,20 +231,33 @@ if err := job.Error(); err != nil {
 }
 ```
 
-#### And Recognition 迁移（值数组 → 指针数组）
+#### And/Or Recognition 迁移（SubRecognitionItem + Ref/Inline）
 
 ```go
-// 旧 API
-rec := maa.RecAnd([]maa.NodeAndRecognitionItem{
-    maa.AndItem("template", maa.RecTemplateMatch(...)),
-    maa.AndItem("color", maa.RecColorMatch(...)),
-})
-
-// 新 API
+// 旧 API（指针数组 + AndItem）
 rec := maa.RecAnd([]*maa.NodeAndRecognitionItem{
     maa.AndItem("template", maa.RecTemplateMatch(...)),
     maa.AndItem("color", maa.RecColorMatch(...)),
+}, maa.WithAndRecognitionBoxIndex(0))
+
+orRec := maa.RecOr([]maa.SubRecognitionItem{
+    maa.SubRecognitionInline(maa.AndItem("", maa.RecTemplateMatch(...))),
 })
+
+// 新 API（RecAndItems + Ref/Inline，IDE 可补全）
+rec := maa.RecAnd(
+    maa.RecAndItems(
+        maa.Ref("OtherNode"),                           // 节点名引用
+        maa.Inline(maa.RecTemplateMatch(...), "template"),
+        maa.Inline(maa.RecColorMatch(...), "color"),
+    ),
+    maa.WithAndRecognitionBoxIndex(0),
+)
+
+orRec := maa.RecOr(
+    maa.Inline(maa.RecTemplateMatch(...)),   // 无 sub_name 时省略第二参数
+    maa.Inline(maa.RecColorMatch(...)),
+)
 ```
 
 #### Node Anchor 迁移（[]string → map[string]string）
@@ -264,3 +288,4 @@ node.ClearAnchor("X") // 等价于 node.SetAnchorTarget("X", "")
 - `Pipeline.Len`
 - `Node.SetAnchorTarget`
 - `Node.ClearAnchor`
+- And/Or 识别：`SubRecognitionItem`、`InlineSubRecognition`、`Ref`、`Inline`、`RecAndItems`（与 C++ GetNodeData 的 all_of/any_of 对齐；`RecOr` 支持 variadic）

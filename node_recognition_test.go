@@ -7,6 +7,151 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestSubRecognitionItem_UnmarshalJSON_String(t *testing.T) {
+	// Node name reference (C++ all_of/any_of element as string)
+	data := []byte(`"SomeNodeName"`)
+	var item SubRecognitionItem
+	err := json.Unmarshal(data, &item)
+	require.NoError(t, err)
+	require.Equal(t, "SomeNodeName", item.NodeName)
+	require.Nil(t, item.Inline)
+}
+
+func TestSubRecognitionItem_UnmarshalJSON_Object(t *testing.T) {
+	// Inline recognition (C++ all_of/any_of element as object with type, param, sub_name)
+	data := []byte(`{"sub_name":"MySub","type":"TemplateMatch","param":{"template":["a.png"],"threshold":[0.8]}}`)
+	var item SubRecognitionItem
+	err := json.Unmarshal(data, &item)
+	require.NoError(t, err)
+	require.Empty(t, item.NodeName)
+	require.NotNil(t, item.Inline)
+	require.Equal(t, "MySub", item.Inline.SubName)
+	require.Equal(t, NodeRecognitionTypeTemplateMatch, item.Inline.Type)
+	require.IsType(t, (*NodeTemplateMatchParam)(nil), item.Inline.Param)
+}
+
+func TestSubRecognitionItem_UnmarshalJSON_Invalid(t *testing.T) {
+	data := []byte(`123`)
+	var item SubRecognitionItem
+	err := json.Unmarshal(data, &item)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "expected string or object")
+}
+
+func TestSubRecognitionItem_MarshalJSON(t *testing.T) {
+	// Marshal node name ref
+	ref := SubRecognitionRef("OtherNode")
+	b, err := json.Marshal(ref)
+	require.NoError(t, err)
+	require.Equal(t, `"OtherNode"`, string(b))
+
+	// Marshal inline
+	inline := SubRecognitionInline(AndItem("sub", RecDirectHit()))
+	b, err = json.Marshal(inline)
+	require.NoError(t, err)
+	var back SubRecognitionItem
+	err = json.Unmarshal(b, &back)
+	require.NoError(t, err)
+	require.NotNil(t, back.Inline)
+	require.Equal(t, "sub", back.Inline.SubName)
+	require.Equal(t, NodeRecognitionTypeDirectHit, back.Inline.Type)
+}
+
+func TestNodeAndRecognitionParam_Unmarshal_GetNodeDataStyle(t *testing.T) {
+	// Simulates GetNodeData output: recognition.type + recognition.param { all_of, box_index }
+	// all_of can be mix of string (node name) and object (inline)
+	raw := `{
+		"type": "And",
+		"param": {
+			"all_of": [
+				"RefNodeA",
+				{
+					"sub_name": "InlineSub",
+					"type": "DirectHit",
+					"param": {}
+				}
+			],
+			"box_index": 1
+		}
+	}`
+	var reco NodeRecognition
+	err := json.Unmarshal([]byte(raw), &reco)
+	require.NoError(t, err)
+	require.Equal(t, NodeRecognitionTypeAnd, reco.Type)
+	andParam, ok := reco.Param.(*NodeAndRecognitionParam)
+	require.True(t, ok)
+	require.Len(t, andParam.AllOf, 2)
+	require.Equal(t, 1, andParam.BoxIndex)
+
+	// First element: node name ref
+	require.Equal(t, "RefNodeA", andParam.AllOf[0].NodeName)
+	require.Nil(t, andParam.AllOf[0].Inline)
+
+	// Second element: inline
+	require.Empty(t, andParam.AllOf[1].NodeName)
+	require.NotNil(t, andParam.AllOf[1].Inline)
+	require.Equal(t, "InlineSub", andParam.AllOf[1].Inline.SubName)
+	require.Equal(t, NodeRecognitionTypeDirectHit, andParam.AllOf[1].Inline.Type)
+}
+
+func TestNodeOrRecognitionParam_Unmarshal_GetNodeDataStyle(t *testing.T) {
+	// Simulates GetNodeData output for Or: any_of as string | object
+	raw := `{
+		"type": "Or",
+		"param": {
+			"any_of": [
+				"RefNodeB",
+				{
+					"sub_name": "",
+					"type": "ColorMatch",
+					"param": {"lower":[[0,0,0]],"upper":[[255,255,255]],"count":1}
+				}
+			]
+		}
+	}`
+	var reco NodeRecognition
+	err := json.Unmarshal([]byte(raw), &reco)
+	require.NoError(t, err)
+	require.Equal(t, NodeRecognitionTypeOr, reco.Type)
+	orParam, ok := reco.Param.(*NodeOrRecognitionParam)
+	require.True(t, ok)
+	require.Len(t, orParam.AnyOf, 2)
+
+	require.Equal(t, "RefNodeB", orParam.AnyOf[0].NodeName)
+	require.Nil(t, orParam.AnyOf[0].Inline)
+
+	require.NotNil(t, orParam.AnyOf[1].Inline)
+	require.Equal(t, NodeRecognitionTypeColorMatch, orParam.AnyOf[1].Inline.Type)
+}
+
+func TestRecAnd_RecOr_MarshalRoundtrip(t *testing.T) {
+	// Build And with mix of ref and inline
+	andRec := RecAnd(RecAndItems(Ref("NodeRef"), Inline(RecDirectHit(), "sub1")), WithAndRecognitionBoxIndex(2))
+	b, err := json.Marshal(andRec)
+	require.NoError(t, err)
+	var reco NodeRecognition
+	err = json.Unmarshal(b, &reco)
+	require.NoError(t, err)
+	require.Equal(t, NodeRecognitionTypeAnd, reco.Type)
+	andParam := reco.Param.(*NodeAndRecognitionParam)
+	require.Len(t, andParam.AllOf, 2)
+	require.Equal(t, 2, andParam.BoxIndex)
+	require.Equal(t, "NodeRef", andParam.AllOf[0].NodeName)
+	require.Equal(t, "sub1", andParam.AllOf[1].Inline.SubName)
+
+	// Build Or with variadic Inline (no empty sub_name)
+	orRec := RecOr(Inline(RecTemplateMatch([]string{"t.png"})))
+	b, err = json.Marshal(orRec)
+	require.NoError(t, err)
+	err = json.Unmarshal(b, &reco)
+	require.NoError(t, err)
+	require.Equal(t, NodeRecognitionTypeOr, reco.Type)
+	orParam := reco.Param.(*NodeOrRecognitionParam)
+	require.Len(t, orParam.AnyOf, 1)
+	require.NotNil(t, orParam.AnyOf[0].Inline)
+	require.Equal(t, NodeRecognitionTypeTemplateMatch, orParam.AnyOf[0].Inline.Type)
+}
+
 func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 	const nodeName = "CreditShoppingBuyFirst"
 
@@ -123,8 +268,8 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 	require.Equal(t, 3, andParam.BoxIndex, "box_index should be 3")
 	require.Len(t, andParam.AllOf, 4, "all_of should contain 4 sub-recognition items")
 
-	// Verify first sub-recognition item (TemplateMatch)
-	templateMatchItem := andParam.AllOf[0]
+	// Verify first sub-recognition item (TemplateMatch) — inline object from GetNodeData
+	templateMatchItem := andParam.AllOf[0].Inline
 	require.NotNil(t, templateMatchItem, "first sub-item should not be nil")
 	require.Equal(t, "CreditIcon", templateMatchItem.SubName, "first sub-item name should be CreditIcon")
 	require.Equal(t, NodeRecognitionTypeTemplateMatch, templateMatchItem.Type, "first sub-item type should be TemplateMatch")
@@ -134,7 +279,7 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 	require.Equal(t, NodeTemplateMatchOrderByVertical, templateParam.OrderBy, "order_by should be Vertical")
 
 	// Verify second sub-recognition item (ColorMatch)
-	colorMatchItem := andParam.AllOf[1]
+	colorMatchItem := andParam.AllOf[1].Inline
 	require.NotNil(t, colorMatchItem, "second sub-item should not be nil")
 	require.Equal(t, "NotSoldOut", colorMatchItem.SubName, "second sub-item name should be NotSoldOut")
 	require.Equal(t, NodeRecognitionTypeColorMatch, colorMatchItem.Type, "second sub-item type should be ColorMatch")
@@ -144,7 +289,7 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 	require.Equal(t, 20000, colorParam.Count, "pixel count threshold should be 20000")
 
 	// Verify third sub-recognition item (OCR)
-	ocrItem := andParam.AllOf[2]
+	ocrItem := andParam.AllOf[2].Inline
 	require.NotNil(t, ocrItem, "third sub-item should not be nil")
 	require.Equal(t, "BuyFirstOCR", ocrItem.SubName, "third sub-item name should be BuyFirstOCR")
 	require.Equal(t, NodeRecognitionTypeOCR, ocrItem.Type, "third sub-item type should be OCR")
@@ -153,7 +298,7 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 	require.NotEmpty(t, ocrParam.Expected, "OCR expected text should not be empty")
 
 	// Verify fourth sub-recognition item (ColorMatch)
-	affordableItem := andParam.AllOf[3]
+	affordableItem := andParam.AllOf[3].Inline
 	require.NotNil(t, affordableItem, "fourth sub-item should not be nil")
 	require.Equal(t, "Affordable", affordableItem.SubName, "fourth sub-item name should be Affordable")
 	require.Equal(t, NodeRecognitionTypeColorMatch, affordableItem.Type, "fourth sub-item type should be ColorMatch")

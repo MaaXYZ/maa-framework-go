@@ -108,18 +108,18 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			name: "and",
 			typ:  NodeRecognitionTypeAnd,
 			param: &NodeAndRecognitionParam{
-				AllOf: []*NodeAndRecognitionItem{
-					AndItem("template", RecTemplateMatch(
+				AllOf: []SubRecognitionItem{
+					Inline(RecTemplateMatch(
 						[]string{"Wilderness/EnterWilderness.png"},
 						WithTemplateMatchThreshold([]float64{0.01}),
 						WithTemplateMatchOrderBy(NodeTemplateMatchOrderByScore),
-					)),
-					AndItem("color", RecColorMatch(
+					), "template"),
+					Inline(RecColorMatch(
 						[][]int{{0, 0, 0}},
 						[][]int{{255, 255, 255}},
 						WithColorMatchCount(1),
 						WithColorMatchConnected(true),
-					)),
+					), "color"),
 				},
 				BoxIndex: 0,
 			},
@@ -128,18 +128,18 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			name: "or",
 			typ:  NodeRecognitionTypeOr,
 			param: &NodeOrRecognitionParam{
-				AnyOf: []*NodeRecognition{
-					RecTemplateMatch(
+				AnyOf: []SubRecognitionItem{
+					Inline(RecTemplateMatch(
 						[]string{"Wilderness/EnterWilderness.png"},
 						WithTemplateMatchThreshold([]float64{0.01}),
 						WithTemplateMatchOrderBy(NodeTemplateMatchOrderByScore),
-					),
-					RecColorMatch(
+					)),
+					Inline(RecColorMatch(
 						[][]int{{0, 0, 0}},
 						[][]int{{255, 255, 255}},
 						WithColorMatchCount(1),
 						WithColorMatchConnected(true),
-					),
+					)),
 				},
 			},
 		},
