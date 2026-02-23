@@ -97,6 +97,13 @@
 |---------|-------------|
 | 设置方法 | `SetLogDir`, `SetSaveDraw`, `SetStdoutLevel`, `SetDebugMode`, `SetSaveOnError`, `SetDrawQuality`, `SetRecoImageCacheLimit`, `LoadPlugin` |
 
+**补充说明**：
+- `InitConfig` 已改为私有类型 `initConfig`，不再对外暴露。
+- `InitOption` 签名改为 `type InitOption func(*initConfig)`，由于参数类型私有，包外不再支持自定义 `InitOption`，请使用 `WithXxx` 函数。
+- `Init()` 不再隐式应用默认全局配置，仅在显式传入对应 `WithXxx` 时才会调用设置。
+- `defaultInitConfig()` 已移除，`Init()` 现在直接使用 `initConfig{}` 初始化。
+- `WithPluginPaths` 会对输入切片进行拷贝，避免外部后续修改影响已构建的选项。
+
 #### Toolkit
 
 | 变更类型 | 受影响的方法 |
@@ -155,6 +162,28 @@
 - `SubRecognitionRef` / `SubRecognitionInline` 保留；`Ref` / `Inline` 为简短写法。
 
 ### 迁移示例
+
+#### Init 选项迁移（隐式默认 -> 显式传参）
+
+```go
+// 旧行为：Init() 会隐式应用部分默认全局配置
+_ = maa.Init()
+
+// 新行为：如需保持旧默认配置，请显式传入 WithXxx
+err := maa.Init(
+    maa.WithLogDir("./debug"),
+    maa.WithStdoutLevel(maa.LoggingLevelInfo),
+    maa.WithSaveDraw(false),
+    maa.WithDebugMode(false),
+)
+if err != nil {
+    // 处理错误
+}
+```
+
+#### InitOption 迁移（包外自定义 -> 内置 WithXxx）
+
+原来在包外自定义 `InitOption` 的代码需迁移为内置 `WithXxx` 函数。
 
 #### 构造函数迁移
 

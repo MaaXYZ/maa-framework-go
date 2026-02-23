@@ -28,43 +28,46 @@ var (
 // including the library name, the full path attempted, and the underlying system error.
 type LibraryLoadError = native.LibraryLoadError
 
-// InitConfig contains configuration options for initializing the MAA framework.
+// initConfig contains configuration options for initializing the MAA framework.
 // It specifies various settings that control the framework's behavior,
 // logging, debugging, and resource locations.
-type InitConfig struct {
+type initConfig struct {
 	// LibDir specifies the directory path where MAA dynamic libraries are located.
 	// If empty, the framework will attempt to locate libraries in default paths.
 	LibDir string
 
 	// LogDir specifies the directory where log files will be written.
-	// Defaults to "./debug" if not specified.
-	LogDir string
+	// Nil means Init will not set this option.
+	LogDir *string
 
 	// SaveDraw controls whether to save recognition results to LogDir/vision.
 	// When enabled, RecoDetail will be able to retrieve draws for debugging purposes.
-	SaveDraw bool
+	// Nil means Init will not set this option.
+	SaveDraw *bool
 
 	// StdoutLevel sets the logging verbosity level for standard output.
 	// Controls which log messages are displayed on the console.
-	StdoutLevel LoggingLevel
+	// Nil means Init will not set this option.
+	StdoutLevel *LoggingLevel
 
 	// DebugMode enables or disables comprehensive debug mode.
 	// When enabled, additional debug information is collected and logged.
-	DebugMode bool
+	// Nil means Init will not set this option.
+	DebugMode *bool
 
 	// PluginPaths specifies the paths to the plugins to load.
-	// If empty, the framework will not load any plugins.
-	PluginPaths []string
+	// Nil means Init will not process plugin loading.
+	PluginPaths *[]string
 }
 
-// InitOption defines a function type for configuring InitConfig through functional options.
-// Each InitOption function modifies the InitConfig to set specific initialization parameters.
-type InitOption func(*InitConfig)
+// InitOption defines a function type for configuring initialization through functional options.
+// Use package-provided WithXxx helpers to construct options.
+type InitOption func(*initConfig)
 
 // WithLibDir returns an InitOption that sets the library directory path for the MAA framework.
 // The libDir parameter specifies the directory where the MAA dynamic library is located.
 func WithLibDir(libDir string) InitOption {
-	return func(ic *InitConfig) {
+	return func(ic *initConfig) {
 		ic.LibDir = libDir
 	}
 }
@@ -72,8 +75,8 @@ func WithLibDir(libDir string) InitOption {
 // WithLogDir returns an InitOption that sets the directory path for log files.
 // The logDir parameter specifies where the MAA framework should write its log files.
 func WithLogDir(logDir string) InitOption {
-	return func(ic *InitConfig) {
-		ic.LogDir = logDir
+	return func(ic *initConfig) {
+		ic.LogDir = &logDir
 	}
 }
 
@@ -81,41 +84,31 @@ func WithLogDir(logDir string) InitOption {
 // When enabled is true, recognition results will be saved to LogDir/vision directory
 // and RecoDetail will be able to retrieve draws for debugging.
 func WithSaveDraw(enabled bool) InitOption {
-	return func(ic *InitConfig) {
-		ic.SaveDraw = enabled
+	return func(ic *initConfig) {
+		ic.SaveDraw = &enabled
 	}
 }
 
 // WithStdoutLevel returns an InitOption that sets the logging level for standard output.
 // The level parameter determines the verbosity of logs written to stdout.
 func WithStdoutLevel(level LoggingLevel) InitOption {
-	return func(ic *InitConfig) {
-		ic.StdoutLevel = level
+	return func(ic *initConfig) {
+		ic.StdoutLevel = &level
 	}
 }
 
 // WithDebugMode returns an InitOption that enables or disables debug mode.
 // When enabled is true, additional debug information will be collected and logged.
 func WithDebugMode(enabled bool) InitOption {
-	return func(ic *InitConfig) {
-		ic.DebugMode = enabled
+	return func(ic *initConfig) {
+		ic.DebugMode = &enabled
 	}
 }
 
 func WithPluginPaths(path ...string) InitOption {
-	return func(ic *InitConfig) {
-		ic.PluginPaths = path
-	}
-}
-
-func defaultInitConfig() InitConfig {
-	return InitConfig{
-		LibDir:      "",
-		LogDir:      "./debug",
-		SaveDraw:    false,
-		StdoutLevel: LoggingLevelInfo,
-		DebugMode:   false,
-		PluginPaths: []string{},
+	return func(ic *initConfig) {
+		pluginPaths := append([]string(nil), path...)
+		ic.PluginPaths = &pluginPaths
 	}
 }
 
@@ -128,7 +121,7 @@ func Init(opts ...InitOption) error {
 		return ErrAlreadyInitialized
 	}
 
-	cfg := defaultInitConfig()
+	cfg := initConfig{}
 
 	for _, opt := range opts {
 		opt(&cfg)
@@ -145,22 +138,32 @@ func Init(opts ...InitOption) error {
 		}
 	}()
 
-	if err := SetLogDir(cfg.LogDir); err != nil {
-		return err
+	if cfg.LogDir != nil {
+		if err := SetLogDir(*cfg.LogDir); err != nil {
+			return err
+		}
 	}
-	if err := SetSaveDraw(cfg.SaveDraw); err != nil {
-		return err
+	if cfg.SaveDraw != nil {
+		if err := SetSaveDraw(*cfg.SaveDraw); err != nil {
+			return err
+		}
 	}
-	if err := SetStdoutLevel(cfg.StdoutLevel); err != nil {
-		return err
+	if cfg.StdoutLevel != nil {
+		if err := SetStdoutLevel(*cfg.StdoutLevel); err != nil {
+			return err
+		}
 	}
-	if err := SetDebugMode(cfg.DebugMode); err != nil {
-		return err
+	if cfg.DebugMode != nil {
+		if err := SetDebugMode(*cfg.DebugMode); err != nil {
+			return err
+		}
 	}
 
-	for _, path := range cfg.PluginPaths {
-		if err := LoadPlugin(path); err != nil {
-			return err
+	if cfg.PluginPaths != nil {
+		for _, path := range *cfg.PluginPaths {
+			if err := LoadPlugin(path); err != nil {
+				return err
+			}
 		}
 	}
 
