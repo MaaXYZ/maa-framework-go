@@ -182,7 +182,6 @@ func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults,
 	if detailJson == "" || detailJson == "{}" || detailJson == "null" {
 		return &RecognitionResults{
 			All:      []*RecognitionResult{},
-			Best:     nil,
 			Filtered: []*RecognitionResult{},
 		}, nil
 	}

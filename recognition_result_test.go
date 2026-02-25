@@ -39,7 +39,7 @@ func (l *recognitionDetailRawList) UnmarshalJSON(data []byte) error {
 
 type recognitionDetailRaw struct {
 	All      recognitionDetailRawList `json:"all"`
-	Best     *map[string]any          `json:"best"`
+	Best     map[string]any           `json:"best"`
 	Filtered recognitionDetailRawList `json:"filtered"`
 }
 
@@ -316,7 +316,7 @@ func requireRecognitionResultsMatchRaw(t *testing.T, results *RecognitionResults
 	if raw.Best == nil {
 		require.Nil(t, results.Best)
 	} else {
-		requireRecognitionResultMatchesRaw(t, results.Best, *raw.Best)
+		requireRecognitionResultMatchesRaw(t, results.Best, raw.Best)
 	}
 	for i, item := range raw.Filtered {
 		requireRecognitionResultMatchesRaw(t, results.Filtered[i], item)

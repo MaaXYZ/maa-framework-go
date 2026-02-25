@@ -557,14 +557,15 @@ func (a *testContextGetNodeDataAct) testOCRRecognition(ctx *Context) {
 			"recognition": map[string]any{
 				"type": "OCR",
 				"param": map[string]any{
-					"roi":       []int{0, 0, 300, 100},
-					"expected":  []string{"Hello", "World"},
-					"threshold": 0.5,
-					"replace":   [][]string{{"0", "O"}, {"1", "l"}},
-					"order_by":  "Length",
-					"index":     0,
-					"only_rec":  true,
-					"model":     "ppocr_v4",
+				"roi":          []int{0, 0, 300, 100},
+				"expected":     []string{"Hello", "World"},
+				"threshold":    0.5,
+				"replace":      [][]string{{"0", "O"}, {"1", "l"}},
+				"order_by":     "Length",
+				"index":        0,
+				"only_rec":     true,
+				"model":        "ppocr_v4",
+				"color_filter": "RecoColorMatch",
 				},
 			},
 		},
@@ -583,6 +584,7 @@ func (a *testContextGetNodeDataAct) testOCRRecognition(ctx *Context) {
 	require.Equal(a.t, NodeOCROrderByLength, param.OrderBy)
 	require.True(a.t, param.OnlyRec)
 	require.Equal(a.t, "ppocr_v4", param.Model)
+	require.Equal(a.t, "RecoColorMatch", param.ColorFilter)
 }
 
 func (a *testContextGetNodeDataAct) testNeuralNetworkClassifyRecognition(ctx *Context) {
