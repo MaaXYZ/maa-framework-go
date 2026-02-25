@@ -323,6 +323,19 @@ if best != nil {
 }
 ```
 
+### 字段名与 JSON Tag 对齐 C++
+
+以下字段名和 JSON tag 修正为与 C++ 序列化输出一致：
+
+| 结构体 | 旧字段 / JSON tag | 新字段 / JSON tag | C++ 对照 |
+|--------|-------------------|-------------------|----------|
+| `ShellActionResult` | `Timeout` / `"timeout"` | `ShellTimeout` / `"shell_timeout"` | `Actuator.cpp` |
+| `NodeNextListDetail` | `NextList` / `"next_list"` | `List` / `"list"` | `PipelineTask.cpp` |
+
+### NeuralNetworkClassifyResult 移除多余字段
+
+移除 `Raw []float64` 和 `Probs []float64` 字段。C++ 端 `NeuralNetworkClassifierResult` 的 `MEO_JSONIZATION` 仅导出 `cls_index, label, box, score`，`raw` 和 `probs` 不参与 JSON 序列化，Go 侧保留会导致永远为零值。
+
 ## Added
 
 - `Resource.GetNode`
