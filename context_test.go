@@ -12,11 +12,10 @@ type testContextRunTaskAct struct {
 
 func (t *testContextRunTaskAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	pipeline := NewPipeline()
-	testNode := NewNode("Test",
-		WithAction(ActClick(
-			WithClickTarget(NewTargetRect(Rect{100, 100, 10, 10})),
-		)),
-	)
+	testNode := NewNode("Test").
+		SetAction(ActClick(NodeClickParam{
+			Target: NewTargetRect(Rect{100, 100, 10, 10}),
+		}))
 	pipeline.AddNode(testNode)
 
 	detail, err := ctx.RunTask(testNode.Name, pipeline)
@@ -42,9 +41,8 @@ func TestContext_RunTask(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_RunPipelineNode := NewNode("TestContext_RunPipeline",
-		WithAction(ActCustom("TestContext_RunPipelineAct")),
-	)
+	testContext_RunPipelineNode := NewNode("TestContext_RunPipeline").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_RunPipelineAct"}))
 	pipeline.AddNode(testContext_RunPipelineNode)
 
 	got := tasker.PostTask(testContext_RunPipelineNode.Name, pipeline).
@@ -62,11 +60,10 @@ func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) boo
 	require.NotNil(t.t, img)
 
 	pipeline := NewPipeline()
-	testNode := NewNode("Test",
-		WithRecognition(RecOCR(
-			WithOCRExpected([]string{"Hello"}),
-		)),
-	)
+	testNode := NewNode("Test").
+		SetRecognition(RecOCR(NodeOCRParam{
+			Expected: []string{"Hello"},
+		}))
 	pipeline.AddNode(testNode)
 
 	detail, err := ctx.RunRecognition("Test", img, pipeline)
@@ -96,9 +93,8 @@ func TestContext_RunRecognition(t *testing.T) {
 		AddNext("RunRecognition").
 		AddNext("Stop")
 	pipeline.AddNode(testContext_RunRecognitionNode)
-	runRecognitionNode := NewNode("RunRecognition",
-		WithRecognition(RecCustom("TestContext_RunRecognitionAct")),
-	)
+	runRecognitionNode := NewNode("RunRecognition").
+		SetRecognition(RecCustom(NodeCustomRecognitionParam{CustomRecognition: "TestContext_RunRecognitionAct"}))
 	pipeline.AddNode(runRecognitionNode)
 	stopNode := NewNode("Stop")
 	pipeline.AddNode(stopNode)
@@ -114,11 +110,10 @@ type testContextRunActionAct struct {
 
 func (a testContextRunActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
 	pipeline := NewPipeline()
-	testNode := NewNode("Test",
-		WithAction(ActClick(
-			WithClickTarget(NewTargetRect(Rect{100, 100, 10, 10})),
-		)),
-	)
+	testNode := NewNode("Test").
+		SetAction(ActClick(NodeClickParam{
+			Target: NewTargetRect(Rect{100, 100, 10, 10}),
+		}))
 	pipeline.AddNode(testNode)
 
 	detail, err := ctx.RunAction(testNode.Name, arg.Box, arg.RecognitionDetail.DetailJson, pipeline)
@@ -144,9 +139,8 @@ func TestContext_RunAction(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_RunActionNode := NewNode("TestContext_RunAction",
-		WithAction(ActCustom("TestContext_RunActionAct")),
-	)
+	testContext_RunActionNode := NewNode("TestContext_RunAction").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_RunActionAct"}))
 	pipeline.AddNode(testContext_RunActionNode)
 
 	got := tasker.PostTask(testContext_RunActionNode.Name, pipeline).
@@ -160,11 +154,10 @@ type testContextOverriderPipelineAct struct {
 
 func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	pipeline1 := NewPipeline()
-	testNode1 := NewNode("Test",
-		WithAction(ActClick(
-			WithClickTarget(NewTargetRect(Rect{100, 100, 10, 10})),
-		)),
-	)
+	testNode1 := NewNode("Test").
+		SetAction(ActClick(NodeClickParam{
+			Target: NewTargetRect(Rect{100, 100, 10, 10}),
+		}))
 	pipeline1.AddNode(testNode1)
 
 	detail1, err := ctx.RunTask(testNode1.Name, pipeline1)
@@ -172,11 +165,10 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 	require.NotNil(t.t, detail1)
 
 	pipeline2 := NewPipeline()
-	testNode2 := NewNode("Test",
-		WithAction(ActClick(
-			WithClickTarget(NewTargetRect(Rect{200, 200, 10, 10})),
-		)),
-	)
+	testNode2 := NewNode("Test").
+		SetAction(ActClick(NodeClickParam{
+			Target: NewTargetRect(Rect{200, 200, 10, 10}),
+		}))
 	pipeline2.AddNode(testNode2)
 
 	err = ctx.OverridePipeline(pipeline2)
@@ -205,9 +197,8 @@ func TestContext_OverridePipeline(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_OverridePipelineNode := NewNode("TestContext_OverridePipeline",
-		WithAction(ActCustom("TestContext_OverridePipelineAct")),
-	)
+	testContext_OverridePipelineNode := NewNode("TestContext_OverridePipeline").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_OverridePipelineAct"}))
 	pipeline.AddNode(testContext_OverridePipelineNode)
 
 	got := tasker.PostTask(testContext_OverridePipelineNode.Name, pipeline).
@@ -221,11 +212,10 @@ type testContextOverrideNextAct struct {
 
 func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	pipeline := NewPipeline()
-	testNode := NewNode("Test",
-		WithNext([]NodeNextItem{
+	testNode := NewNode("Test").
+		SetNext([]NodeNextItem{
 			{Name: "TaskA"},
-		}),
-	)
+		})
 	pipeline.AddNode(testNode)
 	taskANode := NewNode("TaskA")
 	pipeline.AddNode(taskANode)
@@ -261,9 +251,8 @@ func TestContext_OverrideNext(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_OverrideNextNode := NewNode("TestContext_OverrideNext",
-		WithAction(ActCustom("TestContext_OverrideNextAct")),
-	)
+	testContext_OverrideNextNode := NewNode("TestContext_OverrideNext").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_OverrideNextAct"}))
 	pipeline.AddNode(testContext_OverrideNextNode)
 
 	got := tasker.PostTask(testContext_OverrideNextNode.Name, pipeline).
@@ -478,7 +467,7 @@ func (a *testContextGetNodeDataAct) testTemplateMatchRecognition(ctx *Context) {
 	param := nodeData.Recognition.Param.(*NodeTemplateMatchParam)
 	require.Equal(a.t, []string{"test.png", "test2.png"}, param.Template)
 	require.Equal(a.t, []float64{0.8}, param.Threshold)
-	require.Equal(a.t, NodeTemplateMatchOrderByScore, param.OrderBy)
+	require.Equal(a.t, OrderByScore, param.OrderBy)
 	require.Equal(a.t, 1, param.Index)
 	require.Equal(a.t, NodeTemplateMatchMethodCCOEFF_NORMED, param.Method)
 	require.True(a.t, param.GreenMask)
@@ -513,7 +502,7 @@ func (a *testContextGetNodeDataAct) testFeatureMatchRecognition(ctx *Context) {
 	param := nodeData.Recognition.Param.(*NodeFeatureMatchParam)
 	require.Equal(a.t, []string{"feature.png"}, param.Template)
 	require.Equal(a.t, 10, param.Count)
-	require.Equal(a.t, NodeFeatureMatchOrderByArea, param.OrderBy)
+	require.Equal(a.t, OrderByArea, param.OrderBy)
 	require.Equal(a.t, NodeFeatureMatchMethodSIFT, param.Detector)
 	require.Equal(a.t, 0.7, param.Ratio)
 }
@@ -581,7 +570,7 @@ func (a *testContextGetNodeDataAct) testOCRRecognition(ctx *Context) {
 	param := nodeData.Recognition.Param.(*NodeOCRParam)
 	require.Equal(a.t, []string{"Hello", "World"}, param.Expected)
 	require.Equal(a.t, 0.5, param.Threshold)
-	require.Equal(a.t, NodeOCROrderByLength, param.OrderBy)
+	require.Equal(a.t, OrderByLength, param.OrderBy)
 	require.True(a.t, param.OnlyRec)
 	require.Equal(a.t, "ppocr_v4", param.Model)
 	require.Equal(a.t, "RecoColorMatch", param.ColorFilter)
@@ -645,7 +634,7 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkDetectRecognition(ctx *Cont
 	require.Equal(a.t, []string{"person", "car", "bicycle"}, param.Labels)
 	require.Equal(a.t, "yolov8.onnx", param.Model)
 	require.Equal(a.t, []int{0, 1}, param.Expected)
-	require.Equal(a.t, NodeNeuralNetworkDetectOrderByArea, param.OrderBy)
+	require.Equal(a.t, OrderByArea, param.OrderBy)
 	require.Equal(a.t, -1, param.Index)
 }
 
@@ -1264,9 +1253,8 @@ func TestContext_GetNode(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	launchNode := NewNode("launch",
-		WithAction(ActCustom("TestContext_GetNodeAct")),
-	)
+	launchNode := NewNode("launch").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_GetNodeAct"}))
 	pipeline.AddNode(launchNode)
 
 	got := tasker.PostTask(launchNode.Name, pipeline).
@@ -1302,9 +1290,8 @@ func TestContext_GetTaskJob(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_GetTaskJobNode := NewNode("TestContext_GetTaskJob",
-		WithAction(ActCustom("TestContext_GetTaskJobAct")),
-	)
+	testContext_GetTaskJobNode := NewNode("TestContext_GetTaskJob").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_GetTaskJobAct"}))
 	pipeline.AddNode(testContext_GetTaskJobNode)
 
 	got := tasker.PostTask(testContext_GetTaskJobNode.Name, pipeline).
@@ -1339,9 +1326,8 @@ func TestContext_GetTasker(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_GetTaskerNode := NewNode("TestContext_GetTasker",
-		WithAction(ActCustom("TestContext_GetTaskerAct")),
-	)
+	testContext_GetTaskerNode := NewNode("TestContext_GetTasker").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
 	pipeline.AddNode(testContext_GetTaskerNode)
 
 	got := tasker.PostTask(testContext_GetTaskerNode.Name, pipeline).
@@ -1376,9 +1362,8 @@ func TestContext_Clone(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_CloneNode := NewNode("TestContext_Clone",
-		WithAction(ActCustom("TestContext_GetTaskerAct")),
-	)
+	testContext_CloneNode := NewNode("TestContext_Clone").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
 	pipeline.AddNode(testContext_CloneNode)
 
 	got := tasker.PostTask(testContext_CloneNode.Name, pipeline).
@@ -1420,9 +1405,8 @@ func TestContext_RunRecognitionDirect(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_RunRecognitionDirectNode := NewNode("TestContext_RunRecognitionDirect",
-		WithAction(ActCustom("TestContext_RunRecognitionDirectAct")),
-	)
+	testContext_RunRecognitionDirectNode := NewNode("TestContext_RunRecognitionDirect").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_RunRecognitionDirectAct"}))
 	pipeline.AddNode(testContext_RunRecognitionDirectNode)
 
 	got := tasker.PostTask(testContext_RunRecognitionDirectNode.Name, pipeline).
@@ -1462,9 +1446,8 @@ func TestContext_RunActionDirect(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_RunActionDirectNode := NewNode("TestContext_RunActionDirect",
-		WithAction(ActCustom("TestContext_RunActionDirectAct")),
-	)
+	testContext_RunActionDirectNode := NewNode("TestContext_RunActionDirect").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_RunActionDirectAct"}))
 	pipeline.AddNode(testContext_RunActionDirectNode)
 
 	got := tasker.PostTask(testContext_RunActionDirectNode.Name, pipeline).

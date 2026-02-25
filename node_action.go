@@ -26,12 +26,10 @@ func (na *NodeAction) UnmarshalJSON(data []byte) error {
 
 	na.Type = raw.Type
 
-	// If no param provided or null, just return with type set
 	if len(raw.Param) == 0 || string(raw.Param) == "null" {
 		return nil
 	}
 
-	// Unmarshal param based on type
 	var param NodeActionParam
 	switch na.Type {
 	case NodeActionTypeDoNothing, "":
@@ -141,37 +139,13 @@ type NodeClickParam struct {
 
 func (n NodeClickParam) isActionParam() {}
 
-// ClickOption is a functional option for configuring NodeClickParam.
-type ClickOption func(*NodeClickParam)
-
-// WithClickTarget sets the click target position.
-func WithClickTarget(target Target) ClickOption {
-	return func(p *NodeClickParam) {
-		p.Target = target
+// ActClick creates a Click action. All fields are optional; pass no argument for defaults.
+func ActClick(p ...NodeClickParam) *NodeAction {
+	var param NodeClickParam
+	if len(p) > 0 {
+		param = p[0]
 	}
-}
-
-// WithClickTargetOffset sets additional offset applied to target.
-func WithClickTargetOffset(offset Rect) ClickOption {
-	return func(p *NodeClickParam) {
-		p.TargetOffset = offset
-	}
-}
-
-// WithClickContact sets the touch point identifier.
-func WithClickContact(contact int) ClickOption {
-	return func(p *NodeClickParam) {
-		p.Contact = contact
-	}
-}
-
-// ActClick creates a Click action with the given options.
-func ActClick(opts ...ClickOption) *NodeAction {
-	param := &NodeClickParam{}
-	for _, opt := range opts {
-		opt(param)
-	}
-	return &NodeAction{Type: NodeActionTypeClick, Param: param}
+	return &NodeAction{Type: NodeActionTypeClick, Param: &param}
 }
 
 // NodeLongPressParam defines parameters for long press action.
@@ -180,50 +154,44 @@ type NodeLongPressParam struct {
 	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
 	TargetOffset Rect `json:"target_offset,omitempty"`
-	// Duration specifies the long press duration in milliseconds. Default: 1000.
-	Duration int64 `json:"duration,omitempty"`
+	// Duration specifies the long press duration. Default: 1000ms.
+	// JSON: serialized as integer milliseconds.
+	Duration time.Duration `json:"-"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
 }
 
 func (n NodeLongPressParam) isActionParam() {}
 
-// LongPressOption is a functional option for configuring NodeLongPressParam.
-type LongPressOption func(*NodeLongPressParam)
-
-// WithLongPressTarget sets the long press target position.
-func WithLongPressTarget(target Target) LongPressOption {
-	return func(p *NodeLongPressParam) {
-		p.Target = target
-	}
+func (p NodeLongPressParam) MarshalJSON() ([]byte, error) {
+	type NoMethod NodeLongPressParam
+	return json.Marshal(struct {
+		NoMethod
+		Duration int64 `json:"duration,omitempty"`
+	}{NoMethod: NoMethod(p), Duration: p.Duration.Milliseconds()})
 }
 
-// WithLongPressTargetOffset sets additional offset applied to target.
-func WithLongPressTargetOffset(offset Rect) LongPressOption {
-	return func(p *NodeLongPressParam) {
-		p.TargetOffset = offset
+func (p *NodeLongPressParam) UnmarshalJSON(data []byte) error {
+	type NoMethod NodeLongPressParam
+	raw := struct {
+		NoMethod
+		Duration int64 `json:"duration,omitempty"`
+	}{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
 	}
+	*p = NodeLongPressParam(raw.NoMethod)
+	p.Duration = time.Duration(raw.Duration) * time.Millisecond
+	return nil
 }
 
-// WithLongPressDuration sets the long press duration.
-func WithLongPressDuration(d time.Duration) LongPressOption {
-	return func(p *NodeLongPressParam) {
-		p.Duration = d.Milliseconds()
+// ActLongPress creates a LongPress action. All fields are optional; pass no argument for defaults.
+func ActLongPress(p ...NodeLongPressParam) *NodeAction {
+	var param NodeLongPressParam
+	if len(p) > 0 {
+		param = p[0]
 	}
-}
-
-// WithLongPressContact sets the touch point identifier.
-func WithLongPressContact(contact int) LongPressOption {
-	return func(p *NodeLongPressParam) { p.Contact = contact }
-}
-
-// ActLongPress creates a LongPress action with the given options.
-func ActLongPress(opts ...LongPressOption) *NodeAction {
-	param := &NodeLongPressParam{}
-	for _, opt := range opts {
-		opt(param)
-	}
-	return &NodeAction{Type: NodeActionTypeLongPress, Param: param}
+	return &NodeAction{Type: NodeActionTypeLongPress, Param: &param}
 }
 
 // NodeSwipeParam defines parameters for swipe action.
@@ -236,10 +204,12 @@ type NodeSwipeParam struct {
 	End []Target `json:"end,omitzero"`
 	// EndOffset specifies additional offset applied to end position.
 	EndOffset []Rect `json:"end_offset,omitempty"`
-	// Duration specifies the swipe duration in milliseconds. Default: 200.
-	Duration []int64 `json:"duration,omitempty"`
-	// EndHold specifies extra wait time at end position before releasing in milliseconds. Default: 0.
-	EndHold []int64 `json:"end_hold,omitempty"`
+	// Duration specifies the swipe duration. Default: 200ms.
+	// JSON: serialized as array of integer milliseconds.
+	Duration []time.Duration `json:"-"`
+	// EndHold specifies extra wait time at end position before releasing. Default: 0.
+	// JSON: serialized as array of integer milliseconds.
+	EndHold []time.Duration `json:"-"`
 	// OnlyHover enables hover-only mode without press/release actions. Default: false.
 	OnlyHover bool `json:"only_hover,omitempty"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
@@ -248,87 +218,45 @@ type NodeSwipeParam struct {
 
 func (n NodeSwipeParam) isActionParam() {}
 
-// SwipeOption is a functional option for configuring NodeSwipeParam.
-type SwipeOption func(*NodeSwipeParam)
-
-// WithSwipeBegin sets the swipe start position.
-func WithSwipeBegin(begin Target) SwipeOption {
-	return func(p *NodeSwipeParam) {
-		p.Begin = begin
-	}
+func (p NodeSwipeParam) MarshalJSON() ([]byte, error) {
+	type NoMethod NodeSwipeParam
+	return json.Marshal(struct {
+		NoMethod
+		Duration []int64 `json:"duration,omitempty"`
+		EndHold  []int64 `json:"end_hold,omitempty"`
+	}{NoMethod: NoMethod(p), Duration: durationsToMs(p.Duration), EndHold: durationsToMs(p.EndHold)})
 }
 
-// WithSwipeBeginOffset sets additional offset applied to begin position.
-func WithSwipeBeginOffset(offset Rect) SwipeOption {
-	return func(p *NodeSwipeParam) {
-		p.BeginOffset = offset
+func (p *NodeSwipeParam) UnmarshalJSON(data []byte) error {
+	type NoMethod NodeSwipeParam
+	raw := struct {
+		NoMethod
+		Duration []int64 `json:"duration,omitempty"`
+		EndHold  []int64 `json:"end_hold,omitempty"`
+	}{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
 	}
+	*p = NodeSwipeParam(raw.NoMethod)
+	p.Duration = msToDurations(raw.Duration)
+	p.EndHold = msToDurations(raw.EndHold)
+	return nil
 }
 
-// WithSwipeEnd sets the swipe end position.
-func WithSwipeEnd(end []Target) SwipeOption {
-	return func(p *NodeSwipeParam) {
-		p.End = slices.Clone(end)
+// ActSwipe creates a Swipe action. All fields are optional; pass no argument for defaults.
+func ActSwipe(p ...NodeSwipeParam) *NodeAction {
+	var param NodeSwipeParam
+	if len(p) > 0 {
+		param = p[0]
 	}
-}
-
-// WithSwipeEndOffset sets additional offset applied to end position.
-func WithSwipeEndOffset(offset []Rect) SwipeOption {
-	return func(p *NodeSwipeParam) {
-		p.EndOffset = slices.Clone(offset)
-	}
-}
-
-// WithSwipeDuration sets the swipe duration.
-func WithSwipeDuration(d []time.Duration) SwipeOption {
-	return func(p *NodeSwipeParam) {
-		p.Duration = make([]int64, len(d))
-		for index, duration := range d {
-			p.Duration[index] = duration.Milliseconds()
-		}
-	}
-}
-
-// WithSwipeEndHold sets extra wait time at end position before releasing.
-func WithSwipeEndHold(d []time.Duration) SwipeOption {
-	return func(p *NodeSwipeParam) {
-		p.EndHold = make([]int64, len(d))
-		for index, duration := range d {
-			p.EndHold[index] = duration.Milliseconds()
-		}
-	}
-}
-
-// WithSwipeOnlyHover enables hover-only mode without press/release actions.
-func WithSwipeOnlyHover(only bool) SwipeOption {
-	return func(p *NodeSwipeParam) {
-		p.OnlyHover = only
-	}
-}
-
-// WithSwipeContact sets the touch point identifier.
-func WithSwipeContact(contact int) SwipeOption {
-	return func(p *NodeSwipeParam) {
-		p.Contact = contact
-	}
-}
-
-// ActSwipe creates a Swipe action with the given options.
-func ActSwipe(opts ...SwipeOption) *NodeAction {
-	param := &NodeSwipeParam{}
-	for _, opt := range opts {
-		opt(param)
-	}
-	return &NodeAction{
-		Type:  NodeActionTypeSwipe,
-		Param: param,
-	}
+	return &NodeAction{Type: NodeActionTypeSwipe, Param: &param}
 }
 
 // NodeMultiSwipeItem defines a single swipe within a multi-swipe action.
 type NodeMultiSwipeItem struct {
-	// Starting specifies when this swipe starts within the action in milliseconds. Default: 0.
-	Starting int64 `json:"starting,omitempty"`
+	// Starting specifies when this swipe starts within the action. Default: 0.
+	// JSON: serialized as integer milliseconds.
+	Starting time.Duration `json:"-"`
 	// Begin specifies the swipe start position.
 	Begin Target `json:"begin,omitzero"`
 	// BeginOffset specifies additional offset applied to begin position.
@@ -337,14 +265,49 @@ type NodeMultiSwipeItem struct {
 	End []Target `json:"end,omitzero"`
 	// EndOffset specifies additional offset applied to end position.
 	EndOffset []Rect `json:"end_offset,omitempty"`
-	// Duration specifies the swipe duration in milliseconds. Default: 200.
-	Duration []int64 `json:"duration,omitempty"`
-	// EndHold specifies extra wait time at end position before releasing in milliseconds. Default: 0.
-	EndHold []int64 `json:"end_hold,omitempty"`
+	// Duration specifies the swipe duration. Default: 200ms.
+	// JSON: serialized as array of integer milliseconds.
+	Duration []time.Duration `json:"-"`
+	// EndHold specifies extra wait time at end position before releasing. Default: 0.
+	// JSON: serialized as array of integer milliseconds.
+	EndHold []time.Duration `json:"-"`
 	// OnlyHover enables hover-only mode without press/release actions. Default: false.
 	OnlyHover bool `json:"only_hover,omitempty"`
 	// Contact specifies the touch point identifier. Adb: finger index. Win32: mouse button. Default uses array index if 0.
 	Contact int `json:"contact,omitempty"`
+}
+
+func (p NodeMultiSwipeItem) MarshalJSON() ([]byte, error) {
+	type NoMethod NodeMultiSwipeItem
+	return json.Marshal(struct {
+		NoMethod
+		Starting int64   `json:"starting,omitempty"`
+		Duration []int64 `json:"duration,omitempty"`
+		EndHold  []int64 `json:"end_hold,omitempty"`
+	}{
+		NoMethod: NoMethod(p),
+		Starting: p.Starting.Milliseconds(),
+		Duration: durationsToMs(p.Duration),
+		EndHold:  durationsToMs(p.EndHold),
+	})
+}
+
+func (p *NodeMultiSwipeItem) UnmarshalJSON(data []byte) error {
+	type NoMethod NodeMultiSwipeItem
+	raw := struct {
+		NoMethod
+		Starting int64   `json:"starting,omitempty"`
+		Duration []int64 `json:"duration,omitempty"`
+		EndHold  []int64 `json:"end_hold,omitempty"`
+	}{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*p = NodeMultiSwipeItem(raw.NoMethod)
+	p.Starting = time.Duration(raw.Starting) * time.Millisecond
+	p.Duration = msToDurations(raw.Duration)
+	p.EndHold = msToDurations(raw.EndHold)
+	return nil
 }
 
 // NodeMultiSwipeParam defines parameters for multi-finger swipe action.
@@ -354,87 +317,6 @@ type NodeMultiSwipeParam struct {
 }
 
 func (n NodeMultiSwipeParam) isActionParam() {}
-
-// MultiSwipeItemOption is a functional option for configuring NodeMultiSwipeItem.
-type MultiSwipeItemOption func(*NodeMultiSwipeItem)
-
-// WithMultiSwipeItemStarting sets when this swipe starts within the action.
-func WithMultiSwipeItemStarting(starting time.Duration) MultiSwipeItemOption {
-	return func(i *NodeMultiSwipeItem) {
-		i.Starting = starting.Milliseconds()
-	}
-}
-
-// WithMultiSwipeItemBegin sets the swipe start position.
-func WithMultiSwipeItemBegin(begin Target) MultiSwipeItemOption {
-	return func(i *NodeMultiSwipeItem) {
-		i.Begin = begin
-	}
-}
-
-// WithMultiSwipeItemBeginOffset sets additional offset applied to begin position.
-func WithMultiSwipeItemBeginOffset(offset Rect) MultiSwipeItemOption {
-	return func(i *NodeMultiSwipeItem) {
-		i.BeginOffset = offset
-	}
-}
-
-// WithMultiSwipeItemEnd sets the swipe end position.
-func WithMultiSwipeItemEnd(end []Target) MultiSwipeItemOption {
-	return func(i *NodeMultiSwipeItem) {
-		i.End = slices.Clone(end)
-	}
-}
-
-// WithMultiSwipeItemEndOffset sets additional offset applied to end position.
-func WithMultiSwipeItemEndOffset(offset []Rect) MultiSwipeItemOption {
-	return func(i *NodeMultiSwipeItem) {
-		i.EndOffset = slices.Clone(offset)
-	}
-}
-
-// WithMultiSwipeItemDuration sets the swipe duration.
-func WithMultiSwipeItemDuration(d []time.Duration) MultiSwipeItemOption {
-	return func(i *NodeMultiSwipeItem) {
-		i.Duration = make([]int64, len(d))
-		for index, duration := range d {
-			i.Duration[index] = duration.Milliseconds()
-		}
-	}
-}
-
-// WithMultiSwipeItemEndHold sets extra wait time at end position before releasing.
-func WithMultiSwipeItemEndHold(d []time.Duration) MultiSwipeItemOption {
-	return func(i *NodeMultiSwipeItem) {
-		i.EndHold = make([]int64, len(d))
-		for index, duration := range d {
-			i.EndHold[index] = duration.Milliseconds()
-		}
-	}
-}
-
-// WithMultiSwipeItemOnlyHover enables hover-only mode without press/release actions.
-func WithMultiSwipeItemOnlyHover(only bool) MultiSwipeItemOption {
-	return func(i *NodeMultiSwipeItem) {
-		i.OnlyHover = only
-	}
-}
-
-// WithMultiSwipeItemContact sets the touch point identifier.
-func WithMultiSwipeItemContact(contact int) MultiSwipeItemOption {
-	return func(i *NodeMultiSwipeItem) {
-		i.Contact = contact
-	}
-}
-
-// NewMultiSwipeItem creates a new multi-swipe item with the given options.
-func NewMultiSwipeItem(opts ...MultiSwipeItemOption) NodeMultiSwipeItem {
-	item := NodeMultiSwipeItem{}
-	for _, opt := range opts {
-		opt(&item)
-	}
-	return item
-}
 
 // ActMultiSwipe creates a MultiSwipe action for multi-finger swipe gestures.
 func ActMultiSwipe(swipes ...NodeMultiSwipeItem) *NodeAction {
@@ -461,44 +343,13 @@ type NodeTouchDownParam struct {
 
 func (n NodeTouchDownParam) isActionParam() {}
 
-// TouchDownOption is a functional option for configuring NodeTouchDownParam.
-type TouchDownOption func(*NodeTouchDownParam)
-
-// WithTouchDownTarget sets the touch target position.
-func WithTouchDownTarget(target Target) TouchDownOption {
-	return func(p *NodeTouchDownParam) {
-		p.Target = target
+// ActTouchDown creates a TouchDown action. All fields are optional; pass no argument for defaults.
+func ActTouchDown(p ...NodeTouchDownParam) *NodeAction {
+	var param NodeTouchDownParam
+	if len(p) > 0 {
+		param = p[0]
 	}
-}
-
-// WithTouchDownTargetOffset sets additional offset applied to target.
-func WithTouchDownTargetOffset(offset Rect) TouchDownOption {
-	return func(p *NodeTouchDownParam) {
-		p.TargetOffset = offset
-	}
-}
-
-// WithTouchDownPressure sets the touch pressure.
-func WithTouchDownPressure(pressure int) TouchDownOption {
-	return func(p *NodeTouchDownParam) {
-		p.Pressure = pressure
-	}
-}
-
-// WithTouchDownContact sets the touch point identifier.
-func WithTouchDownContact(contact int) TouchDownOption {
-	return func(p *NodeTouchDownParam) {
-		p.Contact = contact
-	}
-}
-
-// ActTouchDown creates a TouchDown action with the given options.
-func ActTouchDown(opts ...TouchDownOption) *NodeAction {
-	param := &NodeTouchDownParam{}
-	for _, opt := range opts {
-		opt(param)
-	}
-	return &NodeAction{Type: NodeActionTypeTouchDown, Param: param}
+	return &NodeAction{Type: NodeActionTypeTouchDown, Param: &param}
 }
 
 // NodeTouchMoveParam defines parameters for touch move action.
@@ -515,44 +366,13 @@ type NodeTouchMoveParam struct {
 
 func (n NodeTouchMoveParam) isActionParam() {}
 
-// TouchMoveOption is a functional option for configuring NodeTouchMoveParam.
-type TouchMoveOption func(*NodeTouchMoveParam)
-
-// WithTouchMoveTarget sets the touch target position.
-func WithTouchMoveTarget(target Target) TouchMoveOption {
-	return func(p *NodeTouchMoveParam) {
-		p.Target = target
+// ActTouchMove creates a TouchMove action. All fields are optional; pass no argument for defaults.
+func ActTouchMove(p ...NodeTouchMoveParam) *NodeAction {
+	var param NodeTouchMoveParam
+	if len(p) > 0 {
+		param = p[0]
 	}
-}
-
-// WithTouchMoveTargetOffset sets additional offset applied to target.
-func WithTouchMoveTargetOffset(offset Rect) TouchMoveOption {
-	return func(p *NodeTouchMoveParam) {
-		p.TargetOffset = offset
-	}
-}
-
-// WithTouchMovePressure sets the touch pressure.
-func WithTouchMovePressure(pressure int) TouchMoveOption {
-	return func(p *NodeTouchMoveParam) {
-		p.Pressure = pressure
-	}
-}
-
-// WithTouchMoveContact sets the touch point identifier.
-func WithTouchMoveContact(contact int) TouchMoveOption {
-	return func(p *NodeTouchMoveParam) {
-		p.Contact = contact
-	}
-}
-
-// ActTouchMove creates a TouchMove action with the given options.
-func ActTouchMove(opts ...TouchMoveOption) *NodeAction {
-	param := &NodeTouchMoveParam{}
-	for _, opt := range opts {
-		opt(param)
-	}
-	return &NodeAction{Type: NodeActionTypeTouchMove, Param: param}
+	return &NodeAction{Type: NodeActionTypeTouchMove, Param: &param}
 }
 
 // NodeTouchUpParam defines parameters for touch up action.
@@ -563,25 +383,13 @@ type NodeTouchUpParam struct {
 
 func (n NodeTouchUpParam) isActionParam() {}
 
-// TouchUpOption is a functional option for configuring NodeTouchUpParam.
-type TouchUpOption func(*NodeTouchUpParam)
-
-// WithTouchUpContact sets the touch point identifier.
-func WithTouchUpContact(contact int) TouchUpOption {
-	return func(p *NodeTouchUpParam) {
-		p.Contact = contact
+// ActTouchUp creates a TouchUp action. All fields are optional; pass no argument for defaults.
+func ActTouchUp(p ...NodeTouchUpParam) *NodeAction {
+	var param NodeTouchUpParam
+	if len(p) > 0 {
+		param = p[0]
 	}
-}
-
-// ActTouchUp creates a TouchUp action with the given options.
-func ActTouchUp(opts ...TouchUpOption) *NodeAction {
-	param := &NodeTouchUpParam{}
-
-	for _, opt := range opts {
-		opt(param)
-	}
-
-	return &NodeAction{Type: NodeActionTypeTouchUp, Param: param}
+	return &NodeAction{Type: NodeActionTypeTouchUp, Param: &param}
 }
 
 // NodeClickKeyParam defines parameters for key click action.
@@ -604,29 +412,38 @@ func ActClickKey(keys []int) *NodeAction {
 type NodeLongPressKeyParam struct {
 	// Key specifies the virtual key code to press. Required.
 	Key []int `json:"key,omitempty"`
-	// Duration specifies the long press duration in milliseconds. Default: 1000.
-	Duration int64 `json:"duration,omitempty"`
+	// Duration specifies the long press duration. Default: 1000ms.
+	// JSON: serialized as integer milliseconds.
+	Duration time.Duration `json:"-"`
 }
 
 func (n NodeLongPressKeyParam) isActionParam() {}
 
-// LongPressKeyOption is a functional option for configuring NodeLongPressKeyParam.
-type LongPressKeyOption func(*NodeLongPressKeyParam)
-
-// WithLongPressKeyDuration sets the long press duration.
-func WithLongPressKeyDuration(d time.Duration) LongPressKeyOption {
-	return func(p *NodeLongPressKeyParam) { p.Duration = d.Milliseconds() }
+func (p NodeLongPressKeyParam) MarshalJSON() ([]byte, error) {
+	type NoMethod NodeLongPressKeyParam
+	return json.Marshal(struct {
+		NoMethod
+		Duration int64 `json:"duration,omitempty"`
+	}{NoMethod: NoMethod(p), Duration: p.Duration.Milliseconds()})
 }
 
-// ActLongPressKey creates a LongPressKey action with the given virtual key code.
-func ActLongPressKey(key []int, opts ...LongPressKeyOption) *NodeAction {
-	param := &NodeLongPressKeyParam{
-		Key: slices.Clone(key),
+func (p *NodeLongPressKeyParam) UnmarshalJSON(data []byte) error {
+	type NoMethod NodeLongPressKeyParam
+	raw := struct {
+		NoMethod
+		Duration int64 `json:"duration,omitempty"`
+	}{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
 	}
-	for _, opt := range opts {
-		opt(param)
-	}
-	return &NodeAction{Type: NodeActionTypeLongPressKey, Param: param}
+	*p = NodeLongPressKeyParam(raw.NoMethod)
+	p.Duration = time.Duration(raw.Duration) * time.Millisecond
+	return nil
+}
+
+// ActLongPressKey creates a LongPressKey action with the given parameters.
+func ActLongPressKey(p NodeLongPressKeyParam) *NodeAction {
+	return &NodeAction{Type: NodeActionTypeLongPressKey, Param: &p}
 }
 
 // NodeKeyDownParam defines parameters for key down action.
@@ -723,38 +540,27 @@ func ActStopTask() *NodeAction {
 	}
 }
 
+// NodeScrollParam defines parameters for scroll action.
 type NodeScrollParam struct {
-	Target       Target `json:"target,omitzero"`
-	TargetOffset Rect   `json:"target_offset,omitempty"`
-	Dx           int    `json:"dx,omitempty"`
-	Dy           int    `json:"dy,omitempty"`
+	// Target specifies the scroll target position.
+	Target Target `json:"target,omitzero"`
+	// TargetOffset specifies additional offset applied to target.
+	TargetOffset Rect `json:"target_offset,omitempty"`
+	// Dx specifies the horizontal scroll amount.
+	Dx int `json:"dx,omitempty"`
+	// Dy specifies the vertical scroll amount.
+	Dy int `json:"dy,omitempty"`
 }
 
 func (n NodeScrollParam) isActionParam() {}
 
-type ScrollOption func(*NodeScrollParam)
-
-func WithScrollDx(dx int) ScrollOption {
-	return func(p *NodeScrollParam) {
-		p.Dx = dx
+// ActScroll creates a Scroll action. All fields are optional; pass no argument for defaults.
+func ActScroll(p ...NodeScrollParam) *NodeAction {
+	var param NodeScrollParam
+	if len(p) > 0 {
+		param = p[0]
 	}
-}
-
-func WithScrollDy(dy int) ScrollOption {
-	return func(p *NodeScrollParam) {
-		p.Dy = dy
-	}
-}
-
-func ActScroll(opts ...ScrollOption) *NodeAction {
-	param := &NodeScrollParam{}
-	for _, opt := range opts {
-		opt(param)
-	}
-	return &NodeAction{
-		Type:  NodeActionTypeScroll,
-		Param: param,
-	}
+	return &NodeAction{Type: NodeActionTypeScroll, Param: &param}
 }
 
 // NodeCommandParam defines parameters for command execution action.
@@ -772,28 +578,9 @@ type NodeCommandParam struct {
 
 func (n NodeCommandParam) isActionParam() {}
 
-// CommandOption is a functional option for configuring NodeCommandParam.
-type CommandOption func(*NodeCommandParam)
-
-// WithCommandArgs sets the command arguments.
-func WithCommandArgs(args []string) CommandOption {
-	return func(p *NodeCommandParam) {
-		p.Args = slices.Clone(args)
-	}
-}
-
-// WithCommandDetach enables detached mode to run without waiting for completion.
-func WithCommandDetach(detach bool) CommandOption {
-	return func(p *NodeCommandParam) { p.Detach = detach }
-}
-
-// ActCommand creates a Command action with the given executable path.
-func ActCommand(exec string, opts ...CommandOption) *NodeAction {
-	param := &NodeCommandParam{Exec: exec}
-	for _, opt := range opts {
-		opt(param)
-	}
-	return &NodeAction{Type: NodeActionTypeCommand, Param: param}
+// ActCommand creates a Command action with the given parameters.
+func ActCommand(p NodeCommandParam) *NodeAction {
+	return &NodeAction{Type: NodeActionTypeCommand, Param: &p}
 }
 
 // NodeShellParam defines parameters for shell command execution action.
@@ -824,40 +611,10 @@ type NodeCustomActionParam struct {
 
 func (n NodeCustomActionParam) isActionParam() {}
 
-// CustomActionOption is a functional option for configuring NodeCustomActionParam.
-type CustomActionOption func(*NodeCustomActionParam)
-
-// WithCustomActionTarget sets the action target position.
-func WithCustomActionTarget(target Target) CustomActionOption {
-	return func(param *NodeCustomActionParam) {
-		param.Target = target
-	}
-}
-
-// WithCustomActionTargetOffset sets additional offset applied to target.
-func WithCustomActionTargetOffset(offset Rect) CustomActionOption {
-	return func(param *NodeCustomActionParam) {
-		param.TargetOffset = offset
-	}
-}
-
-// WithCustomActionParam sets custom parameters passed to the action callback.
-func WithCustomActionParam(customParam any) CustomActionOption {
-	return func(param *NodeCustomActionParam) {
-		param.CustomActionParam = customParam
-	}
-}
-
-// ActCustom creates a Custom action with the given action name.
-func ActCustom(name string, opts ...CustomActionOption) *NodeAction {
-	param := &NodeCustomActionParam{
-		CustomAction: name,
-	}
-	for _, opt := range opts {
-		opt(param)
-	}
+// ActCustom creates a Custom action with the given parameters.
+func ActCustom(p NodeCustomActionParam) *NodeAction {
 	return &NodeAction{
 		Type:  NodeActionTypeCustom,
-		Param: param,
+		Param: &p,
 	}
 }

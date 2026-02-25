@@ -54,9 +54,8 @@ func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {
 // Example 1:
 //
 //	pipeline := NewPipeline()
-//	node := NewNode("Task",
-//		WithAction(ActClick(WithClickTarget(NewTargetRect(Rect{100, 200, 100, 100})))),
-//	)
+//	node := NewNode("Task").
+//		SetAction(ActClick(NodeClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}))
 //	pipeline.AddNode(node)
 //	ctx.RunTask(node.Name, pipeline)
 //
@@ -103,9 +102,8 @@ func (ctx *Context) runRecognition(
 // Example 1:
 //
 //	pipeline := NewPipeline()
-//	node := NewNode("Task",
-//		WithRecognition(RecOCR(WithRecognitionExpected("Hello"))),
-//	)
+//	node := NewNode("Task").
+//		SetRecognition(RecOCR(NodeOCRParam{Expected: []string{"Hello"}}))
 //	pipeline.AddNode(node)
 //	ctx.RunRecognition(node.Name, img, pipeline)
 //
@@ -165,9 +163,8 @@ func (ctx *Context) runAction(
 // Example 1:
 //
 //	pipeline := NewPipeline()
-//	node := NewNode("Task",
-//		WithAction(ActClick(WithClickTarget(NewTargetRect(Rect{100, 200, 100, 100})))),
-//	)
+//	node := NewNode("Task").
+//		SetAction(ActClick(NodeClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}))
 //	pipeline.AddNode(node)
 //	ctx.RunAction(node.Name, box, recognitionDetail, pipeline)
 //
@@ -293,7 +290,7 @@ func (ctx *Context) overridePipeline(override string) error {
 // Example 1:
 //
 //	pipeline := NewPipeline()
-//	node := NewNode("Task", WithAction(ActDoNothing()))
+//	node := NewNode("Task").SetAction(ActDoNothing())
 //	pipeline.AddNode(node)
 //	ctx.OverridePipeline(pipeline)
 //

@@ -71,7 +71,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			param: &NodeTemplateMatchParam{
 				Template:  []string{"Wilderness/EnterWilderness.png"},
 				Threshold: []float64{0.01},
-				OrderBy:   NodeTemplateMatchOrderByScore,
+				OrderBy:   OrderByScore,
 			},
 		},
 		{
@@ -101,7 +101,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			param: &NodeOCRParam{
 				Expected:  []string{".*"},
 				Threshold: 0.0,
-				OrderBy:   NodeOCROrderByLength,
+				OrderBy:   OrderByLength,
 			},
 		},
 		{
@@ -109,17 +109,17 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			typ:  NodeRecognitionTypeAnd,
 			param: &NodeAndRecognitionParam{
 				AllOf: []SubRecognitionItem{
-					Inline(RecTemplateMatch(
-						[]string{"Wilderness/EnterWilderness.png"},
-						WithTemplateMatchThreshold([]float64{0.01}),
-						WithTemplateMatchOrderBy(NodeTemplateMatchOrderByScore),
-					), "template"),
-					Inline(RecColorMatch(
-						[][]int{{0, 0, 0}},
-						[][]int{{255, 255, 255}},
-						WithColorMatchCount(1),
-						WithColorMatchConnected(true),
-					), "color"),
+				Inline(RecTemplateMatch(NodeTemplateMatchParam{
+					Template:  []string{"Wilderness/EnterWilderness.png"},
+					Threshold: []float64{0.01},
+					OrderBy:   OrderByScore,
+				}), "template"),
+				Inline(RecColorMatch(NodeColorMatchParam{
+					Lower:     [][]int{{0, 0, 0}},
+					Upper:     [][]int{{255, 255, 255}},
+					Count:     1,
+					Connected: true,
+				}), "color"),
 				},
 				BoxIndex: 0,
 			},
@@ -129,17 +129,17 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			typ:  NodeRecognitionTypeOr,
 			param: &NodeOrRecognitionParam{
 				AnyOf: []SubRecognitionItem{
-					Inline(RecTemplateMatch(
-						[]string{"Wilderness/EnterWilderness.png"},
-						WithTemplateMatchThreshold([]float64{0.01}),
-						WithTemplateMatchOrderBy(NodeTemplateMatchOrderByScore),
-					)),
-					Inline(RecColorMatch(
-						[][]int{{0, 0, 0}},
-						[][]int{{255, 255, 255}},
-						WithColorMatchCount(1),
-						WithColorMatchConnected(true),
-					)),
+				Inline(RecTemplateMatch(NodeTemplateMatchParam{
+					Template:  []string{"Wilderness/EnterWilderness.png"},
+					Threshold: []float64{0.01},
+					OrderBy:   OrderByScore,
+				})),
+				Inline(RecColorMatch(NodeColorMatchParam{
+					Lower:     [][]int{{0, 0, 0}},
+					Upper:     [][]int{{255, 255, 255}},
+					Count:     1,
+					Connected: true,
+				})),
 				},
 			},
 		},
@@ -150,7 +150,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 				Labels:   []string{"cat", "dog", "mouse"},
 				Model:    "classify/classifier.onnx",
 				Expected: []int{0, 2},
-				OrderBy:  NodeNeuralNetworkClassifyOrderByScore,
+				OrderBy:  OrderByScore,
 				Index:    0,
 			},
 		},
@@ -160,7 +160,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			param: &NodeNeuralNetworkDetectParam{
 				Model:    "ocr/det.onnx",
 				Expected: []int{0},
-				OrderBy:  NodeNeuralNetworkDetectOrderByArea,
+				OrderBy:  OrderByArea,
 				Index:    0,
 			},
 		},
@@ -389,9 +389,8 @@ func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testNode := NewNode("TestRecognitionDetail_ResultMatchesRaw",
-		WithAction(ActCustom("TestRecognitionDetail_ResultMatchesRawAct")),
-	)
+	testNode := NewNode("TestRecognitionDetail_ResultMatchesRaw").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestRecognitionDetail_ResultMatchesRawAct"}))
 	pipeline.AddNode(testNode)
 
 	got := tasker.PostTask(testNode.Name, pipeline).

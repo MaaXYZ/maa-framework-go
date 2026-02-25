@@ -42,9 +42,8 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testResource_RegisterCustomRecognitionNode := NewNode("TestResource_RegisterCustomRecognition",
-		WithRecognition(RecCustom("TestRec")),
-	)
+	testResource_RegisterCustomRecognitionNode := NewNode("TestResource_RegisterCustomRecognition").
+		SetRecognition(RecCustom(NodeCustomRecognitionParam{CustomRecognition: "TestRec"}))
 	pipeline.AddNode(testResource_RegisterCustomRecognitionNode)
 
 	got2 := tasker.PostTask(testResource_RegisterCustomRecognitionNode.Name, pipeline).
@@ -69,10 +68,9 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testResource_UnregisterCustomRecognitionNode := NewNode("TestResource_UnregisterCustomRecognition",
-		WithRecognition(RecCustom("TestRec")),
-		WithTimeout(0*time.Second),
-	)
+	testResource_UnregisterCustomRecognitionNode := NewNode("TestResource_UnregisterCustomRecognition").
+		SetRecognition(RecCustom(NodeCustomRecognitionParam{CustomRecognition: "TestRec"})).
+		SetTimeout(0 * time.Second)
 	pipeline.AddNode(testResource_UnregisterCustomRecognitionNode)
 
 	got2 := tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline).
@@ -106,17 +104,15 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline1 := NewPipeline()
-	testResource_ClearCustomRecognitionNode1 := NewNode("TestResource_ClearCustomRecognition",
-		WithRecognition(RecCustom("TestRec1")),
-		WithTimeout(0*time.Second),
-	)
+	testResource_ClearCustomRecognitionNode1 := NewNode("TestResource_ClearCustomRecognition").
+		SetRecognition(RecCustom(NodeCustomRecognitionParam{CustomRecognition: "TestRec1"})).
+		SetTimeout(0 * time.Second)
 	pipeline1.AddNode(testResource_ClearCustomRecognitionNode1)
 
 	pipeline2 := NewPipeline()
-	testResource_ClearCustomRecognitionNode2 := NewNode("TestResource_ClearCustomRecognition",
-		WithRecognition(RecCustom("TestRec2")),
-		WithTimeout(0*time.Second),
-	)
+	testResource_ClearCustomRecognitionNode2 := NewNode("TestResource_ClearCustomRecognition").
+		SetRecognition(RecCustom(NodeCustomRecognitionParam{CustomRecognition: "TestRec2"})).
+		SetTimeout(0 * time.Second)
 	pipeline2.AddNode(testResource_ClearCustomRecognitionNode2)
 	got3 := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1).
 		Wait().Success()
@@ -159,9 +155,8 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testResource_RegisterCustomActionNode := NewNode("TestResource_RegisterCustomAction",
-		WithAction(ActCustom("TestAct")),
-	)
+	testResource_RegisterCustomActionNode := NewNode("TestResource_RegisterCustomAction").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestAct"}))
 	pipeline.AddNode(testResource_RegisterCustomActionNode)
 
 	got := tasker.PostTask(testResource_RegisterCustomActionNode.Name, pipeline).
@@ -186,9 +181,8 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testResource_UnregisterCustomActionNode := NewNode("TestResource_UnregisterCustomAction",
-		WithAction(ActCustom("TestAct")),
-	)
+	testResource_UnregisterCustomActionNode := NewNode("TestResource_UnregisterCustomAction").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestAct"}))
 	pipeline.AddNode(testResource_UnregisterCustomActionNode)
 
 	got1 := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline).
@@ -222,15 +216,13 @@ func TestResource_ClearCustomAction(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline1 := NewPipeline()
-	testResource_ClearCustomActionNode1 := NewNode("TestResource_ClearCustomAction",
-		WithAction(ActCustom("TestAct1")),
-	)
+	testResource_ClearCustomActionNode1 := NewNode("TestResource_ClearCustomAction").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestAct1"}))
 	pipeline1.AddNode(testResource_ClearCustomActionNode1)
 
 	pipeline2 := NewPipeline()
-	testResource_ClearCustomActionNode2 := NewNode("TestResource_ClearCustomAction",
-		WithAction(ActCustom("TestAct2")),
-	)
+	testResource_ClearCustomActionNode2 := NewNode("TestResource_ClearCustomAction").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestAct2"}))
 	pipeline2.AddNode(testResource_ClearCustomActionNode2)
 
 	got1 := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1).

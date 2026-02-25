@@ -40,13 +40,13 @@ func TestSubRecognitionItem_UnmarshalJSON_Invalid(t *testing.T) {
 
 func TestSubRecognitionItem_MarshalJSON(t *testing.T) {
 	// Marshal node name ref
-	ref := SubRecognitionRef("OtherNode")
+	ref := Ref("OtherNode")
 	b, err := json.Marshal(ref)
 	require.NoError(t, err)
 	require.Equal(t, `"OtherNode"`, string(b))
 
 	// Marshal inline
-	inline := SubRecognitionInline(AndItem("sub", RecDirectHit()))
+	inline := Inline(RecDirectHit(), "sub")
 	b, err = json.Marshal(inline)
 	require.NoError(t, err)
 	var back SubRecognitionItem
@@ -126,7 +126,7 @@ func TestNodeOrRecognitionParam_Unmarshal_GetNodeDataStyle(t *testing.T) {
 
 func TestRecAnd_RecOr_MarshalRoundtrip(t *testing.T) {
 	// Build And with mix of ref and inline
-	andRec := RecAnd(RecAndItems(Ref("NodeRef"), Inline(RecDirectHit(), "sub1")), WithAndRecognitionBoxIndex(2))
+	andRec := RecAnd(Ref("NodeRef"), Inline(RecDirectHit(), "sub1")).WithBoxIndex(2)
 	b, err := json.Marshal(andRec)
 	require.NoError(t, err)
 	var reco NodeRecognition
@@ -140,7 +140,7 @@ func TestRecAnd_RecOr_MarshalRoundtrip(t *testing.T) {
 	require.Equal(t, "sub1", andParam.AllOf[1].Inline.SubName)
 
 	// Build Or with variadic Inline (no empty sub_name)
-	orRec := RecOr(Inline(RecTemplateMatch([]string{"t.png"})))
+	orRec := RecOr(Inline(RecTemplateMatch(NodeTemplateMatchParam{Template: []string{"t.png"}})))
 	b, err = json.Marshal(orRec)
 	require.NoError(t, err)
 	err = json.Unmarshal(b, &reco)
@@ -276,7 +276,7 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 	templateParam, ok := templateMatchItem.Param.(*NodeTemplateMatchParam)
 	require.True(t, ok, "first sub-item param should be of type *NodeTemplateMatchParam")
 	require.NotEmpty(t, templateParam.Template, "template path should not be empty")
-	require.Equal(t, NodeTemplateMatchOrderByVertical, templateParam.OrderBy, "order_by should be Vertical")
+	require.Equal(t, OrderByVertical, templateParam.OrderBy, "order_by should be Vertical")
 
 	// Verify second sub-recognition item (ColorMatch)
 	colorMatchItem := andParam.AllOf[1].Inline
@@ -305,5 +305,5 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 	affordableParam, ok := affordableItem.Param.(*NodeColorMatchParam)
 	require.True(t, ok, "fourth sub-item param should be of type *NodeColorMatchParam")
 	require.Equal(t, 20, affordableParam.Count, "pixel count threshold should be 20")
-	require.Equal(t, NodeColorMatchOrderByVertical, affordableParam.OrderBy, "order_by should be Vertical")
+	require.Equal(t, OrderByVertical, affordableParam.OrderBy, "order_by should be Vertical")
 }

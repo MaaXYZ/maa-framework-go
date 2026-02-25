@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"encoding/json"
 	"maps"
 	"slices"
 	"time"
@@ -51,151 +52,11 @@ type Node struct {
 	Attach map[string]any `json:"attach,omitempty"`
 }
 
-// NodeOption is a functional option for configuring a Node.
-type NodeOption func(*Node)
-
-// WithRecognition sets the recognition for the node.
-func WithRecognition(rec *NodeRecognition) NodeOption {
-	return func(n *Node) {
-		n.Recognition = rec
-	}
-}
-
-// WithAction sets the action for the node.
-func WithAction(act *NodeAction) NodeOption {
-	return func(n *Node) {
-		n.Action = act
-	}
-}
-
-// WithNext sets the next nodes list for the node.
-func WithNext(next []NodeNextItem) NodeOption {
-	return func(n *Node) {
-		n.Next = slices.Clone(next)
-	}
-}
-
-// WithRateLimit sets the rate limit for the node.
-func WithRateLimit(rateLimit time.Duration) NodeOption {
-	return func(n *Node) {
-		d := rateLimit.Milliseconds()
-		n.RateLimit = &d
-	}
-}
-
-// WithTimeout sets the timeout for the node.
-func WithTimeout(timeout time.Duration) NodeOption {
-	return func(n *Node) {
-		d := timeout.Milliseconds()
-		n.Timeout = &d
-	}
-}
-
-// WithOnError sets the error handling nodes for the node.
-func WithOnError(onError []NodeNextItem) NodeOption {
-	return func(n *Node) {
-		n.OnError = slices.Clone(onError)
-	}
-}
-
-// WithInverse sets whether to invert the recognition result.
-func WithInverse(inverse bool) NodeOption {
-	return func(n *Node) {
-		n.Inverse = inverse
-	}
-}
-
-// WithEnabled sets whether the node is enabled.
-func WithEnabled(enabled bool) NodeOption {
-	return func(n *Node) {
-		n.Enabled = &enabled
-	}
-}
-
-// WithMaxHit sets the maximum hit count of the node.
-func WithMaxHit(maxHit uint64) NodeOption {
-	return func(n *Node) {
-		n.MaxHit = &maxHit
-	}
-}
-
-// WithPreDelay sets the delay before action execution.
-func WithPreDelay(preDelay time.Duration) NodeOption {
-	return func(n *Node) {
-		d := preDelay.Milliseconds()
-		n.PreDelay = &d
-	}
-}
-
-// WithPostDelay sets the delay after action execution.
-func WithPostDelay(postDelay time.Duration) NodeOption {
-	return func(n *Node) {
-		d := postDelay.Milliseconds()
-		n.PostDelay = &d
-	}
-}
-
-// WithPreWaitFreezes sets the pre-action wait freezes configuration.
-func WithPreWaitFreezes(waitFreezes *NodeWaitFreezes) NodeOption {
-	return func(n *Node) {
-		n.PreWaitFreezes = waitFreezes
-	}
-}
-
-// WithPostWaitFreezes sets the post-action wait freezes configuration.
-func WithPostWaitFreezes(waitFreezes *NodeWaitFreezes) NodeOption {
-	return func(n *Node) {
-		n.PostWaitFreezes = waitFreezes
-	}
-}
-
-// WithRepeat sets the number of times to repeat the node.
-func WithRepeat(repeat uint64) NodeOption {
-	return func(n *Node) {
-		n.Repeat = &repeat
-	}
-}
-
-// WithRepeatDelay sets the delay between repetitions.
-func WithRepeatDelay(repeatDelay time.Duration) NodeOption {
-	return func(n *Node) {
-		d := repeatDelay.Milliseconds()
-		n.RepeatDelay = &d
-	}
-}
-
-// WithRepeatWaitFreezes sets the wait freezes configuration between repetitions.
-func WithRepeatWaitFreezes(waitFreezes *NodeWaitFreezes) NodeOption {
-	return func(n *Node) {
-		n.RepeatWaitFreezes = waitFreezes
-	}
-}
-
-// WithFocus sets the focus data for the node.
-func WithFocus(focus any) NodeOption {
-	return func(n *Node) {
-		n.Focus = focus
-	}
-}
-
-// WithAttach sets the attached custom data for the node.
-func WithAttach(attach map[string]any) NodeOption {
-	return func(n *Node) {
-		n.Attach = attach
-	}
-}
-
-// NewNode creates a new Node with the given name and options.
-func NewNode(name string, opts ...NodeOption) *Node {
-	n := &Node{
+// NewNode creates a new Node with the given name.
+func NewNode(name string) *Node {
+	return &Node{
 		Name: name,
 	}
-
-	for _, opt := range opts {
-		opt(n)
-	}
-
-	return n
 }
 
 // SetAnchor sets the anchor for the node and returns the node for chaining.
@@ -476,8 +337,9 @@ func (n *Node) RemoveOnError(name string) *Node {
 // NodeWaitFreezes defines parameters for waiting until screen stabilizes.
 // The screen is considered stable when there are no significant changes for a continuous period.
 type NodeWaitFreezes struct {
-	// Time specifies the duration in milliseconds that the screen must remain stable. Default: 1.
-	Time int64 `json:"time,omitempty"`
+	// Time specifies the duration that the screen must remain stable. Default: 1ms.
+	// JSON: serialized as integer milliseconds.
+	Time time.Duration `json:"-"`
 	// Target specifies the region to monitor for changes.
 	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
@@ -486,69 +348,43 @@ type NodeWaitFreezes struct {
 	Threshold float64 `json:"threshold,omitempty"`
 	// Method specifies the template matching algorithm (cv::TemplateMatchModes). Default: 5.
 	Method int `json:"method,omitempty"`
-	// RateLimit specifies the minimum interval between checks in milliseconds. Default: 1000.
-	RateLimit int64 `json:"rate_limit,omitempty"`
-	// Timeout specifies the maximum wait time in milliseconds. Default: 20000.
-	Timeout int64 `json:"timeout,omitempty"`
+	// RateLimit specifies the minimum interval between checks. Default: 1000ms.
+	// JSON: serialized as integer milliseconds.
+	RateLimit time.Duration `json:"-"`
+	// Timeout specifies the maximum wait time. Default: 20000ms.
+	// JSON: serialized as integer milliseconds.
+	Timeout time.Duration `json:"-"`
 }
 
-// WaitFreezesOption is a functional option for configuring NodeWaitFreezes.
-type WaitFreezesOption func(*NodeWaitFreezes)
-
-// WithWaitFreezesTime sets the duration that the screen must remain stable.
-func WithWaitFreezesTime(d time.Duration) WaitFreezesOption {
-	return func(w *NodeWaitFreezes) {
-		w.Time = d.Milliseconds()
-	}
+func (w NodeWaitFreezes) MarshalJSON() ([]byte, error) {
+	type NoMethod NodeWaitFreezes
+	return json.Marshal(struct {
+		NoMethod
+		Time      int64 `json:"time,omitempty"`
+		RateLimit int64 `json:"rate_limit,omitempty"`
+		Timeout   int64 `json:"timeout,omitempty"`
+	}{
+		NoMethod:  NoMethod(w),
+		Time:      w.Time.Milliseconds(),
+		RateLimit: w.RateLimit.Milliseconds(),
+		Timeout:   w.Timeout.Milliseconds(),
+	})
 }
 
-// WithWaitFreezesTarget sets the region to monitor for changes.
-func WithWaitFreezesTarget(target Target) WaitFreezesOption {
-	return func(w *NodeWaitFreezes) {
-		w.Target = target
+func (w *NodeWaitFreezes) UnmarshalJSON(data []byte) error {
+	type NoMethod NodeWaitFreezes
+	raw := struct {
+		NoMethod
+		Time      int64 `json:"time,omitempty"`
+		RateLimit int64 `json:"rate_limit,omitempty"`
+		Timeout   int64 `json:"timeout,omitempty"`
+	}{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
 	}
-}
-
-// WithWaitFreezesTargetOffset sets additional offset applied to target.
-func WithWaitFreezesTargetOffset(offset Rect) WaitFreezesOption {
-	return func(w *NodeWaitFreezes) {
-		w.TargetOffset = offset
-	}
-}
-
-// WithWaitFreezesThreshold sets the template matching threshold for detecting changes.
-func WithWaitFreezesThreshold(th float64) WaitFreezesOption {
-	return func(w *NodeWaitFreezes) {
-		w.Threshold = th
-	}
-}
-
-// WithWaitFreezesMethod sets the template matching algorithm.
-func WithWaitFreezesMethod(m int) WaitFreezesOption {
-	return func(w *NodeWaitFreezes) {
-		w.Method = m
-	}
-}
-
-// WithWaitFreezesRateLimit sets the minimum interval between checks.
-func WithWaitFreezesRateLimit(d time.Duration) WaitFreezesOption {
-	return func(w *NodeWaitFreezes) {
-		w.RateLimit = d.Milliseconds()
-	}
-}
-
-// WithWaitFreezesTimeout sets the maximum wait time.
-func WithWaitFreezesTimeout(d time.Duration) WaitFreezesOption {
-	return func(w *NodeWaitFreezes) {
-		w.Timeout = d.Milliseconds()
-	}
-}
-
-// WaitFreezes creates a NodeWaitFreezes configuration with the given options.
-func WaitFreezes(opts ...WaitFreezesOption) *NodeWaitFreezes {
-	w := &NodeWaitFreezes{}
-	for _, opt := range opts {
-		opt(w)
-	}
-	return w
+	*w = NodeWaitFreezes(raw.NoMethod)
+	w.Time = time.Duration(raw.Time) * time.Millisecond
+	w.RateLimit = time.Duration(raw.RateLimit) * time.Millisecond
+	w.Timeout = time.Duration(raw.Timeout) * time.Millisecond
+	return nil
 }

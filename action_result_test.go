@@ -50,7 +50,7 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 			actionType: NodeActionTypeLongPress,
 			param: &NodeLongPressParam{
 				Target:   NewTargetRect(Rect{120, 110, 10, 10}),
-				Duration: (1500 * time.Millisecond).Milliseconds(),
+				Duration: 1500 * time.Millisecond,
 				Contact:  2,
 			},
 			assert: func(t *testing.T, detail *ActionDetail) {
@@ -65,8 +65,8 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 			param: &NodeSwipeParam{
 				Begin:     NewTargetRect(Rect{100, 100, 10, 10}),
 				End:       []Target{NewTargetRect(Rect{200, 200, 10, 10})},
-				Duration:  []int64{300},
-				EndHold:   []int64{50},
+			Duration:  []time.Duration{300 * time.Millisecond},
+			EndHold:   []time.Duration{50 * time.Millisecond},
 				OnlyHover: true,
 				Contact:   1,
 			},
@@ -80,26 +80,26 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 			name:       "multi_swipe",
 			actionType: NodeActionTypeMultiSwipe,
 			param: &NodeMultiSwipeParam{
-				Swipes: []NodeMultiSwipeItem{
-					NewMultiSwipeItem(
-						WithMultiSwipeItemStarting(0),
-						WithMultiSwipeItemBegin(NewTargetRect(Rect{300, 300, 10, 10})),
-						WithMultiSwipeItemEnd([]Target{NewTargetRect(Rect{320, 320, 10, 10})}),
-						WithMultiSwipeItemDuration([]time.Duration{200 * time.Millisecond}),
-						WithMultiSwipeItemEndHold([]time.Duration{20 * time.Millisecond}),
-						WithMultiSwipeItemOnlyHover(true),
-						WithMultiSwipeItemContact(0),
-					),
-					NewMultiSwipeItem(
-						WithMultiSwipeItemStarting(100*time.Millisecond),
-						WithMultiSwipeItemBegin(NewTargetRect(Rect{400, 400, 10, 10})),
-						WithMultiSwipeItemEnd([]Target{NewTargetRect(Rect{420, 420, 10, 10})}),
-						WithMultiSwipeItemDuration([]time.Duration{300 * time.Millisecond}),
-						WithMultiSwipeItemEndHold([]time.Duration{40 * time.Millisecond}),
-						WithMultiSwipeItemOnlyHover(false),
-						WithMultiSwipeItemContact(1),
-					),
+			Swipes: []NodeMultiSwipeItem{
+				{
+				Starting:  0,
+				Begin:     NewTargetRect(Rect{300, 300, 10, 10}),
+				End:       []Target{NewTargetRect(Rect{320, 320, 10, 10})},
+				Duration:  []time.Duration{200 * time.Millisecond},
+				EndHold:   []time.Duration{20 * time.Millisecond},
+					OnlyHover: true,
+					Contact:   0,
 				},
+				{
+				Starting:  100 * time.Millisecond,
+				Begin:     NewTargetRect(Rect{400, 400, 10, 10}),
+				End:       []Target{NewTargetRect(Rect{420, 420, 10, 10})},
+				Duration:  []time.Duration{300 * time.Millisecond},
+				EndHold:   []time.Duration{40 * time.Millisecond},
+					OnlyHover: false,
+					Contact:   1,
+				},
+			},
 			},
 			assert: func(t *testing.T, detail *ActionDetail) {
 				multiSwipe, ok := detail.Result.AsMultiSwipe()
@@ -148,7 +148,7 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 			actionType: NodeActionTypeLongPressKey,
 			param: &NodeLongPressKeyParam{
 				Key:      []int{24},
-				Duration: (800 * time.Millisecond).Milliseconds(),
+				Duration: 800 * time.Millisecond,
 			},
 			assert: func(t *testing.T, detail *ActionDetail) {
 				longPressKey, ok := detail.Result.AsLongPressKey()
@@ -294,9 +294,8 @@ func TestActionDetail_ResultMatchesRaw(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testNode := NewNode("TestActionDetail_ResultMatchesRaw",
-		WithAction(ActCustom("TestActionDetail_ResultMatchesRawAct")),
-	)
+	testNode := NewNode("TestActionDetail_ResultMatchesRaw").
+		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestActionDetail_ResultMatchesRawAct"}))
 	pipeline.AddNode(testNode)
 
 	got := tasker.PostTask(testNode.Name, pipeline).
