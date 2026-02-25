@@ -105,12 +105,10 @@ type OCRResult struct {
 }
 
 type NeuralNetworkClassifyResult struct {
-	Box      Rect      `json:"box"`
-	ClsIndex uint64    `json:"cls_index"`
-	Label    string    `json:"label"`
-	Raw      []float64 `json:"raw"`
-	Probs    []float64 `json:"probs"`
-	Score    float64   `json:"score"`
+	Box      Rect    `json:"box"`
+	ClsIndex uint64  `json:"cls_index"`
+	Label    string  `json:"label"`
+	Score    float64 `json:"score"`
 }
 
 type NeuralNetworkDetectResult struct {
@@ -121,7 +119,7 @@ type NeuralNetworkDetectResult struct {
 }
 
 // RecognitionResults contains all, best, and filtered recognition results.
-// Detail JSON format: {"all": [Result...], "best": Result|null, "filtered": [Result...]}
+// Detail JSON format: {"all": [Result...], "best": Result | null, "filtered": [Result...]}
 // if algorithm is direct hit, Results is nil
 type RecognitionResults struct {
 	All      []*RecognitionResult `json:"all"`
@@ -174,7 +172,7 @@ func parseRecognitionResult(algorithm string, resultJson []byte) *RecognitionRes
 }
 
 // parseRecognitionResults parses detailJson and returns RecognitionResults containing all, best, and filtered results.
-// Detail JSON format: {"all": [Result...], "best": [Result...], "filtered": [Result...]}
+// Detail JSON format: {"all": [Result...], "best": Result | null, "filtered": [Result...]}
 func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults, error) {
 	if algorithm == string(NodeRecognitionTypeDirectHit) {
 		return nil, nil

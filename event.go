@@ -130,7 +130,7 @@ type NodeActionNodeDetail struct {
 type NodeNextListDetail struct {
 	TaskID   uint64         `json:"task_id"`
 	Name     string         `json:"name"`
-	NextList []NodeNextItem `json:"next_list"`
+	List []NodeNextItem `json:"list"`
 	Focus    any            `json:"focus"`
 }
 

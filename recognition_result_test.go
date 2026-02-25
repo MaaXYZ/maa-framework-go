@@ -316,6 +316,7 @@ func requireRecognitionResultsMatchRaw(t *testing.T, results *RecognitionResults
 	if raw.Best == nil {
 		require.Nil(t, results.Best)
 	} else {
+		require.NotNil(t, results.Best, "expected Best to be parsed when raw.Best is present")
 		requireRecognitionResultMatchesRaw(t, results.Best, raw.Best)
 	}
 	for i, item := range raw.Filtered {
