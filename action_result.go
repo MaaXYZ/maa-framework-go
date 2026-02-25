@@ -324,7 +324,7 @@ type TouchActionResult struct {
 
 type ShellActionResult struct {
 	Cmd     string `json:"cmd"`
-	Timeout int    `json:"timeout"`
+	ShellTimeout int `json:"shell_timeout"`
 	Success bool   `json:"success"`
 	Output  string `json:"output"`
 }

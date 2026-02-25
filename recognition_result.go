@@ -105,12 +105,10 @@ type OCRResult struct {
 }
 
 type NeuralNetworkClassifyResult struct {
-	Box      Rect      `json:"box"`
-	ClsIndex uint64    `json:"cls_index"`
-	Label    string    `json:"label"`
-	Raw      []float64 `json:"raw"`
-	Probs    []float64 `json:"probs"`
-	Score    float64   `json:"score"`
+	Box      Rect    `json:"box"`
+	ClsIndex uint64  `json:"cls_index"`
+	Label    string  `json:"label"`
+	Score    float64 `json:"score"`
 }
 
 type NeuralNetworkDetectResult struct {
