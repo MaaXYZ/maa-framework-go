@@ -109,17 +109,17 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			typ:  NodeRecognitionTypeAnd,
 			param: &NodeAndRecognitionParam{
 				AllOf: []SubRecognitionItem{
-				Inline(RecTemplateMatch(NodeTemplateMatchParam{
-					Template:  []string{"Wilderness/EnterWilderness.png"},
-					Threshold: []float64{0.01},
-					OrderBy:   OrderByScore,
-				}), "template"),
-				Inline(RecColorMatch(NodeColorMatchParam{
-					Lower:     [][]int{{0, 0, 0}},
-					Upper:     [][]int{{255, 255, 255}},
-					Count:     1,
-					Connected: true,
-				}), "color"),
+					Inline(RecTemplateMatch(NodeTemplateMatchParam{
+						Template:  []string{"Wilderness/EnterWilderness.png"},
+						Threshold: []float64{0.01},
+						OrderBy:   OrderByScore,
+					}), "template"),
+					Inline(RecColorMatch(NodeColorMatchParam{
+						Lower:     [][]int{{0, 0, 0}},
+						Upper:     [][]int{{255, 255, 255}},
+						Count:     1,
+						Connected: true,
+					}), "color"),
 				},
 				BoxIndex: 0,
 			},
@@ -129,17 +129,17 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			typ:  NodeRecognitionTypeOr,
 			param: &NodeOrRecognitionParam{
 				AnyOf: []SubRecognitionItem{
-				Inline(RecTemplateMatch(NodeTemplateMatchParam{
-					Template:  []string{"Wilderness/EnterWilderness.png"},
-					Threshold: []float64{0.01},
-					OrderBy:   OrderByScore,
-				})),
-				Inline(RecColorMatch(NodeColorMatchParam{
-					Lower:     [][]int{{0, 0, 0}},
-					Upper:     [][]int{{255, 255, 255}},
-					Count:     1,
-					Connected: true,
-				})),
+					Inline(RecTemplateMatch(NodeTemplateMatchParam{
+						Template:  []string{"Wilderness/EnterWilderness.png"},
+						Threshold: []float64{0.01},
+						OrderBy:   OrderByScore,
+					})),
+					Inline(RecColorMatch(NodeColorMatchParam{
+						Lower:     [][]int{{0, 0, 0}},
+						Upper:     [][]int{{255, 255, 255}},
+						Count:     1,
+						Connected: true,
+					})),
 				},
 			},
 		},

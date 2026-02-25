@@ -323,10 +323,10 @@ type TouchActionResult struct {
 }
 
 type ShellActionResult struct {
-	Cmd     string `json:"cmd"`
-	ShellTimeout int `json:"shell_timeout"`
-	Success bool   `json:"success"`
-	Output  string `json:"output"`
+	Cmd          string `json:"cmd"`
+	ShellTimeout int    `json:"shell_timeout"`
+	Success      bool   `json:"success"`
+	Output       string `json:"output"`
 }
 
 func parseActionResult(action, detailJson string) (*ActionResult, error) {

@@ -65,8 +65,8 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 			param: &NodeSwipeParam{
 				Begin:     NewTargetRect(Rect{100, 100, 10, 10}),
 				End:       []Target{NewTargetRect(Rect{200, 200, 10, 10})},
-			Duration:  []time.Duration{300 * time.Millisecond},
-			EndHold:   []time.Duration{50 * time.Millisecond},
+				Duration:  []time.Duration{300 * time.Millisecond},
+				EndHold:   []time.Duration{50 * time.Millisecond},
 				OnlyHover: true,
 				Contact:   1,
 			},
@@ -80,26 +80,26 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 			name:       "multi_swipe",
 			actionType: NodeActionTypeMultiSwipe,
 			param: &NodeMultiSwipeParam{
-			Swipes: []NodeMultiSwipeItem{
-				{
-				Starting:  0,
-				Begin:     NewTargetRect(Rect{300, 300, 10, 10}),
-				End:       []Target{NewTargetRect(Rect{320, 320, 10, 10})},
-				Duration:  []time.Duration{200 * time.Millisecond},
-				EndHold:   []time.Duration{20 * time.Millisecond},
-					OnlyHover: true,
-					Contact:   0,
+				Swipes: []NodeMultiSwipeItem{
+					{
+						Starting:  0,
+						Begin:     NewTargetRect(Rect{300, 300, 10, 10}),
+						End:       []Target{NewTargetRect(Rect{320, 320, 10, 10})},
+						Duration:  []time.Duration{200 * time.Millisecond},
+						EndHold:   []time.Duration{20 * time.Millisecond},
+						OnlyHover: true,
+						Contact:   0,
+					},
+					{
+						Starting:  100 * time.Millisecond,
+						Begin:     NewTargetRect(Rect{400, 400, 10, 10}),
+						End:       []Target{NewTargetRect(Rect{420, 420, 10, 10})},
+						Duration:  []time.Duration{300 * time.Millisecond},
+						EndHold:   []time.Duration{40 * time.Millisecond},
+						OnlyHover: false,
+						Contact:   1,
+					},
 				},
-				{
-				Starting:  100 * time.Millisecond,
-				Begin:     NewTargetRect(Rect{400, 400, 10, 10}),
-				End:       []Target{NewTargetRect(Rect{420, 420, 10, 10})},
-				Duration:  []time.Duration{300 * time.Millisecond},
-				EndHold:   []time.Duration{40 * time.Millisecond},
-					OnlyHover: false,
-					Contact:   1,
-				},
-			},
 			},
 			assert: func(t *testing.T, detail *ActionDetail) {
 				multiSwipe, ok := detail.Result.AsMultiSwipe()

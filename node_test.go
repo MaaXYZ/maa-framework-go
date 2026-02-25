@@ -142,4 +142,3 @@ func TestNode_RemoveOnError(t *testing.T) {
 	node.RemoveOnError("test4")
 	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test3"}}, node.OnError)
 }
-
