@@ -475,6 +475,9 @@ type NodeOCRParam struct {
 	OnlyRec bool `json:"only_rec,omitempty"`
 	// Model specifies the model folder path relative to model/ocr directory.
 	Model string `json:"model,omitempty"`
+	// ColorFilter specifies a ColorMatch node name whose color parameters (method, lower, upper)
+	// are used to binarize the image before OCR. Nodes with this field set will not participate in batch optimization.
+	ColorFilter string `json:"color_filter,omitempty"`
 }
 
 func (n NodeOCRParam) isRecognitionParam() {}
@@ -542,6 +545,14 @@ func WithOCROnlyRec(only bool) OCROption {
 func WithOCRModel(model string) OCROption {
 	return func(param *NodeOCRParam) {
 		param.Model = model
+	}
+}
+
+// WithOCRColorFilter sets a ColorMatch node name whose color parameters are used
+// to binarize the image before OCR recognition.
+func WithOCRColorFilter(colorFilter string) OCROption {
+	return func(param *NodeOCRParam) {
+		param.ColorFilter = colorFilter
 	}
 }
 

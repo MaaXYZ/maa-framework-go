@@ -333,3 +333,4 @@ if best != nil {
 - `Node.SetAnchorTarget`
 - `Node.ClearAnchor`
 - And/Or 识别：`SubRecognitionItem`、`InlineSubRecognition`、`Ref`、`Inline`、`RecAndItems`（与 C++ GetNodeData 的 all_of/any_of 对齐；`RecOr` 支持 variadic）
+- OCR 颜色过滤：`NodeOCRParam.ColorFilter` 字段 & `WithOCRColorFilter` 选项函数，指定 ColorMatch 节点名对图像进行颜色二值化后再送入 OCR 识别（适配 [MaaFramework#1145](https://github.com/MaaXYZ/MaaFramework/pull/1145)）
