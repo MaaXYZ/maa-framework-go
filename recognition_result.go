@@ -121,11 +121,11 @@ type NeuralNetworkDetectResult struct {
 }
 
 // RecognitionResults contains all, best, and filtered recognition results.
-// Detail JSON format: {"all": [Result...], "best": [Result...], "filtered": [Result...]}
+// Detail JSON format: {"all": [Result...], "best": Result|null, "filtered": [Result...]}
 // if algorithm is direct hit, Results is nil
 type RecognitionResults struct {
 	All      []*RecognitionResult `json:"all"`
-	Best     []*RecognitionResult `json:"best"`
+	Best     *RecognitionResult   `json:"best"`
 	Filtered []*RecognitionResult `json:"filtered"`
 }
 
@@ -184,7 +184,6 @@ func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults,
 	if detailJson == "" || detailJson == "{}" || detailJson == "null" {
 		return &RecognitionResults{
 			All:      []*RecognitionResult{},
-			Best:     []*RecognitionResult{},
 			Filtered: []*RecognitionResult{},
 		}, nil
 	}
@@ -201,9 +200,20 @@ func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults,
 
 	return &RecognitionResults{
 		All:      parseRecognitionResultList(algorithm, raw.All),
-		Best:     parseRecognitionResultList(algorithm, raw.Best),
+		Best:     parseRecognitionResultSingle(algorithm, raw.Best),
 		Filtered: parseRecognitionResultList(algorithm, raw.Filtered),
 	}, nil
+}
+
+func parseRecognitionResultSingle(algorithm string, raw json.RawMessage) *RecognitionResult {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return nil
+	}
+	if trimmed[0] != '{' {
+		return nil
+	}
+	return parseRecognitionResult(algorithm, trimmed)
 }
 
 func parseRecognitionResultList(algorithm string, raw json.RawMessage) []*RecognitionResult {

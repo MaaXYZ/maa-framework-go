@@ -308,6 +308,21 @@ node.SetAnchorTarget("X", "TargetNode")
 node.ClearAnchor("X") // 等价于 node.SetAnchorTarget("X", "")
 ```
 
+### RecognitionResults.Best 类型修正
+
+`RecognitionResults.Best` 字段从 `[]*RecognitionResult` 修正为 `*RecognitionResult`，与 C++ 端 `best_result_`（`std::optional<Result>`）对齐。JSON 中 `best` 为单个对象或 `null`，而非数组。
+
+```go
+// 旧 API
+best := results.Best[0] // 按数组索引访问
+
+// 新 API
+best := results.Best // 直接使用，可能为 nil
+if best != nil {
+    // 使用 best
+}
+```
+
 ## Added
 
 - `Resource.GetNode`
