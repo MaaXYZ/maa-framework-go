@@ -251,17 +251,17 @@ var (
 	MaaStringListBufferRemove  func(handle uintptr, index uint64) bool
 	MaaStringListBufferClear   func(handle uintptr) bool
 
-	MaaImageBufferCreate          func() uintptr
-	MaaImageBufferDestroy         func(handle uintptr)
-	MaaImageBufferIsEmpty         func(handle uintptr) bool
-	MaaImageBufferClear           func(handle uintptr) bool
-	MaaImageBufferGetRawData      func(handle uintptr) unsafe.Pointer
-	MaaImageBufferWidth           func(handle uintptr) int32
-	MaaImageBufferHeight          func(handle uintptr) int32
-	MaaImageBufferChannels        func(handle uintptr) int32
-	MaaImageBufferType            func(handle uintptr) int32
-	MaaImageBufferSetRawData      func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
-	MaaImageBufferResize          func(handle uintptr, width, height int32) bool
+	MaaImageBufferCreate     func() uintptr
+	MaaImageBufferDestroy    func(handle uintptr)
+	MaaImageBufferIsEmpty    func(handle uintptr) bool
+	MaaImageBufferClear      func(handle uintptr) bool
+	MaaImageBufferGetRawData func(handle uintptr) unsafe.Pointer
+	MaaImageBufferWidth      func(handle uintptr) int32
+	MaaImageBufferHeight     func(handle uintptr) int32
+	MaaImageBufferChannels   func(handle uintptr) int32
+	MaaImageBufferType       func(handle uintptr) int32
+	MaaImageBufferSetRawData func(handle uintptr, data unsafe.Pointer, width, height, imageType int32) bool
+	MaaImageBufferResize     func(handle uintptr, width, height int32) bool
 	// NOTE: MaaImageBufferGetEncoded, MaaImageBufferGetEncodedSize, and MaaImageBufferSetEncoded are intentionally
 	// NOT implemented in Go binding. Go handles image encoding/decoding natively through the standard library.
 	// Do not add encoded image buffer bindings here.
