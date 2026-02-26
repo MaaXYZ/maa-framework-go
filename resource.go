@@ -400,6 +400,7 @@ func (r *Resource) GetNode(name string) (*Node, error) {
 	if err := json.Unmarshal([]byte(raw), &node); err != nil {
 		return nil, err
 	}
+	node.Name = name
 	return &node, nil
 }
 

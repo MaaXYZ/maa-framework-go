@@ -383,6 +383,7 @@ func (ctx *Context) GetNode(name string) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	node.Name = name
 	return &node, nil
 }
 
