@@ -384,6 +384,9 @@ func (ctx *Context) GetNode(name string) (*Node, error) {
 		return nil, err
 	}
 	node.Name = name
+	if node.Attach == nil {
+		node.Attach = make(map[string]any)
+	}
 	return &node, nil
 }
 
