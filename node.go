@@ -54,7 +54,8 @@ type Node struct {
 // NewNode creates a new Node with the given name.
 func NewNode(name string) *Node {
 	return &Node{
-		Name: name,
+		Name:   name,
+		Attach: make(map[string]any),
 	}
 }
 
@@ -184,8 +185,14 @@ func (n *Node) SetFocus(focus any) *Node {
 }
 
 // SetAttach sets the attached custom data for the node and returns the node for chaining.
+// The map is copied so the node does not share state with the caller.
+// A nil attach is stored as an empty map so that Attach is never nil.
 func (n *Node) SetAttach(attach map[string]any) *Node {
-	n.Attach = attach
+	if attach == nil {
+		n.Attach = make(map[string]any)
+	} else {
+		n.Attach = maps.Clone(attach)
+	}
 	return n
 }
 
