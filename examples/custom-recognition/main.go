@@ -94,7 +94,7 @@ func (r *MyRec) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*maa.Custo
 	clickJob := ctx.GetTasker().GetController().PostClick(10, 20)
 	clickJob.Wait()
 
-	ctx.OverrideNext(arg.CurrentTaskName, []maa.NodeNextItem{
+	ctx.OverrideNext(arg.CurrentTaskName, []maa.NextItem{
 		{Name: "TaskA"},
 		{Name: "TaskB"},
 	})

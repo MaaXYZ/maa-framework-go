@@ -18,13 +18,13 @@ type Node struct {
 	// Action defines what action to perform when recognition succeeds.
 	Action *Action `json:"action,omitempty"`
 	// Next specifies the list of possible next nodes to execute.
-	Next []NodeNextItem `json:"next,omitempty"`
+	Next []NextItem `json:"next,omitempty"`
 	// RateLimit sets the minimum interval between recognition attempts in milliseconds. Default: 1000.
 	RateLimit *int64 `json:"rate_limit,omitempty"`
 	// Timeout sets the maximum time to wait for recognition in milliseconds. Default: 20000.
 	Timeout *int64 `json:"timeout,omitempty"`
 	// OnError specifies nodes to execute when recognition times out or action execution fails.
-	OnError []NodeNextItem `json:"on_error,omitempty"`
+	OnError []NextItem `json:"on_error,omitempty"`
 	// Inverse inverts the recognition result. Default: false.
 	Inverse bool `json:"inverse,omitempty"`
 	// Enabled determines whether this node is active. Default: true.
@@ -90,7 +90,7 @@ func (n *Node) SetAction(act *Action) *Node {
 }
 
 // SetNext sets the next nodes list for the node and returns the node for chaining.
-func (n *Node) SetNext(next []NodeNextItem) *Node {
+func (n *Node) SetNext(next []NextItem) *Node {
 	n.Next = slices.Clone(next)
 	return n
 }
@@ -110,7 +110,7 @@ func (n *Node) SetTimeout(timeout time.Duration) *Node {
 }
 
 // SetOnError sets the error handling nodes for the node and returns the node for chaining.
-func (n *Node) SetOnError(onError []NodeNextItem) *Node {
+func (n *Node) SetOnError(onError []NextItem) *Node {
 	n.OnError = slices.Clone(onError)
 	return n
 }
@@ -196,8 +196,9 @@ func (n *Node) SetAttach(attach map[string]any) *Node {
 	return n
 }
 
-// NodeNextItem represents an item in the next or on_error list.
-type NodeNextItem struct {
+// NextItem is one item in the list of nodes to run next.
+// It is used in Node.Next (on success) and Node.OnError (on failure).
+type NextItem struct {
 	// Name is the name of the target node.
 	Name string `json:"name"`
 	// JumpBack indicates whether to jump back to the parent node after this node's chain completes.
@@ -207,7 +208,7 @@ type NodeNextItem struct {
 }
 
 // FormatName returns the name with attribute prefixes, e.g. [JumpBack]NodeA.
-func (i NodeNextItem) FormatName() string {
+func (i NextItem) FormatName() string {
 	name := i.Name
 	if i.JumpBack {
 		name = "[JumpBack]" + name
@@ -218,13 +219,13 @@ func (i NodeNextItem) FormatName() string {
 	return name
 }
 
-// NodeAttributeOption is a functional option for configuring NodeNextItem attributes.
-type NodeAttributeOption func(*NodeNextItem)
+// NodeAttributeOption is a functional option for configuring NextItem attributes.
+type NodeAttributeOption func(*NextItem)
 
 // WithJumpBack enables the jump-back mechanism. When this node matches, the system returns
 // to the parent node after completing this node's chain, and continues recognizing from the start of next list.
 func WithJumpBack() NodeAttributeOption {
-	return func(i *NodeNextItem) {
+	return func(i *NextItem) {
 		i.JumpBack = true
 	}
 }
@@ -232,7 +233,7 @@ func WithJumpBack() NodeAttributeOption {
 // WithAnchor enables anchor reference. The name field will be treated as an anchor name
 // and resolved to the last node that set this anchor at runtime.
 func WithAnchor() NodeAttributeOption {
-	return func(i *NodeNextItem) {
+	return func(i *NextItem) {
 		i.Anchor = true
 	}
 }
@@ -264,7 +265,7 @@ func (n *Node) AddNext(name string, opts ...NodeAttributeOption) *Node {
 		return n
 	}
 
-	newItem := NodeNextItem{
+	newItem := NextItem{
 		Name: name,
 	}
 	for _, opt := range opts {
@@ -292,7 +293,7 @@ func (n *Node) RemoveNext(name string) *Node {
 		return n
 	}
 
-	n.Next = slices.DeleteFunc(n.Next, func(item NodeNextItem) bool {
+	n.Next = slices.DeleteFunc(n.Next, func(item NextItem) bool {
 		return item.Name == name
 	})
 
@@ -305,7 +306,7 @@ func (n *Node) AddOnError(name string, opts ...NodeAttributeOption) *Node {
 		return n
 	}
 
-	newItem := NodeNextItem{
+	newItem := NextItem{
 		Name: name,
 	}
 	for _, opt := range opts {
@@ -333,7 +334,7 @@ func (n *Node) RemoveOnError(name string) *Node {
 		return n
 	}
 
-	n.OnError = slices.DeleteFunc(n.OnError, func(item NodeNextItem) bool {
+	n.OnError = slices.DeleteFunc(n.OnError, func(item NextItem) bool {
 		return item.Name == name
 	})
 

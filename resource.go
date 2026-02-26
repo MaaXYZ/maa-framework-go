@@ -345,7 +345,7 @@ func (r *Resource) OverridePipeline(override any) error {
 
 // OverrideNext overrides the next list of a task by name.
 // It sets the list directly and will create the node if it doesn't exist.
-func (r *Resource) OverrideNext(name string, nextList []NodeNextItem) error {
+func (r *Resource) OverrideNext(name string, nextList []NextItem) error {
 	list := buffer.NewStringListBuffer()
 	defer list.Destroy()
 	size := len(nextList)

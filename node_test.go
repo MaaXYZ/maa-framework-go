@@ -86,30 +86,30 @@ func TestNode_AddNext(t *testing.T) {
 	require.NotNil(t, node)
 
 	node.AddNext("test1")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}}, node.Next)
+	require.Equal(t, []NextItem{{Name: "test1"}}, node.Next)
 
 	node.AddNext("test1")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}}, node.Next)
+	require.Equal(t, []NextItem{{Name: "test1"}}, node.Next)
 
 	node.AddNext("test2")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test2"}}, node.Next)
+	require.Equal(t, []NextItem{{Name: "test1"}, {Name: "test2"}}, node.Next)
 }
 
 func TestNode_RemoveNext(t *testing.T) {
 	node := NewNode("test")
 	require.NotNil(t, node)
 
-	node.SetNext([]NodeNextItem{{Name: "test1"}, {Name: "test2"}, {Name: "test3"}, {Name: "test4"}})
-	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test2"}, {Name: "test3"}, {Name: "test4"}}, node.Next)
+	node.SetNext([]NextItem{{Name: "test1"}, {Name: "test2"}, {Name: "test3"}, {Name: "test4"}})
+	require.Equal(t, []NextItem{{Name: "test1"}, {Name: "test2"}, {Name: "test3"}, {Name: "test4"}}, node.Next)
 
 	node.RemoveNext("test2")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test3"}, {Name: "test4"}}, node.Next)
+	require.Equal(t, []NextItem{{Name: "test1"}, {Name: "test3"}, {Name: "test4"}}, node.Next)
 
 	node.RemoveNext("test2")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test3"}, {Name: "test4"}}, node.Next)
+	require.Equal(t, []NextItem{{Name: "test1"}, {Name: "test3"}, {Name: "test4"}}, node.Next)
 
 	node.RemoveNext("test4")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test3"}}, node.Next)
+	require.Equal(t, []NextItem{{Name: "test1"}, {Name: "test3"}}, node.Next)
 }
 
 func TestNode_AddOnError(t *testing.T) {
@@ -117,28 +117,28 @@ func TestNode_AddOnError(t *testing.T) {
 	require.NotNil(t, node)
 
 	node.AddOnError("test1")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}}, node.OnError)
+	require.Equal(t, []NextItem{{Name: "test1"}}, node.OnError)
 
 	node.AddOnError("test1")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}}, node.OnError)
+	require.Equal(t, []NextItem{{Name: "test1"}}, node.OnError)
 
 	node.AddOnError("test2")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test2"}}, node.OnError)
+	require.Equal(t, []NextItem{{Name: "test1"}, {Name: "test2"}}, node.OnError)
 }
 
 func TestNode_RemoveOnError(t *testing.T) {
 	node := NewNode("test")
 	require.NotNil(t, node)
 
-	node.SetOnError([]NodeNextItem{{Name: "test1"}, {Name: "test2"}, {Name: "test3"}, {Name: "test4"}})
-	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test2"}, {Name: "test3"}, {Name: "test4"}}, node.OnError)
+	node.SetOnError([]NextItem{{Name: "test1"}, {Name: "test2"}, {Name: "test3"}, {Name: "test4"}})
+	require.Equal(t, []NextItem{{Name: "test1"}, {Name: "test2"}, {Name: "test3"}, {Name: "test4"}}, node.OnError)
 
 	node.RemoveOnError("test2")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test3"}, {Name: "test4"}}, node.OnError)
+	require.Equal(t, []NextItem{{Name: "test1"}, {Name: "test3"}, {Name: "test4"}}, node.OnError)
 
 	node.RemoveOnError("test2")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test3"}, {Name: "test4"}}, node.OnError)
+	require.Equal(t, []NextItem{{Name: "test1"}, {Name: "test3"}, {Name: "test4"}}, node.OnError)
 
 	node.RemoveOnError("test4")
-	require.Equal(t, []NodeNextItem{{Name: "test1"}, {Name: "test3"}}, node.OnError)
+	require.Equal(t, []NextItem{{Name: "test1"}, {Name: "test3"}}, node.OnError)
 }

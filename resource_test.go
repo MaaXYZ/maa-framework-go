@@ -258,7 +258,7 @@ func TestResource_OverrideNext(t *testing.T) {
 	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
 
-	override := []NodeNextItem{
+	override := []NextItem{
 		{Name: "StartGame"},
 		{Name: "Sub_BackButton", JumpBack: true},
 		{Name: "HomeFlag", Anchor: true},
@@ -271,14 +271,14 @@ func TestResource_OverrideNext(t *testing.T) {
 	require.NotNil(t, node)
 	require.Len(t, node.Next, len(override))
 
-	findNextItem := func(name string) NodeNextItem {
+	findNextItem := func(name string) NextItem {
 		for _, item := range node.Next {
 			if item.Name == name {
 				return item
 			}
 		}
 		require.FailNowf(t, "next item not found", "name=%s", name)
-		return NodeNextItem{}
+		return NextItem{}
 	}
 
 	startGame := findNextItem("StartGame")

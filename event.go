@@ -128,10 +128,10 @@ type NodeActionNodeDetail struct {
 
 // NodeNextListDetail contains information about node next list events
 type NodeNextListDetail struct {
-	TaskID uint64         `json:"task_id"`
-	Name   string         `json:"name"`
-	List   []NodeNextItem `json:"list"`
-	Focus  any            `json:"focus"`
+	TaskID uint64     `json:"task_id"`
+	Name   string     `json:"name"`
+	List   []NextItem `json:"list"`
+	Focus  any        `json:"focus"`
 }
 
 // NodeRecognitionDetail contains information about node recognition events

@@ -214,7 +214,7 @@ type testContextOverrideNextAct struct {
 func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	pipeline := NewPipeline()
 	testNode := NewNode("Test").
-		SetNext([]NodeNextItem{
+		SetNext([]NextItem{
 			{Name: "TaskA"},
 		})
 	pipeline.AddNode(testNode)
@@ -226,7 +226,7 @@ func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool 
 	err := ctx.OverridePipeline(pipeline)
 	require.NoError(t.t, err)
 
-	err = ctx.OverrideNext(testNode.Name, []NodeNextItem{{Name: "TaskB"}})
+	err = ctx.OverrideNext(testNode.Name, []NextItem{{Name: "TaskB"}})
 	require.NoError(t.t, err)
 
 	detail, err2 := ctx.RunTask(testNode.Name, pipeline)
