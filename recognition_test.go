@@ -294,7 +294,7 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 	require.Equal(t, "BuyFirstOCR", ocrItem.SubName, "third sub-item name should be BuyFirstOCR")
 	require.Equal(t, RecognitionTypeOCR, ocrItem.Type, "third sub-item type should be OCR")
 	ocrParam, ok := ocrItem.Param.(*OCRParam)
-	require.True(t, ok, "third sub-item param should be of type *NodeOCRParam")
+	require.True(t, ok, "third sub-item param should be of type *OCRParam")
 	require.NotEmpty(t, ocrParam.Expected, "OCR expected text should not be empty")
 
 	// Verify fourth sub-recognition item (ColorMatch)

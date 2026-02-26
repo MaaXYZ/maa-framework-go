@@ -55,7 +55,7 @@ func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {
 //
 //	pipeline := NewPipeline()
 //	node := NewNode("Task").
-//		SetAction(ActClick(NodeClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}))
+//		SetAction(ActClick(ClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}))
 //	pipeline.AddNode(node)
 //	ctx.RunTask(node.Name, pipeline)
 //
@@ -164,7 +164,7 @@ func (ctx *Context) runAction(
 //
 //	pipeline := NewPipeline()
 //	node := NewNode("Task").
-//		SetAction(ActClick(NodeClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}))
+//		SetAction(ActClick(ClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}))
 //	pipeline.AddNode(node)
 //	ctx.RunAction(node.Name, box, recognitionDetail, pipeline)
 //

@@ -366,7 +366,7 @@ func TestResource_GetDefaultRecognitionParam(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, param2)
 	_, isOCR := param2.(*OCRParam)
-	require.True(t, isOCR, "param2 should be *NodeOCRParam")
+	require.True(t, isOCR, "param2 should be *OCRParam")
 }
 
 func TestResource_GetDefaultActionParam(t *testing.T) {
