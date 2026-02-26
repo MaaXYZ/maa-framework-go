@@ -126,7 +126,7 @@ func TestNodeOrRecognitionParam_Unmarshal_GetNodeDataStyle(t *testing.T) {
 
 func TestRecAnd_RecOr_MarshalRoundtrip(t *testing.T) {
 	// Build And with mix of ref and inline
-	andRec := RecAnd(Ref("NodeRef"), Inline(RecDirectHit(), "sub1")).WithBoxIndex(2)
+	andRec := RecAnd(Ref("NodeRef"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(2)
 	b, err := json.Marshal(andRec)
 	require.NoError(t, err)
 	var reco Recognition

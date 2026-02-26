@@ -63,9 +63,9 @@ func (nr *Recognition) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// WithBoxIndex sets which sub-recognition result's box to use as the final box.
+// SetBoxIndex sets which sub-recognition result's box to use as the final box.
 // Only effective when the recognition type is And.
-func (nr *Recognition) WithBoxIndex(idx int) *Recognition {
+func (nr *Recognition) SetBoxIndex(idx int) *Recognition {
 	if p, ok := nr.Param.(*AndRecognitionParam); ok {
 		p.BoxIndex = idx
 	}
@@ -461,7 +461,7 @@ func Ref(nodeName string) SubRecognitionItem {
 
 // Inline builds a SubRecognitionItem from a recognition; optional name is the sub_name.
 // Example: RecOr(Inline(RecTemplateMatch(...)), Inline(RecColorMatch(...)))
-// Example: RecAnd(Ref("A"), Inline(RecDirectHit(), "sub1")).WithBoxIndex(2)
+// Example: RecAnd(Ref("A"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(2)
 func Inline(rec *Recognition, name ...string) SubRecognitionItem {
 	subName := ""
 	if len(name) > 0 {
@@ -510,8 +510,8 @@ type AndRecognitionParam struct {
 func (n AndRecognitionParam) isRecognitionParam() {}
 
 // RecAnd creates an AND recognition that requires all sub-recognitions to succeed.
-// Use WithBoxIndex to set which result's box to use.
-// Example: RecAnd(Ref("NodeA"), Inline(RecDirectHit(), "sub1")).WithBoxIndex(2)
+// Use SetBoxIndex to set which result's box to use.
+// Example: RecAnd(Ref("NodeA"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(2)
 func RecAnd(items ...SubRecognitionItem) *Recognition {
 	param := &AndRecognitionParam{AllOf: slices.Clone(items)}
 	return &Recognition{Type: RecognitionTypeAnd, Param: param}
