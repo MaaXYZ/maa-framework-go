@@ -36,7 +36,7 @@ func TestRunWithoutFile(t *testing.T) {
 
 	pipeline := maa.NewPipeline()
 	myTaskNode := maa.NewNode("MyTask").
-		SetAction(maa.ActCustom(maa.NodeCustomActionParam{
+		SetAction(maa.ActCustom(maa.CustomActionParam{
 			CustomAction:      "MyAct",
 			CustomActionParam: "abcdefg",
 		}))
