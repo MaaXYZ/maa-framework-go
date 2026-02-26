@@ -276,7 +276,7 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 	templateParam, ok := templateMatchItem.Param.(*TemplateMatchParam)
 	require.True(t, ok, "first sub-item param should be of type *NodeTemplateMatchParam")
 	require.NotEmpty(t, templateParam.Template, "template path should not be empty")
-	require.Equal(t, OrderByVertical, templateParam.OrderBy, "order_by should be Vertical")
+	require.Equal(t, TemplateMatchOrderByVertical, templateParam.OrderBy, "order_by should be Vertical")
 
 	// Verify second sub-recognition item (ColorMatch)
 	colorMatchItem := andParam.AllOf[1].Inline
