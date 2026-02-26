@@ -35,7 +35,7 @@
 | 设置方法 | `OverridePipeline`, `OverrideNext`, `OverrideImage`, `SetAnchor`, `ClearHitCount` |
 | 查询方法 | `GetNodeJSON`, `GetAnchor`, `GetHitCount` |
 
-**补充说明**：`OverrideNext` 现改为接收 `[]NodeNextItem`。
+**补充说明**：`OverrideNext` 现改为接收 `[]NextItem`。
 
 #### TaskJob
 
@@ -78,7 +78,7 @@
 | 设置方法 | `UseCPU`, `UseDirectml`, `UseCoreml`, `UseAutoExecutionProvider`, `RegisterCustomRecognition`, `UnregisterCustomRecognition`, `ClearCustomRecognition`, `RegisterCustomAction`, `UnregisterCustomAction`, `ClearCustomAction`, `OverridePipeline`, `OverrideNext`, `OverrideImage`, `Clear` |
 | 查询方法 | `GetNodeJSON`, `GetHash`, `GetNodeList`, `GetCustomRecognitionList`, `GetCustomActionList`, `GetDefaultRecognitionParam`, `GetDefaultActionParam` |
 
-**补充说明**：`OverrideNext` 现改为接收 `[]NodeNextItem`。
+**补充说明**：`OverrideNext` 现改为接收 `[]NextItem`。
 
 #### Custom Action and Recognition
 
@@ -123,6 +123,24 @@
 
 - `Context.GetNodeData` → `Context.GetNode`
 
+### 类型与 API 重命名（refactor/node）
+
+| 旧名称 | 新名称 |
+|--------|--------|
+| `NodeNextItem` | `NextItem` |
+| `NodeMultiSwipeItem` | `MultiSwipeItem` |
+| `NodeAction` | `Action` |
+| `NodeRecognition` | `Recognition` |
+| 各 `Node*Param`（如 `NodeCustomActionParam`） | 去掉 `Node` 前缀（如 `CustomActionParam`、`ClickParam`、`OCRParam` 等） |
+
+**Action 相关**：动作定义由 `node_action.go` 迁移至 `action.go`；构造函数统一为单参数（如 `ActClick(p ClickParam)`），不再使用 variadic。`ActMultiSwipe` 使用 `MultiSwipeItem`（原 `NodeMultiSwipeItem`）。
+
+**Recognition 相关**：识别定义由 `node_recognition.go` 迁移至 `recognition.go`。`WithBoxIndex` 重命名为链式方法 `SetBoxIndex`（如 `RecAnd(...).SetBoxIndex(2)`）。`RecOCR` 由 variadic 改为单参：`RecOCR(p OCRParam)`。各算法的 `OrderBy` 枚举按算法拆分为独立类型（与 C++ 对齐）。
+
+**Context**：`Context.WaitFreezes` 参数收窄为 `*WaitFreezesParam`。
+
+**行为说明**：动作/识别构造函数会对 slice 等参数做 clone，避免与调用方共享底层数组。
+
 ### Node Anchor API 变更
 
 - `Node.Anchor`：`[]string` → `map[string]string`（与 C++ `GetNodeData` 输出一致，`anchor` 为对象）
@@ -144,22 +162,19 @@
 | 子项类型（And） | `AllOf []*NodeAndRecognitionItem` | `AllOf []SubRecognitionItem` |
 | 子项类型（Or） | `AnyOf []*NodeRecognition` | `AnyOf []SubRecognitionItem` |
 | 内联项类型名 | `NodeAndRecognitionItem` | `InlineSubRecognition`（And/Or 通用） |
-| RecAnd 签名 | `RecAnd([]*NodeAndRecognitionItem, opts ...)` | `RecAnd(items []SubRecognitionItem, opts ...AndRecognitionOption)` |
+| RecAnd 签名 | `RecAnd([]*NodeAndRecognitionItem, opts ...)` | `RecAnd(items ...SubRecognitionItem)`，BoxIndex 用链式 `.SetBoxIndex(n)` |
 | RecOr 签名 | `RecOr(anyOf []SubRecognitionItem)` | `RecOr(anyOf ...SubRecognitionItem)` |
 
 **新增类型与函数**：
 - `SubRecognitionItem`：表示一项子识别，可为节点名引用（`NodeName`）或内联识别（`Inline *InlineSubRecognition`），JSON 为 string 或 object。
 - `InlineSubRecognition`：内联子识别（含 `sub_name`、`type`、`param`），与 C++ `InlineSubRecognition` 对应。
 - `Ref(nodeName string) SubRecognitionItem`：按节点名引用。
-- `Inline(rec *NodeRecognition, name ...string) SubRecognitionItem`：内联识别，`name` 可选（Or 常省略）。
-- `RecAndItems(items ...SubRecognitionItem) []SubRecognitionItem`：拼出 `RecAnd` 的第一个参数，便于 IDE 提示。
+- `Inline(rec *Recognition, name ...string) SubRecognitionItem`：内联识别，`name` 可选（Or 常省略）。
 
 **受影响的方法与字段**：
-- `RecAnd(items []SubRecognitionItem, opts ...AndRecognitionOption)`
-- `RecOr(anyOf ...SubRecognitionItem)`
-- `NodeAndRecognitionParam.AllOf`、`NodeOrRecognitionParam.AnyOf`
-- `AndItem` 返回 `*InlineSubRecognition`（原 `*NodeAndRecognitionItem`）
-- `SubRecognitionRef` / `SubRecognitionInline` 保留；`Ref` / `Inline` 为简短写法。
+- `RecAnd(items ...SubRecognitionItem)`、`RecOr(anyOf ...SubRecognitionItem)`
+- `AndRecognitionParam.AllOf`、`OrRecognitionParam.AnyOf`
+- `Ref` / `Inline` 为子识别项构造的推荐写法（原 `AndItem`、`SubRecognitionRef`/`SubRecognitionInline` 已移除）。
 
 ### 迁移示例
 
@@ -237,14 +252,14 @@ if err != nil {
 }
 ```
 
-#### OverrideNext 迁移（[]string → []NodeNextItem）
+#### OverrideNext 迁移（[]string → []NextItem）
 
 ```go
 // 旧 API
 err := ctx.OverrideNext("Entry", []string{"TaskA", "[JumpBack]TaskB"})
 
 // 新 API
-err := ctx.OverrideNext("Entry", []maa.NodeNextItem{
+err := ctx.OverrideNext("Entry", []maa.NextItem{
     {Name: "TaskA"},
     {Name: "TaskB", JumpBack: true},
 })
@@ -273,15 +288,12 @@ orRec := maa.RecOr([]maa.SubRecognitionItem{
     maa.SubRecognitionInline(maa.AndItem("", maa.RecTemplateMatch(...))),
 })
 
-// 新 API（RecAndItems + Ref/Inline，IDE 可补全）
+// 新 API（variadic + Ref/Inline）
 rec := maa.RecAnd(
-    maa.RecAndItems(
-        maa.Ref("OtherNode"),                           // 节点名引用
-        maa.Inline(maa.RecTemplateMatch(...), "template"),
-        maa.Inline(maa.RecColorMatch(...), "color"),
-    ),
-    maa.WithAndRecognitionBoxIndex(0),
-)
+    maa.Ref("OtherNode"),                           // 节点名引用
+    maa.Inline(maa.RecTemplateMatch(...), "template"),
+    maa.Inline(maa.RecColorMatch(...), "color"),
+).SetBoxIndex(0)
 
 orRec := maa.RecOr(
     maa.Inline(maa.RecTemplateMatch(...)),   // 无 sub_name 时省略第二参数
@@ -345,5 +357,7 @@ if best != nil {
 - `Pipeline.Len`
 - `Node.SetAnchorTarget`
 - `Node.ClearAnchor`
-- And/Or 识别：`SubRecognitionItem`、`InlineSubRecognition`、`Ref`、`Inline`、`RecAndItems`（与 C++ GetNodeData 的 all_of/any_of 对齐；`RecOr` 支持 variadic）
-- OCR 颜色过滤：`NodeOCRParam.ColorFilter` 字段 & `WithOCRColorFilter` 选项函数，指定 ColorMatch 节点名对图像进行颜色二值化后再送入 OCR 识别（适配 [MaaFramework#1145](https://github.com/MaaXYZ/MaaFramework/pull/1145)）
+- And/Or 识别：`SubRecognitionItem`、`InlineSubRecognition`、`Ref`、`Inline`（与 C++ GetNodeData 的 all_of/any_of 对齐；`RecAnd`/`RecOr` 均为 variadic）
+- `Recognition.SetBoxIndex`：链式方法，替代原 `WithBoxIndex`，指定 And 识别使用哪个子结果的 box
+- `WaitFreezesParam` 与 `Context.WaitFreezes(duration, box, *WaitFreezesParam)`：等待画面稳定
+- OCR 颜色过滤：`OCRParam.ColorFilter` 字段 & `WithOCRColorFilter` 选项函数，指定 ColorMatch 节点名对图像进行颜色二值化后再送入 OCR 识别（适配 [MaaFramework#1145](https://github.com/MaaXYZ/MaaFramework/pull/1145)）
