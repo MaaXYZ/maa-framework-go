@@ -89,7 +89,7 @@ func (ctx *Context) runRecognition(
 		return nil, errors.New("failed to run recognition")
 	}
 	tasker := ctx.GetTasker()
-	recognitionDetail, err := tasker.getRecognitionDetail(recId)
+	recognitionDetail, err := tasker.GetRecognitionDetail(recId)
 	return recognitionDetail, err
 }
 
@@ -149,7 +149,7 @@ func (ctx *Context) runAction(
 		return nil, errors.New("failed to run action")
 	}
 	tasker := ctx.GetTasker()
-	actionDetail, err := tasker.getActionDetail(actId)
+	actionDetail, err := tasker.GetActionDetail(actId)
 	return actionDetail, err
 }
 
@@ -230,7 +230,7 @@ func (ctx *Context) RunRecognitionDirect(
 		return nil, errors.New("failed to run recognition direct")
 	}
 	tasker := ctx.GetTasker()
-	recognitionDetail, err := tasker.getRecognitionDetail(recId)
+	recognitionDetail, err := tasker.GetRecognitionDetail(recId)
 	return recognitionDetail, err
 }
 
@@ -274,7 +274,7 @@ func (ctx *Context) RunActionDirect(
 		return nil, errors.New("failed to run action direct")
 	}
 	tasker := ctx.GetTasker()
-	actionDetail, err := tasker.getActionDetail(actId)
+	actionDetail, err := tasker.GetActionDetail(actId)
 	return actionDetail, err
 }
 

@@ -240,8 +240,8 @@ type RecognitionDetail struct {
 	Draws          []image.Image        // available when debug mode or save_draw is enabled.
 }
 
-// getRecognitionDetail queries recognition detail.
-func (t *Tasker) getRecognitionDetail(recId int64) (*RecognitionDetail, error) {
+// GetRecognitionDetail queries recognition detail.
+func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	algorithm := buffer.NewStringBuffer()
@@ -317,7 +317,7 @@ type ActionDetail struct {
 	Result     *ActionResult
 }
 
-func (t *Tasker) getActionDetail(actionId int64) (*ActionDetail, error) {
+func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	action := buffer.NewStringBuffer()
@@ -385,12 +385,12 @@ func (t *Tasker) getNodeDetail(nodeId int64) (*NodeDetail, error) {
 		return nil, errors.New("failed to get node detail")
 	}
 
-	recognitionDetail, err := t.getRecognitionDetail(recId)
+	recognitionDetail, err := t.GetRecognitionDetail(recId)
 	if err != nil {
 		return nil, err
 	}
 
-	actionDetail, err := t.getActionDetail(actionId)
+	actionDetail, err := t.GetActionDetail(actionId)
 	if err != nil {
 		return nil, err
 	}

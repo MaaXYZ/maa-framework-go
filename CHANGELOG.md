@@ -338,6 +338,8 @@ if best != nil {
 
 ## Added
 
+- `Tasker.GetRecognitionDetail(recId int64) (*RecognitionDetail, error)`
+- `Tasker.GetActionDetail(actionId int64) (*ActionDetail, error)`
 - `Resource.GetNode`
 - `Pipeline.GetNode`
 - `Pipeline.HasNode`
