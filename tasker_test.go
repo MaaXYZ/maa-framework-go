@@ -78,7 +78,7 @@ func TestTasker_PostPipeline(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testTasker_PostPipelineNode := NewNode("TestTasker_PostPipeline").
-		SetAction(ActClick(NodeClickParam{
+		SetAction(ActClick(ClickParam{
 			Target: NewTargetRect(Rect{100, 200, 100, 100}),
 		}))
 	pipeline.AddNode(testTasker_PostPipelineNode)
@@ -210,7 +210,7 @@ func TestTasker_OverridePipeline(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testNode := NewNode("TestTasker_OverridePipeline").
-		SetAction(ActClick(NodeClickParam{
+		SetAction(ActClick(ClickParam{
 			Target: NewTargetRect(Rect{100, 200, 100, 100}),
 		}))
 	pipeline.AddNode(testNode)
@@ -221,7 +221,7 @@ func TestTasker_OverridePipeline(t *testing.T) {
 	// Override the pipeline while task is running
 	overridePipeline := NewPipeline()
 	overrideNode := NewNode("TestTasker_OverridePipeline").
-		SetAction(ActClick(NodeClickParam{
+		SetAction(ActClick(ClickParam{
 			Target: NewTargetRect(Rect{200, 300, 100, 100}),
 		}))
 	overridePipeline.AddNode(overrideNode)

@@ -390,7 +390,7 @@ func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testNode := NewNode("TestRecognitionDetail_ResultMatchesRaw").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestRecognitionDetail_ResultMatchesRawAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestRecognitionDetail_ResultMatchesRawAct"}))
 	pipeline.AddNode(testNode)
 
 	got := tasker.PostTask(testNode.Name, pipeline).

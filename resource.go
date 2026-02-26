@@ -530,9 +530,9 @@ func (r *Resource) GetDefaultRecognitionParam(recoType RecognitionType) (Recogni
 }
 
 // GetDefaultActionParam returns the default action parameters for the specified type from DefaultPipelineMgr.
-// actionType is an action type (e.g., NodeActionTypeClick, NodeActionTypeSwipe).
-// Returns the parsed NodeActionParam interface.
-func (r *Resource) GetDefaultActionParam(actionType NodeActionType) (NodeActionParam, error) {
+// actionType is an action type (e.g., ActionTypeClick, ActionTypeSwipe).
+// Returns the parsed ActionParam interface.
+func (r *Resource) GetDefaultActionParam(actionType ActionType) (ActionParam, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaResourceGetDefaultActionParam(r.handle, string(actionType), buf.Handle())
@@ -546,48 +546,48 @@ func (r *Resource) GetDefaultActionParam(actionType NodeActionType) (NodeActionP
 	}
 
 	// Create the appropriate param type based on actionType
-	var param NodeActionParam
+	var param ActionParam
 	switch actionType {
-	case NodeActionTypeDoNothing, "":
-		param = &NodeDoNothingParam{}
-	case NodeActionTypeClick:
-		param = &NodeClickParam{}
-	case NodeActionTypeLongPress:
-		param = &NodeLongPressParam{}
-	case NodeActionTypeSwipe:
-		param = &NodeSwipeParam{}
-	case NodeActionTypeMultiSwipe:
-		param = &NodeMultiSwipeParam{}
-	case NodeActionTypeTouchDown:
-		param = &NodeTouchDownParam{}
-	case NodeActionTypeTouchMove:
-		param = &NodeTouchMoveParam{}
-	case NodeActionTypeTouchUp:
-		param = &NodeTouchUpParam{}
-	case NodeActionTypeClickKey:
-		param = &NodeClickKeyParam{}
-	case NodeActionTypeLongPressKey:
-		param = &NodeLongPressKeyParam{}
-	case NodeActionTypeKeyDown:
-		param = &NodeKeyDownParam{}
-	case NodeActionTypeKeyUp:
-		param = &NodeKeyUpParam{}
-	case NodeActionTypeInputText:
-		param = &NodeInputTextParam{}
-	case NodeActionTypeStartApp:
-		param = &NodeStartAppParam{}
-	case NodeActionTypeStopApp:
-		param = &NodeStopAppParam{}
-	case NodeActionTypeStopTask:
-		param = &NodeStopTaskParam{}
-	case NodeActionTypeScroll:
-		param = &NodeScrollParam{}
-	case NodeActionTypeCommand:
-		param = &NodeCommandParam{}
-	case NodeActionTypeShell:
-		param = &NodeShellParam{}
-	case NodeActionTypeCustom:
-		param = &NodeCustomActionParam{}
+	case ActionTypeDoNothing, "":
+		param = &DoNothingParam{}
+	case ActionTypeClick:
+		param = &ClickParam{}
+	case ActionTypeLongPress:
+		param = &LongPressParam{}
+	case ActionTypeSwipe:
+		param = &SwipeParam{}
+	case ActionTypeMultiSwipe:
+		param = &MultiSwipeParam{}
+	case ActionTypeTouchDown:
+		param = &TouchDownParam{}
+	case ActionTypeTouchMove:
+		param = &TouchMoveParam{}
+	case ActionTypeTouchUp:
+		param = &TouchUpParam{}
+	case ActionTypeClickKey:
+		param = &ClickKeyParam{}
+	case ActionTypeLongPressKey:
+		param = &LongPressKeyParam{}
+	case ActionTypeKeyDown:
+		param = &KeyDownParam{}
+	case ActionTypeKeyUp:
+		param = &KeyUpParam{}
+	case ActionTypeInputText:
+		param = &InputTextParam{}
+	case ActionTypeStartApp:
+		param = &StartAppParam{}
+	case ActionTypeStopApp:
+		param = &StopAppParam{}
+	case ActionTypeStopTask:
+		param = &StopTaskParam{}
+	case ActionTypeScroll:
+		param = &ScrollParam{}
+	case ActionTypeCommand:
+		param = &CommandParam{}
+	case ActionTypeShell:
+		param = &ShellParam{}
+	case ActionTypeCustom:
+		param = &CustomActionParam{}
 	default:
 		return nil, fmt.Errorf("unknown action type: %s", actionType)
 	}

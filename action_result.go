@@ -47,12 +47,12 @@ func (p *Point) UnmarshalJSON(data []byte) error {
 
 // ActionResult wraps parsed action detail.
 type ActionResult struct {
-	tp  NodeActionType
+	tp  ActionType
 	val any
 }
 
 // Type returns the action type of the result.
-func (r *ActionResult) Type() NodeActionType {
+func (r *ActionResult) Type() ActionType {
 	return r.tp
 }
 
@@ -62,7 +62,7 @@ func (r *ActionResult) Value() any {
 }
 
 func (r *ActionResult) AsClick() (*ClickActionResult, bool) {
-	if r.tp != NodeActionTypeClick {
+	if r.tp != ActionTypeClick {
 		return nil, false
 	}
 	val, ok := r.val.(*ClickActionResult)
@@ -70,7 +70,7 @@ func (r *ActionResult) AsClick() (*ClickActionResult, bool) {
 }
 
 func (r *ActionResult) AsLongPress() (*LongPressActionResult, bool) {
-	if r.tp != NodeActionTypeLongPress {
+	if r.tp != ActionTypeLongPress {
 		return nil, false
 	}
 	val, ok := r.val.(*LongPressActionResult)
@@ -78,7 +78,7 @@ func (r *ActionResult) AsLongPress() (*LongPressActionResult, bool) {
 }
 
 func (r *ActionResult) AsSwipe() (*SwipeActionResult, bool) {
-	if r.tp != NodeActionTypeSwipe {
+	if r.tp != ActionTypeSwipe {
 		return nil, false
 	}
 	val, ok := r.val.(*SwipeActionResult)
@@ -86,7 +86,7 @@ func (r *ActionResult) AsSwipe() (*SwipeActionResult, bool) {
 }
 
 func (r *ActionResult) AsMultiSwipe() (*MultiSwipeActionResult, bool) {
-	if r.tp != NodeActionTypeMultiSwipe {
+	if r.tp != ActionTypeMultiSwipe {
 		return nil, false
 	}
 	val, ok := r.val.(*MultiSwipeActionResult)
@@ -94,7 +94,7 @@ func (r *ActionResult) AsMultiSwipe() (*MultiSwipeActionResult, bool) {
 }
 
 func (r *ActionResult) AsClickKey() (*ClickKeyActionResult, bool) {
-	if r.tp != NodeActionTypeClickKey && r.tp != NodeActionTypeKeyDown && r.tp != NodeActionTypeKeyUp {
+	if r.tp != ActionTypeClickKey && r.tp != ActionTypeKeyDown && r.tp != ActionTypeKeyUp {
 		return nil, false
 	}
 	val, ok := r.val.(*ClickKeyActionResult)
@@ -102,7 +102,7 @@ func (r *ActionResult) AsClickKey() (*ClickKeyActionResult, bool) {
 }
 
 func (r *ActionResult) AsLongPressKey() (*LongPressKeyActionResult, bool) {
-	if r.tp != NodeActionTypeLongPressKey {
+	if r.tp != ActionTypeLongPressKey {
 		return nil, false
 	}
 	val, ok := r.val.(*LongPressKeyActionResult)
@@ -110,7 +110,7 @@ func (r *ActionResult) AsLongPressKey() (*LongPressKeyActionResult, bool) {
 }
 
 func (r *ActionResult) AsInputText() (*InputTextActionResult, bool) {
-	if r.tp != NodeActionTypeInputText {
+	if r.tp != ActionTypeInputText {
 		return nil, false
 	}
 	val, ok := r.val.(*InputTextActionResult)
@@ -118,7 +118,7 @@ func (r *ActionResult) AsInputText() (*InputTextActionResult, bool) {
 }
 
 func (r *ActionResult) AsApp() (*AppActionResult, bool) {
-	if r.tp != NodeActionTypeStartApp && r.tp != NodeActionTypeStopApp {
+	if r.tp != ActionTypeStartApp && r.tp != ActionTypeStopApp {
 		return nil, false
 	}
 	val, ok := r.val.(*AppActionResult)
@@ -126,7 +126,7 @@ func (r *ActionResult) AsApp() (*AppActionResult, bool) {
 }
 
 func (r *ActionResult) AsScroll() (*ScrollActionResult, bool) {
-	if r.tp != NodeActionTypeScroll {
+	if r.tp != ActionTypeScroll {
 		return nil, false
 	}
 	val, ok := r.val.(*ScrollActionResult)
@@ -134,7 +134,7 @@ func (r *ActionResult) AsScroll() (*ScrollActionResult, bool) {
 }
 
 func (r *ActionResult) AsTouch() (*TouchActionResult, bool) {
-	if r.tp != NodeActionTypeTouchDown && r.tp != NodeActionTypeTouchMove && r.tp != NodeActionTypeTouchUp {
+	if r.tp != ActionTypeTouchDown && r.tp != ActionTypeTouchMove && r.tp != ActionTypeTouchUp {
 		return nil, false
 	}
 	val, ok := r.val.(*TouchActionResult)
@@ -142,7 +142,7 @@ func (r *ActionResult) AsTouch() (*TouchActionResult, bool) {
 }
 
 func (r *ActionResult) AsShell() (*ShellActionResult, bool) {
-	if r.tp != NodeActionTypeShell {
+	if r.tp != ActionTypeShell {
 		return nil, false
 	}
 	val, ok := r.val.(*ShellActionResult)
@@ -334,30 +334,30 @@ func parseActionResult(action, detailJson string) (*ActionResult, error) {
 		return nil, nil
 	}
 
-	actionType := NodeActionType(action)
+	actionType := ActionType(action)
 	var resultVal any
 	switch actionType {
-	case NodeActionTypeClick:
+	case ActionTypeClick:
 		resultVal = &ClickActionResult{}
-	case NodeActionTypeLongPress:
+	case ActionTypeLongPress:
 		resultVal = &LongPressActionResult{}
-	case NodeActionTypeSwipe:
+	case ActionTypeSwipe:
 		resultVal = &SwipeActionResult{}
-	case NodeActionTypeMultiSwipe:
+	case ActionTypeMultiSwipe:
 		resultVal = &MultiSwipeActionResult{}
-	case NodeActionTypeClickKey, NodeActionTypeKeyDown, NodeActionTypeKeyUp:
+	case ActionTypeClickKey, ActionTypeKeyDown, ActionTypeKeyUp:
 		resultVal = &ClickKeyActionResult{}
-	case NodeActionTypeLongPressKey:
+	case ActionTypeLongPressKey:
 		resultVal = &LongPressKeyActionResult{}
-	case NodeActionTypeInputText:
+	case ActionTypeInputText:
 		resultVal = &InputTextActionResult{}
-	case NodeActionTypeStartApp, NodeActionTypeStopApp:
+	case ActionTypeStartApp, ActionTypeStopApp:
 		resultVal = &AppActionResult{}
-	case NodeActionTypeScroll:
+	case ActionTypeScroll:
 		resultVal = &ScrollActionResult{}
-	case NodeActionTypeTouchDown, NodeActionTypeTouchMove, NodeActionTypeTouchUp:
+	case ActionTypeTouchDown, ActionTypeTouchMove, ActionTypeTouchUp:
 		resultVal = &TouchActionResult{}
-	case NodeActionTypeShell:
+	case ActionTypeShell:
 		resultVal = &ShellActionResult{}
 	default:
 		return nil, fmt.Errorf("unknown action result type: %s", action)

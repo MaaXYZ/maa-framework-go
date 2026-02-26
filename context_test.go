@@ -14,7 +14,7 @@ type testContextRunTaskAct struct {
 func (t *testContextRunTaskAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	pipeline := NewPipeline()
 	testNode := NewNode("Test").
-		SetAction(ActClick(NodeClickParam{
+		SetAction(ActClick(ClickParam{
 			Target: NewTargetRect(Rect{100, 100, 10, 10}),
 		}))
 	pipeline.AddNode(testNode)
@@ -43,7 +43,7 @@ func TestContext_RunTask(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testContext_RunPipelineNode := NewNode("TestContext_RunPipeline").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_RunPipelineAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunPipelineAct"}))
 	pipeline.AddNode(testContext_RunPipelineNode)
 
 	got := tasker.PostTask(testContext_RunPipelineNode.Name, pipeline).
@@ -112,7 +112,7 @@ type testContextRunActionAct struct {
 func (a testContextRunActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
 	pipeline := NewPipeline()
 	testNode := NewNode("Test").
-		SetAction(ActClick(NodeClickParam{
+		SetAction(ActClick(ClickParam{
 			Target: NewTargetRect(Rect{100, 100, 10, 10}),
 		}))
 	pipeline.AddNode(testNode)
@@ -141,7 +141,7 @@ func TestContext_RunAction(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testContext_RunActionNode := NewNode("TestContext_RunAction").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_RunActionAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunActionAct"}))
 	pipeline.AddNode(testContext_RunActionNode)
 
 	got := tasker.PostTask(testContext_RunActionNode.Name, pipeline).
@@ -156,7 +156,7 @@ type testContextOverriderPipelineAct struct {
 func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	pipeline1 := NewPipeline()
 	testNode1 := NewNode("Test").
-		SetAction(ActClick(NodeClickParam{
+		SetAction(ActClick(ClickParam{
 			Target: NewTargetRect(Rect{100, 100, 10, 10}),
 		}))
 	pipeline1.AddNode(testNode1)
@@ -167,7 +167,7 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 
 	pipeline2 := NewPipeline()
 	testNode2 := NewNode("Test").
-		SetAction(ActClick(NodeClickParam{
+		SetAction(ActClick(ClickParam{
 			Target: NewTargetRect(Rect{200, 200, 10, 10}),
 		}))
 	pipeline2.AddNode(testNode2)
@@ -199,7 +199,7 @@ func TestContext_OverridePipeline(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testContext_OverridePipelineNode := NewNode("TestContext_OverridePipeline").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_OverridePipelineAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_OverridePipelineAct"}))
 	pipeline.AddNode(testContext_OverridePipelineNode)
 
 	got := tasker.PostTask(testContext_OverridePipelineNode.Name, pipeline).
@@ -253,7 +253,7 @@ func TestContext_OverrideNext(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testContext_OverrideNextNode := NewNode("TestContext_OverrideNext").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_OverrideNextAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_OverrideNextAct"}))
 	pipeline.AddNode(testContext_OverrideNextNode)
 
 	got := tasker.PostTask(testContext_OverrideNextNode.Name, pipeline).
@@ -416,10 +416,10 @@ func (a *testContextGetNodeDataAct) testClickAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_click")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeClick, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeClickParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeClick, nodeData.Action.Type)
+	assert.IsType(a.t, (*ClickParam)(nil), nodeData.Action.Param)
 
-	clickParam := nodeData.Action.Param.(*NodeClickParam)
+	clickParam := nodeData.Action.Param.(*ClickParam)
 	assert.Equal(a.t, 1, clickParam.Contact)
 }
 
@@ -678,7 +678,7 @@ func (a *testContextGetNodeDataAct) testDoNothingAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_do_nothing")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeDoNothing, nodeData.Action.Type)
+	require.Equal(a.t, ActionTypeDoNothing, nodeData.Action.Type)
 }
 
 func (a *testContextGetNodeDataAct) testLongPressAction(ctx *Context) {
@@ -699,10 +699,10 @@ func (a *testContextGetNodeDataAct) testLongPressAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_long_press")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeLongPress, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeLongPressParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeLongPress, nodeData.Action.Type)
+	assert.IsType(a.t, (*LongPressParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeLongPressParam)
+	param := nodeData.Action.Param.(*LongPressParam)
 	assert.Equal(a.t, int64(2000), param.Duration.Milliseconds())
 }
 
@@ -729,10 +729,10 @@ func (a *testContextGetNodeDataAct) testSwipeAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_swipe")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeSwipe, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeSwipeParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeSwipe, nodeData.Action.Type)
+	assert.IsType(a.t, (*SwipeParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeSwipeParam)
+	param := nodeData.Action.Param.(*SwipeParam)
 	assert.Len(a.t, param.Duration, 1)
 	assert.Equal(a.t, int64(500), param.Duration[0].Milliseconds())
 	assert.Len(a.t, param.EndHold, 1)
@@ -770,10 +770,10 @@ func (a *testContextGetNodeDataAct) testMultiSwipeAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_multi_swipe")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeMultiSwipe, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeMultiSwipeParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeMultiSwipe, nodeData.Action.Type)
+	assert.IsType(a.t, (*MultiSwipeParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeMultiSwipeParam)
+	param := nodeData.Action.Param.(*MultiSwipeParam)
 	assert.Len(a.t, param.Swipes, 2)
 	assert.Equal(a.t, int64(0), param.Swipes[0].Starting.Milliseconds())
 	assert.Equal(a.t, int64(100), param.Swipes[1].Starting.Milliseconds())
@@ -797,10 +797,10 @@ func (a *testContextGetNodeDataAct) testTouchDownAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_touch_down")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeTouchDown, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeTouchDownParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeTouchDown, nodeData.Action.Type)
+	assert.IsType(a.t, (*TouchDownParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeTouchDownParam)
+	param := nodeData.Action.Param.(*TouchDownParam)
 	assert.Equal(a.t, 50, param.Pressure)
 }
 
@@ -822,10 +822,10 @@ func (a *testContextGetNodeDataAct) testTouchMoveAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_touch_move")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeTouchMove, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeTouchMoveParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeTouchMove, nodeData.Action.Type)
+	assert.IsType(a.t, (*TouchMoveParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeTouchMoveParam)
+	param := nodeData.Action.Param.(*TouchMoveParam)
 	assert.Equal(a.t, 30, param.Pressure)
 }
 
@@ -845,10 +845,10 @@ func (a *testContextGetNodeDataAct) testTouchUpAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_touch_up")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeTouchUp, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeTouchUpParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeTouchUp, nodeData.Action.Type)
+	assert.IsType(a.t, (*TouchUpParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeTouchUpParam)
+	param := nodeData.Action.Param.(*TouchUpParam)
 	assert.Equal(a.t, 1, param.Contact)
 }
 
@@ -868,10 +868,10 @@ func (a *testContextGetNodeDataAct) testClickKeyAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_click_key")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeClickKey, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeClickKeyParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeClickKey, nodeData.Action.Type)
+	assert.IsType(a.t, (*ClickKeyParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeClickKeyParam)
+	param := nodeData.Action.Param.(*ClickKeyParam)
 	assert.Equal(a.t, []int{4, 66}, param.Key)
 }
 
@@ -892,10 +892,10 @@ func (a *testContextGetNodeDataAct) testLongPressKeyAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_long_press_key")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeLongPressKey, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeLongPressKeyParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeLongPressKey, nodeData.Action.Type)
+	assert.IsType(a.t, (*LongPressKeyParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeLongPressKeyParam)
+	param := nodeData.Action.Param.(*LongPressKeyParam)
 	assert.Equal(a.t, []int{4}, param.Key)
 	assert.Equal(a.t, int64(1500), param.Duration.Milliseconds())
 }
@@ -916,10 +916,10 @@ func (a *testContextGetNodeDataAct) testKeyDownAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_key_down")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeKeyDown, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeKeyDownParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeKeyDown, nodeData.Action.Type)
+	assert.IsType(a.t, (*KeyDownParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeKeyDownParam)
+	param := nodeData.Action.Param.(*KeyDownParam)
 	assert.Equal(a.t, 29, param.Key)
 }
 
@@ -939,10 +939,10 @@ func (a *testContextGetNodeDataAct) testKeyUpAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_key_up")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeKeyUp, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeKeyUpParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeKeyUp, nodeData.Action.Type)
+	assert.IsType(a.t, (*KeyUpParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeKeyUpParam)
+	param := nodeData.Action.Param.(*KeyUpParam)
 	assert.Equal(a.t, 29, param.Key)
 }
 
@@ -962,10 +962,10 @@ func (a *testContextGetNodeDataAct) testInputTextAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_input_text")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeInputText, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeInputTextParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeInputText, nodeData.Action.Type)
+	assert.IsType(a.t, (*InputTextParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeInputTextParam)
+	param := nodeData.Action.Param.(*InputTextParam)
 	assert.Equal(a.t, "Hello World", param.InputText)
 }
 
@@ -985,10 +985,10 @@ func (a *testContextGetNodeDataAct) testStartAppAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_start_app")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeStartApp, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeStartAppParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeStartApp, nodeData.Action.Type)
+	assert.IsType(a.t, (*StartAppParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeStartAppParam)
+	param := nodeData.Action.Param.(*StartAppParam)
 	assert.Equal(a.t, "com.example.app/com.example.MainActivity", param.Package)
 }
 
@@ -1008,10 +1008,10 @@ func (a *testContextGetNodeDataAct) testStopAppAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_stop_app")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeStopApp, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeStopAppParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeStopApp, nodeData.Action.Type)
+	assert.IsType(a.t, (*StopAppParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeStopAppParam)
+	param := nodeData.Action.Param.(*StopAppParam)
 	assert.Equal(a.t, "com.example.app", param.Package)
 }
 
@@ -1028,7 +1028,7 @@ func (a *testContextGetNodeDataAct) testStopTaskAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_stop_task")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeStopTask, nodeData.Action.Type)
+	assert.Equal(a.t, ActionTypeStopTask, nodeData.Action.Type)
 }
 
 func (a *testContextGetNodeDataAct) testCommandAction(ctx *Context) {
@@ -1049,10 +1049,10 @@ func (a *testContextGetNodeDataAct) testCommandAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_command")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeCommand, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeCommandParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeCommand, nodeData.Action.Type)
+	assert.IsType(a.t, (*CommandParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeCommandParam)
+	param := nodeData.Action.Param.(*CommandParam)
 	assert.Equal(a.t, "python", param.Exec)
 	assert.Equal(a.t, []string{"{RESOURCE_DIR}/script.py", "{NODE}", "{IMAGE}"}, param.Args)
 	assert.True(a.t, param.Detach)
@@ -1075,10 +1075,10 @@ func (a *testContextGetNodeDataAct) testScrollAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_scroll")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeScroll, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeScrollParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeScroll, nodeData.Action.Type)
+	assert.IsType(a.t, (*ScrollParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeScrollParam)
+	param := nodeData.Action.Param.(*ScrollParam)
 	assert.Equal(a.t, 100, param.Dx)
 	assert.Equal(a.t, 200, param.Dy)
 }
@@ -1101,10 +1101,10 @@ func (a *testContextGetNodeDataAct) testCustomAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_custom_act")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeActionTypeCustom, nodeData.Action.Type)
-	assert.IsType(a.t, (*NodeCustomActionParam)(nil), nodeData.Action.Param)
+	assert.Equal(a.t, ActionTypeCustom, nodeData.Action.Type)
+	assert.IsType(a.t, (*CustomActionParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeCustomActionParam)
+	param := nodeData.Action.Param.(*CustomActionParam)
 	assert.Equal(a.t, "MyCustomAction", param.CustomAction)
 	assert.NotNil(a.t, param.CustomActionParam)
 }
@@ -1180,7 +1180,7 @@ func (a *testContextGetNodeDataAct) testNodeAttributes(ctx *Context) {
 
 	// Check recognition and action
 	assert.Equal(a.t, RecognitionTypeDirectHit, nodeData.Recognition.Type)
-	assert.Equal(a.t, NodeActionTypeClick, nodeData.Action.Type)
+	assert.Equal(a.t, ActionTypeClick, nodeData.Action.Type)
 
 	// Check next list
 	assert.Len(a.t, nodeData.Next, 3)
@@ -1257,7 +1257,7 @@ func TestContext_GetNode(t *testing.T) {
 
 	pipeline := NewPipeline()
 	launchNode := NewNode("launch").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_GetNodeAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetNodeAct"}))
 	pipeline.AddNode(launchNode)
 
 	got := tasker.PostTask(launchNode.Name, pipeline).
@@ -1294,7 +1294,7 @@ func TestContext_GetTaskJob(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testContext_GetTaskJobNode := NewNode("TestContext_GetTaskJob").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_GetTaskJobAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskJobAct"}))
 	pipeline.AddNode(testContext_GetTaskJobNode)
 
 	got := tasker.PostTask(testContext_GetTaskJobNode.Name, pipeline).
@@ -1330,7 +1330,7 @@ func TestContext_GetTasker(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testContext_GetTaskerNode := NewNode("TestContext_GetTasker").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
 	pipeline.AddNode(testContext_GetTaskerNode)
 
 	got := tasker.PostTask(testContext_GetTaskerNode.Name, pipeline).
@@ -1366,7 +1366,7 @@ func TestContext_Clone(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testContext_CloneNode := NewNode("TestContext_Clone").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
 	pipeline.AddNode(testContext_CloneNode)
 
 	got := tasker.PostTask(testContext_CloneNode.Name, pipeline).
@@ -1409,7 +1409,7 @@ func TestContext_RunRecognitionDirect(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testContext_RunRecognitionDirectNode := NewNode("TestContext_RunRecognitionDirect").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_RunRecognitionDirectAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunRecognitionDirectAct"}))
 	pipeline.AddNode(testContext_RunRecognitionDirectNode)
 
 	got := tasker.PostTask(testContext_RunRecognitionDirectNode.Name, pipeline).
@@ -1423,10 +1423,10 @@ type testContextRunActionDirectAct struct {
 
 func (a *testContextRunActionDirectAct) Run(ctx *Context, arg *CustomActionArg) bool {
 	// Test RunActionDirect with Click action type
-	clickParam := &NodeClickParam{
+	clickParam := &ClickParam{
 		Target: NewTargetRect(Rect{100, 100, 10, 10}),
 	}
-	detail, err := ctx.RunActionDirect(NodeActionTypeClick, clickParam, arg.Box, arg.RecognitionDetail)
+	detail, err := ctx.RunActionDirect(ActionTypeClick, clickParam, arg.Box, arg.RecognitionDetail)
 	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 	return true
@@ -1450,7 +1450,7 @@ func TestContext_RunActionDirect(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testContext_RunActionDirectNode := NewNode("TestContext_RunActionDirect").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestContext_RunActionDirectAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunActionDirectAct"}))
 	pipeline.AddNode(testContext_RunActionDirectNode)
 
 	got := tasker.PostTask(testContext_RunActionDirectNode.Name, pipeline).

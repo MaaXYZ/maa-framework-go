@@ -156,7 +156,7 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testResource_RegisterCustomActionNode := NewNode("TestResource_RegisterCustomAction").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct"}))
 	pipeline.AddNode(testResource_RegisterCustomActionNode)
 
 	got := tasker.PostTask(testResource_RegisterCustomActionNode.Name, pipeline).
@@ -182,7 +182,7 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testResource_UnregisterCustomActionNode := NewNode("TestResource_UnregisterCustomAction").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestAct"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct"}))
 	pipeline.AddNode(testResource_UnregisterCustomActionNode)
 
 	got1 := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline).
@@ -217,12 +217,12 @@ func TestResource_ClearCustomAction(t *testing.T) {
 
 	pipeline1 := NewPipeline()
 	testResource_ClearCustomActionNode1 := NewNode("TestResource_ClearCustomAction").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestAct1"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct1"}))
 	pipeline1.AddNode(testResource_ClearCustomActionNode1)
 
 	pipeline2 := NewPipeline()
 	testResource_ClearCustomActionNode2 := NewNode("TestResource_ClearCustomAction").
-		SetAction(ActCustom(NodeCustomActionParam{CustomAction: "TestAct2"}))
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct2"}))
 	pipeline2.AddNode(testResource_ClearCustomActionNode2)
 
 	got1 := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1).
@@ -374,16 +374,16 @@ func TestResource_GetDefaultActionParam(t *testing.T) {
 	defer res.Destroy()
 
 	// Test getting default action parameters for Click type
-	param, err := res.GetDefaultActionParam(NodeActionTypeClick)
+	param, err := res.GetDefaultActionParam(ActionTypeClick)
 	require.NoError(t, err)
 	require.NotNil(t, param)
-	_, isClick := param.(*NodeClickParam)
-	require.True(t, isClick, "param should be *NodeClickParam")
+	_, isClick := param.(*ClickParam)
+	require.True(t, isClick, "param should be *ClickParam")
 
 	// Test getting default action parameters for DoNothing type
-	param2, err := res.GetDefaultActionParam(NodeActionTypeDoNothing)
+	param2, err := res.GetDefaultActionParam(ActionTypeDoNothing)
 	require.NoError(t, err)
 	require.NotNil(t, param2)
-	_, isDoNothing := param2.(*NodeDoNothingParam)
-	require.True(t, isDoNothing, "param2 should be *NodeDoNothingParam")
+	_, isDoNothing := param2.(*DoNothingParam)
+	require.True(t, isDoNothing, "param2 should be *DoNothingParam")
 }

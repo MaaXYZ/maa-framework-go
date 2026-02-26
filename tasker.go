@@ -132,7 +132,7 @@ func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionPa
 
 // PostAction posts an action to the tasker asynchronously.
 // The box and recoDetail are from the previous recognition.
-func (t *Tasker) PostAction(actionType NodeActionType, actionParam NodeActionParam, box Rect, recoDetail *RecognitionDetail) *TaskJob {
+func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box Rect, recoDetail *RecognitionDetail) *TaskJob {
 	rectBuf := buffer.NewRectBuffer()
 	defer rectBuf.Destroy()
 	rectBuf.Set(box)

@@ -238,12 +238,12 @@ func (ctx *Context) RunRecognitionDirect(
 //
 // Example:
 //
-//	actParam := &NodeClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}
+//	actParam := &ClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}
 //	box := Rect{100, 200, 100, 100}
-//	ctx.RunActionDirect(NodeActionTypeClick, actParam, box, nil)
+//	ctx.RunActionDirect(ActionTypeClick, actParam, box, nil)
 func (ctx *Context) RunActionDirect(
-	actionType NodeActionType,
-	actionParam NodeActionParam,
+	actionType ActionType,
+	actionParam ActionParam,
 	box Rect,
 	recoDetail *RecognitionDetail,
 ) (*ActionDetail, error) {

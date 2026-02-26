@@ -16,7 +16,7 @@ type Node struct {
 	// Recognition defines how this node recognizes targets on screen.
 	Recognition *Recognition `json:"recognition,omitempty"`
 	// Action defines what action to perform when recognition succeeds.
-	Action *NodeAction `json:"action,omitempty"`
+	Action *Action `json:"action,omitempty"`
 	// Next specifies the list of possible next nodes to execute.
 	Next []NodeNextItem `json:"next,omitempty"`
 	// RateLimit sets the minimum interval between recognition attempts in milliseconds. Default: 1000.
@@ -83,7 +83,7 @@ func (n *Node) SetRecognition(rec *Recognition) *Node {
 }
 
 // SetAction sets the action for the node and returns the node for chaining.
-func (n *Node) SetAction(act *NodeAction) *Node {
+func (n *Node) SetAction(act *Action) *Node {
 	n.Action = act
 	return n
 }
