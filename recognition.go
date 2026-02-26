@@ -317,15 +317,11 @@ type OCRParam struct {
 func (n OCRParam) isRecognitionParam() {}
 
 // RecOCR creates an OCR recognition with the given parameters.
-// All fields are optional; pass no argument for defaults.
-func RecOCR(p ...OCRParam) *Recognition {
-	var param OCRParam
-	if len(p) > 0 {
-		param = p[0]
-	}
+// All fields are optional; pass OCRParam{} for defaults.
+func RecOCR(p OCRParam) *Recognition {
 	return &Recognition{
 		Type:  RecognitionTypeOCR,
-		Param: &param,
+		Param: &p,
 	}
 }
 
