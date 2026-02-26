@@ -80,7 +80,7 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 			name:       "multi_swipe",
 			actionType: ActionTypeMultiSwipe,
 			param: &MultiSwipeParam{
-				Swipes: []NodeMultiSwipeItem{
+				Swipes: []MultiSwipeItem{
 					{
 						Starting:  0,
 						Begin:     NewTargetRect(Rect{300, 300, 10, 10}),

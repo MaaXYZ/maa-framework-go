@@ -247,8 +247,8 @@ func ActSwipe(p SwipeParam) *Action {
 	return &Action{Type: ActionTypeSwipe, Param: &param}
 }
 
-// NodeMultiSwipeItem defines a single swipe within a multi-swipe action.
-type NodeMultiSwipeItem struct {
+// MultiSwipeItem defines a single swipe within a multi-swipe action.
+type MultiSwipeItem struct {
 	// Starting specifies when this swipe starts within the action. Default: 0.
 	// JSON: serialized as integer milliseconds.
 	Starting time.Duration `json:"-"`
@@ -272,8 +272,8 @@ type NodeMultiSwipeItem struct {
 	Contact int `json:"contact,omitempty"`
 }
 
-func (p NodeMultiSwipeItem) MarshalJSON() ([]byte, error) {
-	type NoMethod NodeMultiSwipeItem
+func (p MultiSwipeItem) MarshalJSON() ([]byte, error) {
+	type NoMethod MultiSwipeItem
 	return json.Marshal(struct {
 		NoMethod
 		Starting int64   `json:"starting,omitempty"`
@@ -287,8 +287,8 @@ func (p NodeMultiSwipeItem) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (p *NodeMultiSwipeItem) UnmarshalJSON(data []byte) error {
-	type NoMethod NodeMultiSwipeItem
+func (p *MultiSwipeItem) UnmarshalJSON(data []byte) error {
+	type NoMethod MultiSwipeItem
 	raw := struct {
 		NoMethod
 		Starting int64   `json:"starting,omitempty"`
@@ -298,7 +298,7 @@ func (p *NodeMultiSwipeItem) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	*p = NodeMultiSwipeItem(raw.NoMethod)
+	*p = MultiSwipeItem(raw.NoMethod)
 	p.Starting = time.Duration(raw.Starting) * time.Millisecond
 	p.Duration = msToDurations(raw.Duration)
 	p.EndHold = msToDurations(raw.EndHold)
@@ -308,16 +308,16 @@ func (p *NodeMultiSwipeItem) UnmarshalJSON(data []byte) error {
 // MultiSwipeParam defines parameters for multi-finger swipe action.
 type MultiSwipeParam struct {
 	// Swipes specifies the list of swipe items. Required.
-	Swipes []NodeMultiSwipeItem `json:"swipes,omitempty"`
+	Swipes []MultiSwipeItem `json:"swipes,omitempty"`
 }
 
 func (n MultiSwipeParam) isActionParam() {}
 
 // cloneNodeMultiSwipeItems returns a deep copy of swipes so Param does not share slice backing arrays with the caller.
-func cloneNodeMultiSwipeItems(swipes []NodeMultiSwipeItem) []NodeMultiSwipeItem {
-	out := make([]NodeMultiSwipeItem, len(swipes))
+func cloneNodeMultiSwipeItems(swipes []MultiSwipeItem) []MultiSwipeItem {
+	out := make([]MultiSwipeItem, len(swipes))
 	for i := range swipes {
-		out[i] = NodeMultiSwipeItem{
+		out[i] = MultiSwipeItem{
 			Starting:    swipes[i].Starting,
 			Begin:       swipes[i].Begin,
 			BeginOffset: swipes[i].BeginOffset,
@@ -333,7 +333,7 @@ func cloneNodeMultiSwipeItems(swipes []NodeMultiSwipeItem) []NodeMultiSwipeItem 
 }
 
 // ActMultiSwipe creates a MultiSwipe action for multi-finger swipe gestures.
-func ActMultiSwipe(swipes ...NodeMultiSwipeItem) *Action {
+func ActMultiSwipe(swipes ...MultiSwipeItem) *Action {
 	param := &MultiSwipeParam{
 		Swipes: cloneNodeMultiSwipeItems(swipes),
 	}
