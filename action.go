@@ -139,12 +139,9 @@ type ClickParam struct {
 
 func (n ClickParam) isActionParam() {}
 
-// ActClick creates a Click action. All fields are optional; pass no argument for defaults.
-func ActClick(p ...ClickParam) *Action {
-	var param ClickParam
-	if len(p) > 0 {
-		param = p[0]
-	}
+// ActClick creates a Click action. Pass a zero value for defaults.
+func ActClick(p ClickParam) *Action {
+	param := p
 	return &Action{Type: ActionTypeClick, Param: &param}
 }
 
@@ -185,12 +182,9 @@ func (p *LongPressParam) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ActLongPress creates a LongPress action. All fields are optional; pass no argument for defaults.
-func ActLongPress(p ...LongPressParam) *Action {
-	var param LongPressParam
-	if len(p) > 0 {
-		param = p[0]
-	}
+// ActLongPress creates a LongPress action. Pass a zero value for defaults.
+func ActLongPress(p LongPressParam) *Action {
+	param := p
 	return &Action{Type: ActionTypeLongPress, Param: &param}
 }
 
@@ -243,12 +237,9 @@ func (p *SwipeParam) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ActSwipe creates a Swipe action. All fields are optional; pass no argument for defaults.
-func ActSwipe(p ...SwipeParam) *Action {
-	var param SwipeParam
-	if len(p) > 0 {
-		param = p[0]
-	}
+// ActSwipe creates a Swipe action. Pass a zero value for defaults.
+func ActSwipe(p SwipeParam) *Action {
+	param := p
 	return &Action{Type: ActionTypeSwipe, Param: &param}
 }
 
@@ -343,12 +334,9 @@ type TouchDownParam struct {
 
 func (n TouchDownParam) isActionParam() {}
 
-// ActTouchDown creates a TouchDown action. All fields are optional; pass no argument for defaults.
-func ActTouchDown(p ...TouchDownParam) *Action {
-	var param TouchDownParam
-	if len(p) > 0 {
-		param = p[0]
-	}
+// ActTouchDown creates a TouchDown action. Pass a zero value for defaults.
+func ActTouchDown(p TouchDownParam) *Action {
+	param := p
 	return &Action{Type: ActionTypeTouchDown, Param: &param}
 }
 
@@ -366,12 +354,9 @@ type TouchMoveParam struct {
 
 func (n TouchMoveParam) isActionParam() {}
 
-// ActTouchMove creates a TouchMove action. All fields are optional; pass no argument for defaults.
-func ActTouchMove(p ...TouchMoveParam) *Action {
-	var param TouchMoveParam
-	if len(p) > 0 {
-		param = p[0]
-	}
+// ActTouchMove creates a TouchMove action. Pass a zero value for defaults.
+func ActTouchMove(p TouchMoveParam) *Action {
+	param := p
 	return &Action{Type: ActionTypeTouchMove, Param: &param}
 }
 
@@ -383,13 +368,9 @@ type TouchUpParam struct {
 
 func (n TouchUpParam) isActionParam() {}
 
-// ActTouchUp creates a TouchUp action. All fields are optional; pass no argument for defaults.
-func ActTouchUp(p ...TouchUpParam) *Action {
-	var param TouchUpParam
-	if len(p) > 0 {
-		param = p[0]
-	}
-	return &Action{Type: ActionTypeTouchUp, Param: &param}
+// ActTouchUp creates a TouchUp action. contact is the touch point identifier (0 for default).
+func ActTouchUp(contact int) *Action {
+	return &Action{Type: ActionTypeTouchUp, Param: &TouchUpParam{Contact: contact}}
 }
 
 // ClickKeyParam defines parameters for key click action.
@@ -554,12 +535,9 @@ type ScrollParam struct {
 
 func (n ScrollParam) isActionParam() {}
 
-// ActScroll creates a Scroll action. All fields are optional; pass no argument for defaults.
-func ActScroll(p ...ScrollParam) *Action {
-	var param ScrollParam
-	if len(p) > 0 {
-		param = p[0]
-	}
+// ActScroll creates a Scroll action. Pass a zero value for defaults.
+func ActScroll(p ScrollParam) *Action {
+	param := p
 	return &Action{Type: ActionTypeScroll, Param: &param}
 }
 
