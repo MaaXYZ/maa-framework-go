@@ -61,7 +61,7 @@ func (a *MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 
 	pipeline := maa.NewPipeline()
 	myColorMatchingNode := maa.NewNode("MyColorMatching").
-		SetRecognition(maa.RecColorMatch(maa.NodeColorMatchParam{
+		SetRecognition(maa.RecColorMatch(maa.ColorMatchParam{
 			Lower: [][]int{{100, 100, 100}},
 			Upper: [][]int{{255, 255, 255}},
 		}))

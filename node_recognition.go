@@ -7,18 +7,18 @@ import (
 	"slices"
 )
 
-// NodeRecognition defines the recognition configuration for a node.
-type NodeRecognition struct {
+// Recognition defines the recognition configuration for a node.
+type Recognition struct {
 	// Type specifies the recognition algorithm type.
-	Type NodeRecognitionType `json:"type,omitempty"`
+	Type RecognitionType `json:"type,omitempty"`
 	// Param specifies the recognition parameters.
-	Param NodeRecognitionParam `json:"param,omitempty"`
+	Param RecognitionParam `json:"param,omitempty"`
 }
 
-func (nr *NodeRecognition) UnmarshalJSON(data []byte) error {
+func (nr *Recognition) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Type  NodeRecognitionType `json:"type,omitempty"`
-		Param json.RawMessage     `json:"param,omitempty"`
+		Type  RecognitionType `json:"type,omitempty"`
+		Param json.RawMessage `json:"param,omitempty"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -30,28 +30,28 @@ func (nr *NodeRecognition) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	var param NodeRecognitionParam
+	var param RecognitionParam
 	switch nr.Type {
-	case NodeRecognitionTypeDirectHit, "":
-		param = &NodeDirectHitParam{}
-	case NodeRecognitionTypeTemplateMatch:
-		param = &NodeTemplateMatchParam{}
-	case NodeRecognitionTypeFeatureMatch:
-		param = &NodeFeatureMatchParam{}
-	case NodeRecognitionTypeColorMatch:
-		param = &NodeColorMatchParam{}
-	case NodeRecognitionTypeOCR:
-		param = &NodeOCRParam{}
-	case NodeRecognitionTypeNeuralNetworkClassify:
-		param = &NodeNeuralNetworkClassifyParam{}
-	case NodeRecognitionTypeNeuralNetworkDetect:
-		param = &NodeNeuralNetworkDetectParam{}
-	case NodeRecognitionTypeAnd:
-		param = &NodeAndRecognitionParam{}
-	case NodeRecognitionTypeOr:
-		param = &NodeOrRecognitionParam{}
-	case NodeRecognitionTypeCustom:
-		param = &NodeCustomRecognitionParam{}
+	case RecognitionTypeDirectHit, "":
+		param = &DirectHitParam{}
+	case RecognitionTypeTemplateMatch:
+		param = &TemplateMatchParam{}
+	case RecognitionTypeFeatureMatch:
+		param = &FeatureMatchParam{}
+	case RecognitionTypeColorMatch:
+		param = &ColorMatchParam{}
+	case RecognitionTypeOCR:
+		param = &OCRParam{}
+	case RecognitionTypeNeuralNetworkClassify:
+		param = &NeuralNetworkClassifyParam{}
+	case RecognitionTypeNeuralNetworkDetect:
+		param = &NeuralNetworkDetectParam{}
+	case RecognitionTypeAnd:
+		param = &AndRecognitionParam{}
+	case RecognitionTypeOr:
+		param = &OrRecognitionParam{}
+	case RecognitionTypeCustom:
+		param = &CustomRecognitionParam{}
 	default:
 		return errors.New("unsupported recognition type: " + string(nr.Type))
 	}
@@ -65,31 +65,31 @@ func (nr *NodeRecognition) UnmarshalJSON(data []byte) error {
 
 // WithBoxIndex sets which sub-recognition result's box to use as the final box.
 // Only effective when the recognition type is And.
-func (nr *NodeRecognition) WithBoxIndex(idx int) *NodeRecognition {
-	if p, ok := nr.Param.(*NodeAndRecognitionParam); ok {
+func (nr *Recognition) WithBoxIndex(idx int) *Recognition {
+	if p, ok := nr.Param.(*AndRecognitionParam); ok {
 		p.BoxIndex = idx
 	}
 	return nr
 }
 
-// NodeRecognitionType defines the available recognition algorithm types.
-type NodeRecognitionType string
+// RecognitionType defines the available recognition algorithm types.
+type RecognitionType string
 
 const (
-	NodeRecognitionTypeDirectHit             NodeRecognitionType = "DirectHit"
-	NodeRecognitionTypeTemplateMatch         NodeRecognitionType = "TemplateMatch"
-	NodeRecognitionTypeFeatureMatch          NodeRecognitionType = "FeatureMatch"
-	NodeRecognitionTypeColorMatch            NodeRecognitionType = "ColorMatch"
-	NodeRecognitionTypeOCR                   NodeRecognitionType = "OCR"
-	NodeRecognitionTypeNeuralNetworkClassify NodeRecognitionType = "NeuralNetworkClassify"
-	NodeRecognitionTypeNeuralNetworkDetect   NodeRecognitionType = "NeuralNetworkDetect"
-	NodeRecognitionTypeAnd                   NodeRecognitionType = "And"
-	NodeRecognitionTypeOr                    NodeRecognitionType = "Or"
-	NodeRecognitionTypeCustom                NodeRecognitionType = "Custom"
+	RecognitionTypeDirectHit             RecognitionType = "DirectHit"
+	RecognitionTypeTemplateMatch         RecognitionType = "TemplateMatch"
+	RecognitionTypeFeatureMatch          RecognitionType = "FeatureMatch"
+	RecognitionTypeColorMatch            RecognitionType = "ColorMatch"
+	RecognitionTypeOCR                   RecognitionType = "OCR"
+	RecognitionTypeNeuralNetworkClassify RecognitionType = "NeuralNetworkClassify"
+	RecognitionTypeNeuralNetworkDetect   RecognitionType = "NeuralNetworkDetect"
+	RecognitionTypeAnd                   RecognitionType = "And"
+	RecognitionTypeOr                    RecognitionType = "Or"
+	RecognitionTypeCustom                RecognitionType = "Custom"
 )
 
-// NodeRecognitionParam is the interface for recognition parameters.
-type NodeRecognitionParam interface {
+// RecognitionParam is the interface for recognition parameters.
+type RecognitionParam interface {
 	isRecognitionParam()
 }
 
@@ -107,31 +107,31 @@ const (
 	OrderByExpected   OrderBy = "Expected"
 )
 
-// NodeDirectHitParam defines parameters for direct hit recognition.
+// DirectHitParam defines parameters for direct hit recognition.
 // DirectHit performs no actual recognition and always succeeds.
-type NodeDirectHitParam struct{}
+type DirectHitParam struct{}
 
-func (n NodeDirectHitParam) isRecognitionParam() {}
+func (n DirectHitParam) isRecognitionParam() {}
 
 // RecDirectHit creates a DirectHit recognition that always succeeds without actual recognition.
-func RecDirectHit() *NodeRecognition {
-	return &NodeRecognition{
-		Type:  NodeRecognitionTypeDirectHit,
-		Param: &NodeDirectHitParam{},
+func RecDirectHit() *Recognition {
+	return &Recognition{
+		Type:  RecognitionTypeDirectHit,
+		Param: &DirectHitParam{},
 	}
 }
 
-// NodeTemplateMatchMethod defines the template matching algorithm (cv::TemplateMatchModes).
-type NodeTemplateMatchMethod int
+// TemplateMatchMethod defines the template matching algorithm (cv::TemplateMatchModes).
+type TemplateMatchMethod int
 
 const (
-	NodeTemplateMatchMethodSQDIFF_NORMED_Inverted NodeTemplateMatchMethod = 10001 // Normalized squared difference (Inverted)
-	NodeTemplateMatchMethodCCORR_NORMED           NodeTemplateMatchMethod = 3     // Normalized cross correlation
-	NodeTemplateMatchMethodCCOEFF_NORMED          NodeTemplateMatchMethod = 5     // Normalized correlation coefficient (default, most accurate)
+	TemplateMatchMethodSQDIFF_NORMED_Inverted TemplateMatchMethod = 10001 // Normalized squared difference (Inverted)
+	TemplateMatchMethodCCORR_NORMED           TemplateMatchMethod = 3     // Normalized cross correlation
+	TemplateMatchMethodCCOEFF_NORMED          TemplateMatchMethod = 5     // Normalized correlation coefficient (default, most accurate)
 )
 
-// NodeTemplateMatchParam defines parameters for template matching recognition.
-type NodeTemplateMatchParam struct {
+// TemplateMatchParam defines parameters for template matching recognition.
+type TemplateMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
@@ -145,34 +145,34 @@ type NodeTemplateMatchParam struct {
 	// Index specifies which match to select from results.
 	Index int `json:"index,omitempty"`
 	// Method specifies the matching algorithm. 1: SQDIFF_NORMED, 3: CCORR_NORMED, 5: CCOEFF_NORMED. Default: 5.
-	Method NodeTemplateMatchMethod `json:"method,omitempty"`
+	Method TemplateMatchMethod `json:"method,omitempty"`
 	// GreenMask enables green color masking for transparent areas.
 	GreenMask bool `json:"green_mask,omitempty"`
 }
 
-func (n NodeTemplateMatchParam) isRecognitionParam() {}
+func (n TemplateMatchParam) isRecognitionParam() {}
 
 // RecTemplateMatch creates a TemplateMatch recognition with the given parameters.
-func RecTemplateMatch(p NodeTemplateMatchParam) *NodeRecognition {
-	return &NodeRecognition{
-		Type:  NodeRecognitionTypeTemplateMatch,
+func RecTemplateMatch(p TemplateMatchParam) *Recognition {
+	return &Recognition{
+		Type:  RecognitionTypeTemplateMatch,
 		Param: &p,
 	}
 }
 
-// NodeFeatureMatchDetector defines the feature detection algorithms.
-type NodeFeatureMatchDetector string
+// FeatureMatchDetector defines the feature detection algorithms.
+type FeatureMatchDetector string
 
 const (
-	NodeFeatureMatchMethodSIFT  NodeFeatureMatchDetector = "SIFT"  // Scale-Invariant Feature Transform (default, most accurate)
-	NodeFeatureMatchMethodKAZE  NodeFeatureMatchDetector = "KAZE"  // KAZE features for 2D/3D images
-	NodeFeatureMatchMethodAKAZE NodeFeatureMatchDetector = "AKAZE" // Accelerated KAZE
-	NodeFeatureMatchMethodBRISK NodeFeatureMatchDetector = "BRISK" // Binary Robust Invariant Scalable Keypoints (fast)
-	NodeFeatureMatchMethodORB   NodeFeatureMatchDetector = "ORB"   // Oriented FAST and Rotated BRIEF (fast, no scale invariance)
+	FeatureMatchMethodSIFT  FeatureMatchDetector = "SIFT"  // Scale-Invariant Feature Transform (default, most accurate)
+	FeatureMatchMethodKAZE  FeatureMatchDetector = "KAZE"  // KAZE features for 2D/3D images
+	FeatureMatchMethodAKAZE FeatureMatchDetector = "AKAZE" // Accelerated KAZE
+	FeatureMatchMethodBRISK FeatureMatchDetector = "BRISK" // Binary Robust Invariant Scalable Keypoints (fast)
+	FeatureMatchMethodORB   FeatureMatchDetector = "ORB"   // Oriented FAST and Rotated BRIEF (fast, no scale invariance)
 )
 
-// NodeFeatureMatchParam defines parameters for feature matching recognition.
-type NodeFeatureMatchParam struct {
+// FeatureMatchParam defines parameters for feature matching recognition.
+type FeatureMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
@@ -188,39 +188,39 @@ type NodeFeatureMatchParam struct {
 	// GreenMask enables green color masking for transparent areas.
 	GreenMask bool `json:"green_mask,omitempty"`
 	// Detector specifies the feature detector algorithm. Options: SIFT, KAZE, AKAZE, BRISK, ORB. Default: SIFT.
-	Detector NodeFeatureMatchDetector `json:"detector,omitempty"`
+	Detector FeatureMatchDetector `json:"detector,omitempty"`
 	// Ratio specifies the matching ratio threshold [0-1.0]. Default: 0.6.
 	Ratio float64 `json:"ratio,omitempty"`
 }
 
-func (n NodeFeatureMatchParam) isRecognitionParam() {}
+func (n FeatureMatchParam) isRecognitionParam() {}
 
 // RecFeatureMatch creates a FeatureMatch recognition with the given parameters.
 // Feature matching provides better generalization with perspective and scale invariance.
-func RecFeatureMatch(p NodeFeatureMatchParam) *NodeRecognition {
-	return &NodeRecognition{
-		Type:  NodeRecognitionTypeFeatureMatch,
+func RecFeatureMatch(p FeatureMatchParam) *Recognition {
+	return &Recognition{
+		Type:  RecognitionTypeFeatureMatch,
 		Param: &p,
 	}
 }
 
-// NodeColorMatchMethod defines the color space for color matching (cv::ColorConversionCodes).
-type NodeColorMatchMethod int
+// ColorMatchMethod defines the color space for color matching (cv::ColorConversionCodes).
+type ColorMatchMethod int
 
 const (
-	NodeColorMatchMethodRGB  NodeColorMatchMethod = 4  // RGB color space, 3 channels (default)
-	NodeColorMatchMethodHSV  NodeColorMatchMethod = 40 // HSV color space, 3 channels
-	NodeColorMatchMethodGRAY NodeColorMatchMethod = 6  // Grayscale, 1 channel
+	ColorMatchMethodRGB  ColorMatchMethod = 4  // RGB color space, 3 channels (default)
+	ColorMatchMethodHSV  ColorMatchMethod = 40 // HSV color space, 3 channels
+	ColorMatchMethodGRAY ColorMatchMethod = 6  // Grayscale, 1 channel
 )
 
-// NodeColorMatchParam defines parameters for color matching recognition.
-type NodeColorMatchParam struct {
+// ColorMatchParam defines parameters for color matching recognition.
+type ColorMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
 	// Method specifies the color space. 4: RGB (default), 40: HSV, 6: GRAY.
-	Method NodeColorMatchMethod `json:"method,omitempty"`
+	Method ColorMatchMethod `json:"method,omitempty"`
 	// Lower specifies the color lower bounds. Required. Inner array length must match method channels.
 	Lower [][]int `json:"lower,omitempty"`
 	// Upper specifies the color upper bounds. Required. Inner array length must match method channels.
@@ -235,18 +235,18 @@ type NodeColorMatchParam struct {
 	Connected bool `json:"connected,omitempty"`
 }
 
-func (n NodeColorMatchParam) isRecognitionParam() {}
+func (n ColorMatchParam) isRecognitionParam() {}
 
 // RecColorMatch creates a ColorMatch recognition with the given parameters.
-func RecColorMatch(p NodeColorMatchParam) *NodeRecognition {
-	return &NodeRecognition{
-		Type:  NodeRecognitionTypeColorMatch,
+func RecColorMatch(p ColorMatchParam) *Recognition {
+	return &Recognition{
+		Type:  RecognitionTypeColorMatch,
 		Param: &p,
 	}
 }
 
-// NodeOCRParam defines parameters for OCR text recognition.
-type NodeOCRParam struct {
+// OCRParam defines parameters for OCR text recognition.
+type OCRParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
@@ -270,23 +270,23 @@ type NodeOCRParam struct {
 	ColorFilter string `json:"color_filter,omitempty"`
 }
 
-func (n NodeOCRParam) isRecognitionParam() {}
+func (n OCRParam) isRecognitionParam() {}
 
 // RecOCR creates an OCR recognition with the given parameters.
 // All fields are optional; pass no argument for defaults.
-func RecOCR(p ...NodeOCRParam) *NodeRecognition {
-	var param NodeOCRParam
+func RecOCR(p ...OCRParam) *Recognition {
+	var param OCRParam
 	if len(p) > 0 {
 		param = p[0]
 	}
-	return &NodeRecognition{
-		Type:  NodeRecognitionTypeOCR,
+	return &Recognition{
+		Type:  RecognitionTypeOCR,
 		Param: &param,
 	}
 }
 
-// NodeNeuralNetworkClassifyParam defines parameters for neural network classification.
-type NodeNeuralNetworkClassifyParam struct {
+// NeuralNetworkClassifyParam defines parameters for neural network classification.
+type NeuralNetworkClassifyParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
@@ -303,19 +303,19 @@ type NodeNeuralNetworkClassifyParam struct {
 	Index int `json:"index,omitempty"`
 }
 
-func (n NodeNeuralNetworkClassifyParam) isRecognitionParam() {}
+func (n NeuralNetworkClassifyParam) isRecognitionParam() {}
 
 // RecNeuralNetworkClassify creates a NeuralNetworkClassify recognition with the given parameters.
 // This classifies images at fixed positions into predefined categories.
-func RecNeuralNetworkClassify(p NodeNeuralNetworkClassifyParam) *NodeRecognition {
-	return &NodeRecognition{
-		Type:  NodeRecognitionTypeNeuralNetworkClassify,
+func RecNeuralNetworkClassify(p NeuralNetworkClassifyParam) *Recognition {
+	return &Recognition{
+		Type:  RecognitionTypeNeuralNetworkClassify,
 		Param: &p,
 	}
 }
 
-// NodeNeuralNetworkDetectParam defines parameters for neural network object detection.
-type NodeNeuralNetworkDetectParam struct {
+// NeuralNetworkDetectParam defines parameters for neural network object detection.
+type NeuralNetworkDetectParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
@@ -332,13 +332,13 @@ type NodeNeuralNetworkDetectParam struct {
 	Index int `json:"index,omitempty"`
 }
 
-func (n NodeNeuralNetworkDetectParam) isRecognitionParam() {}
+func (n NeuralNetworkDetectParam) isRecognitionParam() {}
 
 // RecNeuralNetworkDetect creates a NeuralNetworkDetect recognition with the given parameters.
 // This detects objects at arbitrary positions using deep learning models like YOLO.
-func RecNeuralNetworkDetect(p NodeNeuralNetworkDetectParam) *NodeRecognition {
-	return &NodeRecognition{
-		Type:  NodeRecognitionTypeNeuralNetworkDetect,
+func RecNeuralNetworkDetect(p NeuralNetworkDetectParam) *Recognition {
+	return &Recognition{
+		Type:  RecognitionTypeNeuralNetworkDetect,
 		Param: &p,
 	}
 }
@@ -399,7 +399,7 @@ func Ref(nodeName string) SubRecognitionItem {
 // Inline builds a SubRecognitionItem from a recognition; optional name is the sub_name.
 // Example: RecOr(Inline(RecTemplateMatch(...)), Inline(RecColorMatch(...)))
 // Example: RecAnd(Ref("A"), Inline(RecDirectHit(), "sub1")).WithBoxIndex(2)
-func Inline(rec *NodeRecognition, name ...string) SubRecognitionItem {
+func Inline(rec *Recognition, name ...string) SubRecognitionItem {
 	subName := ""
 	if len(name) > 0 {
 		subName = name[0]
@@ -411,7 +411,7 @@ func Inline(rec *NodeRecognition, name ...string) SubRecognitionItem {
 // It has sub_name plus type and param; used for both And and Or.
 type InlineSubRecognition struct {
 	SubName string `json:"sub_name,omitempty"`
-	NodeRecognition
+	Recognition
 }
 
 func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
@@ -424,57 +424,57 @@ func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
 	}
 	n.SubName = alias.SubName
 
-	if err := json.Unmarshal(data, &n.NodeRecognition); err != nil {
+	if err := json.Unmarshal(data, &n.Recognition); err != nil {
 		return err
 	}
 	return nil
 }
 
-func newInlineSub(subName string, recognition *NodeRecognition) *InlineSubRecognition {
+func newInlineSub(subName string, recognition *Recognition) *InlineSubRecognition {
 	return &InlineSubRecognition{
-		SubName:         subName,
-		NodeRecognition: *recognition,
+		SubName:     subName,
+		Recognition: *recognition,
 	}
 }
 
-// NodeAndRecognitionParam defines parameters for AND recognition.
+// AndRecognitionParam defines parameters for AND recognition.
 // AllOf elements are either node name strings or inline recognitions.
-type NodeAndRecognitionParam struct {
+type AndRecognitionParam struct {
 	AllOf    []SubRecognitionItem `json:"all_of,omitempty"`
 	BoxIndex int                  `json:"box_index,omitempty"`
 }
 
-func (n NodeAndRecognitionParam) isRecognitionParam() {}
+func (n AndRecognitionParam) isRecognitionParam() {}
 
 // RecAnd creates an AND recognition that requires all sub-recognitions to succeed.
 // Use WithBoxIndex to set which result's box to use.
 // Example: RecAnd(Ref("NodeA"), Inline(RecDirectHit(), "sub1")).WithBoxIndex(2)
-func RecAnd(items ...SubRecognitionItem) *NodeRecognition {
-	param := &NodeAndRecognitionParam{AllOf: slices.Clone(items)}
-	return &NodeRecognition{Type: NodeRecognitionTypeAnd, Param: param}
+func RecAnd(items ...SubRecognitionItem) *Recognition {
+	param := &AndRecognitionParam{AllOf: slices.Clone(items)}
+	return &Recognition{Type: RecognitionTypeAnd, Param: param}
 }
 
-// NodeOrRecognitionParam defines parameters for OR recognition.
+// OrRecognitionParam defines parameters for OR recognition.
 // AnyOf elements are either node name strings or inline recognitions.
-type NodeOrRecognitionParam struct {
+type OrRecognitionParam struct {
 	AnyOf []SubRecognitionItem `json:"any_of,omitempty"`
 }
 
-func (n NodeOrRecognitionParam) isRecognitionParam() {}
+func (n OrRecognitionParam) isRecognitionParam() {}
 
 // RecOr creates an OR recognition that succeeds if any sub-recognition succeeds.
-func RecOr(anyOf ...SubRecognitionItem) *NodeRecognition {
-	param := &NodeOrRecognitionParam{
+func RecOr(anyOf ...SubRecognitionItem) *Recognition {
+	param := &OrRecognitionParam{
 		AnyOf: slices.Clone(anyOf),
 	}
-	return &NodeRecognition{
-		Type:  NodeRecognitionTypeOr,
+	return &Recognition{
+		Type:  RecognitionTypeOr,
 		Param: param,
 	}
 }
 
-// NodeCustomRecognitionParam defines parameters for custom recognition handlers.
-type NodeCustomRecognitionParam struct {
+// CustomRecognitionParam defines parameters for custom recognition handlers.
+type CustomRecognitionParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
@@ -485,12 +485,12 @@ type NodeCustomRecognitionParam struct {
 	CustomRecognitionParam any `json:"custom_recognition_param,omitempty"`
 }
 
-func (n NodeCustomRecognitionParam) isRecognitionParam() {}
+func (n CustomRecognitionParam) isRecognitionParam() {}
 
 // RecCustom creates a Custom recognition with the given parameters.
-func RecCustom(p NodeCustomRecognitionParam) *NodeRecognition {
-	return &NodeRecognition{
-		Type:  NodeRecognitionTypeCustom,
+func RecCustom(p CustomRecognitionParam) *Recognition {
+	return &Recognition{
+		Type:  RecognitionTypeCustom,
 		Param: &p,
 	}
 }

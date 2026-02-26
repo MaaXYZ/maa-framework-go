@@ -14,7 +14,7 @@ type Node struct {
 	Anchor map[string]string `json:"anchor,omitempty"`
 
 	// Recognition defines how this node recognizes targets on screen.
-	Recognition *NodeRecognition `json:"recognition,omitempty"`
+	Recognition *Recognition `json:"recognition,omitempty"`
 	// Action defines what action to perform when recognition succeeds.
 	Action *NodeAction `json:"action,omitempty"`
 	// Next specifies the list of possible next nodes to execute.
@@ -77,7 +77,7 @@ func (n *Node) SetAnchorTarget(anchor, nodeName string) *Node {
 }
 
 // SetRecognition sets the recognition for the node and returns the node for chaining.
-func (n *Node) SetRecognition(rec *NodeRecognition) *Node {
+func (n *Node) SetRecognition(rec *Recognition) *Node {
 	n.Recognition = rec
 	return n
 }

@@ -195,17 +195,17 @@ func (ctx *Context) RunAction(
 }
 
 // RunRecognitionDirect runs recognition directly by type and parameters, without a pipeline entry.
-// It accepts a recognition type string (e.g., "OCR", "TemplateMatch"), a recognition parameter that
-// will be marshaled to JSON, and an image to recognize. If the parameter is nil, it will be
-// marshaled to JSON null.
+// It accepts a recognition type (e.g., RecognitionTypeOCR, RecognitionTypeTemplateMatch),
+// a recognition parameter implementing RecognitionParam (marshaled to JSON), and an image.
+// recoParam may be nil; it is then marshaled as JSON null.
 //
 // Example:
 //
-//	recParam := &NodeOCRParam{Expected: []string{"Hello"}}
-//	ctx.RunRecognitionDirect(NodeRecognitionTypeOCR, recParam, img)
+//	recParam := &OCRParam{Expected: []string{"Hello"}}
+//	detail, err := ctx.RunRecognitionDirect(RecognitionTypeOCR, recParam, img)
 func (ctx *Context) RunRecognitionDirect(
-	recoType NodeRecognitionType,
-	recoParam NodeRecognitionParam,
+	recoType RecognitionType,
+	recoParam RecognitionParam,
 	img image.Image,
 ) (*RecognitionDetail, error) {
 	imgBuf := buffer.NewImageBuffer()

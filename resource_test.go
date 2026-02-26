@@ -43,7 +43,7 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testResource_RegisterCustomRecognitionNode := NewNode("TestResource_RegisterCustomRecognition").
-		SetRecognition(RecCustom(NodeCustomRecognitionParam{CustomRecognition: "TestRec"}))
+		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec"}))
 	pipeline.AddNode(testResource_RegisterCustomRecognitionNode)
 
 	got2 := tasker.PostTask(testResource_RegisterCustomRecognitionNode.Name, pipeline).
@@ -69,7 +69,7 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 
 	pipeline := NewPipeline()
 	testResource_UnregisterCustomRecognitionNode := NewNode("TestResource_UnregisterCustomRecognition").
-		SetRecognition(RecCustom(NodeCustomRecognitionParam{CustomRecognition: "TestRec"})).
+		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec"})).
 		SetTimeout(0 * time.Second)
 	pipeline.AddNode(testResource_UnregisterCustomRecognitionNode)
 
@@ -105,13 +105,13 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 
 	pipeline1 := NewPipeline()
 	testResource_ClearCustomRecognitionNode1 := NewNode("TestResource_ClearCustomRecognition").
-		SetRecognition(RecCustom(NodeCustomRecognitionParam{CustomRecognition: "TestRec1"})).
+		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec1"})).
 		SetTimeout(0 * time.Second)
 	pipeline1.AddNode(testResource_ClearCustomRecognitionNode1)
 
 	pipeline2 := NewPipeline()
 	testResource_ClearCustomRecognitionNode2 := NewNode("TestResource_ClearCustomRecognition").
-		SetRecognition(RecCustom(NodeCustomRecognitionParam{CustomRecognition: "TestRec2"})).
+		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec2"})).
 		SetTimeout(0 * time.Second)
 	pipeline2.AddNode(testResource_ClearCustomRecognitionNode2)
 	got3 := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1).
@@ -355,17 +355,17 @@ func TestResource_GetDefaultRecognitionParam(t *testing.T) {
 	defer res.Destroy()
 
 	// Test getting default recognition parameters for DirectHit type
-	param, err := res.GetDefaultRecognitionParam(NodeRecognitionTypeDirectHit)
+	param, err := res.GetDefaultRecognitionParam(RecognitionTypeDirectHit)
 	require.NoError(t, err)
 	require.NotNil(t, param)
-	_, isDirectHit := param.(*NodeDirectHitParam)
+	_, isDirectHit := param.(*DirectHitParam)
 	require.True(t, isDirectHit, "param should be *NodeDirectHitParam")
 
 	// Test getting default recognition parameters for OCR type
-	param2, err := res.GetDefaultRecognitionParam(NodeRecognitionTypeOCR)
+	param2, err := res.GetDefaultRecognitionParam(RecognitionTypeOCR)
 	require.NoError(t, err)
 	require.NotNil(t, param2)
-	_, isOCR := param2.(*NodeOCRParam)
+	_, isOCR := param2.(*OCRParam)
 	require.True(t, isOCR, "param2 should be *NodeOCRParam")
 }
 

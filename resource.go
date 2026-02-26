@@ -479,9 +479,9 @@ func (r *Resource) GetCustomActionList() ([]string, error) {
 }
 
 // GetDefaultRecognitionParam returns the default recognition parameters for the specified type from DefaultPipelineMgr.
-// recoType is a recognition type (e.g., NodeRecognitionTypeOCR, NodeRecognitionTypeTemplateMatch).
-// Returns the parsed NodeRecognitionParam interface.
-func (r *Resource) GetDefaultRecognitionParam(recoType NodeRecognitionType) (NodeRecognitionParam, error) {
+// recoType is a recognition type (e.g., RecognitionTypeOCR, RecognitionTypeTemplateMatch).
+// Returns the parsed RecognitionParam interface.
+func (r *Resource) GetDefaultRecognitionParam(recoType RecognitionType) (RecognitionParam, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaResourceGetDefaultRecognitionParam(r.handle, string(recoType), buf.Handle())
@@ -495,28 +495,28 @@ func (r *Resource) GetDefaultRecognitionParam(recoType NodeRecognitionType) (Nod
 	}
 
 	// Create the appropriate param type based on recoType
-	var param NodeRecognitionParam
+	var param RecognitionParam
 	switch recoType {
-	case NodeRecognitionTypeDirectHit, "":
-		param = &NodeDirectHitParam{}
-	case NodeRecognitionTypeTemplateMatch:
-		param = &NodeTemplateMatchParam{}
-	case NodeRecognitionTypeFeatureMatch:
-		param = &NodeFeatureMatchParam{}
-	case NodeRecognitionTypeColorMatch:
-		param = &NodeColorMatchParam{}
-	case NodeRecognitionTypeOCR:
-		param = &NodeOCRParam{}
-	case NodeRecognitionTypeNeuralNetworkClassify:
-		param = &NodeNeuralNetworkClassifyParam{}
-	case NodeRecognitionTypeNeuralNetworkDetect:
-		param = &NodeNeuralNetworkDetectParam{}
-	case NodeRecognitionTypeAnd:
-		param = &NodeAndRecognitionParam{}
-	case NodeRecognitionTypeOr:
-		param = &NodeOrRecognitionParam{}
-	case NodeRecognitionTypeCustom:
-		param = &NodeCustomRecognitionParam{}
+	case RecognitionTypeDirectHit, "":
+		param = &DirectHitParam{}
+	case RecognitionTypeTemplateMatch:
+		param = &TemplateMatchParam{}
+	case RecognitionTypeFeatureMatch:
+		param = &FeatureMatchParam{}
+	case RecognitionTypeColorMatch:
+		param = &ColorMatchParam{}
+	case RecognitionTypeOCR:
+		param = &OCRParam{}
+	case RecognitionTypeNeuralNetworkClassify:
+		param = &NeuralNetworkClassifyParam{}
+	case RecognitionTypeNeuralNetworkDetect:
+		param = &NeuralNetworkDetectParam{}
+	case RecognitionTypeAnd:
+		param = &AndRecognitionParam{}
+	case RecognitionTypeOr:
+		param = &OrRecognitionParam{}
+	case RecognitionTypeCustom:
+		param = &CustomRecognitionParam{}
 	default:
 		return nil, fmt.Errorf("unknown recognition type: %s", recoType)
 	}

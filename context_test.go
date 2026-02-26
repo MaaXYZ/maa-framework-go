@@ -62,7 +62,7 @@ func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) boo
 
 	pipeline := NewPipeline()
 	testNode := NewNode("Test").
-		SetRecognition(RecOCR(NodeOCRParam{
+		SetRecognition(RecOCR(OCRParam{
 			Expected: []string{"Hello"},
 		}))
 	pipeline.AddNode(testNode)
@@ -95,7 +95,7 @@ func TestContext_RunRecognition(t *testing.T) {
 		AddNext("Stop")
 	pipeline.AddNode(testContext_RunRecognitionNode)
 	runRecognitionNode := NewNode("RunRecognition").
-		SetRecognition(RecCustom(NodeCustomRecognitionParam{CustomRecognition: "TestContext_RunRecognitionAct"}))
+		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestContext_RunRecognitionAct"}))
 	pipeline.AddNode(runRecognitionNode)
 	stopNode := NewNode("Stop")
 	pipeline.AddNode(stopNode)
@@ -436,7 +436,7 @@ func (a *testContextGetNodeDataAct) testDirectHitRecognition(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_direct_hit")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeRecognitionTypeDirectHit, nodeData.Recognition.Type)
+	assert.Equal(a.t, RecognitionTypeDirectHit, nodeData.Recognition.Type)
 }
 
 func (a *testContextGetNodeDataAct) testTemplateMatchRecognition(ctx *Context) {
@@ -462,15 +462,15 @@ func (a *testContextGetNodeDataAct) testTemplateMatchRecognition(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_template")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeRecognitionTypeTemplateMatch, nodeData.Recognition.Type)
-	assert.IsType(a.t, (*NodeTemplateMatchParam)(nil), nodeData.Recognition.Param)
+	assert.Equal(a.t, RecognitionTypeTemplateMatch, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*TemplateMatchParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeTemplateMatchParam)
+	param := nodeData.Recognition.Param.(*TemplateMatchParam)
 	assert.Equal(a.t, []string{"test.png", "test2.png"}, param.Template)
 	assert.Equal(a.t, []float64{0.8}, param.Threshold)
 	assert.Equal(a.t, OrderByScore, param.OrderBy)
 	assert.Equal(a.t, 1, param.Index)
-	assert.Equal(a.t, NodeTemplateMatchMethodCCOEFF_NORMED, param.Method)
+	assert.Equal(a.t, TemplateMatchMethodCCOEFF_NORMED, param.Method)
 	assert.True(a.t, param.GreenMask)
 }
 
@@ -497,14 +497,14 @@ func (a *testContextGetNodeDataAct) testFeatureMatchRecognition(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_feature")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeRecognitionTypeFeatureMatch, nodeData.Recognition.Type)
-	assert.IsType(a.t, (*NodeFeatureMatchParam)(nil), nodeData.Recognition.Param)
+	assert.Equal(a.t, RecognitionTypeFeatureMatch, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*FeatureMatchParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeFeatureMatchParam)
+	param := nodeData.Recognition.Param.(*FeatureMatchParam)
 	assert.Equal(a.t, []string{"feature.png"}, param.Template)
 	assert.Equal(a.t, 10, param.Count)
 	assert.Equal(a.t, OrderByArea, param.OrderBy)
-	assert.Equal(a.t, NodeFeatureMatchMethodSIFT, param.Detector)
+	assert.Equal(a.t, FeatureMatchMethodSIFT, param.Detector)
 	assert.Equal(a.t, 0.7, param.Ratio)
 }
 
@@ -530,11 +530,11 @@ func (a *testContextGetNodeDataAct) testColorMatchRecognition(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_color")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeRecognitionTypeColorMatch, nodeData.Recognition.Type)
-	assert.IsType(a.t, (*NodeColorMatchParam)(nil), nodeData.Recognition.Param)
+	assert.Equal(a.t, RecognitionTypeColorMatch, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*ColorMatchParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeColorMatchParam)
-	assert.Equal(a.t, NodeColorMatchMethodRGB, param.Method)
+	param := nodeData.Recognition.Param.(*ColorMatchParam)
+	assert.Equal(a.t, ColorMatchMethodRGB, param.Method)
 	assert.Equal(a.t, [][]int{{0, 0, 0}}, param.Lower)
 	assert.Equal(a.t, [][]int{{255, 255, 255}}, param.Upper)
 	assert.Equal(a.t, 100, param.Count)
@@ -565,10 +565,10 @@ func (a *testContextGetNodeDataAct) testOCRRecognition(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_ocr")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeRecognitionTypeOCR, nodeData.Recognition.Type)
-	assert.IsType(a.t, (*NodeOCRParam)(nil), nodeData.Recognition.Param)
+	assert.Equal(a.t, RecognitionTypeOCR, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*OCRParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeOCRParam)
+	param := nodeData.Recognition.Param.(*OCRParam)
 	assert.Equal(a.t, []string{"Hello", "World"}, param.Expected)
 	assert.Equal(a.t, 0.5, param.Threshold)
 	assert.Equal(a.t, OrderByLength, param.OrderBy)
@@ -598,10 +598,10 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkClassifyRecognition(ctx *Co
 	nodeData, err := ctx.GetNode("test_nn_classify")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeRecognitionTypeNeuralNetworkClassify, nodeData.Recognition.Type)
-	assert.IsType(a.t, (*NodeNeuralNetworkClassifyParam)(nil), nodeData.Recognition.Param)
+	assert.Equal(a.t, RecognitionTypeNeuralNetworkClassify, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*NeuralNetworkClassifyParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeNeuralNetworkClassifyParam)
+	param := nodeData.Recognition.Param.(*NeuralNetworkClassifyParam)
 	assert.Equal(a.t, []string{"Cat", "Dog", "Mouse"}, param.Labels)
 	assert.Equal(a.t, "classifier.onnx", param.Model)
 	assert.Equal(a.t, []int{0, 2}, param.Expected)
@@ -628,10 +628,10 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkDetectRecognition(ctx *Cont
 	nodeData, err := ctx.GetNode("test_nn_detect")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeRecognitionTypeNeuralNetworkDetect, nodeData.Recognition.Type)
-	assert.IsType(a.t, (*NodeNeuralNetworkDetectParam)(nil), nodeData.Recognition.Param)
+	assert.Equal(a.t, RecognitionTypeNeuralNetworkDetect, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*NeuralNetworkDetectParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeNeuralNetworkDetectParam)
+	param := nodeData.Recognition.Param.(*NeuralNetworkDetectParam)
 	assert.Equal(a.t, []string{"person", "car", "bicycle"}, param.Labels)
 	assert.Equal(a.t, "yolov8.onnx", param.Model)
 	assert.Equal(a.t, []int{0, 1}, param.Expected)
@@ -657,10 +657,10 @@ func (a *testContextGetNodeDataAct) testCustomRecognition(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_custom_rec")
 	assert.NoError(a.t, err)
 	assert.NotNil(a.t, nodeData)
-	assert.Equal(a.t, NodeRecognitionTypeCustom, nodeData.Recognition.Type)
-	assert.IsType(a.t, (*NodeCustomRecognitionParam)(nil), nodeData.Recognition.Param)
+	assert.Equal(a.t, RecognitionTypeCustom, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*CustomRecognitionParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeCustomRecognitionParam)
+	param := nodeData.Recognition.Param.(*CustomRecognitionParam)
 	assert.Equal(a.t, "MyCustomRecognizer", param.CustomRecognition)
 	assert.NotNil(a.t, param.CustomRecognitionParam)
 }
@@ -1179,7 +1179,7 @@ func (a *testContextGetNodeDataAct) testNodeAttributes(ctx *Context) {
 	assert.NotNil(a.t, nodeData)
 
 	// Check recognition and action
-	assert.Equal(a.t, NodeRecognitionTypeDirectHit, nodeData.Recognition.Type)
+	assert.Equal(a.t, RecognitionTypeDirectHit, nodeData.Recognition.Type)
 	assert.Equal(a.t, NodeActionTypeClick, nodeData.Action.Type)
 
 	// Check next list
@@ -1384,7 +1384,7 @@ func (a *testContextRunRecognitionDirectAct) Run(ctx *Context, _ *CustomActionAr
 	require.NotNil(a.t, img)
 
 	// Test RunRecognitionDirect with DirectHit recognition type
-	detail, err := ctx.RunRecognitionDirect(NodeRecognitionTypeDirectHit, &NodeDirectHitParam{}, img)
+	detail, err := ctx.RunRecognitionDirect(RecognitionTypeDirectHit, &DirectHitParam{}, img)
 	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 	require.True(a.t, detail.Hit)
