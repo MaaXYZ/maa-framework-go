@@ -3,6 +3,7 @@ package maa
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 )
 
 type RecognitionResult struct {
@@ -128,47 +129,39 @@ type RecognitionResults struct {
 }
 
 // parseRecognitionResult parses a single result JSON based on the algorithm type.
-// Returns nil if parsing fails or the algorithm type is unknown.
-func parseRecognitionResult(algorithm string, resultJson []byte) *RecognitionResult {
+// Returns an error if the algorithm type is unknown or JSON parsing fails.
+func parseRecognitionResult(algorithm string, resultJson []byte) (*RecognitionResult, error) {
 	algorithmType := RecognitionType(algorithm)
 
 	var resultVal any
-	var err error
 
 	switch algorithmType {
 	case RecognitionTypeTemplateMatch:
 		resultVal = &TemplateMatchResult{}
-		err = json.Unmarshal(resultJson, resultVal)
 	case RecognitionTypeFeatureMatch:
 		resultVal = &FeatureMatchResult{}
-		err = json.Unmarshal(resultJson, resultVal)
 	case RecognitionTypeColorMatch:
 		resultVal = &ColorMatchResult{}
-		err = json.Unmarshal(resultJson, resultVal)
 	case RecognitionTypeOCR:
 		resultVal = &OCRResult{}
-		err = json.Unmarshal(resultJson, resultVal)
 	case RecognitionTypeNeuralNetworkClassify:
 		resultVal = &NeuralNetworkClassifyResult{}
-		err = json.Unmarshal(resultJson, resultVal)
 	case RecognitionTypeNeuralNetworkDetect:
 		resultVal = &NeuralNetworkDetectResult{}
-		err = json.Unmarshal(resultJson, resultVal)
 	case RecognitionTypeCustom:
 		resultVal = &CustomRecognitionResult{}
-		err = json.Unmarshal(resultJson, resultVal)
 	default:
-		return nil
+		return nil, fmt.Errorf("unknown recognition result type: %s", algorithm)
 	}
 
-	if err != nil {
-		return nil
+	if err := json.Unmarshal(resultJson, resultVal); err != nil {
+		return nil, err
 	}
 
 	return &RecognitionResult{
 		tp:  algorithmType,
 		val: resultVal,
-	}
+	}, nil
 }
 
 // parseRecognitionResults parses detailJson and returns RecognitionResults containing all, best, and filtered results.
@@ -196,28 +189,40 @@ func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults,
 		return nil, err
 	}
 
+	allResults, err := parseRecognitionResultList(algorithm, raw.All)
+	if err != nil {
+		return nil, err
+	}
+	best, err := parseRecognitionResultSingle(algorithm, raw.Best)
+	if err != nil {
+		return nil, err
+	}
+	filtered, err := parseRecognitionResultList(algorithm, raw.Filtered)
+	if err != nil {
+		return nil, err
+	}
 	return &RecognitionResults{
-		All:      parseRecognitionResultList(algorithm, raw.All),
-		Best:     parseRecognitionResultSingle(algorithm, raw.Best),
-		Filtered: parseRecognitionResultList(algorithm, raw.Filtered),
+		All:      allResults,
+		Best:     best,
+		Filtered: filtered,
 	}, nil
 }
 
-func parseRecognitionResultSingle(algorithm string, raw json.RawMessage) *RecognitionResult {
+func parseRecognitionResultSingle(algorithm string, raw json.RawMessage) (*RecognitionResult, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
-		return nil
+		return nil, nil
 	}
 	if trimmed[0] != '{' {
-		return nil
+		return nil, nil
 	}
 	return parseRecognitionResult(algorithm, trimmed)
 }
 
-func parseRecognitionResultList(algorithm string, raw json.RawMessage) []*RecognitionResult {
+func parseRecognitionResultList(algorithm string, raw json.RawMessage) ([]*RecognitionResult, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
-		return []*RecognitionResult{}
+		return []*RecognitionResult{}, nil
 	}
 
 	results := make([]*RecognitionResult, 0)
@@ -225,19 +230,27 @@ func parseRecognitionResultList(algorithm string, raw json.RawMessage) []*Recogn
 	case '[':
 		var items []json.RawMessage
 		if err := json.Unmarshal(trimmed, &items); err != nil {
-			return results
+			return nil, err
 		}
 		for _, item := range items {
-			if result := parseRecognitionResult(algorithm, item); result != nil {
+			result, err := parseRecognitionResult(algorithm, item)
+			if err != nil {
+				return nil, err
+			}
+			if result != nil {
 				results = append(results, result)
 			}
 		}
 	case '{':
-		if result := parseRecognitionResult(algorithm, trimmed); result != nil {
+		result, err := parseRecognitionResult(algorithm, trimmed)
+		if err != nil {
+			return nil, err
+		}
+		if result != nil {
 			results = append(results, result)
 		}
 	}
-	return results
+	return results, nil
 }
 
 // combinedResultItem represents a single item in the CombinedResult array for And/Or recognition.
