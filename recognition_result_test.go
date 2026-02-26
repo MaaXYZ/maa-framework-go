@@ -71,7 +71,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			param: &TemplateMatchParam{
 				Template:  []string{"Wilderness/EnterWilderness.png"},
 				Threshold: []float64{0.01},
-				OrderBy:   OrderByScore,
+				OrderBy:   TemplateMatchOrderByScore,
 			},
 		},
 		{
@@ -101,7 +101,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			param: &OCRParam{
 				Expected:  []string{".*"},
 				Threshold: 0.0,
-				OrderBy:   OrderByLength,
+				OrderBy:   OCROrderByLength,
 			},
 		},
 		{
@@ -112,7 +112,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 					Inline(RecTemplateMatch(TemplateMatchParam{
 						Template:  []string{"Wilderness/EnterWilderness.png"},
 						Threshold: []float64{0.01},
-						OrderBy:   OrderByScore,
+						OrderBy:   TemplateMatchOrderByScore,
 					}), "template"),
 					Inline(RecColorMatch(ColorMatchParam{
 						Lower:     [][]int{{0, 0, 0}},
@@ -132,7 +132,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 					Inline(RecTemplateMatch(TemplateMatchParam{
 						Template:  []string{"Wilderness/EnterWilderness.png"},
 						Threshold: []float64{0.01},
-						OrderBy:   OrderByScore,
+						OrderBy:   TemplateMatchOrderByScore,
 					})),
 					Inline(RecColorMatch(ColorMatchParam{
 						Lower:     [][]int{{0, 0, 0}},
@@ -150,7 +150,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 				Labels:   []string{"cat", "dog", "mouse"},
 				Model:    "classify/classifier.onnx",
 				Expected: []int{0, 2},
-				OrderBy:  OrderByScore,
+				OrderBy:  NeuralNetworkClassifyOrderByScore,
 				Index:    0,
 			},
 		},
@@ -160,7 +160,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			param: &NeuralNetworkDetectParam{
 				Model:    "ocr/det.onnx",
 				Expected: []int{0},
-				OrderBy:  OrderByArea,
+				OrderBy:  NeuralNetworkDetectOrderByArea,
 				Index:    0,
 			},
 		},

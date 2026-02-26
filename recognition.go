@@ -121,6 +121,16 @@ func RecDirectHit() *Recognition {
 	}
 }
 
+// TemplateMatchOrderBy defines the ordering options for template matching results.
+type TemplateMatchOrderBy OrderBy
+
+const (
+	TemplateMatchOrderByHorizontal = TemplateMatchOrderBy(OrderByHorizontal)
+	TemplateMatchOrderByVertical   = TemplateMatchOrderBy(OrderByVertical)
+	TemplateMatchOrderByScore      = TemplateMatchOrderBy(OrderByScore)
+	TemplateMatchOrderByRandom     = TemplateMatchOrderBy(OrderByRandom)
+)
+
 // TemplateMatchMethod defines the template matching algorithm (cv::TemplateMatchModes).
 type TemplateMatchMethod int
 
@@ -140,8 +150,8 @@ type TemplateMatchParam struct {
 	Template []string `json:"template,omitempty"`
 	// Threshold specifies the matching threshold [0-1.0]. Default: 0.7.
 	Threshold []float64 `json:"threshold,omitempty"`
-	// OrderBy specifies the result ordering. Default: Horizontal.
-	OrderBy OrderBy `json:"order_by,omitempty"`
+	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Random.
+	OrderBy TemplateMatchOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
 	Index int `json:"index,omitempty"`
 	// Method specifies the matching algorithm. 1: SQDIFF_NORMED, 3: CCORR_NORMED, 5: CCOEFF_NORMED. Default: 5.
@@ -159,6 +169,17 @@ func RecTemplateMatch(p TemplateMatchParam) *Recognition {
 		Param: &p,
 	}
 }
+
+// FeatureMatchOrderBy defines the ordering options for feature matching results.
+type FeatureMatchOrderBy OrderBy
+
+const (
+	FeatureMatchOrderByHorizontal = FeatureMatchOrderBy(OrderByHorizontal)
+	FeatureMatchOrderByVertical   = FeatureMatchOrderBy(OrderByVertical)
+	FeatureMatchOrderByScore      = FeatureMatchOrderBy(OrderByScore)
+	FeatureMatchOrderByArea       = FeatureMatchOrderBy(OrderByArea)
+	FeatureMatchOrderByRandom     = FeatureMatchOrderBy(OrderByRandom)
+)
 
 // FeatureMatchDetector defines the feature detection algorithms.
 type FeatureMatchDetector string
@@ -181,8 +202,8 @@ type FeatureMatchParam struct {
 	Template []string `json:"template,omitempty"`
 	// Count specifies the minimum number of feature points required (threshold). Default: 4.
 	Count int `json:"count,omitempty"`
-	// OrderBy specifies the result ordering. Default: Horizontal.
-	OrderBy OrderBy `json:"order_by,omitempty"`
+	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Area | Random.
+	OrderBy FeatureMatchOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
 	Index int `json:"index,omitempty"`
 	// GreenMask enables green color masking for transparent areas.
@@ -213,6 +234,17 @@ const (
 	ColorMatchMethodGRAY ColorMatchMethod = 6  // Grayscale, 1 channel
 )
 
+// ColorMatchOrderBy defines the ordering options for color matching results.
+type ColorMatchOrderBy OrderBy
+
+const (
+	ColorMatchOrderByHorizontal = ColorMatchOrderBy(OrderByHorizontal)
+	ColorMatchOrderByVertical   = ColorMatchOrderBy(OrderByVertical)
+	ColorMatchOrderByScore      = ColorMatchOrderBy(OrderByScore)
+	ColorMatchOrderByArea       = ColorMatchOrderBy(OrderByArea)
+	ColorMatchOrderByRandom     = ColorMatchOrderBy(OrderByRandom)
+)
+
 // ColorMatchParam defines parameters for color matching recognition.
 type ColorMatchParam struct {
 	// ROI specifies the region of interest for recognition.
@@ -227,8 +259,8 @@ type ColorMatchParam struct {
 	Upper [][]int `json:"upper,omitempty"`
 	// Count specifies the minimum pixel count required (threshold). Default: 1.
 	Count int `json:"count,omitempty"`
-	// OrderBy specifies the result ordering. Default: Horizontal.
-	OrderBy OrderBy `json:"order_by,omitempty"`
+	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Area | Random.
+	OrderBy ColorMatchOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
 	Index int `json:"index,omitempty"`
 	// Connected enables connected component analysis. Default: false.
@@ -245,6 +277,18 @@ func RecColorMatch(p ColorMatchParam) *Recognition {
 	}
 }
 
+// OCROrderBy defines the ordering options for OCR results.
+type OCROrderBy OrderBy
+
+const (
+	OCROrderByHorizontal = OCROrderBy(OrderByHorizontal)
+	OCROrderByVertical   = OCROrderBy(OrderByVertical)
+	OCROrderByArea       = OCROrderBy(OrderByArea)
+	OCROrderByLength     = OCROrderBy(OrderByLength)
+	OCROrderByRandom     = OCROrderBy(OrderByRandom)
+	OCROrderByExpected   = OCROrderBy(OrderByExpected)
+)
+
 // OCRParam defines parameters for OCR text recognition.
 type OCRParam struct {
 	// ROI specifies the region of interest for recognition.
@@ -257,8 +301,8 @@ type OCRParam struct {
 	Threshold float64 `json:"threshold,omitempty"`
 	// Replace specifies text replacement rules for correcting OCR errors.
 	Replace [][2]string `json:"replace,omitempty"`
-	// OrderBy specifies the result ordering. Default: Horizontal.
-	OrderBy OrderBy `json:"order_by,omitempty"`
+	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Area | Length | Random | Expected.
+	OrderBy OCROrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
 	Index int `json:"index,omitempty"`
 	// OnlyRec enables recognition-only mode without detection (requires precise ROI). Default: false.
@@ -285,6 +329,17 @@ func RecOCR(p ...OCRParam) *Recognition {
 	}
 }
 
+// NeuralNetworkClassifyOrderBy defines the ordering options for neural network classification results.
+type NeuralNetworkClassifyOrderBy OrderBy
+
+const (
+	NeuralNetworkClassifyOrderByHorizontal = NeuralNetworkClassifyOrderBy(OrderByHorizontal)
+	NeuralNetworkClassifyOrderByVertical   = NeuralNetworkClassifyOrderBy(OrderByVertical)
+	NeuralNetworkClassifyOrderByScore      = NeuralNetworkClassifyOrderBy(OrderByScore)
+	NeuralNetworkClassifyOrderByRandom     = NeuralNetworkClassifyOrderBy(OrderByRandom)
+	NeuralNetworkClassifyOrderByExpected   = NeuralNetworkClassifyOrderBy(OrderByExpected)
+)
+
 // NeuralNetworkClassifyParam defines parameters for neural network classification.
 type NeuralNetworkClassifyParam struct {
 	// ROI specifies the region of interest for recognition.
@@ -297,8 +352,8 @@ type NeuralNetworkClassifyParam struct {
 	Model string `json:"model,omitempty"`
 	// Expected specifies the expected class indices. Required.
 	Expected []int `json:"expected,omitempty"`
-	// OrderBy specifies the result ordering. Default: Horizontal.
-	OrderBy OrderBy `json:"order_by,omitempty"`
+	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Random | Expected.
+	OrderBy NeuralNetworkClassifyOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
 	Index int `json:"index,omitempty"`
 }
@@ -314,6 +369,18 @@ func RecNeuralNetworkClassify(p NeuralNetworkClassifyParam) *Recognition {
 	}
 }
 
+// NeuralNetworkDetectOrderBy defines the ordering options for neural network detection results.
+type NeuralNetworkDetectOrderBy OrderBy
+
+const (
+	NeuralNetworkDetectOrderByHorizontal = NeuralNetworkDetectOrderBy(OrderByHorizontal)
+	NeuralNetworkDetectOrderByVertical   = NeuralNetworkDetectOrderBy(OrderByVertical)
+	NeuralNetworkDetectOrderByScore      = NeuralNetworkDetectOrderBy(OrderByScore)
+	NeuralNetworkDetectOrderByArea       = NeuralNetworkDetectOrderBy(OrderByArea)
+	NeuralNetworkDetectOrderByRandom     = NeuralNetworkDetectOrderBy(OrderByRandom)
+	NeuralNetworkDetectOrderByExpected   = NeuralNetworkDetectOrderBy(OrderByExpected)
+)
+
 // NeuralNetworkDetectParam defines parameters for neural network object detection.
 type NeuralNetworkDetectParam struct {
 	// ROI specifies the region of interest for recognition.
@@ -326,8 +393,8 @@ type NeuralNetworkDetectParam struct {
 	Model string `json:"model,omitempty"`
 	// Expected specifies the expected class indices. Required.
 	Expected []int `json:"expected,omitempty"`
-	// OrderBy specifies the result ordering. Default: Horizontal.
-	OrderBy OrderBy `json:"order_by,omitempty"`
+	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Area | Random | Expected
+	OrderBy NeuralNetworkDetectOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
 	Index int `json:"index,omitempty"`
 }
