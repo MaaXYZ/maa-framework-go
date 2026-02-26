@@ -468,7 +468,7 @@ func (a *testContextGetNodeDataAct) testTemplateMatchRecognition(ctx *Context) {
 	param := nodeData.Recognition.Param.(*TemplateMatchParam)
 	assert.Equal(a.t, []string{"test.png", "test2.png"}, param.Template)
 	assert.Equal(a.t, []float64{0.8}, param.Threshold)
-	assert.Equal(a.t, OrderByScore, param.OrderBy)
+	assert.Equal(a.t, TemplateMatchOrderByScore, param.OrderBy)
 	assert.Equal(a.t, 1, param.Index)
 	assert.Equal(a.t, TemplateMatchMethodCCOEFF_NORMED, param.Method)
 	assert.True(a.t, param.GreenMask)
@@ -503,7 +503,7 @@ func (a *testContextGetNodeDataAct) testFeatureMatchRecognition(ctx *Context) {
 	param := nodeData.Recognition.Param.(*FeatureMatchParam)
 	assert.Equal(a.t, []string{"feature.png"}, param.Template)
 	assert.Equal(a.t, 10, param.Count)
-	assert.Equal(a.t, OrderByArea, param.OrderBy)
+	assert.Equal(a.t, FeatureMatchOrderByArea, param.OrderBy)
 	assert.Equal(a.t, FeatureMatchMethodSIFT, param.Detector)
 	assert.Equal(a.t, 0.7, param.Ratio)
 }
@@ -571,7 +571,7 @@ func (a *testContextGetNodeDataAct) testOCRRecognition(ctx *Context) {
 	param := nodeData.Recognition.Param.(*OCRParam)
 	assert.Equal(a.t, []string{"Hello", "World"}, param.Expected)
 	assert.Equal(a.t, 0.5, param.Threshold)
-	assert.Equal(a.t, OrderByLength, param.OrderBy)
+	assert.Equal(a.t, OCROrderByLength, param.OrderBy)
 	assert.True(a.t, param.OnlyRec)
 	assert.Equal(a.t, "ppocr_v4", param.Model)
 	assert.Equal(a.t, "RecoColorMatch", param.ColorFilter)
@@ -635,7 +635,7 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkDetectRecognition(ctx *Cont
 	assert.Equal(a.t, []string{"person", "car", "bicycle"}, param.Labels)
 	assert.Equal(a.t, "yolov8.onnx", param.Model)
 	assert.Equal(a.t, []int{0, 1}, param.Expected)
-	assert.Equal(a.t, OrderByArea, param.OrderBy)
+	assert.Equal(a.t, NeuralNetworkDetectOrderByArea, param.OrderBy)
 	assert.Equal(a.t, -1, param.Index)
 }
 
