@@ -407,12 +407,13 @@ func (ctx *Context) GetTasker() *Tasker {
 }
 
 // WaitFreezes waits until the screen stabilizes (no significant changes).
-// duration: The duration that the screen must remain stable.
-// box: The recognition hit box, used when target is "Self" to calculate the ROI. If nil, uses entire screen.
-// waitFreezesParam: Additional wait_freezes parameters. Can be a JSON string or any data type that can be marshaled to JSON.
-// duration and waitFreezesParam.time are mutually exclusive, and one of them must be non-zero.
-// Returns true if the screen stabilized within the timeout, false on timeout or failure.
-func (ctx *Context) WaitFreezes(duration time.Duration, box *Rect, waitFreezesParam ...any) bool {
+// duration is the duration that the screen must remain stable.
+// box is the recognition hit box, used when target is "Self" to calculate the ROI; if nil, uses entire screen.
+// waitFreezesParam can be a JSON string, *WaitFreezesParam, or any value that marshals to the wait_freezes param JSON
+// (e.g. time, target, threshold, method, rate_limit, timeout). duration and waitFreezesParam.time are mutually exclusive;
+// one of them must be non-zero.
+// Returns nil if the screen stabilized within the timeout; returns an error on timeout or failure.
+func (ctx *Context) WaitFreezes(duration time.Duration, box *Rect, waitFreezesParam ...any) error {
 	var boxHandle uintptr
 	if box != nil {
 		rectBuf := buffer.NewRectBuffer()
@@ -421,7 +422,11 @@ func (ctx *Context) WaitFreezes(duration time.Duration, box *Rect, waitFreezesPa
 		boxHandle = rectBuf.Handle()
 	}
 
-	return native.MaaContextWaitFreezes(ctx.handle, uint64(duration.Milliseconds()), boxHandle, ctx.handleOverride(waitFreezesParam...))
+	ok := native.MaaContextWaitFreezes(ctx.handle, uint64(duration.Milliseconds()), boxHandle, ctx.handleOverride(waitFreezesParam...))
+	if !ok {
+		return errors.New("wait freezes timeout or failed")
+	}
+	return nil
 }
 
 // Clone clones current Context.

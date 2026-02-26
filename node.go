@@ -1,7 +1,6 @@
 package maa
 
 import (
-	"encoding/json"
 	"maps"
 	"slices"
 	"time"
@@ -37,15 +36,15 @@ type Node struct {
 	// PostDelay sets the delay after action execution in milliseconds. Default: 200.
 	PostDelay *int64 `json:"post_delay,omitempty"`
 	// PreWaitFreezes waits for screen to stabilize before action execution.
-	PreWaitFreezes *NodeWaitFreezes `json:"pre_wait_freezes,omitempty"`
+	PreWaitFreezes *WaitFreezesParam `json:"pre_wait_freezes,omitempty"`
 	// PostWaitFreezes waits for screen to stabilize after action.
-	PostWaitFreezes *NodeWaitFreezes `json:"post_wait_freezes,omitempty"`
+	PostWaitFreezes *WaitFreezesParam `json:"post_wait_freezes,omitempty"`
 	// Repeat specifies the number of times to repeat the node. Default: 1.
 	Repeat *uint64 `json:"repeat,omitempty"`
 	// RepeatDelay sets the delay between repetitions in milliseconds. Default: 0.
 	RepeatDelay *int64 `json:"repeat_delay,omitempty"`
 	// RepeatWaitFreezes waits for screen to stabilize between repetitions.
-	RepeatWaitFreezes *NodeWaitFreezes `json:"repeat_wait_freezes,omitempty"`
+	RepeatWaitFreezes *WaitFreezesParam `json:"repeat_wait_freezes,omitempty"`
 	// Focus specifies custom focus data.
 	Focus any `json:"focus,omitempty"`
 	// Attach provides additional custom data for the node.
@@ -148,13 +147,13 @@ func (n *Node) SetPostDelay(postDelay time.Duration) *Node {
 }
 
 // SetPreWaitFreezes sets the pre-action wait freezes configuration and returns the node for chaining.
-func (n *Node) SetPreWaitFreezes(preWaitFreezes *NodeWaitFreezes) *Node {
+func (n *Node) SetPreWaitFreezes(preWaitFreezes *WaitFreezesParam) *Node {
 	n.PreWaitFreezes = preWaitFreezes
 	return n
 }
 
 // SetPostWaitFreezes sets the post-action wait freezes configuration and returns the node for chaining.
-func (n *Node) SetPostWaitFreezes(postWaitFreezes *NodeWaitFreezes) *Node {
+func (n *Node) SetPostWaitFreezes(postWaitFreezes *WaitFreezesParam) *Node {
 	n.PostWaitFreezes = postWaitFreezes
 	return n
 }
@@ -173,7 +172,7 @@ func (n *Node) SetRepeatDelay(repeatDelay time.Duration) *Node {
 }
 
 // SetRepeatWaitFreezes sets the wait freezes configuration between repetitions and returns the node for chaining.
-func (n *Node) SetRepeatWaitFreezes(repeatWaitFreezes *NodeWaitFreezes) *Node {
+func (n *Node) SetRepeatWaitFreezes(repeatWaitFreezes *WaitFreezesParam) *Node {
 	n.RepeatWaitFreezes = repeatWaitFreezes
 	return n
 }
@@ -332,59 +331,4 @@ func (n *Node) RemoveOnError(name string) *Node {
 	})
 
 	return n
-}
-
-// NodeWaitFreezes defines parameters for waiting until screen stabilizes.
-// The screen is considered stable when there are no significant changes for a continuous period.
-type NodeWaitFreezes struct {
-	// Time specifies the duration that the screen must remain stable. Default: 1ms.
-	// JSON: serialized as integer milliseconds.
-	Time time.Duration `json:"-"`
-	// Target specifies the region to monitor for changes.
-	Target Target `json:"target,omitzero"`
-	// TargetOffset specifies additional offset applied to target.
-	TargetOffset Rect `json:"target_offset,omitempty"`
-	// Threshold specifies the template matching threshold for detecting changes. Default: 0.95.
-	Threshold float64 `json:"threshold,omitempty"`
-	// Method specifies the template matching algorithm (cv::TemplateMatchModes). Default: 5.
-	Method int `json:"method,omitempty"`
-	// RateLimit specifies the minimum interval between checks. Default: 1000ms.
-	// JSON: serialized as integer milliseconds.
-	RateLimit time.Duration `json:"-"`
-	// Timeout specifies the maximum wait time. Default: 20000ms.
-	// JSON: serialized as integer milliseconds.
-	Timeout time.Duration `json:"-"`
-}
-
-func (w NodeWaitFreezes) MarshalJSON() ([]byte, error) {
-	type NoMethod NodeWaitFreezes
-	return json.Marshal(struct {
-		NoMethod
-		Time      int64 `json:"time,omitempty"`
-		RateLimit int64 `json:"rate_limit,omitempty"`
-		Timeout   int64 `json:"timeout,omitempty"`
-	}{
-		NoMethod:  NoMethod(w),
-		Time:      w.Time.Milliseconds(),
-		RateLimit: w.RateLimit.Milliseconds(),
-		Timeout:   w.Timeout.Milliseconds(),
-	})
-}
-
-func (w *NodeWaitFreezes) UnmarshalJSON(data []byte) error {
-	type NoMethod NodeWaitFreezes
-	raw := struct {
-		NoMethod
-		Time      int64 `json:"time,omitempty"`
-		RateLimit int64 `json:"rate_limit,omitempty"`
-		Timeout   int64 `json:"timeout,omitempty"`
-	}{}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	*w = NodeWaitFreezes(raw.NoMethod)
-	w.Time = time.Duration(raw.Time) * time.Millisecond
-	w.RateLimit = time.Duration(raw.RateLimit) * time.Millisecond
-	w.Timeout = time.Duration(raw.Timeout) * time.Millisecond
-	return nil
 }
