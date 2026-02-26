@@ -103,7 +103,7 @@ func (ctx *Context) runRecognition(
 //
 //	pipeline := NewPipeline()
 //	node := NewNode("Task").
-//		SetRecognition(RecOCR(NodeOCRParam{Expected: []string{"Hello"}}))
+//		SetRecognition(RecOCR(OCRParam{Expected: []string{"Hello"}}))
 //	pipeline.AddNode(node)
 //	ctx.RunRecognition(node.Name, img, pipeline)
 //
