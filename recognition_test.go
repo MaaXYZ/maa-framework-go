@@ -305,5 +305,5 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 	affordableParam, ok := affordableItem.Param.(*ColorMatchParam)
 	require.True(t, ok, "fourth sub-item param should be of type *NodeColorMatchParam")
 	require.Equal(t, 20, affordableParam.Count, "pixel count threshold should be 20")
-	require.Equal(t, OrderByVertical, affordableParam.OrderBy, "order_by should be Vertical")
+	require.Equal(t, ColorMatchOrderByVertical, affordableParam.OrderBy, "order_by should be Vertical")
 }
