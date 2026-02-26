@@ -240,6 +240,10 @@ func (p *SwipeParam) UnmarshalJSON(data []byte) error {
 // ActSwipe creates a Swipe action. Pass a zero value for defaults.
 func ActSwipe(p SwipeParam) *Action {
 	param := p
+	param.End = slices.Clone(p.End)
+	param.EndOffset = slices.Clone(p.EndOffset)
+	param.Duration = slices.Clone(p.Duration)
+	param.EndHold = slices.Clone(p.EndHold)
 	return &Action{Type: ActionTypeSwipe, Param: &param}
 }
 
@@ -309,10 +313,29 @@ type MultiSwipeParam struct {
 
 func (n MultiSwipeParam) isActionParam() {}
 
+// cloneNodeMultiSwipeItems returns a deep copy of swipes so Param does not share slice backing arrays with the caller.
+func cloneNodeMultiSwipeItems(swipes []NodeMultiSwipeItem) []NodeMultiSwipeItem {
+	out := make([]NodeMultiSwipeItem, len(swipes))
+	for i := range swipes {
+		out[i] = NodeMultiSwipeItem{
+			Starting:    swipes[i].Starting,
+			Begin:       swipes[i].Begin,
+			BeginOffset: swipes[i].BeginOffset,
+			End:         slices.Clone(swipes[i].End),
+			EndOffset:   slices.Clone(swipes[i].EndOffset),
+			Duration:    slices.Clone(swipes[i].Duration),
+			EndHold:     slices.Clone(swipes[i].EndHold),
+			OnlyHover:   swipes[i].OnlyHover,
+			Contact:     swipes[i].Contact,
+		}
+	}
+	return out
+}
+
 // ActMultiSwipe creates a MultiSwipe action for multi-finger swipe gestures.
 func ActMultiSwipe(swipes ...NodeMultiSwipeItem) *Action {
 	param := &MultiSwipeParam{
-		Swipes: swipes,
+		Swipes: cloneNodeMultiSwipeItems(swipes),
 	}
 	return &Action{
 		Type:  ActionTypeMultiSwipe,
@@ -424,7 +447,9 @@ func (p *LongPressKeyParam) UnmarshalJSON(data []byte) error {
 
 // ActLongPressKey creates a LongPressKey action with the given parameters.
 func ActLongPressKey(p LongPressKeyParam) *Action {
-	return &Action{Type: ActionTypeLongPressKey, Param: &p}
+	param := p
+	param.Key = slices.Clone(p.Key)
+	return &Action{Type: ActionTypeLongPressKey, Param: &param}
 }
 
 // KeyDownParam defines parameters for key down action.
@@ -558,7 +583,9 @@ func (n CommandParam) isActionParam() {}
 
 // ActCommand creates a Command action with the given parameters.
 func ActCommand(p CommandParam) *Action {
-	return &Action{Type: ActionTypeCommand, Param: &p}
+	param := p
+	param.Args = slices.Clone(p.Args)
+	return &Action{Type: ActionTypeCommand, Param: &param}
 }
 
 // ShellParam defines parameters for shell command execution action.
@@ -591,8 +618,9 @@ func (n CustomActionParam) isActionParam() {}
 
 // ActCustom creates a Custom action with the given parameters.
 func ActCustom(p CustomActionParam) *Action {
+	param := p
 	return &Action{
 		Type:  ActionTypeCustom,
-		Param: &p,
+		Param: &param,
 	}
 }

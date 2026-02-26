@@ -164,9 +164,12 @@ func (n TemplateMatchParam) isRecognitionParam() {}
 
 // RecTemplateMatch creates a TemplateMatch recognition with the given parameters.
 func RecTemplateMatch(p TemplateMatchParam) *Recognition {
+	param := p
+	param.Template = slices.Clone(p.Template)
+	param.Threshold = slices.Clone(p.Threshold)
 	return &Recognition{
 		Type:  RecognitionTypeTemplateMatch,
-		Param: &p,
+		Param: &param,
 	}
 }
 
@@ -219,9 +222,11 @@ func (n FeatureMatchParam) isRecognitionParam() {}
 // RecFeatureMatch creates a FeatureMatch recognition with the given parameters.
 // Feature matching provides better generalization with perspective and scale invariance.
 func RecFeatureMatch(p FeatureMatchParam) *Recognition {
+	param := p
+	param.Template = slices.Clone(p.Template)
 	return &Recognition{
 		Type:  RecognitionTypeFeatureMatch,
-		Param: &p,
+		Param: &param,
 	}
 }
 
@@ -269,11 +274,26 @@ type ColorMatchParam struct {
 
 func (n ColorMatchParam) isRecognitionParam() {}
 
+// clone2DInt returns a deep copy of s so the caller does not share backing arrays.
+func clone2DInt(s [][]int) [][]int {
+	if s == nil {
+		return nil
+	}
+	out := make([][]int, len(s))
+	for i := range s {
+		out[i] = slices.Clone(s[i])
+	}
+	return out
+}
+
 // RecColorMatch creates a ColorMatch recognition with the given parameters.
 func RecColorMatch(p ColorMatchParam) *Recognition {
+	param := p
+	param.Lower = clone2DInt(p.Lower)
+	param.Upper = clone2DInt(p.Upper)
 	return &Recognition{
 		Type:  RecognitionTypeColorMatch,
-		Param: &p,
+		Param: &param,
 	}
 }
 
@@ -319,9 +339,12 @@ func (n OCRParam) isRecognitionParam() {}
 // RecOCR creates an OCR recognition with the given parameters.
 // All fields are optional; pass OCRParam{} for defaults.
 func RecOCR(p OCRParam) *Recognition {
+	param := p
+	param.Expected = slices.Clone(p.Expected)
+	param.Replace = slices.Clone(p.Replace)
 	return &Recognition{
 		Type:  RecognitionTypeOCR,
-		Param: &p,
+		Param: &param,
 	}
 }
 
@@ -359,9 +382,12 @@ func (n NeuralNetworkClassifyParam) isRecognitionParam() {}
 // RecNeuralNetworkClassify creates a NeuralNetworkClassify recognition with the given parameters.
 // This classifies images at fixed positions into predefined categories.
 func RecNeuralNetworkClassify(p NeuralNetworkClassifyParam) *Recognition {
+	param := p
+	param.Labels = slices.Clone(p.Labels)
+	param.Expected = slices.Clone(p.Expected)
 	return &Recognition{
 		Type:  RecognitionTypeNeuralNetworkClassify,
-		Param: &p,
+		Param: &param,
 	}
 }
 
@@ -400,9 +426,12 @@ func (n NeuralNetworkDetectParam) isRecognitionParam() {}
 // RecNeuralNetworkDetect creates a NeuralNetworkDetect recognition with the given parameters.
 // This detects objects at arbitrary positions using deep learning models like YOLO.
 func RecNeuralNetworkDetect(p NeuralNetworkDetectParam) *Recognition {
+	param := p
+	param.Labels = slices.Clone(p.Labels)
+	param.Expected = slices.Clone(p.Expected)
 	return &Recognition{
 		Type:  RecognitionTypeNeuralNetworkDetect,
-		Param: &p,
+		Param: &param,
 	}
 }
 
@@ -552,8 +581,9 @@ func (n CustomRecognitionParam) isRecognitionParam() {}
 
 // RecCustom creates a Custom recognition with the given parameters.
 func RecCustom(p CustomRecognitionParam) *Recognition {
+	param := p
 	return &Recognition{
 		Type:  RecognitionTypeCustom,
-		Param: &p,
+		Param: &param,
 	}
 }
