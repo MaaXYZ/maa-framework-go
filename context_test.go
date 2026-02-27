@@ -3,6 +3,7 @@ package maa
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -12,11 +13,10 @@ type testContextRunTaskAct struct {
 
 func (t *testContextRunTaskAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	pipeline := NewPipeline()
-	testNode := NewNode("Test",
-		WithAction(ActClick(
-			WithClickTarget(NewTargetRect(Rect{100, 100, 10, 10})),
-		)),
-	)
+	testNode := NewNode("Test").
+		SetAction(ActClick(ClickParam{
+			Target: NewTargetRect(Rect{100, 100, 10, 10}),
+		}))
 	pipeline.AddNode(testNode)
 
 	detail, err := ctx.RunTask(testNode.Name, pipeline)
@@ -42,9 +42,8 @@ func TestContext_RunTask(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_RunPipelineNode := NewNode("TestContext_RunPipeline",
-		WithAction(ActCustom("TestContext_RunPipelineAct")),
-	)
+	testContext_RunPipelineNode := NewNode("TestContext_RunPipeline").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunPipelineAct"}))
 	pipeline.AddNode(testContext_RunPipelineNode)
 
 	got := tasker.PostTask(testContext_RunPipelineNode.Name, pipeline).
@@ -62,11 +61,10 @@ func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) boo
 	require.NotNil(t.t, img)
 
 	pipeline := NewPipeline()
-	testNode := NewNode("Test",
-		WithRecognition(RecOCR(
-			WithOCRExpected([]string{"Hello"}),
-		)),
-	)
+	testNode := NewNode("Test").
+		SetRecognition(RecOCR(OCRParam{
+			Expected: []string{"Hello"},
+		}))
 	pipeline.AddNode(testNode)
 
 	detail, err := ctx.RunRecognition("Test", img, pipeline)
@@ -96,9 +94,8 @@ func TestContext_RunRecognition(t *testing.T) {
 		AddNext("RunRecognition").
 		AddNext("Stop")
 	pipeline.AddNode(testContext_RunRecognitionNode)
-	runRecognitionNode := NewNode("RunRecognition",
-		WithRecognition(RecCustom("TestContext_RunRecognitionAct")),
-	)
+	runRecognitionNode := NewNode("RunRecognition").
+		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestContext_RunRecognitionAct"}))
 	pipeline.AddNode(runRecognitionNode)
 	stopNode := NewNode("Stop")
 	pipeline.AddNode(stopNode)
@@ -114,11 +111,10 @@ type testContextRunActionAct struct {
 
 func (a testContextRunActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
 	pipeline := NewPipeline()
-	testNode := NewNode("Test",
-		WithAction(ActClick(
-			WithClickTarget(NewTargetRect(Rect{100, 100, 10, 10})),
-		)),
-	)
+	testNode := NewNode("Test").
+		SetAction(ActClick(ClickParam{
+			Target: NewTargetRect(Rect{100, 100, 10, 10}),
+		}))
 	pipeline.AddNode(testNode)
 
 	detail, err := ctx.RunAction(testNode.Name, arg.Box, arg.RecognitionDetail.DetailJson, pipeline)
@@ -144,9 +140,8 @@ func TestContext_RunAction(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_RunActionNode := NewNode("TestContext_RunAction",
-		WithAction(ActCustom("TestContext_RunActionAct")),
-	)
+	testContext_RunActionNode := NewNode("TestContext_RunAction").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunActionAct"}))
 	pipeline.AddNode(testContext_RunActionNode)
 
 	got := tasker.PostTask(testContext_RunActionNode.Name, pipeline).
@@ -160,11 +155,10 @@ type testContextOverriderPipelineAct struct {
 
 func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	pipeline1 := NewPipeline()
-	testNode1 := NewNode("Test",
-		WithAction(ActClick(
-			WithClickTarget(NewTargetRect(Rect{100, 100, 10, 10})),
-		)),
-	)
+	testNode1 := NewNode("Test").
+		SetAction(ActClick(ClickParam{
+			Target: NewTargetRect(Rect{100, 100, 10, 10}),
+		}))
 	pipeline1.AddNode(testNode1)
 
 	detail1, err := ctx.RunTask(testNode1.Name, pipeline1)
@@ -172,11 +166,10 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 	require.NotNil(t.t, detail1)
 
 	pipeline2 := NewPipeline()
-	testNode2 := NewNode("Test",
-		WithAction(ActClick(
-			WithClickTarget(NewTargetRect(Rect{200, 200, 10, 10})),
-		)),
-	)
+	testNode2 := NewNode("Test").
+		SetAction(ActClick(ClickParam{
+			Target: NewTargetRect(Rect{200, 200, 10, 10}),
+		}))
 	pipeline2.AddNode(testNode2)
 
 	err = ctx.OverridePipeline(pipeline2)
@@ -205,9 +198,8 @@ func TestContext_OverridePipeline(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_OverridePipelineNode := NewNode("TestContext_OverridePipeline",
-		WithAction(ActCustom("TestContext_OverridePipelineAct")),
-	)
+	testContext_OverridePipelineNode := NewNode("TestContext_OverridePipeline").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_OverridePipelineAct"}))
 	pipeline.AddNode(testContext_OverridePipelineNode)
 
 	got := tasker.PostTask(testContext_OverridePipelineNode.Name, pipeline).
@@ -221,11 +213,10 @@ type testContextOverrideNextAct struct {
 
 func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	pipeline := NewPipeline()
-	testNode := NewNode("Test",
-		WithNext([]NodeNextItem{
+	testNode := NewNode("Test").
+		SetNext([]NextItem{
 			{Name: "TaskA"},
-		}),
-	)
+		})
 	pipeline.AddNode(testNode)
 	taskANode := NewNode("TaskA")
 	pipeline.AddNode(taskANode)
@@ -235,7 +226,7 @@ func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool 
 	err := ctx.OverridePipeline(pipeline)
 	require.NoError(t.t, err)
 
-	err = ctx.OverrideNext(testNode.Name, []NodeNextItem{{Name: "TaskB"}})
+	err = ctx.OverrideNext(testNode.Name, []NextItem{{Name: "TaskB"}})
 	require.NoError(t.t, err)
 
 	detail, err2 := ctx.RunTask(testNode.Name, pipeline)
@@ -261,9 +252,8 @@ func TestContext_OverrideNext(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_OverrideNextNode := NewNode("TestContext_OverrideNext",
-		WithAction(ActCustom("TestContext_OverrideNextAct")),
-	)
+	testContext_OverrideNextNode := NewNode("TestContext_OverrideNext").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_OverrideNextAct"}))
 	pipeline.AddNode(testContext_OverrideNextNode)
 
 	got := tasker.PostTask(testContext_OverrideNextNode.Name, pipeline).
@@ -424,13 +414,13 @@ func (a *testContextGetNodeDataAct) testClickAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_click")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeClick, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeClickParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeClick, nodeData.Action.Type)
+	assert.IsType(a.t, (*ClickParam)(nil), nodeData.Action.Param)
 
-	clickParam := nodeData.Action.Param.(*NodeClickParam)
-	require.Equal(a.t, 1, clickParam.Contact)
+	clickParam := nodeData.Action.Param.(*ClickParam)
+	assert.Equal(a.t, 1, clickParam.Contact)
 }
 
 func (a *testContextGetNodeDataAct) testDirectHitRecognition(ctx *Context) {
@@ -444,9 +434,9 @@ func (a *testContextGetNodeDataAct) testDirectHitRecognition(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_direct_hit")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeRecognitionTypeDirectHit, nodeData.Recognition.Type)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, RecognitionTypeDirectHit, nodeData.Recognition.Type)
 }
 
 func (a *testContextGetNodeDataAct) testTemplateMatchRecognition(ctx *Context) {
@@ -470,18 +460,18 @@ func (a *testContextGetNodeDataAct) testTemplateMatchRecognition(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_template")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeRecognitionTypeTemplateMatch, nodeData.Recognition.Type)
-	require.IsType(a.t, (*NodeTemplateMatchParam)(nil), nodeData.Recognition.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, RecognitionTypeTemplateMatch, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*TemplateMatchParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeTemplateMatchParam)
-	require.Equal(a.t, []string{"test.png", "test2.png"}, param.Template)
-	require.Equal(a.t, []float64{0.8}, param.Threshold)
-	require.Equal(a.t, NodeTemplateMatchOrderByScore, param.OrderBy)
-	require.Equal(a.t, 1, param.Index)
-	require.Equal(a.t, NodeTemplateMatchMethodCCOEFF_NORMED, param.Method)
-	require.True(a.t, param.GreenMask)
+	param := nodeData.Recognition.Param.(*TemplateMatchParam)
+	assert.Equal(a.t, []string{"test.png", "test2.png"}, param.Template)
+	assert.Equal(a.t, []float64{0.8}, param.Threshold)
+	assert.Equal(a.t, TemplateMatchOrderByScore, param.OrderBy)
+	assert.Equal(a.t, 1, param.Index)
+	assert.Equal(a.t, TemplateMatchMethodCCOEFF_NORMED, param.Method)
+	assert.True(a.t, param.GreenMask)
 }
 
 func (a *testContextGetNodeDataAct) testFeatureMatchRecognition(ctx *Context) {
@@ -505,17 +495,17 @@ func (a *testContextGetNodeDataAct) testFeatureMatchRecognition(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_feature")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeRecognitionTypeFeatureMatch, nodeData.Recognition.Type)
-	require.IsType(a.t, (*NodeFeatureMatchParam)(nil), nodeData.Recognition.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, RecognitionTypeFeatureMatch, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*FeatureMatchParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeFeatureMatchParam)
-	require.Equal(a.t, []string{"feature.png"}, param.Template)
-	require.Equal(a.t, 10, param.Count)
-	require.Equal(a.t, NodeFeatureMatchOrderByArea, param.OrderBy)
-	require.Equal(a.t, NodeFeatureMatchMethodSIFT, param.Detector)
-	require.Equal(a.t, 0.7, param.Ratio)
+	param := nodeData.Recognition.Param.(*FeatureMatchParam)
+	assert.Equal(a.t, []string{"feature.png"}, param.Template)
+	assert.Equal(a.t, 10, param.Count)
+	assert.Equal(a.t, FeatureMatchOrderByArea, param.OrderBy)
+	assert.Equal(a.t, FeatureMatchMethodSIFT, param.Detector)
+	assert.Equal(a.t, 0.7, param.Ratio)
 }
 
 func (a *testContextGetNodeDataAct) testColorMatchRecognition(ctx *Context) {
@@ -538,17 +528,17 @@ func (a *testContextGetNodeDataAct) testColorMatchRecognition(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_color")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeRecognitionTypeColorMatch, nodeData.Recognition.Type)
-	require.IsType(a.t, (*NodeColorMatchParam)(nil), nodeData.Recognition.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, RecognitionTypeColorMatch, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*ColorMatchParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeColorMatchParam)
-	require.Equal(a.t, NodeColorMatchMethodRGB, param.Method)
-	require.Equal(a.t, [][]int{{0, 0, 0}}, param.Lower)
-	require.Equal(a.t, [][]int{{255, 255, 255}}, param.Upper)
-	require.Equal(a.t, 100, param.Count)
-	require.True(a.t, param.Connected)
+	param := nodeData.Recognition.Param.(*ColorMatchParam)
+	assert.Equal(a.t, ColorMatchMethodRGB, param.Method)
+	assert.Equal(a.t, [][]int{{0, 0, 0}}, param.Lower)
+	assert.Equal(a.t, [][]int{{255, 255, 255}}, param.Upper)
+	assert.Equal(a.t, 100, param.Count)
+	assert.True(a.t, param.Connected)
 }
 
 func (a *testContextGetNodeDataAct) testOCRRecognition(ctx *Context) {
@@ -557,15 +547,15 @@ func (a *testContextGetNodeDataAct) testOCRRecognition(ctx *Context) {
 			"recognition": map[string]any{
 				"type": "OCR",
 				"param": map[string]any{
-				"roi":          []int{0, 0, 300, 100},
-				"expected":     []string{"Hello", "World"},
-				"threshold":    0.5,
-				"replace":      [][]string{{"0", "O"}, {"1", "l"}},
-				"order_by":     "Length",
-				"index":        0,
-				"only_rec":     true,
-				"model":        "ppocr_v4",
-				"color_filter": "RecoColorMatch",
+					"roi":          []int{0, 0, 300, 100},
+					"expected":     []string{"Hello", "World"},
+					"threshold":    0.5,
+					"replace":      [][]string{{"0", "O"}, {"1", "l"}},
+					"order_by":     "Length",
+					"index":        0,
+					"only_rec":     true,
+					"model":        "ppocr_v4",
+					"color_filter": "RecoColorMatch",
 				},
 			},
 		},
@@ -573,18 +563,18 @@ func (a *testContextGetNodeDataAct) testOCRRecognition(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_ocr")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeRecognitionTypeOCR, nodeData.Recognition.Type)
-	require.IsType(a.t, (*NodeOCRParam)(nil), nodeData.Recognition.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, RecognitionTypeOCR, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*OCRParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeOCRParam)
-	require.Equal(a.t, []string{"Hello", "World"}, param.Expected)
-	require.Equal(a.t, 0.5, param.Threshold)
-	require.Equal(a.t, NodeOCROrderByLength, param.OrderBy)
-	require.True(a.t, param.OnlyRec)
-	require.Equal(a.t, "ppocr_v4", param.Model)
-	require.Equal(a.t, "RecoColorMatch", param.ColorFilter)
+	param := nodeData.Recognition.Param.(*OCRParam)
+	assert.Equal(a.t, []string{"Hello", "World"}, param.Expected)
+	assert.Equal(a.t, 0.5, param.Threshold)
+	assert.Equal(a.t, OCROrderByLength, param.OrderBy)
+	assert.True(a.t, param.OnlyRec)
+	assert.Equal(a.t, "ppocr_v4", param.Model)
+	assert.Equal(a.t, "RecoColorMatch", param.ColorFilter)
 }
 
 func (a *testContextGetNodeDataAct) testNeuralNetworkClassifyRecognition(ctx *Context) {
@@ -606,15 +596,15 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkClassifyRecognition(ctx *Co
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_nn_classify")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeRecognitionTypeNeuralNetworkClassify, nodeData.Recognition.Type)
-	require.IsType(a.t, (*NodeNeuralNetworkClassifyParam)(nil), nodeData.Recognition.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, RecognitionTypeNeuralNetworkClassify, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*NeuralNetworkClassifyParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeNeuralNetworkClassifyParam)
-	require.Equal(a.t, []string{"Cat", "Dog", "Mouse"}, param.Labels)
-	require.Equal(a.t, "classifier.onnx", param.Model)
-	require.Equal(a.t, []int{0, 2}, param.Expected)
+	param := nodeData.Recognition.Param.(*NeuralNetworkClassifyParam)
+	assert.Equal(a.t, []string{"Cat", "Dog", "Mouse"}, param.Labels)
+	assert.Equal(a.t, "classifier.onnx", param.Model)
+	assert.Equal(a.t, []int{0, 2}, param.Expected)
 }
 
 func (a *testContextGetNodeDataAct) testNeuralNetworkDetectRecognition(ctx *Context) {
@@ -636,17 +626,17 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkDetectRecognition(ctx *Cont
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_nn_detect")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeRecognitionTypeNeuralNetworkDetect, nodeData.Recognition.Type)
-	require.IsType(a.t, (*NodeNeuralNetworkDetectParam)(nil), nodeData.Recognition.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, RecognitionTypeNeuralNetworkDetect, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*NeuralNetworkDetectParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeNeuralNetworkDetectParam)
-	require.Equal(a.t, []string{"person", "car", "bicycle"}, param.Labels)
-	require.Equal(a.t, "yolov8.onnx", param.Model)
-	require.Equal(a.t, []int{0, 1}, param.Expected)
-	require.Equal(a.t, NodeNeuralNetworkDetectOrderByArea, param.OrderBy)
-	require.Equal(a.t, -1, param.Index)
+	param := nodeData.Recognition.Param.(*NeuralNetworkDetectParam)
+	assert.Equal(a.t, []string{"person", "car", "bicycle"}, param.Labels)
+	assert.Equal(a.t, "yolov8.onnx", param.Model)
+	assert.Equal(a.t, []int{0, 1}, param.Expected)
+	assert.Equal(a.t, NeuralNetworkDetectOrderByArea, param.OrderBy)
+	assert.Equal(a.t, -1, param.Index)
 }
 
 func (a *testContextGetNodeDataAct) testCustomRecognition(ctx *Context) {
@@ -665,14 +655,14 @@ func (a *testContextGetNodeDataAct) testCustomRecognition(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_custom_rec")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeRecognitionTypeCustom, nodeData.Recognition.Type)
-	require.IsType(a.t, (*NodeCustomRecognitionParam)(nil), nodeData.Recognition.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, RecognitionTypeCustom, nodeData.Recognition.Type)
+	assert.IsType(a.t, (*CustomRecognitionParam)(nil), nodeData.Recognition.Param)
 
-	param := nodeData.Recognition.Param.(*NodeCustomRecognitionParam)
-	require.Equal(a.t, "MyCustomRecognizer", param.CustomRecognition)
-	require.NotNil(a.t, param.CustomRecognitionParam)
+	param := nodeData.Recognition.Param.(*CustomRecognitionParam)
+	assert.Equal(a.t, "MyCustomRecognizer", param.CustomRecognition)
+	assert.NotNil(a.t, param.CustomRecognitionParam)
 }
 
 func (a *testContextGetNodeDataAct) testDoNothingAction(ctx *Context) {
@@ -688,7 +678,7 @@ func (a *testContextGetNodeDataAct) testDoNothingAction(ctx *Context) {
 	nodeData, err := ctx.GetNode("test_do_nothing")
 	require.NoError(a.t, err)
 	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeDoNothing, nodeData.Action.Type)
+	require.Equal(a.t, ActionTypeDoNothing, nodeData.Action.Type)
 }
 
 func (a *testContextGetNodeDataAct) testLongPressAction(ctx *Context) {
@@ -707,13 +697,13 @@ func (a *testContextGetNodeDataAct) testLongPressAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_long_press")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeLongPress, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeLongPressParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeLongPress, nodeData.Action.Type)
+	assert.IsType(a.t, (*LongPressParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeLongPressParam)
-	require.Equal(a.t, int64(2000), param.Duration)
+	param := nodeData.Action.Param.(*LongPressParam)
+	assert.Equal(a.t, int64(2000), param.Duration.Milliseconds())
 }
 
 func (a *testContextGetNodeDataAct) testSwipeAction(ctx *Context) {
@@ -737,14 +727,16 @@ func (a *testContextGetNodeDataAct) testSwipeAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_swipe")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeSwipe, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeSwipeParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeSwipe, nodeData.Action.Type)
+	assert.IsType(a.t, (*SwipeParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeSwipeParam)
-	require.Equal(a.t, []int64{500}, param.Duration)
-	require.Equal(a.t, []int64{100}, param.EndHold)
+	param := nodeData.Action.Param.(*SwipeParam)
+	assert.Len(a.t, param.Duration, 1)
+	assert.Equal(a.t, int64(500), param.Duration[0].Milliseconds())
+	assert.Len(a.t, param.EndHold, 1)
+	assert.Equal(a.t, int64(100), param.EndHold[0].Milliseconds())
 }
 
 func (a *testContextGetNodeDataAct) testMultiSwipeAction(ctx *Context) {
@@ -776,15 +768,15 @@ func (a *testContextGetNodeDataAct) testMultiSwipeAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_multi_swipe")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeMultiSwipe, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeMultiSwipeParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeMultiSwipe, nodeData.Action.Type)
+	assert.IsType(a.t, (*MultiSwipeParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeMultiSwipeParam)
-	require.Len(a.t, param.Swipes, 2)
-	require.Equal(a.t, int64(0), param.Swipes[0].Starting)
-	require.Equal(a.t, int64(100), param.Swipes[1].Starting)
+	param := nodeData.Action.Param.(*MultiSwipeParam)
+	assert.Len(a.t, param.Swipes, 2)
+	assert.Equal(a.t, int64(0), param.Swipes[0].Starting.Milliseconds())
+	assert.Equal(a.t, int64(100), param.Swipes[1].Starting.Milliseconds())
 }
 
 func (a *testContextGetNodeDataAct) testTouchDownAction(ctx *Context) {
@@ -803,13 +795,13 @@ func (a *testContextGetNodeDataAct) testTouchDownAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_touch_down")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeTouchDown, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeTouchDownParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeTouchDown, nodeData.Action.Type)
+	assert.IsType(a.t, (*TouchDownParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeTouchDownParam)
-	require.Equal(a.t, 50, param.Pressure)
+	param := nodeData.Action.Param.(*TouchDownParam)
+	assert.Equal(a.t, 50, param.Pressure)
 }
 
 func (a *testContextGetNodeDataAct) testTouchMoveAction(ctx *Context) {
@@ -828,13 +820,13 @@ func (a *testContextGetNodeDataAct) testTouchMoveAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_touch_move")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeTouchMove, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeTouchMoveParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeTouchMove, nodeData.Action.Type)
+	assert.IsType(a.t, (*TouchMoveParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeTouchMoveParam)
-	require.Equal(a.t, 30, param.Pressure)
+	param := nodeData.Action.Param.(*TouchMoveParam)
+	assert.Equal(a.t, 30, param.Pressure)
 }
 
 func (a *testContextGetNodeDataAct) testTouchUpAction(ctx *Context) {
@@ -851,13 +843,13 @@ func (a *testContextGetNodeDataAct) testTouchUpAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_touch_up")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeTouchUp, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeTouchUpParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeTouchUp, nodeData.Action.Type)
+	assert.IsType(a.t, (*TouchUpParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeTouchUpParam)
-	require.Equal(a.t, 1, param.Contact)
+	param := nodeData.Action.Param.(*TouchUpParam)
+	assert.Equal(a.t, 1, param.Contact)
 }
 
 func (a *testContextGetNodeDataAct) testClickKeyAction(ctx *Context) {
@@ -874,13 +866,13 @@ func (a *testContextGetNodeDataAct) testClickKeyAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_click_key")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeClickKey, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeClickKeyParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeClickKey, nodeData.Action.Type)
+	assert.IsType(a.t, (*ClickKeyParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeClickKeyParam)
-	require.Equal(a.t, []int{4, 66}, param.Key)
+	param := nodeData.Action.Param.(*ClickKeyParam)
+	assert.Equal(a.t, []int{4, 66}, param.Key)
 }
 
 func (a *testContextGetNodeDataAct) testLongPressKeyAction(ctx *Context) {
@@ -898,14 +890,14 @@ func (a *testContextGetNodeDataAct) testLongPressKeyAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_long_press_key")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeLongPressKey, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeLongPressKeyParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeLongPressKey, nodeData.Action.Type)
+	assert.IsType(a.t, (*LongPressKeyParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeLongPressKeyParam)
-	require.Equal(a.t, []int{4}, param.Key)
-	require.Equal(a.t, int64(1500), param.Duration)
+	param := nodeData.Action.Param.(*LongPressKeyParam)
+	assert.Equal(a.t, []int{4}, param.Key)
+	assert.Equal(a.t, int64(1500), param.Duration.Milliseconds())
 }
 
 func (a *testContextGetNodeDataAct) testKeyDownAction(ctx *Context) {
@@ -922,13 +914,13 @@ func (a *testContextGetNodeDataAct) testKeyDownAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_key_down")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeKeyDown, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeKeyDownParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeKeyDown, nodeData.Action.Type)
+	assert.IsType(a.t, (*KeyDownParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeKeyDownParam)
-	require.Equal(a.t, 29, param.Key)
+	param := nodeData.Action.Param.(*KeyDownParam)
+	assert.Equal(a.t, 29, param.Key)
 }
 
 func (a *testContextGetNodeDataAct) testKeyUpAction(ctx *Context) {
@@ -945,13 +937,13 @@ func (a *testContextGetNodeDataAct) testKeyUpAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_key_up")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeKeyUp, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeKeyUpParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeKeyUp, nodeData.Action.Type)
+	assert.IsType(a.t, (*KeyUpParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeKeyUpParam)
-	require.Equal(a.t, 29, param.Key)
+	param := nodeData.Action.Param.(*KeyUpParam)
+	assert.Equal(a.t, 29, param.Key)
 }
 
 func (a *testContextGetNodeDataAct) testInputTextAction(ctx *Context) {
@@ -968,13 +960,13 @@ func (a *testContextGetNodeDataAct) testInputTextAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_input_text")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeInputText, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeInputTextParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeInputText, nodeData.Action.Type)
+	assert.IsType(a.t, (*InputTextParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeInputTextParam)
-	require.Equal(a.t, "Hello World", param.InputText)
+	param := nodeData.Action.Param.(*InputTextParam)
+	assert.Equal(a.t, "Hello World", param.InputText)
 }
 
 func (a *testContextGetNodeDataAct) testStartAppAction(ctx *Context) {
@@ -991,13 +983,13 @@ func (a *testContextGetNodeDataAct) testStartAppAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_start_app")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeStartApp, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeStartAppParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeStartApp, nodeData.Action.Type)
+	assert.IsType(a.t, (*StartAppParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeStartAppParam)
-	require.Equal(a.t, "com.example.app/com.example.MainActivity", param.Package)
+	param := nodeData.Action.Param.(*StartAppParam)
+	assert.Equal(a.t, "com.example.app/com.example.MainActivity", param.Package)
 }
 
 func (a *testContextGetNodeDataAct) testStopAppAction(ctx *Context) {
@@ -1014,13 +1006,13 @@ func (a *testContextGetNodeDataAct) testStopAppAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_stop_app")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeStopApp, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeStopAppParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeStopApp, nodeData.Action.Type)
+	assert.IsType(a.t, (*StopAppParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeStopAppParam)
-	require.Equal(a.t, "com.example.app", param.Package)
+	param := nodeData.Action.Param.(*StopAppParam)
+	assert.Equal(a.t, "com.example.app", param.Package)
 }
 
 func (a *testContextGetNodeDataAct) testStopTaskAction(ctx *Context) {
@@ -1034,9 +1026,9 @@ func (a *testContextGetNodeDataAct) testStopTaskAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_stop_task")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeStopTask, nodeData.Action.Type)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeStopTask, nodeData.Action.Type)
 }
 
 func (a *testContextGetNodeDataAct) testCommandAction(ctx *Context) {
@@ -1055,15 +1047,15 @@ func (a *testContextGetNodeDataAct) testCommandAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_command")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeCommand, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeCommandParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeCommand, nodeData.Action.Type)
+	assert.IsType(a.t, (*CommandParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeCommandParam)
-	require.Equal(a.t, "python", param.Exec)
-	require.Equal(a.t, []string{"{RESOURCE_DIR}/script.py", "{NODE}", "{IMAGE}"}, param.Args)
-	require.True(a.t, param.Detach)
+	param := nodeData.Action.Param.(*CommandParam)
+	assert.Equal(a.t, "python", param.Exec)
+	assert.Equal(a.t, []string{"{RESOURCE_DIR}/script.py", "{NODE}", "{IMAGE}"}, param.Args)
+	assert.True(a.t, param.Detach)
 }
 
 func (a *testContextGetNodeDataAct) testScrollAction(ctx *Context) {
@@ -1081,14 +1073,14 @@ func (a *testContextGetNodeDataAct) testScrollAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_scroll")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeScroll, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeScrollParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeScroll, nodeData.Action.Type)
+	assert.IsType(a.t, (*ScrollParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeScrollParam)
-	require.Equal(a.t, 100, param.Dx)
-	require.Equal(a.t, 200, param.Dy)
+	param := nodeData.Action.Param.(*ScrollParam)
+	assert.Equal(a.t, 100, param.Dx)
+	assert.Equal(a.t, 200, param.Dy)
 }
 
 func (a *testContextGetNodeDataAct) testCustomAction(ctx *Context) {
@@ -1107,14 +1099,14 @@ func (a *testContextGetNodeDataAct) testCustomAction(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_custom_act")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
-	require.Equal(a.t, NodeActionTypeCustom, nodeData.Action.Type)
-	require.IsType(a.t, (*NodeCustomActionParam)(nil), nodeData.Action.Param)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeCustom, nodeData.Action.Type)
+	assert.IsType(a.t, (*CustomActionParam)(nil), nodeData.Action.Param)
 
-	param := nodeData.Action.Param.(*NodeCustomActionParam)
-	require.Equal(a.t, "MyCustomAction", param.CustomAction)
-	require.NotNil(a.t, param.CustomActionParam)
+	param := nodeData.Action.Param.(*CustomActionParam)
+	assert.Equal(a.t, "MyCustomAction", param.CustomAction)
+	assert.NotNil(a.t, param.CustomActionParam)
 }
 
 func (a *testContextGetNodeDataAct) testNodeAttributes(ctx *Context) {
@@ -1183,61 +1175,61 @@ func (a *testContextGetNodeDataAct) testNodeAttributes(ctx *Context) {
 	ctx.OverridePipeline(raw)
 
 	nodeData, err := ctx.GetNode("test_attributes")
-	require.NoError(a.t, err)
-	require.NotNil(a.t, nodeData)
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
 
 	// Check recognition and action
-	require.Equal(a.t, NodeRecognitionTypeDirectHit, nodeData.Recognition.Type)
-	require.Equal(a.t, NodeActionTypeClick, nodeData.Action.Type)
+	assert.Equal(a.t, RecognitionTypeDirectHit, nodeData.Recognition.Type)
+	assert.Equal(a.t, ActionTypeClick, nodeData.Action.Type)
 
 	// Check next list
-	require.Len(a.t, nodeData.Next, 3)
-	require.Equal(a.t, "NodeA", nodeData.Next[0].Name)
-	require.False(a.t, nodeData.Next[0].JumpBack)
-	require.Equal(a.t, "NodeB", nodeData.Next[1].Name)
-	require.True(a.t, nodeData.Next[1].JumpBack)
-	require.Equal(a.t, "AnchorX", nodeData.Next[2].Name)
-	require.True(a.t, nodeData.Next[2].Anchor)
+	assert.Len(a.t, nodeData.Next, 3)
+	assert.Equal(a.t, "NodeA", nodeData.Next[0].Name)
+	assert.False(a.t, nodeData.Next[0].JumpBack)
+	assert.Equal(a.t, "NodeB", nodeData.Next[1].Name)
+	assert.True(a.t, nodeData.Next[1].JumpBack)
+	assert.Equal(a.t, "AnchorX", nodeData.Next[2].Name)
+	assert.True(a.t, nodeData.Next[2].Anchor)
 
 	// Check timing properties
-	require.NotNil(a.t, nodeData.RateLimit)
-	require.Equal(a.t, int64(500), *nodeData.RateLimit)
-	require.NotNil(a.t, nodeData.Timeout)
-	require.Equal(a.t, int64(30000), *nodeData.Timeout)
+	assert.NotNil(a.t, nodeData.RateLimit)
+	assert.Equal(a.t, int64(500), *nodeData.RateLimit)
+	assert.NotNil(a.t, nodeData.Timeout)
+	assert.Equal(a.t, int64(30000), *nodeData.Timeout)
 
 	// Check on_error
-	require.Len(a.t, nodeData.OnError, 1)
-	require.Equal(a.t, "ErrorHandler", nodeData.OnError[0].Name)
+	assert.Len(a.t, nodeData.OnError, 1)
+	assert.Equal(a.t, "ErrorHandler", nodeData.OnError[0].Name)
 
 	// Check boolean and numeric properties
-	require.True(a.t, nodeData.Inverse)
-	require.NotNil(a.t, nodeData.Enabled)
-	require.True(a.t, *nodeData.Enabled)
-	require.NotNil(a.t, nodeData.MaxHit)
-	require.Equal(a.t, uint64(5), *nodeData.MaxHit)
+	assert.True(a.t, nodeData.Inverse)
+	assert.NotNil(a.t, nodeData.Enabled)
+	assert.True(a.t, *nodeData.Enabled)
+	assert.NotNil(a.t, nodeData.MaxHit)
+	assert.Equal(a.t, uint64(5), *nodeData.MaxHit)
 
 	// Check delays
-	require.NotNil(a.t, nodeData.PreDelay)
-	require.Equal(a.t, int64(100), *nodeData.PreDelay)
-	require.NotNil(a.t, nodeData.PostDelay)
-	require.Equal(a.t, int64(150), *nodeData.PostDelay)
+	assert.NotNil(a.t, nodeData.PreDelay)
+	assert.Equal(a.t, int64(100), *nodeData.PreDelay)
+	assert.NotNil(a.t, nodeData.PostDelay)
+	assert.Equal(a.t, int64(150), *nodeData.PostDelay)
 
 	// Check wait freezes
-	require.NotNil(a.t, nodeData.PreWaitFreezes)
-	require.Equal(a.t, int64(1000), nodeData.PreWaitFreezes.Time)
-	require.Equal(a.t, 0.95, nodeData.PreWaitFreezes.Threshold)
-	require.NotNil(a.t, nodeData.PostWaitFreezes)
-	require.Equal(a.t, int64(500), nodeData.PostWaitFreezes.Time)
+	assert.NotNil(a.t, nodeData.PreWaitFreezes)
+	assert.Equal(a.t, int64(1000), nodeData.PreWaitFreezes.Time.Milliseconds())
+	assert.Equal(a.t, 0.95, nodeData.PreWaitFreezes.Threshold)
+	assert.NotNil(a.t, nodeData.PostWaitFreezes)
+	assert.Equal(a.t, int64(500), nodeData.PostWaitFreezes.Time.Milliseconds())
 
 	// Check focus
-	require.NotNil(a.t, nodeData.Focus)
+	assert.NotNil(a.t, nodeData.Focus)
 
 	// Check attach
-	require.NotNil(a.t, nodeData.Attach)
-	require.Equal(a.t, "custom_value", nodeData.Attach["custom_key"])
+	assert.NotNil(a.t, nodeData.Attach)
+	assert.Equal(a.t, "custom_value", nodeData.Attach["custom_key"])
 
 	// Check anchor (GetNodeData outputs anchor as object map)
-	require.Equal(a.t, map[string]string{
+	assert.Equal(a.t, map[string]string{
 		"MyAnchor":      "test_attributes",
 		"AnotherAnchor": "test_attributes",
 		"ClearedAnchor": "",
@@ -1264,9 +1256,8 @@ func TestContext_GetNode(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	launchNode := NewNode("launch",
-		WithAction(ActCustom("TestContext_GetNodeAct")),
-	)
+	launchNode := NewNode("launch").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetNodeAct"}))
 	pipeline.AddNode(launchNode)
 
 	got := tasker.PostTask(launchNode.Name, pipeline).
@@ -1302,9 +1293,8 @@ func TestContext_GetTaskJob(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_GetTaskJobNode := NewNode("TestContext_GetTaskJob",
-		WithAction(ActCustom("TestContext_GetTaskJobAct")),
-	)
+	testContext_GetTaskJobNode := NewNode("TestContext_GetTaskJob").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskJobAct"}))
 	pipeline.AddNode(testContext_GetTaskJobNode)
 
 	got := tasker.PostTask(testContext_GetTaskJobNode.Name, pipeline).
@@ -1339,9 +1329,8 @@ func TestContext_GetTasker(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_GetTaskerNode := NewNode("TestContext_GetTasker",
-		WithAction(ActCustom("TestContext_GetTaskerAct")),
-	)
+	testContext_GetTaskerNode := NewNode("TestContext_GetTasker").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
 	pipeline.AddNode(testContext_GetTaskerNode)
 
 	got := tasker.PostTask(testContext_GetTaskerNode.Name, pipeline).
@@ -1376,9 +1365,8 @@ func TestContext_Clone(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_CloneNode := NewNode("TestContext_Clone",
-		WithAction(ActCustom("TestContext_GetTaskerAct")),
-	)
+	testContext_CloneNode := NewNode("TestContext_Clone").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
 	pipeline.AddNode(testContext_CloneNode)
 
 	got := tasker.PostTask(testContext_CloneNode.Name, pipeline).
@@ -1396,7 +1384,7 @@ func (a *testContextRunRecognitionDirectAct) Run(ctx *Context, _ *CustomActionAr
 	require.NotNil(a.t, img)
 
 	// Test RunRecognitionDirect with DirectHit recognition type
-	detail, err := ctx.RunRecognitionDirect(NodeRecognitionTypeDirectHit, &NodeDirectHitParam{}, img)
+	detail, err := ctx.RunRecognitionDirect(RecognitionTypeDirectHit, &DirectHitParam{}, img)
 	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 	require.True(a.t, detail.Hit)
@@ -1420,9 +1408,8 @@ func TestContext_RunRecognitionDirect(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_RunRecognitionDirectNode := NewNode("TestContext_RunRecognitionDirect",
-		WithAction(ActCustom("TestContext_RunRecognitionDirectAct")),
-	)
+	testContext_RunRecognitionDirectNode := NewNode("TestContext_RunRecognitionDirect").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunRecognitionDirectAct"}))
 	pipeline.AddNode(testContext_RunRecognitionDirectNode)
 
 	got := tasker.PostTask(testContext_RunRecognitionDirectNode.Name, pipeline).
@@ -1436,10 +1423,10 @@ type testContextRunActionDirectAct struct {
 
 func (a *testContextRunActionDirectAct) Run(ctx *Context, arg *CustomActionArg) bool {
 	// Test RunActionDirect with Click action type
-	clickParam := &NodeClickParam{
+	clickParam := &ClickParam{
 		Target: NewTargetRect(Rect{100, 100, 10, 10}),
 	}
-	detail, err := ctx.RunActionDirect(NodeActionTypeClick, clickParam, arg.Box, arg.RecognitionDetail)
+	detail, err := ctx.RunActionDirect(ActionTypeClick, clickParam, arg.Box, arg.RecognitionDetail)
 	require.NoError(a.t, err)
 	require.NotNil(a.t, detail)
 	return true
@@ -1462,9 +1449,8 @@ func TestContext_RunActionDirect(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testContext_RunActionDirectNode := NewNode("TestContext_RunActionDirect",
-		WithAction(ActCustom("TestContext_RunActionDirectAct")),
-	)
+	testContext_RunActionDirectNode := NewNode("TestContext_RunActionDirect").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunActionDirectAct"}))
 	pipeline.AddNode(testContext_RunActionDirectNode)
 
 	got := tasker.PostTask(testContext_RunActionDirectNode.Name, pipeline).

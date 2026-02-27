@@ -54,41 +54,41 @@ func (t *testRecognitionDetailCustomRec) Run(_ *Context, _ *CustomRecognitionArg
 
 type recognitionDetailTestCase struct {
 	name  string
-	typ   NodeRecognitionType
-	param NodeRecognitionParam
+	typ   RecognitionType
+	param RecognitionParam
 }
 
 func recognitionDetailTestCases() []recognitionDetailTestCase {
 	return []recognitionDetailTestCase{
 		{
 			name:  "direct_hit",
-			typ:   NodeRecognitionTypeDirectHit,
-			param: &NodeDirectHitParam{},
+			typ:   RecognitionTypeDirectHit,
+			param: &DirectHitParam{},
 		},
 		{
 			name: "template_match",
-			typ:  NodeRecognitionTypeTemplateMatch,
-			param: &NodeTemplateMatchParam{
+			typ:  RecognitionTypeTemplateMatch,
+			param: &TemplateMatchParam{
 				Template:  []string{"Wilderness/EnterWilderness.png"},
 				Threshold: []float64{0.01},
-				OrderBy:   NodeTemplateMatchOrderByScore,
+				OrderBy:   TemplateMatchOrderByScore,
 			},
 		},
 		{
 			name: "feature_match",
-			typ:  NodeRecognitionTypeFeatureMatch,
-			param: &NodeFeatureMatchParam{
+			typ:  RecognitionTypeFeatureMatch,
+			param: &FeatureMatchParam{
 				Template: []string{"Wilderness/CollectTrust.png"},
 				Count:    1,
-				Detector: NodeFeatureMatchMethodORB,
+				Detector: FeatureMatchMethodORB,
 				Ratio:    1.0,
 			},
 		},
 		{
 			name: "color_match",
-			typ:  NodeRecognitionTypeColorMatch,
-			param: &NodeColorMatchParam{
-				Method:    NodeColorMatchMethodRGB,
+			typ:  RecognitionTypeColorMatch,
+			param: &ColorMatchParam{
+				Method:    ColorMatchMethodRGB,
 				Lower:     [][]int{{0, 0, 0}},
 				Upper:     [][]int{{255, 255, 255}},
 				Count:     1,
@@ -97,77 +97,77 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 		},
 		{
 			name: "ocr",
-			typ:  NodeRecognitionTypeOCR,
-			param: &NodeOCRParam{
+			typ:  RecognitionTypeOCR,
+			param: &OCRParam{
 				Expected:  []string{".*"},
 				Threshold: 0.0,
-				OrderBy:   NodeOCROrderByLength,
+				OrderBy:   OCROrderByLength,
 			},
 		},
 		{
 			name: "and",
-			typ:  NodeRecognitionTypeAnd,
-			param: &NodeAndRecognitionParam{
+			typ:  RecognitionTypeAnd,
+			param: &AndRecognitionParam{
 				AllOf: []SubRecognitionItem{
-					Inline(RecTemplateMatch(
-						[]string{"Wilderness/EnterWilderness.png"},
-						WithTemplateMatchThreshold([]float64{0.01}),
-						WithTemplateMatchOrderBy(NodeTemplateMatchOrderByScore),
-					), "template"),
-					Inline(RecColorMatch(
-						[][]int{{0, 0, 0}},
-						[][]int{{255, 255, 255}},
-						WithColorMatchCount(1),
-						WithColorMatchConnected(true),
-					), "color"),
+					Inline(RecTemplateMatch(TemplateMatchParam{
+						Template:  []string{"Wilderness/EnterWilderness.png"},
+						Threshold: []float64{0.01},
+						OrderBy:   TemplateMatchOrderByScore,
+					}), "template"),
+					Inline(RecColorMatch(ColorMatchParam{
+						Lower:     [][]int{{0, 0, 0}},
+						Upper:     [][]int{{255, 255, 255}},
+						Count:     1,
+						Connected: true,
+					}), "color"),
 				},
 				BoxIndex: 0,
 			},
 		},
 		{
 			name: "or",
-			typ:  NodeRecognitionTypeOr,
-			param: &NodeOrRecognitionParam{
+			typ:  RecognitionTypeOr,
+			param: &OrRecognitionParam{
 				AnyOf: []SubRecognitionItem{
-					Inline(RecTemplateMatch(
-						[]string{"Wilderness/EnterWilderness.png"},
-						WithTemplateMatchThreshold([]float64{0.01}),
-						WithTemplateMatchOrderBy(NodeTemplateMatchOrderByScore),
-					)),
-					Inline(RecColorMatch(
-						[][]int{{0, 0, 0}},
-						[][]int{{255, 255, 255}},
-						WithColorMatchCount(1),
-						WithColorMatchConnected(true),
-					)),
+					Inline(RecTemplateMatch(TemplateMatchParam{
+						Template:  []string{"Wilderness/EnterWilderness.png"},
+						Threshold: []float64{0.01},
+						OrderBy:   TemplateMatchOrderByScore,
+					})),
+					Inline(RecColorMatch(ColorMatchParam{
+						Lower:     [][]int{{0, 0, 0}},
+						Upper:     [][]int{{255, 255, 255}},
+						Count:     1,
+						Connected: true,
+					})),
 				},
 			},
 		},
 		{
 			name: "nn_classify",
-			typ:  NodeRecognitionTypeNeuralNetworkClassify,
-			param: &NodeNeuralNetworkClassifyParam{
+			typ:  RecognitionTypeNeuralNetworkClassify,
+			param: &NeuralNetworkClassifyParam{
 				Labels:   []string{"cat", "dog", "mouse"},
 				Model:    "classify/classifier.onnx",
 				Expected: []int{0, 2},
-				OrderBy:  NodeNeuralNetworkClassifyOrderByScore,
+				OrderBy:  NeuralNetworkClassifyOrderByScore,
 				Index:    0,
 			},
 		},
 		{
 			name: "nn_detect",
-			typ:  NodeRecognitionTypeNeuralNetworkDetect,
-			param: &NodeNeuralNetworkDetectParam{
+			typ:  RecognitionTypeNeuralNetworkDetect,
+			param: &NeuralNetworkDetectParam{
 				Model:    "ocr/det.onnx",
 				Expected: []int{0},
-				OrderBy:  NodeNeuralNetworkDetectOrderByArea,
+				OrderBy:  NeuralNetworkDetectOrderByArea,
 				Index:    0,
 			},
 		},
 		{
 			name: "custom",
-			typ:  NodeRecognitionTypeCustom,
-			param: &NodeCustomRecognitionParam{
+			typ:  RecognitionTypeCustom,
+			param: &CustomRecognitionParam{
 				CustomRecognition:      "TestRecognitionDetail_Custom",
 				CustomRecognitionParam: map[string]any{"key": "value"},
 			},
@@ -257,15 +257,15 @@ func (a *testRecognitionDetailFromRecognitionAct) Run(ctx *Context, _ *CustomAct
 		},
 	}
 
-	runRecognition := func(t *testing.T, name string, recoType NodeRecognitionType, param NodeRecognitionParam) {
+	runRecognition := func(t *testing.T, name string, recoType RecognitionType, param RecognitionParam) {
 		detail, err := ctx.RunRecognitionDirect(recoType, param, img)
 		require.NoError(t, err)
 		require.NotNil(t, detail)
 
 		switch recoType {
-		case NodeRecognitionTypeAnd, NodeRecognitionTypeOr:
+		case RecognitionTypeAnd, RecognitionTypeOr:
 			requireRecognitionDetailMatchesCombinedRaw(t, detail)
-		case NodeRecognitionTypeDirectHit:
+		case RecognitionTypeDirectHit:
 			require.Nil(t, detail.Results)
 			requireRecognitionDetailMatchesRaw(t, detail)
 		default:
@@ -356,8 +356,8 @@ func requireRecognitionDetailMatchesCombinedRaw(t *testing.T, detail *Recognitio
 		require.Equal(t, rawItem.Algorithm, gotItem.Algorithm)
 		require.Equal(t, rawItem.Box, gotItem.Box)
 
-		switch NodeRecognitionType(rawItem.Algorithm) {
-		case NodeRecognitionTypeAnd, NodeRecognitionTypeOr:
+		switch RecognitionType(rawItem.Algorithm) {
+		case RecognitionTypeAnd, RecognitionTypeOr:
 			requireRecognitionDetailMatchesCombinedRaw(t, gotItem)
 		default:
 			requireRecognitionDetailMatchesRaw(t, gotItem)
@@ -389,9 +389,8 @@ func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testNode := NewNode("TestRecognitionDetail_ResultMatchesRaw",
-		WithAction(ActCustom("TestRecognitionDetail_ResultMatchesRawAct")),
-	)
+	testNode := NewNode("TestRecognitionDetail_ResultMatchesRaw").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestRecognitionDetail_ResultMatchesRawAct"}))
 	pipeline.AddNode(testNode)
 
 	got := tasker.PostTask(testNode.Name, pipeline).

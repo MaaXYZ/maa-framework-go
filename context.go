@@ -54,9 +54,8 @@ func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {
 // Example 1:
 //
 //	pipeline := NewPipeline()
-//	node := NewNode("Task",
-//		WithAction(ActClick(WithClickTarget(NewTargetRect(Rect{100, 200, 100, 100})))),
-//	)
+//	node := NewNode("Task").
+//		SetAction(ActClick(ClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}))
 //	pipeline.AddNode(node)
 //	ctx.RunTask(node.Name, pipeline)
 //
@@ -103,9 +102,8 @@ func (ctx *Context) runRecognition(
 // Example 1:
 //
 //	pipeline := NewPipeline()
-//	node := NewNode("Task",
-//		WithRecognition(RecOCR(WithRecognitionExpected("Hello"))),
-//	)
+//	node := NewNode("Task").
+//		SetRecognition(RecOCR(OCRParam{Expected: []string{"Hello"}}))
 //	pipeline.AddNode(node)
 //	ctx.RunRecognition(node.Name, img, pipeline)
 //
@@ -165,9 +163,8 @@ func (ctx *Context) runAction(
 // Example 1:
 //
 //	pipeline := NewPipeline()
-//	node := NewNode("Task",
-//		WithAction(ActClick(WithClickTarget(NewTargetRect(Rect{100, 200, 100, 100})))),
-//	)
+//	node := NewNode("Task").
+//		SetAction(ActClick(ClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}))
 //	pipeline.AddNode(node)
 //	ctx.RunAction(node.Name, box, recognitionDetail, pipeline)
 //
@@ -198,17 +195,17 @@ func (ctx *Context) RunAction(
 }
 
 // RunRecognitionDirect runs recognition directly by type and parameters, without a pipeline entry.
-// It accepts a recognition type string (e.g., "OCR", "TemplateMatch"), a recognition parameter that
-// will be marshaled to JSON, and an image to recognize. If the parameter is nil, it will be
-// marshaled to JSON null.
+// It accepts a recognition type (e.g., RecognitionTypeOCR, RecognitionTypeTemplateMatch),
+// a recognition parameter implementing RecognitionParam (marshaled to JSON), and an image.
+// recoParam may be nil; it is then marshaled as JSON null.
 //
 // Example:
 //
-//	recParam := &NodeOCRParam{Expected: []string{"Hello"}}
-//	ctx.RunRecognitionDirect(NodeRecognitionTypeOCR, recParam, img)
+//	recParam := &OCRParam{Expected: []string{"Hello"}}
+//	detail, err := ctx.RunRecognitionDirect(RecognitionTypeOCR, recParam, img)
 func (ctx *Context) RunRecognitionDirect(
-	recoType NodeRecognitionType,
-	recoParam NodeRecognitionParam,
+	recoType RecognitionType,
+	recoParam RecognitionParam,
 	img image.Image,
 ) (*RecognitionDetail, error) {
 	imgBuf := buffer.NewImageBuffer()
@@ -241,12 +238,12 @@ func (ctx *Context) RunRecognitionDirect(
 //
 // Example:
 //
-//	actParam := &NodeClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}
+//	actParam := &ClickParam{Target: NewTargetRect(Rect{100, 200, 100, 100})}
 //	box := Rect{100, 200, 100, 100}
-//	ctx.RunActionDirect(NodeActionTypeClick, actParam, box, nil)
+//	ctx.RunActionDirect(ActionTypeClick, actParam, box, nil)
 func (ctx *Context) RunActionDirect(
-	actionType NodeActionType,
-	actionParam NodeActionParam,
+	actionType ActionType,
+	actionParam ActionParam,
 	box Rect,
 	recoDetail *RecognitionDetail,
 ) (*ActionDetail, error) {
@@ -293,7 +290,7 @@ func (ctx *Context) overridePipeline(override string) error {
 // Example 1:
 //
 //	pipeline := NewPipeline()
-//	node := NewNode("Task", WithAction(ActDoNothing()))
+//	node := NewNode("Task").SetAction(ActDoNothing())
 //	pipeline.AddNode(node)
 //	ctx.OverridePipeline(pipeline)
 //
@@ -330,7 +327,7 @@ func (ctx *Context) OverridePipeline(override any) error {
 
 // OverrideNext overrides the next list of a node by name.
 // If the underlying call fails (e.g., node not found or list invalid), it returns an error.
-func (ctx *Context) OverrideNext(name string, nextList []NodeNextItem) error {
+func (ctx *Context) OverrideNext(name string, nextList []NextItem) error {
 	list := buffer.NewStringListBuffer()
 	defer list.Destroy()
 	size := len(nextList)
@@ -386,6 +383,10 @@ func (ctx *Context) GetNode(name string) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	node.Name = name
+	if node.Attach == nil {
+		node.Attach = make(map[string]any)
+	}
 	return &node, nil
 }
 
@@ -410,12 +411,16 @@ func (ctx *Context) GetTasker() *Tasker {
 }
 
 // WaitFreezes waits until the screen stabilizes (no significant changes).
-// duration: The duration that the screen must remain stable.
-// box: The recognition hit box, used when target is "Self" to calculate the ROI. If nil, uses entire screen.
-// waitFreezesParam: Additional wait_freezes parameters. Can be a JSON string or any data type that can be marshaled to JSON.
-// duration and waitFreezesParam.time are mutually exclusive, and one of them must be non-zero.
-// Returns true if the screen stabilized within the timeout, false on timeout or failure.
-func (ctx *Context) WaitFreezes(duration time.Duration, box *Rect, waitFreezesParam ...any) bool {
+// duration is the duration that the screen must remain stable.
+// box is the recognition hit box, used when target is "Self" to calculate the ROI; if nil, uses entire screen.
+// waitFreezesParam is optional; nil uses default params. duration and waitFreezesParam.Time are mutually exclusive;
+// one of them must be non-zero.
+// Returns nil if the screen stabilized within the timeout; returns an error on timeout or failure.
+func (ctx *Context) WaitFreezes(
+	duration time.Duration,
+	box *Rect,
+	waitFreezesParam *WaitFreezesParam,
+) error {
 	var boxHandle uintptr
 	if box != nil {
 		rectBuf := buffer.NewRectBuffer()
@@ -424,7 +429,17 @@ func (ctx *Context) WaitFreezes(duration time.Duration, box *Rect, waitFreezesPa
 		boxHandle = rectBuf.Handle()
 	}
 
-	return native.MaaContextWaitFreezes(ctx.handle, uint64(duration.Milliseconds()), boxHandle, ctx.handleOverride(waitFreezesParam...))
+	ok := native.MaaContextWaitFreezes(
+		ctx.handle,
+		uint64(duration.Milliseconds()),
+		boxHandle,
+		ctx.handleOverride(waitFreezesParam),
+	)
+	if !ok {
+		return errors.New("wait freezes timeout or failed")
+	}
+
+	return nil
 }
 
 // Clone clones current Context.

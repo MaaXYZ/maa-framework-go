@@ -42,9 +42,8 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testResource_RegisterCustomRecognitionNode := NewNode("TestResource_RegisterCustomRecognition",
-		WithRecognition(RecCustom("TestRec")),
-	)
+	testResource_RegisterCustomRecognitionNode := NewNode("TestResource_RegisterCustomRecognition").
+		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec"}))
 	pipeline.AddNode(testResource_RegisterCustomRecognitionNode)
 
 	got2 := tasker.PostTask(testResource_RegisterCustomRecognitionNode.Name, pipeline).
@@ -69,10 +68,9 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testResource_UnregisterCustomRecognitionNode := NewNode("TestResource_UnregisterCustomRecognition",
-		WithRecognition(RecCustom("TestRec")),
-		WithTimeout(0*time.Second),
-	)
+	testResource_UnregisterCustomRecognitionNode := NewNode("TestResource_UnregisterCustomRecognition").
+		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec"})).
+		SetTimeout(0 * time.Second)
 	pipeline.AddNode(testResource_UnregisterCustomRecognitionNode)
 
 	got2 := tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline).
@@ -106,17 +104,15 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline1 := NewPipeline()
-	testResource_ClearCustomRecognitionNode1 := NewNode("TestResource_ClearCustomRecognition",
-		WithRecognition(RecCustom("TestRec1")),
-		WithTimeout(0*time.Second),
-	)
+	testResource_ClearCustomRecognitionNode1 := NewNode("TestResource_ClearCustomRecognition").
+		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec1"})).
+		SetTimeout(0 * time.Second)
 	pipeline1.AddNode(testResource_ClearCustomRecognitionNode1)
 
 	pipeline2 := NewPipeline()
-	testResource_ClearCustomRecognitionNode2 := NewNode("TestResource_ClearCustomRecognition",
-		WithRecognition(RecCustom("TestRec2")),
-		WithTimeout(0*time.Second),
-	)
+	testResource_ClearCustomRecognitionNode2 := NewNode("TestResource_ClearCustomRecognition").
+		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec2"})).
+		SetTimeout(0 * time.Second)
 	pipeline2.AddNode(testResource_ClearCustomRecognitionNode2)
 	got3 := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1).
 		Wait().Success()
@@ -159,9 +155,8 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testResource_RegisterCustomActionNode := NewNode("TestResource_RegisterCustomAction",
-		WithAction(ActCustom("TestAct")),
-	)
+	testResource_RegisterCustomActionNode := NewNode("TestResource_RegisterCustomAction").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct"}))
 	pipeline.AddNode(testResource_RegisterCustomActionNode)
 
 	got := tasker.PostTask(testResource_RegisterCustomActionNode.Name, pipeline).
@@ -186,9 +181,8 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
-	testResource_UnregisterCustomActionNode := NewNode("TestResource_UnregisterCustomAction",
-		WithAction(ActCustom("TestAct")),
-	)
+	testResource_UnregisterCustomActionNode := NewNode("TestResource_UnregisterCustomAction").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct"}))
 	pipeline.AddNode(testResource_UnregisterCustomActionNode)
 
 	got1 := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline).
@@ -222,15 +216,13 @@ func TestResource_ClearCustomAction(t *testing.T) {
 	require.NoError(t, err)
 
 	pipeline1 := NewPipeline()
-	testResource_ClearCustomActionNode1 := NewNode("TestResource_ClearCustomAction",
-		WithAction(ActCustom("TestAct1")),
-	)
+	testResource_ClearCustomActionNode1 := NewNode("TestResource_ClearCustomAction").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct1"}))
 	pipeline1.AddNode(testResource_ClearCustomActionNode1)
 
 	pipeline2 := NewPipeline()
-	testResource_ClearCustomActionNode2 := NewNode("TestResource_ClearCustomAction",
-		WithAction(ActCustom("TestAct2")),
-	)
+	testResource_ClearCustomActionNode2 := NewNode("TestResource_ClearCustomAction").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct2"}))
 	pipeline2.AddNode(testResource_ClearCustomActionNode2)
 
 	got1 := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1).
@@ -266,7 +258,7 @@ func TestResource_OverrideNext(t *testing.T) {
 	isPathSet := res.PostBundle(resDir).Wait().Success()
 	require.True(t, isPathSet)
 
-	override := []NodeNextItem{
+	override := []NextItem{
 		{Name: "StartGame"},
 		{Name: "Sub_BackButton", JumpBack: true},
 		{Name: "HomeFlag", Anchor: true},
@@ -279,14 +271,14 @@ func TestResource_OverrideNext(t *testing.T) {
 	require.NotNil(t, node)
 	require.Len(t, node.Next, len(override))
 
-	findNextItem := func(name string) NodeNextItem {
+	findNextItem := func(name string) NextItem {
 		for _, item := range node.Next {
 			if item.Name == name {
 				return item
 			}
 		}
 		require.FailNowf(t, "next item not found", "name=%s", name)
-		return NodeNextItem{}
+		return NextItem{}
 	}
 
 	startGame := findNextItem("StartGame")
@@ -363,18 +355,18 @@ func TestResource_GetDefaultRecognitionParam(t *testing.T) {
 	defer res.Destroy()
 
 	// Test getting default recognition parameters for DirectHit type
-	param, err := res.GetDefaultRecognitionParam(NodeRecognitionTypeDirectHit)
+	param, err := res.GetDefaultRecognitionParam(RecognitionTypeDirectHit)
 	require.NoError(t, err)
 	require.NotNil(t, param)
-	_, isDirectHit := param.(*NodeDirectHitParam)
+	_, isDirectHit := param.(*DirectHitParam)
 	require.True(t, isDirectHit, "param should be *NodeDirectHitParam")
 
 	// Test getting default recognition parameters for OCR type
-	param2, err := res.GetDefaultRecognitionParam(NodeRecognitionTypeOCR)
+	param2, err := res.GetDefaultRecognitionParam(RecognitionTypeOCR)
 	require.NoError(t, err)
 	require.NotNil(t, param2)
-	_, isOCR := param2.(*NodeOCRParam)
-	require.True(t, isOCR, "param2 should be *NodeOCRParam")
+	_, isOCR := param2.(*OCRParam)
+	require.True(t, isOCR, "param2 should be *OCRParam")
 }
 
 func TestResource_GetDefaultActionParam(t *testing.T) {
@@ -382,16 +374,16 @@ func TestResource_GetDefaultActionParam(t *testing.T) {
 	defer res.Destroy()
 
 	// Test getting default action parameters for Click type
-	param, err := res.GetDefaultActionParam(NodeActionTypeClick)
+	param, err := res.GetDefaultActionParam(ActionTypeClick)
 	require.NoError(t, err)
 	require.NotNil(t, param)
-	_, isClick := param.(*NodeClickParam)
-	require.True(t, isClick, "param should be *NodeClickParam")
+	_, isClick := param.(*ClickParam)
+	require.True(t, isClick, "param should be *ClickParam")
 
 	// Test getting default action parameters for DoNothing type
-	param2, err := res.GetDefaultActionParam(NodeActionTypeDoNothing)
+	param2, err := res.GetDefaultActionParam(ActionTypeDoNothing)
 	require.NoError(t, err)
 	require.NotNil(t, param2)
-	_, isDoNothing := param2.(*NodeDoNothingParam)
-	require.True(t, isDoNothing, "param2 should be *NodeDoNothingParam")
+	_, isDoNothing := param2.(*DoNothingParam)
+	require.True(t, isDoNothing, "param2 should be *DoNothingParam")
 }

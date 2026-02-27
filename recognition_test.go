@@ -26,8 +26,8 @@ func TestSubRecognitionItem_UnmarshalJSON_Object(t *testing.T) {
 	require.Empty(t, item.NodeName)
 	require.NotNil(t, item.Inline)
 	require.Equal(t, "MySub", item.Inline.SubName)
-	require.Equal(t, NodeRecognitionTypeTemplateMatch, item.Inline.Type)
-	require.IsType(t, (*NodeTemplateMatchParam)(nil), item.Inline.Param)
+	require.Equal(t, RecognitionTypeTemplateMatch, item.Inline.Type)
+	require.IsType(t, (*TemplateMatchParam)(nil), item.Inline.Param)
 }
 
 func TestSubRecognitionItem_UnmarshalJSON_Invalid(t *testing.T) {
@@ -40,13 +40,13 @@ func TestSubRecognitionItem_UnmarshalJSON_Invalid(t *testing.T) {
 
 func TestSubRecognitionItem_MarshalJSON(t *testing.T) {
 	// Marshal node name ref
-	ref := SubRecognitionRef("OtherNode")
+	ref := Ref("OtherNode")
 	b, err := json.Marshal(ref)
 	require.NoError(t, err)
 	require.Equal(t, `"OtherNode"`, string(b))
 
 	// Marshal inline
-	inline := SubRecognitionInline(AndItem("sub", RecDirectHit()))
+	inline := Inline(RecDirectHit(), "sub")
 	b, err = json.Marshal(inline)
 	require.NoError(t, err)
 	var back SubRecognitionItem
@@ -54,7 +54,7 @@ func TestSubRecognitionItem_MarshalJSON(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, back.Inline)
 	require.Equal(t, "sub", back.Inline.SubName)
-	require.Equal(t, NodeRecognitionTypeDirectHit, back.Inline.Type)
+	require.Equal(t, RecognitionTypeDirectHit, back.Inline.Type)
 }
 
 func TestNodeAndRecognitionParam_Unmarshal_GetNodeDataStyle(t *testing.T) {
@@ -74,11 +74,11 @@ func TestNodeAndRecognitionParam_Unmarshal_GetNodeDataStyle(t *testing.T) {
 			"box_index": 1
 		}
 	}`
-	var reco NodeRecognition
+	var reco Recognition
 	err := json.Unmarshal([]byte(raw), &reco)
 	require.NoError(t, err)
-	require.Equal(t, NodeRecognitionTypeAnd, reco.Type)
-	andParam, ok := reco.Param.(*NodeAndRecognitionParam)
+	require.Equal(t, RecognitionTypeAnd, reco.Type)
+	andParam, ok := reco.Param.(*AndRecognitionParam)
 	require.True(t, ok)
 	require.Len(t, andParam.AllOf, 2)
 	require.Equal(t, 1, andParam.BoxIndex)
@@ -91,7 +91,7 @@ func TestNodeAndRecognitionParam_Unmarshal_GetNodeDataStyle(t *testing.T) {
 	require.Empty(t, andParam.AllOf[1].NodeName)
 	require.NotNil(t, andParam.AllOf[1].Inline)
 	require.Equal(t, "InlineSub", andParam.AllOf[1].Inline.SubName)
-	require.Equal(t, NodeRecognitionTypeDirectHit, andParam.AllOf[1].Inline.Type)
+	require.Equal(t, RecognitionTypeDirectHit, andParam.AllOf[1].Inline.Type)
 }
 
 func TestNodeOrRecognitionParam_Unmarshal_GetNodeDataStyle(t *testing.T) {
@@ -109,11 +109,11 @@ func TestNodeOrRecognitionParam_Unmarshal_GetNodeDataStyle(t *testing.T) {
 			]
 		}
 	}`
-	var reco NodeRecognition
+	var reco Recognition
 	err := json.Unmarshal([]byte(raw), &reco)
 	require.NoError(t, err)
-	require.Equal(t, NodeRecognitionTypeOr, reco.Type)
-	orParam, ok := reco.Param.(*NodeOrRecognitionParam)
+	require.Equal(t, RecognitionTypeOr, reco.Type)
+	orParam, ok := reco.Param.(*OrRecognitionParam)
 	require.True(t, ok)
 	require.Len(t, orParam.AnyOf, 2)
 
@@ -121,35 +121,35 @@ func TestNodeOrRecognitionParam_Unmarshal_GetNodeDataStyle(t *testing.T) {
 	require.Nil(t, orParam.AnyOf[0].Inline)
 
 	require.NotNil(t, orParam.AnyOf[1].Inline)
-	require.Equal(t, NodeRecognitionTypeColorMatch, orParam.AnyOf[1].Inline.Type)
+	require.Equal(t, RecognitionTypeColorMatch, orParam.AnyOf[1].Inline.Type)
 }
 
 func TestRecAnd_RecOr_MarshalRoundtrip(t *testing.T) {
 	// Build And with mix of ref and inline
-	andRec := RecAnd(RecAndItems(Ref("NodeRef"), Inline(RecDirectHit(), "sub1")), WithAndRecognitionBoxIndex(2))
+	andRec := RecAnd(Ref("NodeRef"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(2)
 	b, err := json.Marshal(andRec)
 	require.NoError(t, err)
-	var reco NodeRecognition
+	var reco Recognition
 	err = json.Unmarshal(b, &reco)
 	require.NoError(t, err)
-	require.Equal(t, NodeRecognitionTypeAnd, reco.Type)
-	andParam := reco.Param.(*NodeAndRecognitionParam)
+	require.Equal(t, RecognitionTypeAnd, reco.Type)
+	andParam := reco.Param.(*AndRecognitionParam)
 	require.Len(t, andParam.AllOf, 2)
 	require.Equal(t, 2, andParam.BoxIndex)
 	require.Equal(t, "NodeRef", andParam.AllOf[0].NodeName)
 	require.Equal(t, "sub1", andParam.AllOf[1].Inline.SubName)
 
 	// Build Or with variadic Inline (no empty sub_name)
-	orRec := RecOr(Inline(RecTemplateMatch([]string{"t.png"})))
+	orRec := RecOr(Inline(RecTemplateMatch(TemplateMatchParam{Template: []string{"t.png"}})))
 	b, err = json.Marshal(orRec)
 	require.NoError(t, err)
 	err = json.Unmarshal(b, &reco)
 	require.NoError(t, err)
-	require.Equal(t, NodeRecognitionTypeOr, reco.Type)
-	orParam := reco.Param.(*NodeOrRecognitionParam)
+	require.Equal(t, RecognitionTypeOr, reco.Type)
+	orParam := reco.Param.(*OrRecognitionParam)
 	require.Len(t, orParam.AnyOf, 1)
 	require.NotNil(t, orParam.AnyOf[0].Inline)
-	require.Equal(t, NodeRecognitionTypeTemplateMatch, orParam.AnyOf[0].Inline.Type)
+	require.Equal(t, RecognitionTypeTemplateMatch, orParam.AnyOf[0].Inline.Type)
 }
 
 func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
@@ -259,10 +259,10 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 
 	// Verify recognition configuration
 	require.NotNil(t, parsedNode.Recognition, "recognition should not be nil")
-	require.Equal(t, NodeRecognitionTypeAnd, parsedNode.Recognition.Type, "recognition type should be And")
+	require.Equal(t, RecognitionTypeAnd, parsedNode.Recognition.Type, "recognition type should be And")
 
 	// Verify And recognition parameters
-	andParam, ok := parsedNode.Recognition.Param.(*NodeAndRecognitionParam)
+	andParam, ok := parsedNode.Recognition.Param.(*AndRecognitionParam)
 	require.True(t, ok, "param should be of type *NodeAndRecognitionParam")
 	require.NotNil(t, andParam, "And recognition param should not be nil")
 	require.Equal(t, 3, andParam.BoxIndex, "box_index should be 3")
@@ -272,38 +272,38 @@ func TestNodeAndRecognitionParam_UnmarshalJSON(t *testing.T) {
 	templateMatchItem := andParam.AllOf[0].Inline
 	require.NotNil(t, templateMatchItem, "first sub-item should not be nil")
 	require.Equal(t, "CreditIcon", templateMatchItem.SubName, "first sub-item name should be CreditIcon")
-	require.Equal(t, NodeRecognitionTypeTemplateMatch, templateMatchItem.Type, "first sub-item type should be TemplateMatch")
-	templateParam, ok := templateMatchItem.Param.(*NodeTemplateMatchParam)
+	require.Equal(t, RecognitionTypeTemplateMatch, templateMatchItem.Type, "first sub-item type should be TemplateMatch")
+	templateParam, ok := templateMatchItem.Param.(*TemplateMatchParam)
 	require.True(t, ok, "first sub-item param should be of type *NodeTemplateMatchParam")
 	require.NotEmpty(t, templateParam.Template, "template path should not be empty")
-	require.Equal(t, NodeTemplateMatchOrderByVertical, templateParam.OrderBy, "order_by should be Vertical")
+	require.Equal(t, TemplateMatchOrderByVertical, templateParam.OrderBy, "order_by should be Vertical")
 
 	// Verify second sub-recognition item (ColorMatch)
 	colorMatchItem := andParam.AllOf[1].Inline
 	require.NotNil(t, colorMatchItem, "second sub-item should not be nil")
 	require.Equal(t, "NotSoldOut", colorMatchItem.SubName, "second sub-item name should be NotSoldOut")
-	require.Equal(t, NodeRecognitionTypeColorMatch, colorMatchItem.Type, "second sub-item type should be ColorMatch")
-	colorParam, ok := colorMatchItem.Param.(*NodeColorMatchParam)
+	require.Equal(t, RecognitionTypeColorMatch, colorMatchItem.Type, "second sub-item type should be ColorMatch")
+	colorParam, ok := colorMatchItem.Param.(*ColorMatchParam)
 	require.True(t, ok, "second sub-item param should be of type *NodeColorMatchParam")
-	require.Equal(t, NodeColorMatchMethodGRAY, colorParam.Method, "color match method should be GRAY")
+	require.Equal(t, ColorMatchMethodGRAY, colorParam.Method, "color match method should be GRAY")
 	require.Equal(t, 20000, colorParam.Count, "pixel count threshold should be 20000")
 
 	// Verify third sub-recognition item (OCR)
 	ocrItem := andParam.AllOf[2].Inline
 	require.NotNil(t, ocrItem, "third sub-item should not be nil")
 	require.Equal(t, "BuyFirstOCR", ocrItem.SubName, "third sub-item name should be BuyFirstOCR")
-	require.Equal(t, NodeRecognitionTypeOCR, ocrItem.Type, "third sub-item type should be OCR")
-	ocrParam, ok := ocrItem.Param.(*NodeOCRParam)
-	require.True(t, ok, "third sub-item param should be of type *NodeOCRParam")
+	require.Equal(t, RecognitionTypeOCR, ocrItem.Type, "third sub-item type should be OCR")
+	ocrParam, ok := ocrItem.Param.(*OCRParam)
+	require.True(t, ok, "third sub-item param should be of type *OCRParam")
 	require.NotEmpty(t, ocrParam.Expected, "OCR expected text should not be empty")
 
 	// Verify fourth sub-recognition item (ColorMatch)
 	affordableItem := andParam.AllOf[3].Inline
 	require.NotNil(t, affordableItem, "fourth sub-item should not be nil")
 	require.Equal(t, "Affordable", affordableItem.SubName, "fourth sub-item name should be Affordable")
-	require.Equal(t, NodeRecognitionTypeColorMatch, affordableItem.Type, "fourth sub-item type should be ColorMatch")
-	affordableParam, ok := affordableItem.Param.(*NodeColorMatchParam)
+	require.Equal(t, RecognitionTypeColorMatch, affordableItem.Type, "fourth sub-item type should be ColorMatch")
+	affordableParam, ok := affordableItem.Param.(*ColorMatchParam)
 	require.True(t, ok, "fourth sub-item param should be of type *NodeColorMatchParam")
 	require.Equal(t, 20, affordableParam.Count, "pixel count threshold should be 20")
-	require.Equal(t, NodeColorMatchOrderByVertical, affordableParam.OrderBy, "order_by should be Vertical")
+	require.Equal(t, ColorMatchOrderByVertical, affordableParam.OrderBy, "order_by should be Vertical")
 }

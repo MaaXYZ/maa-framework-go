@@ -115,7 +115,7 @@ func (t *Tasker) PostTask(entry string, override ...any) *TaskJob {
 }
 
 // PostRecognition posts a recognition to the tasker asynchronously.
-func (t *Tasker) PostRecognition(recType NodeRecognitionType, recParam NodeRecognitionParam, img image.Image) *TaskJob {
+func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionParam, img image.Image) *TaskJob {
 	imgBuf := buffer.NewImageBuffer()
 	defer imgBuf.Destroy()
 	imgBuf.Set(img)
@@ -132,7 +132,7 @@ func (t *Tasker) PostRecognition(recType NodeRecognitionType, recParam NodeRecog
 
 // PostAction posts an action to the tasker asynchronously.
 // The box and recoDetail are from the previous recognition.
-func (t *Tasker) PostAction(actionType NodeActionType, actionParam NodeActionParam, box Rect, recoDetail *RecognitionDetail) *TaskJob {
+func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box Rect, recoDetail *RecognitionDetail) *TaskJob {
 	rectBuf := buffer.NewRectBuffer()
 	defer rectBuf.Destroy()
 	rectBuf.Set(box)

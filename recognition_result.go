@@ -3,15 +3,16 @@ package maa
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 )
 
 type RecognitionResult struct {
-	tp  NodeRecognitionType
+	tp  RecognitionType
 	val any
 }
 
 // Type returns the recognition type of the result.
-func (r *RecognitionResult) Type() NodeRecognitionType {
+func (r *RecognitionResult) Type() RecognitionType {
 	return r.tp
 }
 
@@ -22,7 +23,7 @@ func (r *RecognitionResult) Value() any {
 
 // AsTemplateMatch returns the result as TemplateMatchResult if the type matches.
 func (r *RecognitionResult) AsTemplateMatch() (*TemplateMatchResult, bool) {
-	if r.tp != NodeRecognitionTypeTemplateMatch {
+	if r.tp != RecognitionTypeTemplateMatch {
 		return nil, false
 	}
 	val, ok := r.val.(*TemplateMatchResult)
@@ -31,7 +32,7 @@ func (r *RecognitionResult) AsTemplateMatch() (*TemplateMatchResult, bool) {
 
 // AsFeatureMatch returns the result as FeatureMatchResult if the type matches.
 func (r *RecognitionResult) AsFeatureMatch() (*FeatureMatchResult, bool) {
-	if r.tp != NodeRecognitionTypeFeatureMatch {
+	if r.tp != RecognitionTypeFeatureMatch {
 		return nil, false
 	}
 	val, ok := r.val.(*FeatureMatchResult)
@@ -40,7 +41,7 @@ func (r *RecognitionResult) AsFeatureMatch() (*FeatureMatchResult, bool) {
 
 // AsColorMatch returns the result as ColorMatchResult if the type matches.
 func (r *RecognitionResult) AsColorMatch() (*ColorMatchResult, bool) {
-	if r.tp != NodeRecognitionTypeColorMatch {
+	if r.tp != RecognitionTypeColorMatch {
 		return nil, false
 	}
 	val, ok := r.val.(*ColorMatchResult)
@@ -49,7 +50,7 @@ func (r *RecognitionResult) AsColorMatch() (*ColorMatchResult, bool) {
 
 // AsOCR returns the result as OCRResult if the type matches.
 func (r *RecognitionResult) AsOCR() (*OCRResult, bool) {
-	if r.tp != NodeRecognitionTypeOCR {
+	if r.tp != RecognitionTypeOCR {
 		return nil, false
 	}
 	val, ok := r.val.(*OCRResult)
@@ -58,7 +59,7 @@ func (r *RecognitionResult) AsOCR() (*OCRResult, bool) {
 
 // AsNeuralNetworkClassify returns the result as NeuralNetworkClassifyResult if the type matches.
 func (r *RecognitionResult) AsNeuralNetworkClassify() (*NeuralNetworkClassifyResult, bool) {
-	if r.tp != NodeRecognitionTypeNeuralNetworkClassify {
+	if r.tp != RecognitionTypeNeuralNetworkClassify {
 		return nil, false
 	}
 	val, ok := r.val.(*NeuralNetworkClassifyResult)
@@ -67,7 +68,7 @@ func (r *RecognitionResult) AsNeuralNetworkClassify() (*NeuralNetworkClassifyRes
 
 // AsNeuralNetworkDetect returns the result as NeuralNetworkDetectResult if the type matches.
 func (r *RecognitionResult) AsNeuralNetworkDetect() (*NeuralNetworkDetectResult, bool) {
-	if r.tp != NodeRecognitionTypeNeuralNetworkDetect {
+	if r.tp != RecognitionTypeNeuralNetworkDetect {
 		return nil, false
 	}
 	val, ok := r.val.(*NeuralNetworkDetectResult)
@@ -75,7 +76,7 @@ func (r *RecognitionResult) AsNeuralNetworkDetect() (*NeuralNetworkDetectResult,
 }
 
 func (r *RecognitionResult) AsCustom() (*CustomRecognitionResult, bool) {
-	if r.tp != NodeRecognitionTypeCustom {
+	if r.tp != RecognitionTypeCustom {
 		return nil, false
 	}
 
@@ -128,53 +129,45 @@ type RecognitionResults struct {
 }
 
 // parseRecognitionResult parses a single result JSON based on the algorithm type.
-// Returns nil if parsing fails or the algorithm type is unknown.
-func parseRecognitionResult(algorithm string, resultJson []byte) *RecognitionResult {
-	algorithmType := NodeRecognitionType(algorithm)
+// Returns an error if the algorithm type is unknown or JSON parsing fails.
+func parseRecognitionResult(algorithm string, resultJson []byte) (*RecognitionResult, error) {
+	algorithmType := RecognitionType(algorithm)
 
 	var resultVal any
-	var err error
 
 	switch algorithmType {
-	case NodeRecognitionTypeTemplateMatch:
+	case RecognitionTypeTemplateMatch:
 		resultVal = &TemplateMatchResult{}
-		err = json.Unmarshal(resultJson, resultVal)
-	case NodeRecognitionTypeFeatureMatch:
+	case RecognitionTypeFeatureMatch:
 		resultVal = &FeatureMatchResult{}
-		err = json.Unmarshal(resultJson, resultVal)
-	case NodeRecognitionTypeColorMatch:
+	case RecognitionTypeColorMatch:
 		resultVal = &ColorMatchResult{}
-		err = json.Unmarshal(resultJson, resultVal)
-	case NodeRecognitionTypeOCR:
+	case RecognitionTypeOCR:
 		resultVal = &OCRResult{}
-		err = json.Unmarshal(resultJson, resultVal)
-	case NodeRecognitionTypeNeuralNetworkClassify:
+	case RecognitionTypeNeuralNetworkClassify:
 		resultVal = &NeuralNetworkClassifyResult{}
-		err = json.Unmarshal(resultJson, resultVal)
-	case NodeRecognitionTypeNeuralNetworkDetect:
+	case RecognitionTypeNeuralNetworkDetect:
 		resultVal = &NeuralNetworkDetectResult{}
-		err = json.Unmarshal(resultJson, resultVal)
-	case NodeRecognitionTypeCustom:
+	case RecognitionTypeCustom:
 		resultVal = &CustomRecognitionResult{}
-		err = json.Unmarshal(resultJson, resultVal)
 	default:
-		return nil
+		return nil, fmt.Errorf("unknown recognition result type: %s", algorithm)
 	}
 
-	if err != nil {
-		return nil
+	if err := json.Unmarshal(resultJson, resultVal); err != nil {
+		return nil, err
 	}
 
 	return &RecognitionResult{
 		tp:  algorithmType,
 		val: resultVal,
-	}
+	}, nil
 }
 
 // parseRecognitionResults parses detailJson and returns RecognitionResults containing all, best, and filtered results.
 // Detail JSON format: {"all": [Result...], "best": Result | null, "filtered": [Result...]}
 func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults, error) {
-	if algorithm == string(NodeRecognitionTypeDirectHit) {
+	if algorithm == string(RecognitionTypeDirectHit) {
 		return nil, nil
 	}
 
@@ -196,28 +189,40 @@ func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults,
 		return nil, err
 	}
 
+	allResults, err := parseRecognitionResultList(algorithm, raw.All)
+	if err != nil {
+		return nil, err
+	}
+	best, err := parseRecognitionResultSingle(algorithm, raw.Best)
+	if err != nil {
+		return nil, err
+	}
+	filtered, err := parseRecognitionResultList(algorithm, raw.Filtered)
+	if err != nil {
+		return nil, err
+	}
 	return &RecognitionResults{
-		All:      parseRecognitionResultList(algorithm, raw.All),
-		Best:     parseRecognitionResultSingle(algorithm, raw.Best),
-		Filtered: parseRecognitionResultList(algorithm, raw.Filtered),
+		All:      allResults,
+		Best:     best,
+		Filtered: filtered,
 	}, nil
 }
 
-func parseRecognitionResultSingle(algorithm string, raw json.RawMessage) *RecognitionResult {
+func parseRecognitionResultSingle(algorithm string, raw json.RawMessage) (*RecognitionResult, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
-		return nil
+		return nil, nil
 	}
 	if trimmed[0] != '{' {
-		return nil
+		return nil, nil
 	}
 	return parseRecognitionResult(algorithm, trimmed)
 }
 
-func parseRecognitionResultList(algorithm string, raw json.RawMessage) []*RecognitionResult {
+func parseRecognitionResultList(algorithm string, raw json.RawMessage) ([]*RecognitionResult, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
-		return []*RecognitionResult{}
+		return []*RecognitionResult{}, nil
 	}
 
 	results := make([]*RecognitionResult, 0)
@@ -225,19 +230,27 @@ func parseRecognitionResultList(algorithm string, raw json.RawMessage) []*Recogn
 	case '[':
 		var items []json.RawMessage
 		if err := json.Unmarshal(trimmed, &items); err != nil {
-			return results
+			return nil, err
 		}
 		for _, item := range items {
-			if result := parseRecognitionResult(algorithm, item); result != nil {
+			result, err := parseRecognitionResult(algorithm, item)
+			if err != nil {
+				return nil, err
+			}
+			if result != nil {
 				results = append(results, result)
 			}
 		}
 	case '{':
-		if result := parseRecognitionResult(algorithm, trimmed); result != nil {
+		result, err := parseRecognitionResult(algorithm, trimmed)
+		if err != nil {
+			return nil, err
+		}
+		if result != nil {
 			results = append(results, result)
 		}
 	}
-	return results
+	return results, nil
 }
 
 // combinedResultItem represents a single item in the CombinedResult array for And/Or recognition.
@@ -251,8 +264,8 @@ type combinedResultItem struct {
 
 // isCombinedRecognition returns true if the algorithm is a combined recognition (And or Or).
 func isCombinedRecognition(algorithm string) bool {
-	switch NodeRecognitionType(algorithm) {
-	case NodeRecognitionTypeAnd, NodeRecognitionTypeOr:
+	switch RecognitionType(algorithm) {
+	case RecognitionTypeAnd, RecognitionTypeOr:
 		return true
 	default:
 		return false

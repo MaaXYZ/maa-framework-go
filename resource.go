@@ -345,7 +345,7 @@ func (r *Resource) OverridePipeline(override any) error {
 
 // OverrideNext overrides the next list of a task by name.
 // It sets the list directly and will create the node if it doesn't exist.
-func (r *Resource) OverrideNext(name string, nextList []NodeNextItem) error {
+func (r *Resource) OverrideNext(name string, nextList []NextItem) error {
 	list := buffer.NewStringListBuffer()
 	defer list.Destroy()
 	size := len(nextList)
@@ -399,6 +399,10 @@ func (r *Resource) GetNode(name string) (*Node, error) {
 	var node Node
 	if err := json.Unmarshal([]byte(raw), &node); err != nil {
 		return nil, err
+	}
+	node.Name = name
+	if node.Attach == nil {
+		node.Attach = make(map[string]any)
 	}
 	return &node, nil
 }
@@ -479,9 +483,9 @@ func (r *Resource) GetCustomActionList() ([]string, error) {
 }
 
 // GetDefaultRecognitionParam returns the default recognition parameters for the specified type from DefaultPipelineMgr.
-// recoType is a recognition type (e.g., NodeRecognitionTypeOCR, NodeRecognitionTypeTemplateMatch).
-// Returns the parsed NodeRecognitionParam interface.
-func (r *Resource) GetDefaultRecognitionParam(recoType NodeRecognitionType) (NodeRecognitionParam, error) {
+// recoType is a recognition type (e.g., RecognitionTypeOCR, RecognitionTypeTemplateMatch).
+// Returns the parsed RecognitionParam interface.
+func (r *Resource) GetDefaultRecognitionParam(recoType RecognitionType) (RecognitionParam, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaResourceGetDefaultRecognitionParam(r.handle, string(recoType), buf.Handle())
@@ -495,28 +499,28 @@ func (r *Resource) GetDefaultRecognitionParam(recoType NodeRecognitionType) (Nod
 	}
 
 	// Create the appropriate param type based on recoType
-	var param NodeRecognitionParam
+	var param RecognitionParam
 	switch recoType {
-	case NodeRecognitionTypeDirectHit, "":
-		param = &NodeDirectHitParam{}
-	case NodeRecognitionTypeTemplateMatch:
-		param = &NodeTemplateMatchParam{}
-	case NodeRecognitionTypeFeatureMatch:
-		param = &NodeFeatureMatchParam{}
-	case NodeRecognitionTypeColorMatch:
-		param = &NodeColorMatchParam{}
-	case NodeRecognitionTypeOCR:
-		param = &NodeOCRParam{}
-	case NodeRecognitionTypeNeuralNetworkClassify:
-		param = &NodeNeuralNetworkClassifyParam{}
-	case NodeRecognitionTypeNeuralNetworkDetect:
-		param = &NodeNeuralNetworkDetectParam{}
-	case NodeRecognitionTypeAnd:
-		param = &NodeAndRecognitionParam{}
-	case NodeRecognitionTypeOr:
-		param = &NodeOrRecognitionParam{}
-	case NodeRecognitionTypeCustom:
-		param = &NodeCustomRecognitionParam{}
+	case RecognitionTypeDirectHit, "":
+		param = &DirectHitParam{}
+	case RecognitionTypeTemplateMatch:
+		param = &TemplateMatchParam{}
+	case RecognitionTypeFeatureMatch:
+		param = &FeatureMatchParam{}
+	case RecognitionTypeColorMatch:
+		param = &ColorMatchParam{}
+	case RecognitionTypeOCR:
+		param = &OCRParam{}
+	case RecognitionTypeNeuralNetworkClassify:
+		param = &NeuralNetworkClassifyParam{}
+	case RecognitionTypeNeuralNetworkDetect:
+		param = &NeuralNetworkDetectParam{}
+	case RecognitionTypeAnd:
+		param = &AndRecognitionParam{}
+	case RecognitionTypeOr:
+		param = &OrRecognitionParam{}
+	case RecognitionTypeCustom:
+		param = &CustomRecognitionParam{}
 	default:
 		return nil, fmt.Errorf("unknown recognition type: %s", recoType)
 	}
@@ -530,9 +534,9 @@ func (r *Resource) GetDefaultRecognitionParam(recoType NodeRecognitionType) (Nod
 }
 
 // GetDefaultActionParam returns the default action parameters for the specified type from DefaultPipelineMgr.
-// actionType is an action type (e.g., NodeActionTypeClick, NodeActionTypeSwipe).
-// Returns the parsed NodeActionParam interface.
-func (r *Resource) GetDefaultActionParam(actionType NodeActionType) (NodeActionParam, error) {
+// actionType is an action type (e.g., ActionTypeClick, ActionTypeSwipe).
+// Returns the parsed ActionParam interface.
+func (r *Resource) GetDefaultActionParam(actionType ActionType) (ActionParam, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaResourceGetDefaultActionParam(r.handle, string(actionType), buf.Handle())
@@ -546,48 +550,48 @@ func (r *Resource) GetDefaultActionParam(actionType NodeActionType) (NodeActionP
 	}
 
 	// Create the appropriate param type based on actionType
-	var param NodeActionParam
+	var param ActionParam
 	switch actionType {
-	case NodeActionTypeDoNothing, "":
-		param = &NodeDoNothingParam{}
-	case NodeActionTypeClick:
-		param = &NodeClickParam{}
-	case NodeActionTypeLongPress:
-		param = &NodeLongPressParam{}
-	case NodeActionTypeSwipe:
-		param = &NodeSwipeParam{}
-	case NodeActionTypeMultiSwipe:
-		param = &NodeMultiSwipeParam{}
-	case NodeActionTypeTouchDown:
-		param = &NodeTouchDownParam{}
-	case NodeActionTypeTouchMove:
-		param = &NodeTouchMoveParam{}
-	case NodeActionTypeTouchUp:
-		param = &NodeTouchUpParam{}
-	case NodeActionTypeClickKey:
-		param = &NodeClickKeyParam{}
-	case NodeActionTypeLongPressKey:
-		param = &NodeLongPressKeyParam{}
-	case NodeActionTypeKeyDown:
-		param = &NodeKeyDownParam{}
-	case NodeActionTypeKeyUp:
-		param = &NodeKeyUpParam{}
-	case NodeActionTypeInputText:
-		param = &NodeInputTextParam{}
-	case NodeActionTypeStartApp:
-		param = &NodeStartAppParam{}
-	case NodeActionTypeStopApp:
-		param = &NodeStopAppParam{}
-	case NodeActionTypeStopTask:
-		param = &NodeStopTaskParam{}
-	case NodeActionTypeScroll:
-		param = &NodeScrollParam{}
-	case NodeActionTypeCommand:
-		param = &NodeCommandParam{}
-	case NodeActionTypeShell:
-		param = &NodeShellParam{}
-	case NodeActionTypeCustom:
-		param = &NodeCustomActionParam{}
+	case ActionTypeDoNothing, "":
+		param = &DoNothingParam{}
+	case ActionTypeClick:
+		param = &ClickParam{}
+	case ActionTypeLongPress:
+		param = &LongPressParam{}
+	case ActionTypeSwipe:
+		param = &SwipeParam{}
+	case ActionTypeMultiSwipe:
+		param = &MultiSwipeParam{}
+	case ActionTypeTouchDown:
+		param = &TouchDownParam{}
+	case ActionTypeTouchMove:
+		param = &TouchMoveParam{}
+	case ActionTypeTouchUp:
+		param = &TouchUpParam{}
+	case ActionTypeClickKey:
+		param = &ClickKeyParam{}
+	case ActionTypeLongPressKey:
+		param = &LongPressKeyParam{}
+	case ActionTypeKeyDown:
+		param = &KeyDownParam{}
+	case ActionTypeKeyUp:
+		param = &KeyUpParam{}
+	case ActionTypeInputText:
+		param = &InputTextParam{}
+	case ActionTypeStartApp:
+		param = &StartAppParam{}
+	case ActionTypeStopApp:
+		param = &StopAppParam{}
+	case ActionTypeStopTask:
+		param = &StopTaskParam{}
+	case ActionTypeScroll:
+		param = &ScrollParam{}
+	case ActionTypeCommand:
+		param = &CommandParam{}
+	case ActionTypeShell:
+		param = &ShellParam{}
+	case ActionTypeCustom:
+		param = &CustomActionParam{}
 	default:
 		return nil, fmt.Errorf("unknown action type: %s", actionType)
 	}
