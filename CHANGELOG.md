@@ -363,3 +363,4 @@ if best != nil {
 - `Recognition.SetBoxIndex`：链式方法，替代原 `WithBoxIndex`，指定 And 识别使用哪个子结果的 box
 - `WaitFreezesParam` 与 `Context.WaitFreezes(duration, box, *WaitFreezesParam)`：等待画面稳定
 - OCR 颜色过滤：`OCRParam.ColorFilter` 字段 & `WithOCRColorFilter` 选项函数，指定 ColorMatch 节点名对图像进行颜色二值化后再送入 OCR 识别（适配 [MaaFramework#1145](https://github.com/MaaXYZ/MaaFramework/pull/1145)）
+- Controller inactive：`Controller.PostInactive() *Job` 与 `CustomController.Inactive() bool`，用于在任务结束后恢复窗口/输入状态（适配 [MaaFramework#1155](https://github.com/MaaXYZ/MaaFramework/pull/1155)；Win32 控制器会恢复窗口与解除输入阻塞，其他控制器为 no-op）
