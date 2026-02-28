@@ -440,12 +440,16 @@ func _ScrollAgent(dx, dy int32, handleArg uintptr) uintptr {
 }
 
 func _InactiveAgent(handleArg uintptr) uintptr {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
 	customControllerCallbacksAgentsMutex.RLock()
 	ctrl, exists := customControllerCallbacksAgents[id]
 	customControllerCallbacksAgentsMutex.RUnlock()
 
+	// For Win32 controllers, this restores window position (removes topmost) and unblocks user input.
+	// For other controllers, this is a no-op that always succeeds.
 	if !exists || ctrl == nil {
 		return uintptr(1)
 	}
