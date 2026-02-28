@@ -172,6 +172,11 @@ func (c *CarouselImageController) Scroll(dx int32, dy int32) bool {
 	return true
 }
 
+// Inactive implements CustomController.
+func (c *CarouselImageController) Inactive() bool {
+	return true
+}
+
 type BlankController struct{}
 
 func NewBlankController() (*Controller, error) {
@@ -260,5 +265,10 @@ func (c *BlankController) TouchUp(contact int32) bool {
 
 // Scroll implements CustomController.
 func (c *BlankController) Scroll(dx int32, dy int32) bool {
+	return true
+}
+
+// Inactive implements CustomController.
+func (c *BlankController) Inactive() bool {
 	return true
 }

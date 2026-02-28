@@ -44,7 +44,7 @@ const (
 // and provide implementations for the following methods:
 // Connect, RequestUUID, StartApp, StopApp,
 // Screencap, Click, Swipe, TouchDown, TouchMove, TouchUp,
-// ClickKey, InputText, KeyDown, KeyUp and Scroll.
+// ClickKey, InputText, KeyDown, KeyUp, Scroll and Inactive.
 type CustomController interface {
 	Connect() bool
 	Connected() bool
@@ -63,6 +63,9 @@ type CustomController interface {
 	KeyDown(keycode int32) bool
 	KeyUp(keycode int32) bool
 	Scroll(dx, dy int32) bool
+	// Inactive is called when the framework requests restoring controller/window state (e.g. after tasks finish).
+	// Return true for success or when no action is needed.
+	Inactive() bool
 }
 
 type MaaCustomControllerCallbacks struct {
@@ -83,6 +86,7 @@ type MaaCustomControllerCallbacks struct {
 	KeyDown     uintptr
 	KeyUp       uintptr
 	Scroll      uintptr
+	Inactive    uintptr
 }
 
 var customControllerCallbacksHandle = new(MaaCustomControllerCallbacks)
@@ -105,6 +109,7 @@ func init() {
 	customControllerCallbacksHandle.KeyDown = purego.NewCallback(_KeyDown)
 	customControllerCallbacksHandle.KeyUp = purego.NewCallback(_KeyUp)
 	customControllerCallbacksHandle.Scroll = purego.NewCallback(_ScrollAgent)
+	customControllerCallbacksHandle.Inactive = purego.NewCallback(_InactiveAgent)
 }
 
 func _ConnectAgent(handleArg uintptr) uintptr {
@@ -429,6 +434,27 @@ func _ScrollAgent(dx, dy int32, handleArg uintptr) uintptr {
 	}
 
 	if ctrl.Scroll(dx, dy) {
+		return uintptr(1)
+	}
+	return uintptr(0)
+}
+
+func _InactiveAgent(handleArg uintptr) uintptr {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(handleArg)
+
+	customControllerCallbacksAgentsMutex.RLock()
+	ctrl, exists := customControllerCallbacksAgents[id]
+	customControllerCallbacksAgentsMutex.RUnlock()
+
+	// For Win32 controllers, this restores window position (removes topmost) and unblocks user input.
+	// For other controllers, this is a no-op that always succeeds.
+	if !exists || ctrl == nil {
+		return uintptr(1)
+	}
+
+	if ctrl.Inactive() {
 		return uintptr(1)
 	}
 	return uintptr(0)

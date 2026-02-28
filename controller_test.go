@@ -198,6 +198,15 @@ func TestController_PostScreencap(t *testing.T) {
 	require.True(t, screencaped)
 }
 
+func TestController_PostInactive(t *testing.T) {
+	ctrl := createCarouselImageController(t)
+	defer ctrl.Destroy()
+	isConnected := ctrl.PostConnect().Wait().Success()
+	require.True(t, isConnected)
+	inactiveOk := ctrl.PostInactive().Wait().Success()
+	require.True(t, inactiveOk)
+}
+
 func TestController_CacheImage(t *testing.T) {
 	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()

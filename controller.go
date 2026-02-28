@@ -370,6 +370,14 @@ func (c *Controller) PostScroll(dx, dy int32) *Job {
 	return newJob(id, c.status, c.wait)
 }
 
+// PostInactive posts an inactive request to restore controller/window state.
+// For Win32 controllers this restores window position (removes topmost) and unblocks user input.
+// For other controllers this is a no-op that typically succeeds.
+func (c *Controller) PostInactive() *Job {
+	id := native.MaaControllerPostInactive(c.handle)
+	return newJob(id, c.status, c.wait)
+}
+
 // PostShell posts a adb shell command.
 // This is only valid for ADB controllers. If the controller is not an ADB controller, the action will fail.
 func (c *Controller) PostShell(cmd string, timeout time.Duration) *Job {
