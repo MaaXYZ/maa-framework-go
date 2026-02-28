@@ -202,6 +202,7 @@ var (
 	MaaControllerPostKeyUp      func(ctrl uintptr, keycode int32) int64
 	MaaControllerPostScreencap  func(ctrl uintptr) int64
 	MaaControllerPostScroll     func(ctrl uintptr, dx, dy int32) int64
+	MaaControllerPostInactive   func(ctrl uintptr) int64
 	MaaControllerPostShell      func(ctrl uintptr, cmd string, timeout int64) int64
 	MaaControllerGetShellOutput func(ctrl uintptr, buffer uintptr) bool
 	MaaControllerStatus         func(ctrl uintptr, id int64) int32
@@ -456,6 +457,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaControllerPostKeyUp, maaFramework, "MaaControllerPostKeyUp")
 	purego.RegisterLibFunc(&MaaControllerPostScreencap, maaFramework, "MaaControllerPostScreencap")
 	purego.RegisterLibFunc(&MaaControllerPostScroll, maaFramework, "MaaControllerPostScroll")
+	purego.RegisterLibFunc(&MaaControllerPostInactive, maaFramework, "MaaControllerPostInactive")
 	purego.RegisterLibFunc(&MaaControllerPostShell, maaFramework, "MaaControllerPostShell")
 	purego.RegisterLibFunc(&MaaControllerGetShellOutput, maaFramework, "MaaControllerGetShellOutput")
 	purego.RegisterLibFunc(&MaaControllerStatus, maaFramework, "MaaControllerStatus")
