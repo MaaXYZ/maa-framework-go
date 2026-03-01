@@ -267,7 +267,7 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 		draws.Handle(),
 	)
 	if !got {
-		return nil, errors.New("failed to get recognition detail")
+		return nil, nil
 	}
 
 	rawImg := raw.Get()
@@ -338,7 +338,7 @@ func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	)
 
 	if !got {
-		return nil, errors.New("failed to get action detail")
+		return nil, nil
 	}
 
 	detailJsonStr := detailJson.Get()
