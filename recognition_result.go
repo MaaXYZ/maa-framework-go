@@ -128,12 +128,43 @@ type RecognitionResults struct {
 	Filtered []*RecognitionResult `json:"filtered"`
 }
 
+// customRecognitionResultRaw is used to parse Custom result JSON where "detail" may be either a string or an object.
+type customRecognitionResultRaw struct {
+	Box    Rect            `json:"box"`
+	Detail json.RawMessage `json:"detail"`
+}
+
+// parseCustomRecognitionResult parses custom recognition JSON. Detail is accepted as either a JSON string or a JSON object (e.g. from MaaCore); both are normalized to a string for CustomRecognitionResult.Detail.
+func parseCustomRecognitionResult(resultJson []byte) (*CustomRecognitionResult, error) {
+	var raw customRecognitionResultRaw
+	if err := json.Unmarshal(resultJson, &raw); err != nil {
+		return nil, err
+	}
+	detailStr := detailRawToString(raw.Detail)
+	return &CustomRecognitionResult{Box: raw.Box, Detail: detailStr}, nil
+}
+
+func detailRawToString(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return ""
+	}
+	if raw[0] == '"' {
+		var s string
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return string(raw)
+		}
+		return s
+	}
+	return string(raw)
+}
+
 // parseRecognitionResult parses a single result JSON based on the algorithm type.
 // Returns an error if the algorithm type is unknown or JSON parsing fails.
 func parseRecognitionResult(algorithm string, resultJson []byte) (*RecognitionResult, error) {
 	algorithmType := RecognitionType(algorithm)
 
 	var resultVal any
+	var err error
 
 	switch algorithmType {
 	case RecognitionTypeTemplateMatch:
@@ -149,13 +180,22 @@ func parseRecognitionResult(algorithm string, resultJson []byte) (*RecognitionRe
 	case RecognitionTypeNeuralNetworkDetect:
 		resultVal = &NeuralNetworkDetectResult{}
 	case RecognitionTypeCustom:
-		resultVal = &CustomRecognitionResult{}
+		resultVal, err = parseCustomRecognitionResult(resultJson)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("unknown recognition result type: %s", algorithm)
 	}
 
-	if err := json.Unmarshal(resultJson, resultVal); err != nil {
-		return nil, err
+	if resultVal == nil {
+		return nil, fmt.Errorf("failed to parse recognition result")
+	}
+
+	if algorithmType != RecognitionTypeCustom {
+		if err := json.Unmarshal(resultJson, resultVal); err != nil {
+			return nil, err
+		}
 	}
 
 	return &RecognitionResult{
