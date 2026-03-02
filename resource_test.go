@@ -386,4 +386,11 @@ func TestResource_GetDefaultActionParam(t *testing.T) {
 	require.NotNil(t, param2)
 	_, isDoNothing := param2.(*DoNothingParam)
 	require.True(t, isDoNothing, "param2 should be *DoNothingParam")
+
+	// Test getting default action parameters for Screencap type
+	param3, err := res.GetDefaultActionParam(ActionTypeScreencap)
+	require.NoError(t, err)
+	require.NotNil(t, param3)
+	_, isScreencap := param3.(*ScreencapParam)
+	require.True(t, isScreencap, "param3 should be *ScreencapParam")
 }

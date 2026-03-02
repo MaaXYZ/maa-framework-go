@@ -206,6 +206,24 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 			},
 		},
 		{
+			name:       "screencap",
+			actionType: ActionTypeScreencap,
+			param: &ScreencapParam{
+				Filename: "test_capture",
+				Format:   "jpg",
+				Quality:  85,
+			},
+			assert: func(t *testing.T, detail *ActionDetail) {
+				screencap, ok := detail.Result.AsScreencap()
+				require.True(t, ok)
+				require.NotNil(t, screencap)
+				require.NotEmpty(t, screencap.Filepath)
+				require.Equal(t, "jpg", screencap.Format)
+				require.Equal(t, 85, screencap.Quality)
+				require.True(t, screencap.Success)
+			},
+		},
+		{
 			name:       "touch_down",
 			actionType: ActionTypeTouchDown,
 			param: &TouchDownParam{

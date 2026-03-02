@@ -149,6 +149,14 @@ func (r *ActionResult) AsShell() (*ShellActionResult, bool) {
 	return val, ok
 }
 
+func (r *ActionResult) AsScreencap() (*ScreencapActionResult, bool) {
+	if r.tp != ActionTypeScreencap {
+		return nil, false
+	}
+	val, ok := r.val.(*ScreencapActionResult)
+	return val, ok
+}
+
 type ClickActionResult struct {
 	Point   Point `json:"point"`
 	Contact int   `json:"contact"`
@@ -329,6 +337,13 @@ type ShellActionResult struct {
 	Output       string `json:"output"`
 }
 
+type ScreencapActionResult struct {
+	Filepath string `json:"filepath"`
+	Format   string `json:"format"`
+	Quality  int    `json:"quality"`
+	Success  bool   `json:"success"`
+}
+
 func parseActionResult(action, detailJson string) (*ActionResult, error) {
 	if detailJson == "" || detailJson == "{}" {
 		return nil, nil
@@ -359,6 +374,8 @@ func parseActionResult(action, detailJson string) (*ActionResult, error) {
 		resultVal = &TouchActionResult{}
 	case ActionTypeShell:
 		resultVal = &ShellActionResult{}
+	case ActionTypeScreencap:
+		resultVal = &ScreencapActionResult{}
 	default:
 		return nil, fmt.Errorf("unknown action result type: %s", action)
 	}

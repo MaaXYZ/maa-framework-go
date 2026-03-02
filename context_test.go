@@ -443,6 +443,10 @@ func (a *testContextGetNodeDataAct) Run(ctx *Context, _ *CustomActionArg) bool {
 			testFunc: a.testScrollAction,
 		},
 		{
+			Name:     "Screencap",
+			testFunc: a.testScreencapAction,
+		},
+		{
 			Name:     "CustomAction",
 			testFunc: a.testCustomAction,
 		},
@@ -1145,6 +1149,33 @@ func (a *testContextGetNodeDataAct) testScrollAction(ctx *Context) {
 	param := nodeData.Action.Param.(*ScrollParam)
 	assert.Equal(a.t, 100, param.Dx)
 	assert.Equal(a.t, 200, param.Dy)
+}
+
+func (a *testContextGetNodeDataAct) testScreencapAction(ctx *Context) {
+	raw := map[string]any{
+		"test_screencap": map[string]any{
+			"action": map[string]any{
+				"type": "Screencap",
+				"param": map[string]any{
+					"filename": "capture_test",
+					"format":   "jpg",
+					"quality":  85,
+				},
+			},
+		},
+	}
+	ctx.OverridePipeline(raw)
+
+	nodeData, err := ctx.GetNode("test_screencap")
+	assert.NoError(a.t, err)
+	assert.NotNil(a.t, nodeData)
+	assert.Equal(a.t, ActionTypeScreencap, nodeData.Action.Type)
+	assert.IsType(a.t, (*ScreencapParam)(nil), nodeData.Action.Param)
+
+	param := nodeData.Action.Param.(*ScreencapParam)
+	assert.Equal(a.t, "capture_test", param.Filename)
+	assert.Equal(a.t, "jpg", param.Format)
+	assert.Equal(a.t, 85, param.Quality)
 }
 
 func (a *testContextGetNodeDataAct) testCustomAction(ctx *Context) {

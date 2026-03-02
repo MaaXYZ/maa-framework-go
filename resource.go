@@ -590,6 +590,8 @@ func (r *Resource) GetDefaultActionParam(actionType ActionType) (ActionParam, er
 		param = &CommandParam{}
 	case ActionTypeShell:
 		param = &ShellParam{}
+	case ActionTypeScreencap:
+		param = &ScreencapParam{}
 	case ActionTypeCustom:
 		param = &CustomActionParam{}
 	default:
