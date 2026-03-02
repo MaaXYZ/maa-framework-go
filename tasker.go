@@ -84,20 +84,19 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 	}
 
 	overrideValue := override[0]
+	if isNilOverride(overrideValue) {
+		return postFunc(entry, "{}")
+	}
+
 	switch v := overrideValue.(type) {
 	case string:
 		return postFunc(entry, v)
 	case []byte:
 		return postFunc(entry, string(v))
 	default:
-		if v == nil {
-			return postFunc(entry, "{}")
-		}
-
 		jsonBytes, err := json.Marshal(v)
 		if err != nil {
-			return newTaskJob(0, nil, nil, nil, nil,
-				fmt.Errorf("failed to marshal override: %w", err))
+			return postFunc(entry, "{}")
 		}
 		return postFunc(entry, string(jsonBytes))
 	}

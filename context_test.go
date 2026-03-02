@@ -261,6 +261,70 @@ func TestContext_OverrideNext(t *testing.T) {
 	require.True(t, got)
 }
 
+func TestContext_handleOverride(t *testing.T) {
+	ctx := &Context{}
+
+	type typedNil struct {
+		V string
+	}
+
+	cases := []struct {
+		name     string
+		override []any
+		want     string
+	}{
+		{
+			name:     "no override",
+			override: nil,
+			want:     "{}",
+		},
+		{
+			name:     "untyped nil",
+			override: []any{nil},
+			want:     "{}",
+		},
+		{
+			name:     "typed nil pointer",
+			override: []any{(*typedNil)(nil)},
+			want:     "{}",
+		},
+		{
+			name:     "nil byte slice",
+			override: []any{[]byte(nil)},
+			want:     "{}",
+		},
+		{
+			name:     "string passthrough",
+			override: []any{`{"A":1}`},
+			want:     `{"A":1}`,
+		},
+		{
+			name:     "byte passthrough",
+			override: []any{[]byte(`{"A":1}`)},
+			want:     `{"A":1}`,
+		},
+		{
+			name:     "marshal object",
+			override: []any{map[string]any{"A": 1}},
+			want:     `{"A":1}`,
+		},
+		{
+			name: "marshal error fallback",
+			override: []any{map[string]any{
+				"f": func() {},
+			}},
+			want: "{}",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ctx.handleOverride(tc.override...)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 type testContextGetNodeDataAct struct {
 	t *testing.T
 }

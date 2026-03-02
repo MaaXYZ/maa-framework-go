@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"image"
+	"reflect"
 	"time"
 
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/buffer"
@@ -16,23 +17,42 @@ type Context struct {
 	handle uintptr
 }
 
+func isNilOverride(v any) bool {
+	if v == nil {
+		return true
+	}
+
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return rv.IsNil()
+	default:
+		return false
+	}
+}
+
 func (ctx *Context) handleOverride(override ...any) string {
 	if len(override) == 0 {
 		return "{}"
 	}
-	if str, ok := override[0].(string); ok {
-		return str
-	}
 
-	if override[0] == nil {
+	overrideValue := override[0]
+	if isNilOverride(overrideValue) {
 		return "{}"
 	}
 
-	str, err := json.Marshal(override[0])
-	if err != nil {
-		str = []byte("{}")
+	switch v := overrideValue.(type) {
+	case string:
+		return v
+	case []byte:
+		return string(v)
+	default:
+		jsonBytes, err := json.Marshal(v)
+		if err != nil {
+			return "{}"
+		}
+		return string(jsonBytes)
 	}
-	return string(str)
 }
 
 func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {

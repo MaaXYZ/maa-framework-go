@@ -91,6 +91,82 @@ func TestTasker_PostPipeline(t *testing.T) {
 	t.Logf("%#v", detail)
 }
 
+func TestTasker_handleOverride(t *testing.T) {
+	tasker := &Tasker{}
+
+	type typedNil struct {
+		V string
+	}
+
+	cases := []struct {
+		name     string
+		override []any
+		want     string
+	}{
+		{
+			name:     "no override",
+			override: nil,
+			want:     "{}",
+		},
+		{
+			name:     "untyped nil",
+			override: []any{nil},
+			want:     "{}",
+		},
+		{
+			name:     "typed nil pointer",
+			override: []any{(*typedNil)(nil)},
+			want:     "{}",
+		},
+		{
+			name:     "nil byte slice",
+			override: []any{[]byte(nil)},
+			want:     "{}",
+		},
+		{
+			name:     "string passthrough",
+			override: []any{`{"A":1}`},
+			want:     `{"A":1}`,
+		},
+		{
+			name:     "byte passthrough",
+			override: []any{[]byte(`{"A":1}`)},
+			want:     `{"A":1}`,
+		},
+		{
+			name:     "marshal object",
+			override: []any{map[string]any{"A": 1}},
+			want:     `{"A":1}`,
+		},
+		{
+			name: "marshal error fallback",
+			override: []any{map[string]any{
+				"f": func() {},
+			}},
+			want: "{}",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			called := false
+			var gotEntry, gotOverride string
+			postFunc := func(entry, override string) *TaskJob {
+				called = true
+				gotEntry = entry
+				gotOverride = override
+				return &TaskJob{}
+			}
+
+			taskJob := tasker.handleOverride("Entry", postFunc, tc.override...)
+			require.NotNil(t, taskJob)
+			require.True(t, called)
+			require.Equal(t, "Entry", gotEntry)
+			require.Equal(t, tc.want, gotOverride)
+		})
+	}
+}
+
 func TestTasker_Running(t *testing.T) {
 	ctrl := createCarouselImageController(t)
 	defer ctrl.Destroy()
