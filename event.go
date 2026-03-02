@@ -92,6 +92,7 @@ type ControllerActionDetail struct {
 	UUID   string         `json:"uuid"`
 	Action string         `json:"action"`
 	Param  map[string]any `json:"param"`
+	Info   map[string]any `json:"info"`
 }
 
 // TaskerTaskDetail contains information about tasker task events

@@ -211,6 +211,7 @@ var (
 	MaaControllerCachedImage    func(ctrl uintptr, buffer uintptr) bool
 	MaaControllerGetUuid        func(ctrl uintptr, buffer uintptr) bool
 	MaaControllerGetResolution  func(ctrl uintptr, width, height *int32) bool
+	MaaControllerGetInfo        func(ctrl uintptr, buffer uintptr) bool
 )
 
 var (
@@ -466,6 +467,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaControllerCachedImage, maaFramework, "MaaControllerCachedImage")
 	purego.RegisterLibFunc(&MaaControllerGetUuid, maaFramework, "MaaControllerGetUuid")
 	purego.RegisterLibFunc(&MaaControllerGetResolution, maaFramework, "MaaControllerGetResolution")
+	purego.RegisterLibFunc(&MaaControllerGetInfo, maaFramework, "MaaControllerGetInfo")
 	// Context
 	purego.RegisterLibFunc(&MaaContextRunTask, maaFramework, "MaaContextRunTask")
 	purego.RegisterLibFunc(&MaaContextRunRecognition, maaFramework, "MaaContextRunRecognition")

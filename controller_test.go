@@ -228,3 +228,13 @@ func TestController_GetUUID(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, uuid)
 }
+
+func TestController_GetInfo(t *testing.T) {
+	ctrl := createCarouselImageController(t)
+	defer ctrl.Destroy()
+	isConnected := ctrl.PostConnect().Wait().Success()
+	require.True(t, isConnected)
+	info, err := ctrl.GetInfo()
+	require.NoError(t, err)
+	require.NotEmpty(t, info)
+}

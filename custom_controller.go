@@ -66,6 +66,9 @@ type CustomController interface {
 	// Inactive is called when the framework requests restoring controller/window state (e.g. after tasks finish).
 	// Return true for success or when no action is needed.
 	Inactive() bool
+	// GetInfo returns custom controller information as a JSON string.
+	// Return ("", true) if no extra info is needed.
+	GetInfo() (string, bool)
 }
 
 type MaaCustomControllerCallbacks struct {
@@ -87,6 +90,7 @@ type MaaCustomControllerCallbacks struct {
 	KeyUp       uintptr
 	Scroll      uintptr
 	Inactive    uintptr
+	GetInfo     uintptr
 }
 
 var customControllerCallbacksHandle = new(MaaCustomControllerCallbacks)
@@ -110,6 +114,7 @@ func init() {
 	customControllerCallbacksHandle.KeyUp = purego.NewCallback(_KeyUp)
 	customControllerCallbacksHandle.Scroll = purego.NewCallback(_ScrollAgent)
 	customControllerCallbacksHandle.Inactive = purego.NewCallback(_InactiveAgent)
+	customControllerCallbacksHandle.GetInfo = purego.NewCallback(_GetInfoAgent)
 }
 
 func _ConnectAgent(handleArg uintptr) uintptr {
@@ -455,6 +460,28 @@ func _InactiveAgent(handleArg uintptr) uintptr {
 	}
 
 	if ctrl.Inactive() {
+		return uintptr(1)
+	}
+	return uintptr(0)
+}
+
+func _GetInfoAgent(handleArg uintptr, infoBuffer uintptr) uintptr {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(handleArg)
+
+	customControllerCallbacksAgentsMutex.RLock()
+	ctrl, exists := customControllerCallbacksAgents[id]
+	customControllerCallbacksAgentsMutex.RUnlock()
+
+	if !exists || ctrl == nil {
+		return uintptr(0)
+	}
+
+	info, ok := ctrl.GetInfo()
+	if ok {
+		buf := buffer.NewStringBufferByHandle(infoBuffer)
+		buf.Set(info)
 		return uintptr(1)
 	}
 	return uintptr(0)

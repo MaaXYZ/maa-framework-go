@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"encoding/json"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -177,6 +178,21 @@ func (c *CarouselImageController) Inactive() bool {
 	return true
 }
 
+// GetInfo implements CustomController.
+func (c *CarouselImageController) GetInfo() (string, bool) {
+	info := map[string]any{
+		"type":        "dbg_carousel_image",
+		"path":        c.path,
+		"image_count": len(c.images),
+		"image_index": c.imageIndex,
+	}
+	data, err := json.Marshal(info)
+	if err != nil {
+		return "", false
+	}
+	return string(data), true
+}
+
 type BlankController struct{}
 
 func NewBlankController() (*Controller, error) {
@@ -271,4 +287,16 @@ func (c *BlankController) Scroll(dx int32, dy int32) bool {
 // Inactive implements CustomController.
 func (c *BlankController) Inactive() bool {
 	return true
+}
+
+// GetInfo implements CustomController.
+func (c *BlankController) GetInfo() (string, bool) {
+	info := map[string]any{
+		"type": "dbg_blank",
+	}
+	data, err := json.Marshal(info)
+	if err != nil {
+		return "", false
+	}
+	return string(data), true
 }

@@ -449,6 +449,18 @@ func (c *Controller) GetResolution() (width, height int32, err error) {
 	return width, height, nil
 }
 
+// GetInfo gets controller information as a JSON string.
+// Returns controller-specific information including type, constructor parameters and current state.
+func (c *Controller) GetInfo() (string, error) {
+	buf := buffer.NewStringBuffer()
+	defer buf.Destroy()
+	got := native.MaaControllerGetInfo(c.handle, buf.Handle())
+	if !got {
+		return "", errors.New("failed to get controller info")
+	}
+	return buf.Get(), nil
+}
+
 // AddSink adds a event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
 func (c *Controller) AddSink(sink ControllerEventSink) int64 {
