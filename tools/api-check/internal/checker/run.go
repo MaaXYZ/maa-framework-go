@@ -37,9 +37,21 @@ func Run() int {
 	}
 	resolvedHeaderDir := resolveHeaderDir(repoRoot, cfg.HeaderDir)
 	controllerHeaderPath := filepath.Join(resolvedHeaderDir, controllerHeaderRel)
+	maaDefHeaderPath := filepath.Join(resolvedHeaderDir, maaDefHeaderRel)
 	customControllerPath := resolveFromRepoRoot(repoRoot, customControllerRel)
+	adbControllerPath := resolveFromRepoRoot(repoRoot, adbControllerRel)
+	win32ControllerPath := resolveFromRepoRoot(repoRoot, win32ControllerRel)
 	resolvedNativeFiles := resolveNativeFiles(repoRoot)
-	if err := validateRequiredPaths(repoRoot, resolvedHeaderDir, controllerHeaderPath, customControllerPath, resolvedNativeFiles); err != nil {
+	if err := validateRequiredPaths(
+		repoRoot,
+		resolvedHeaderDir,
+		controllerHeaderPath,
+		maaDefHeaderPath,
+		customControllerPath,
+		adbControllerPath,
+		win32ControllerPath,
+		resolvedNativeFiles,
+	); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to resolve required input paths: %v\n", err)
 		return 2
 	}
@@ -69,9 +81,16 @@ func Run() int {
 		return 2
 	}
 
-	issues := make([]issue, 0, len(nativeIssues)+len(controllerIssues))
+	methodIssues, err := checkControllerMethodCoverage(maaDefHeaderPath, adbControllerPath, win32ControllerPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to check controller method coverage: %v\n", err)
+		return 2
+	}
+
+	issues := make([]issue, 0, len(nativeIssues)+len(controllerIssues)+len(methodIssues))
 	issues = append(issues, nativeIssues...)
 	issues = append(issues, controllerIssues...)
+	issues = append(issues, methodIssues...)
 
 	return printReport(report, issues)
 }
@@ -80,7 +99,10 @@ func validateRequiredPaths(
 	repoRoot string,
 	headerDir string,
 	controllerHeaderPath string,
+	maaDefHeaderPath string,
 	customControllerPath string,
+	adbControllerPath string,
+	win32ControllerPath string,
 	nativeFiles map[string][]string,
 ) error {
 	if err := requireDir(headerDir); err != nil {
@@ -89,8 +111,17 @@ func validateRequiredPaths(
 	if err := requireFile(controllerHeaderPath); err != nil {
 		return fmt.Errorf("repo_root=%q controller header %q: %w", filepath.Clean(repoRoot), filepath.Clean(controllerHeaderPath), err)
 	}
+	if err := requireFile(maaDefHeaderPath); err != nil {
+		return fmt.Errorf("repo_root=%q MaaDef header %q: %w", filepath.Clean(repoRoot), filepath.Clean(maaDefHeaderPath), err)
+	}
 	if err := requireFile(customControllerPath); err != nil {
 		return fmt.Errorf("repo_root=%q custom controller source %q: %w", filepath.Clean(repoRoot), filepath.Clean(customControllerPath), err)
+	}
+	if err := requireFile(adbControllerPath); err != nil {
+		return fmt.Errorf("repo_root=%q adb controller source %q: %w", filepath.Clean(repoRoot), filepath.Clean(adbControllerPath), err)
+	}
+	if err := requireFile(win32ControllerPath); err != nil {
+		return fmt.Errorf("repo_root=%q win32 controller source %q: %w", filepath.Clean(repoRoot), filepath.Clean(win32ControllerPath), err)
 	}
 	for module, files := range nativeFiles {
 		for _, file := range files {

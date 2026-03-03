@@ -5,6 +5,7 @@
 - `internal/native` registered C symbols (`purego.RegisterLibFunc`)
 - exported C functions in header files
 - `CustomController` interface vs `MaaCustomControllerCallbacks`
+- controller method enums/constants in `controller/adb` and `controller/win32` vs `MaaDef.h`
 
 It checks both symbol coverage and function signatures.
 
@@ -21,6 +22,12 @@ It checks both symbol coverage and function signatures.
 - CustomController consistency:
   - method existence on both sides
   - method signature consistency using the same canonical type rules
+- Controller method coverage:
+  - compare `adb/win32` `ScreencapMethod` and `InputMethod` names against C macros in `MaaDef.h`
+  - C-side method names are matched after removing `_` (for example `DXGI_DesktopDup` matches `DXGIDesktopDup`)
+  - report C method missing in Go
+  - report Go method missing in C
+  - report value mismatch for same method name
 
 ## Usage
 

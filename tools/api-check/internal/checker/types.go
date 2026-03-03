@@ -8,12 +8,16 @@ const (
 )
 
 const (
-	sectionNativeAPI      = "Native API Coverage"
-	sectionController     = "CustomController Consistency"
-	defaultHeaderDirRel   = "deps/include"
-	customControllerRel   = "custom_controller.go"
-	controllerHeaderRel   = "MaaFramework/Instance/MaaCustomController.h"
-	apiCheckConfigPathRel = "tools/api-check/config.yaml"
+	sectionNativeAPI        = "Native API Coverage"
+	sectionController       = "CustomController Consistency"
+	sectionControllerMethod = "Controller Method Coverage"
+	defaultHeaderDirRel     = "deps/include"
+	customControllerRel     = "custom_controller.go"
+	controllerHeaderRel     = "MaaFramework/Instance/MaaCustomController.h"
+	maaDefHeaderRel         = "MaaFramework/MaaDef.h"
+	adbControllerRel        = "controller/adb/adb.go"
+	win32ControllerRel      = "controller/win32/win32.go"
+	apiCheckConfigPathRel   = "tools/api-check/config.yaml"
 )
 
 var nativeFilesByModule = map[string][]string{
@@ -32,7 +36,7 @@ var nativeFilesByModule = map[string][]string{
 }
 
 var moduleOrder = []string{"framework", "toolkit", "agent_server", "agent_client"}
-var sectionOrder = []string{sectionNativeAPI, sectionController}
+var sectionOrder = []string{sectionNativeAPI, sectionController, sectionControllerMethod}
 
 type Config struct {
 	HeaderDir string   `yaml:"header_dir"`
