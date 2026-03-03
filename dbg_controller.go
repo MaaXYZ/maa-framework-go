@@ -19,6 +19,8 @@ type CarouselImageController struct {
 	connected  atomic.Bool
 }
 
+var _ CustomController = (*CarouselImageController)(nil)
+
 func NewCarouselImageController(path string) (*Controller, error) {
 	return NewCustomController(&CarouselImageController{
 		path: path,
@@ -194,6 +196,8 @@ func (c *CarouselImageController) GetInfo() (string, bool) {
 }
 
 type BlankController struct{}
+
+var _ CustomController = (*BlankController)(nil)
 
 func NewBlankController() (*Controller, error) {
 	return NewCustomController(&BlankController{})
