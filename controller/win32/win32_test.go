@@ -43,6 +43,8 @@ func TestInputMethod_String(t *testing.T) {
 		{"PostThreadMessage", InputPostThreadMessage, "PostThreadMessage"},
 		{"SendMessageWithCursorPos", InputSendMessageWithCursorPos, "SendMessageWithCursorPos"},
 		{"PostMessageWithCursorPos", InputPostMessageWithCursorPos, "PostMessageWithCursorPos"},
+		{"SendMessageWithWindowPos", InputSendMessageWithWindowPos, "SendMessageWithWindowPos"},
+		{"PostMessageWithWindowPos", InputPostMessageWithWindowPos, "PostMessageWithWindowPos"},
 		{"Unknown", InputMethod(999), "999"},
 	}
 
@@ -110,6 +112,8 @@ func TestParseInputMethod(t *testing.T) {
 		{"PostThreadMessage", "PostThreadMessage", InputPostThreadMessage, false},
 		{"SendMessageWithCursorPos", "SendMessageWithCursorPos", InputSendMessageWithCursorPos, false},
 		{"PostMessageWithCursorPos", "PostMessageWithCursorPos", InputPostMessageWithCursorPos, false},
+		{"SendMessageWithWindowPos", "SendMessageWithWindowPos", InputSendMessageWithWindowPos, false},
+		{"PostMessageWithWindowPos", "PostMessageWithWindowPos", InputPostMessageWithWindowPos, false},
 		// Case insensitive
 		{"LowerCase", "seize", InputSeize, false},
 		{"UpperCase", "SEIZE", InputSeize, false},
@@ -170,6 +174,8 @@ func TestInputMethodRoundTrip(t *testing.T) {
 		InputPostThreadMessage,
 		InputSendMessageWithCursorPos,
 		InputPostMessageWithCursorPos,
+		InputSendMessageWithWindowPos,
+		InputPostMessageWithWindowPos,
 	}
 
 	for _, m := range methods {

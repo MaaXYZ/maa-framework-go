@@ -62,6 +62,9 @@
 **移除方法**：`SetScreenshotTargetLongSide`, `SetScreenshotTargetShortSide`, `SetScreenshotUseRawSize`
 **新增**：`SetScreenshot(opts ...ScreenshotOption) error` 与配套选项函数
 **接口变更**：`CustomController` 接口新增 `GetInfo() (string, bool)` 必须实现方法，已有实现需补充该方法（返回 `("", true)` 即可）
+**Win32 InputMethod 命名对齐**：
+- `InputSendMessageWithCursorPosAndBlockInput` → `InputSendMessageWithWindowPos`
+- `InputPostMessageWithCursorPosAndBlockInput` → `InputPostMessageWithWindowPos`
 
 #### Tasker
 

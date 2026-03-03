@@ -25,16 +25,16 @@ const (
 	ScreencapPrintWindow          ScreencapMethod = 1 << 4
 	ScreencapScreenDC             ScreencapMethod = 1 << 5
 
-	InputNone                                  InputMethod = 0
-	InputSeize                                 InputMethod = 1
-	InputSendMessage                           InputMethod = 1 << 1
-	InputPostMessage                           InputMethod = 1 << 2
-	InputLegacyEvent                           InputMethod = 1 << 3
-	InputPostThreadMessage                     InputMethod = 1 << 4
-	InputSendMessageWithCursorPos              InputMethod = 1 << 5
-	InputPostMessageWithCursorPos              InputMethod = 1 << 6
-	InputSendMessageWithCursorPosAndBlockInput InputMethod = 1 << 7
-	InputPostMessageWithCursorPosAndBlockInput InputMethod = 1 << 8
+	InputNone                     InputMethod = 0
+	InputSeize                    InputMethod = 1
+	InputSendMessage              InputMethod = 1 << 1
+	InputPostMessage              InputMethod = 1 << 2
+	InputLegacyEvent              InputMethod = 1 << 3
+	InputPostThreadMessage        InputMethod = 1 << 4
+	InputSendMessageWithCursorPos InputMethod = 1 << 5
+	InputPostMessageWithCursorPos InputMethod = 1 << 6
+	InputSendMessageWithWindowPos InputMethod = 1 << 7
+	InputPostMessageWithWindowPos InputMethod = 1 << 8
 )
 
 const (
@@ -46,16 +46,16 @@ const (
 	screencapPrintWindowStr          = "PrintWindow"
 	screencapScreenDCStr             = "ScreenDC"
 
-	inputNoneStr                                  = ""
-	inputSeizeStr                                 = "Seize"
-	inputSendMessageStr                           = "SendMessage"
-	inputPostMessageStr                           = "PostMessage"
-	inputLegacyEventStr                           = "LegacyEvent"
-	inputPostThreadMessageStr                     = "PostThreadMessage"
-	inputSendMessageWithCursorPosStr              = "SendMessageWithCursorPos"
-	inputPostMessageWithCursorPosStr              = "PostMessageWithCursorPos"
-	inputSendMessageWithCursorPosAndBlockInputStr = "SendMessageWithCursorPosAndBlockInput"
-	inputPostMessageWithCursorPosAndBlockInputStr = "PostMessageWithCursorPosAndBlockInput"
+	inputNoneStr                     = ""
+	inputSeizeStr                    = "Seize"
+	inputSendMessageStr              = "SendMessage"
+	inputPostMessageStr              = "PostMessage"
+	inputLegacyEventStr              = "LegacyEvent"
+	inputPostThreadMessageStr        = "PostThreadMessage"
+	inputSendMessageWithCursorPosStr = "SendMessageWithCursorPos"
+	inputPostMessageWithCursorPosStr = "PostMessageWithCursorPos"
+	inputSendMessageWithWindowPosStr = "SendMessageWithWindowPos"
+	inputPostMessageWithWindowPosStr = "PostMessageWithWindowPos"
 )
 
 func (m ScreencapMethod) String() string {
@@ -96,10 +96,10 @@ func (m InputMethod) String() string {
 		return inputSendMessageWithCursorPosStr
 	case InputPostMessageWithCursorPos:
 		return inputPostMessageWithCursorPosStr
-	case InputSendMessageWithCursorPosAndBlockInput:
-		return inputSendMessageWithCursorPosAndBlockInputStr
-	case InputPostMessageWithCursorPosAndBlockInput:
-		return inputPostMessageWithCursorPosAndBlockInputStr
+	case InputSendMessageWithWindowPos:
+		return inputSendMessageWithWindowPosStr
+	case InputPostMessageWithWindowPos:
+		return inputPostMessageWithWindowPosStr
 	}
 	return strconv.FormatUint(uint64(m), 10)
 }
@@ -149,10 +149,10 @@ func ParseInputMethod(s string) (InputMethod, error) {
 		return InputSendMessageWithCursorPos, nil
 	case strings.EqualFold(inputPostMessageWithCursorPosStr, s):
 		return InputPostMessageWithCursorPos, nil
-	case strings.EqualFold(inputSendMessageWithCursorPosAndBlockInputStr, s):
-		return InputSendMessageWithCursorPosAndBlockInput, nil
-	case strings.EqualFold(inputPostMessageWithCursorPosAndBlockInputStr, s):
-		return InputPostMessageWithCursorPosAndBlockInput, nil
+	case strings.EqualFold(inputSendMessageWithWindowPosStr, s):
+		return InputSendMessageWithWindowPos, nil
+	case strings.EqualFold(inputPostMessageWithWindowPosStr, s):
+		return InputPostMessageWithWindowPos, nil
 	default:
 		i, err := strconv.ParseUint(s, 10, 64)
 		if err != nil {
