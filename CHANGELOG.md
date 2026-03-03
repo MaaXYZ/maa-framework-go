@@ -369,3 +369,5 @@ if best != nil {
 - Controller info：新增 `Controller.GetInfo() (string, error)`，以 JSON 格式获取控制器结构化信息（类型、构造参数、当前状态等）（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - `CustomController` 接口新增 `GetInfo() (string, bool)` 方法，自定义控制器可提供额外信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - `ControllerActionDetail` 新增 `Info map[string]any` 字段，控制器动作事件回调中包含控制器信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
+- WlRoots Controller：新增 NewWlRootsController(wlrSocketPath string) (*Controller, error)，支持通过 Wayland socket 创建 WlRoots 控制器（适配 [MaaFramework#1131](https://github.com/MaaXYZ/MaaFramework/pull/1131)）
+

@@ -93,6 +93,22 @@ func NewWin32Controller(
 	}, nil
 }
 
+// NewWlRootsController creates a WlRoots controller instance.
+func NewWlRootsController(
+	wlrSocketPath string,
+) (*Controller, error) {
+	handle := native.MaaWlRootsControllerCreate(wlrSocketPath)
+	if handle == 0 {
+		return nil, errors.New("failed to create WlRoots controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
 // GamepadType defines the type of virtual gamepad.
 type GamepadType = native.MaaGamepadType
 
