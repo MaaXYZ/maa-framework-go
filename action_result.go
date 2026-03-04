@@ -15,13 +15,13 @@ func (p *Point) UnmarshalJSON(data []byte) error {
 	// MaaFramework sometimes serializes points as a JSON string, e.g. `"[1, 2]"`.
 	// Accept both `"[1, 2]"` and `[1, 2]`.
 	var raw any
-	if err := json.Unmarshal(data, &raw); err != nil {
+	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
 	switch v := raw.(type) {
 	case string:
 		var xy []int
-		if err := json.Unmarshal([]byte(v), &xy); err != nil {
+		if err := unmarshalJSON([]byte(v), &xy); err != nil {
 			return err
 		}
 		if len(xy) != 2 {
@@ -199,7 +199,7 @@ type swipeActionResultWire struct {
 
 func (s *SwipeActionResult) UnmarshalJSON(data []byte) error {
 	var wire swipeActionResultWire
-	if err := json.Unmarshal(data, &wire); err != nil {
+	if err := unmarshalJSON(data, &wire); err != nil {
 		return err
 	}
 
@@ -226,13 +226,13 @@ func (s SwipeActionResult) MarshalJSON() ([]byte, error) {
 	if len(end) == 0 {
 		// Default JSON representation for end: list of points.
 		var err error
-		end, err = json.Marshal(s.End)
+		end, err = marshalJSON(s.End)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return json.Marshal(&swipeActionResultWire{
+	return marshalJSON(&swipeActionResultWire{
 		Begin:     s.Begin,
 		End:       end,
 		EndHold:   s.EndHold,
@@ -251,7 +251,7 @@ func parseSwipeEndPoints(end json.RawMessage) ([]Point, error) {
 	// - JSON string of a single point: "[x, y]"
 	// We parse into []Point, but preserve original end JSON for marshaling.
 	var raw any
-	if err := json.Unmarshal(end, &raw); err != nil {
+	if err := unmarshalJSON(end, &raw); err != nil {
 		return nil, err
 	}
 
@@ -380,7 +380,7 @@ func parseActionResult(action, detailJson string) (*ActionResult, error) {
 		return nil, fmt.Errorf("unknown action result type: %s", action)
 	}
 
-	if err := json.Unmarshal([]byte(detailJson), resultVal); err != nil {
+	if err := unmarshalJSON([]byte(detailJson), resultVal); err != nil {
 		return nil, err
 	}
 

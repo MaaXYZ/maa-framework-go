@@ -1,7 +1,6 @@
 package maa
 
 import (
-	"encoding/json"
 	"errors"
 	"image"
 	"reflect"
@@ -47,7 +46,7 @@ func (ctx *Context) handleOverride(override ...any) string {
 	case []byte:
 		return string(v)
 	default:
-		jsonBytes, err := json.Marshal(v)
+		jsonBytes, err := marshalJSON(v)
 		if err != nil {
 			return "{}"
 		}
@@ -232,7 +231,7 @@ func (ctx *Context) RunRecognitionDirect(
 	imgBuf.Set(img)
 	defer imgBuf.Destroy()
 
-	recParamJSON, err := json.Marshal(recoParam)
+	recParamJSON, err := marshalJSON(recoParam)
 	if err != nil {
 		return nil, err
 	}
@@ -271,11 +270,11 @@ func (ctx *Context) RunActionDirect(
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
 
-	actParamJSON, err := json.Marshal(actionParam)
+	actParamJSON, err := marshalJSON(actionParam)
 	if err != nil {
 		return nil, err
 	}
-	recoDetailJSON, err := json.Marshal(recoDetail)
+	recoDetailJSON, err := marshalJSON(recoDetail)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +336,7 @@ func (ctx *Context) OverridePipeline(override any) error {
 			return ctx.overridePipeline("{}")
 		}
 
-		jsonBytes, err := json.Marshal(v)
+		jsonBytes, err := marshalJSON(v)
 		if err != nil {
 			return err
 		}
@@ -399,7 +398,7 @@ func (ctx *Context) GetNode(name string) (*Node, error) {
 	}
 
 	var node Node
-	err = json.Unmarshal([]byte(raw), &node)
+	err = unmarshalJSON([]byte(raw), &node)
 	if err != nil {
 		return nil, err
 	}

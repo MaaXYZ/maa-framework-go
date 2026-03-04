@@ -1,7 +1,6 @@
 package maa
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -335,7 +334,7 @@ func (r *Resource) OverridePipeline(override any) error {
 	case []byte:
 		return r.overridePipeline(string(v))
 	default:
-		jsonBytes, err := json.Marshal(v)
+		jsonBytes, err := marshalJSON(v)
 		if err != nil {
 			return fmt.Errorf("failed to marshal override: %w", err)
 		}
@@ -397,7 +396,7 @@ func (r *Resource) GetNode(name string) (*Node, error) {
 	}
 
 	var node Node
-	if err := json.Unmarshal([]byte(raw), &node); err != nil {
+	if err := unmarshalJSON([]byte(raw), &node); err != nil {
 		return nil, err
 	}
 	node.Name = name
@@ -526,7 +525,7 @@ func (r *Resource) GetDefaultRecognitionParam(recoType RecognitionType) (Recogni
 	}
 
 	// Unmarshal the JSON string into the param
-	if err := json.Unmarshal([]byte(jsonStr), param); err != nil {
+	if err := unmarshalJSON([]byte(jsonStr), param); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal default recognition param: %w", err)
 	}
 
@@ -599,7 +598,7 @@ func (r *Resource) GetDefaultActionParam(actionType ActionType) (ActionParam, er
 	}
 
 	// Unmarshal the JSON string into the param
-	if err := json.Unmarshal([]byte(jsonStr), param); err != nil {
+	if err := unmarshalJSON([]byte(jsonStr), param); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal default action param: %w", err)
 	}
 

@@ -20,7 +20,7 @@ func (nr *Recognition) UnmarshalJSON(data []byte) error {
 		Type  RecognitionType `json:"type,omitempty"`
 		Param json.RawMessage `json:"param,omitempty"`
 	}
-	if err := json.Unmarshal(data, &raw); err != nil {
+	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
 
@@ -56,7 +56,7 @@ func (nr *Recognition) UnmarshalJSON(data []byte) error {
 		return errors.New("unsupported recognition type: " + string(nr.Type))
 	}
 
-	if err := json.Unmarshal(raw.Param, param); err != nil {
+	if err := unmarshalJSON(raw.Param, param); err != nil {
 		return err
 	}
 	nr.Param = param
@@ -453,7 +453,7 @@ func (s *SubRecognitionItem) UnmarshalJSON(data []byte) error {
 	}
 	if trimmed[0] == '"' {
 		var nodeName string
-		if err := json.Unmarshal(data, &nodeName); err != nil {
+		if err := unmarshalJSON(data, &nodeName); err != nil {
 			return err
 		}
 		s.NodeName = nodeName
@@ -462,7 +462,7 @@ func (s *SubRecognitionItem) UnmarshalJSON(data []byte) error {
 	}
 	if trimmed[0] == '{' {
 		inline := &InlineSubRecognition{}
-		if err := json.Unmarshal(data, inline); err != nil {
+		if err := unmarshalJSON(data, inline); err != nil {
 			return err
 		}
 		s.NodeName = ""
@@ -475,10 +475,10 @@ func (s *SubRecognitionItem) UnmarshalJSON(data []byte) error {
 // MarshalJSON outputs a string when NodeName is set, otherwise the inline object.
 func (s SubRecognitionItem) MarshalJSON() ([]byte, error) {
 	if s.NodeName != "" {
-		return json.Marshal(s.NodeName)
+		return marshalJSON(s.NodeName)
 	}
 	if s.Inline != nil {
-		return json.Marshal(s.Inline)
+		return marshalJSON(s.Inline)
 	}
 	return []byte("null"), nil
 }
@@ -511,12 +511,12 @@ func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
 		SubName string `json:"sub_name,omitempty"`
 	}
 	var alias Alias
-	if err := json.Unmarshal(data, &alias); err != nil {
+	if err := unmarshalJSON(data, &alias); err != nil {
 		return err
 	}
 	n.SubName = alias.SubName
 
-	if err := json.Unmarshal(data, &n.Recognition); err != nil {
+	if err := unmarshalJSON(data, &n.Recognition); err != nil {
 		return err
 	}
 	return nil

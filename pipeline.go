@@ -4,10 +4,6 @@
 
 package maa
 
-import (
-	"encoding/json"
-)
-
 // Node is a single unit of work in a pipeline.
 //
 // Task is a logical sequential structure consisting of several Nodes connected in a specific order,
@@ -31,7 +27,7 @@ func NewPipeline() *Pipeline {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (p *Pipeline) MarshalJSON() ([]byte, error) {
-	return json.Marshal(p.nodes)
+	return marshalJSON(p.nodes)
 }
 
 // AddNode adds a node to the pipeline and returns the pipeline for chaining.

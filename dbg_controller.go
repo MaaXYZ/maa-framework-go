@@ -1,7 +1,6 @@
 package maa
 
 import (
-	"encoding/json"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -188,7 +187,7 @@ func (c *CarouselImageController) GetInfo() (string, bool) {
 		"image_count": len(c.images),
 		"image_index": c.imageIndex,
 	}
-	data, err := json.Marshal(info)
+	data, err := marshalJSON(info)
 	if err != nil {
 		return "", false
 	}
@@ -298,7 +297,7 @@ func (c *BlankController) GetInfo() (string, bool) {
 	info := map[string]any{
 		"type": "dbg_blank",
 	}
-	data, err := json.Marshal(info)
+	data, err := marshalJSON(info)
 	if err != nil {
 		return "", false
 	}

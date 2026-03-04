@@ -1,10 +1,10 @@
 package target
 
 import (
-	"encoding/json"
 	"errors"
 	"strconv"
 
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/jsoncodec"
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/rect"
 )
 
@@ -79,11 +79,11 @@ func (t Target) MarshalJSON() ([]byte, error) {
 
 	switch t.tp {
 	case targetBool:
-		return json.Marshal(t.val.(bool))
+		return jsoncodec.Marshal(t.val.(bool))
 	case targetString:
-		return json.Marshal(t.val.(string))
+		return jsoncodec.Marshal(t.val.(string))
 	case targetRect:
-		return json.Marshal(t.val.(rect.Rect))
+		return jsoncodec.Marshal(t.val.(rect.Rect))
 	default:
 		return nil, errors.New("unknown target type: " + strconv.Itoa(int(t.tp)))
 	}
@@ -97,21 +97,21 @@ func (t *Target) UnmarshalJSON(data []byte) error {
 	}
 
 	var b bool
-	if err := json.Unmarshal(data, &b); err == nil {
+	if err := jsoncodec.Unmarshal(data, &b); err == nil {
 		t.tp = targetBool
 		t.val = b
 		return nil
 	}
 
 	var s string
-	if err := json.Unmarshal(data, &s); err == nil {
+	if err := jsoncodec.Unmarshal(data, &s); err == nil {
 		t.tp = targetString
 		t.val = s
 		return nil
 	}
 
 	var r rect.Rect
-	if err := json.Unmarshal(data, &r); err == nil {
+	if err := jsoncodec.Unmarshal(data, &r); err == nil {
 		t.tp = targetRect
 		t.val = r
 		return nil
