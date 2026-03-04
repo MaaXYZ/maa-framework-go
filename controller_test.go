@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"image"
 	"testing"
 	"time"
 
@@ -217,6 +218,31 @@ func TestController_CacheImage(t *testing.T) {
 	img, err := ctrl.CacheImage()
 	require.NoError(t, err)
 	require.NotNil(t, img)
+}
+
+func TestController_CacheImageInto(t *testing.T) {
+	ctrl := createCarouselImageController(t)
+	defer ctrl.Destroy()
+	isConnected := ctrl.PostConnect().Wait().Success()
+	require.True(t, isConnected)
+	screencaped := ctrl.PostScreencap().Wait().Success()
+	require.True(t, screencaped)
+
+	img1, err := ctrl.CacheImageInto(nil)
+	require.NoError(t, err)
+	require.NotNil(t, img1)
+
+	reused := image.NewNRGBA(img1.Bounds())
+	img2, err := ctrl.CacheImageInto(reused)
+	require.NoError(t, err)
+	require.NotNil(t, img2)
+	require.Same(t, reused, img2)
+
+	mismatch := image.NewNRGBA(image.Rect(0, 0, 1, 1))
+	img3, err := ctrl.CacheImageInto(mismatch)
+	require.NoError(t, err)
+	require.NotNil(t, img3)
+	require.NotSame(t, mismatch, img3)
 }
 
 func TestController_GetUUID(t *testing.T) {
