@@ -143,8 +143,8 @@ func TestWithJSONEncoderAndDecoderOptionApply(t *testing.T) {
 	require.NotNil(t, cfg.JSONEncoder)
 	require.NotNil(t, cfg.JSONDecoder)
 
-	gotEnc := *cfg.JSONEncoder
-	gotDec := *cfg.JSONDecoder
+	gotEnc := cfg.JSONEncoder
+	gotDec := cfg.JSONDecoder
 
 	b, err := gotEnc(1)
 	require.NoError(t, err)

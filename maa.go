@@ -61,11 +61,11 @@ type initConfig struct {
 
 	// JSONEncoder sets a custom JSON encoder for the framework.
 	// Nil means Init will not change the current encoder.
-	JSONEncoder *JSONEncoder
+	JSONEncoder JSONEncoder
 
 	// JSONDecoder sets a custom JSON decoder for the framework.
 	// Nil means Init will not change the current decoder.
-	JSONDecoder *JSONDecoder
+	JSONDecoder JSONDecoder
 }
 
 // InitOption defines a function type for configuring initialization through functional options.
@@ -126,7 +126,7 @@ func WithJSONEncoder(encoder JSONEncoder) InitOption {
 		panic("json encoder cannot be nil")
 	}
 	return func(ic *initConfig) {
-		ic.JSONEncoder = &encoder
+		ic.JSONEncoder = encoder
 	}
 }
 
@@ -136,7 +136,7 @@ func WithJSONDecoder(decoder JSONDecoder) InitOption {
 		panic("json decoder cannot be nil")
 	}
 	return func(ic *initConfig) {
-		ic.JSONDecoder = &decoder
+		ic.JSONDecoder = decoder
 	}
 }
 
@@ -196,10 +196,10 @@ func Init(opts ...InitOption) error {
 	}
 
 	if cfg.JSONEncoder != nil {
-		SetJSONEncoder(*cfg.JSONEncoder)
+		SetJSONEncoder(cfg.JSONEncoder)
 	}
 	if cfg.JSONDecoder != nil {
-		SetJSONDecoder(*cfg.JSONDecoder)
+		SetJSONDecoder(cfg.JSONDecoder)
 	}
 
 	inited = true
