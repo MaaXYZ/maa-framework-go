@@ -93,30 +93,50 @@ func (i *ImageBuffer) GetInto(dst *image.NRGBA) *image.NRGBA {
 
 // Set converts an image.Image to raw data and sets it in the buffer.
 func (i *ImageBuffer) Set(img image.Image) bool {
-	width := img.Bounds().Dx()
-	height := img.Bounds().Dy()
+	bounds := img.Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
 	imageType := int32(16) // CV_8UC3
 
 	rawData := make([]byte, width*height*3)
 
 	nrgbaImg, ok := img.(*image.NRGBA)
 	if !ok {
-		nrgbaImg = image.NewNRGBA(img.Bounds())
-		draw.Draw(nrgbaImg, img.Bounds(), img, image.Point{}, draw.Src)
+		nrgbaImg = image.NewNRGBA(image.Rect(0, 0, width, height))
+		draw.Draw(nrgbaImg, nrgbaImg.Bounds(), img, bounds.Min, draw.Src)
 	}
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			offset := (y*width + x) * 4
-			r := nrgbaImg.Pix[offset]
-			g := nrgbaImg.Pix[offset+1]
-			b := nrgbaImg.Pix[offset+2]
-			rawData[(y*width+x)*3] = b
-			rawData[(y*width+x)*3+1] = g
-			rawData[(y*width+x)*3+2] = r
-		}
-	}
+	encodeNRGBAToBGR(nrgbaImg, rawData, width, height)
 
 	return i.setRawData(unsafe.Pointer(&rawData[0]), int32(width), int32(height), imageType)
+}
+
+func encodeNRGBAToBGR(src *image.NRGBA, dst []byte, width, height int) {
+	if width == 0 || height == 0 {
+		return
+	}
+
+	pix := src.Pix
+	if src.Stride == width*4 {
+		for srcIdx, dstIdx := 0, 0; dstIdx < len(dst); srcIdx, dstIdx = srcIdx+4, dstIdx+3 {
+			dst[dstIdx] = pix[srcIdx+2]
+			dst[dstIdx+1] = pix[srcIdx+1]
+			dst[dstIdx+2] = pix[srcIdx]
+		}
+		return
+	}
+
+	for y := 0; y < height; y++ {
+		srcIdx := y * src.Stride
+		dstIdx := y * width * 3
+		rowEnd := srcIdx + width*4
+		for srcIdx < rowEnd {
+			dst[dstIdx] = pix[srcIdx+2]
+			dst[dstIdx+1] = pix[srcIdx+1]
+			dst[dstIdx+2] = pix[srcIdx]
+			srcIdx += 4
+			dstIdx += 3
+		}
+	}
 }
 
 // getRawData retrieves the raw image data from the buffer.
