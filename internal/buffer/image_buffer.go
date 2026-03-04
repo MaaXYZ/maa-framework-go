@@ -2,7 +2,6 @@ package buffer
 
 import (
 	"image"
-	"image/color"
 	"image/draw"
 	"unsafe"
 
@@ -47,25 +46,49 @@ func (i *ImageBuffer) Clear() bool {
 
 // Get retrieves the image from raw data stored in the buffer.
 func (i *ImageBuffer) Get() image.Image {
+	return i.GetInto(nil)
+}
+
+// GetInto retrieves the image from raw data stored in the buffer and writes into dst when possible.
+// If dst is nil or size mismatched, a new *image.NRGBA is allocated and returned.
+func (i *ImageBuffer) GetInto(dst *image.NRGBA) *image.NRGBA {
 	rawData := i.getRawData()
 	if rawData == nil {
 		return nil
 	}
-	width := i.getWidth()
-	height := i.getHeight()
+	width := int(i.getWidth())
+	height := int(i.getHeight())
 
-	img := image.NewNRGBA(image.Rect(0, 0, int(width), int(height)))
+	if dst == nil || dst.Rect.Dx() != width || dst.Rect.Dy() != height {
+		dst = image.NewNRGBA(image.Rect(0, 0, width, height))
+	}
+
 	raw := unsafe.Slice((*byte)(rawData), width*height*3)
-	for y := 0; y < int(height); y++ {
-		for x := 0; x < int(width); x++ {
-			offset := (y*int(width) + x) * 3
-			r := raw[offset+2]
-			g := raw[offset+1]
-			b := raw[offset]
-			img.SetNRGBA(x, y, color.NRGBA{R: r, G: g, B: b, A: 255})
+	pix := dst.Pix
+	if dst.Stride == width*4 {
+		for src, dstIdx := 0, 0; src < len(raw); src, dstIdx = src+3, dstIdx+4 {
+			// Native buffer stores pixels as BGR, convert to NRGBA (alpha fixed to 255).
+			pix[dstIdx] = raw[src+2]
+			pix[dstIdx+1] = raw[src+1]
+			pix[dstIdx+2] = raw[src]
+			pix[dstIdx+3] = 255
+		}
+		return dst
+	}
+
+	for y := 0; y < height; y++ {
+		srcIdx := y * width * 3
+		dstIdx := y * dst.Stride
+		for x := 0; x < width; x++ {
+			pix[dstIdx] = raw[srcIdx+2]
+			pix[dstIdx+1] = raw[srcIdx+1]
+			pix[dstIdx+2] = raw[srcIdx]
+			pix[dstIdx+3] = 255
+			srcIdx += 3
+			dstIdx += 4
 		}
 	}
-	return img
+	return dst
 }
 
 // Set converts an image.Image to raw data and sets it in the buffer.

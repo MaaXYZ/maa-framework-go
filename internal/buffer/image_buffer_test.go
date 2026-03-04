@@ -57,3 +57,29 @@ func TestImageBuffer_Set(t *testing.T) {
 	require.NotNil(t, img2)
 	require.Equal(t, img1, img2)
 }
+
+func TestImageBuffer_GetInto(t *testing.T) {
+	imageBuffer := createImageBuffer(t)
+	defer imageBuffer.Destroy()
+
+	width, height := 2, 2
+	img1 := image.NewNRGBA(image.Rect(0, 0, width, height))
+	img1.SetNRGBA(0, 0, color.NRGBA{R: 255, G: 0, B: 0, A: 255})
+	img1.SetNRGBA(1, 0, color.NRGBA{R: 0, G: 255, B: 0, A: 255})
+	img1.SetNRGBA(0, 1, color.NRGBA{R: 0, G: 0, B: 255, A: 255})
+	img1.SetNRGBA(1, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
+
+	require.True(t, imageBuffer.Set(img1))
+
+	reused := image.NewNRGBA(image.Rect(0, 0, width, height))
+	got1 := imageBuffer.GetInto(reused)
+	require.NotNil(t, got1)
+	require.Same(t, reused, got1)
+	require.Equal(t, img1, got1)
+
+	mismatch := image.NewNRGBA(image.Rect(0, 0, 1, 1))
+	got2 := imageBuffer.GetInto(mismatch)
+	require.NotNil(t, got2)
+	require.NotSame(t, mismatch, got2)
+	require.Equal(t, img1, got2)
+}
