@@ -82,4 +82,43 @@ func TestImageBuffer_GetInto(t *testing.T) {
 	require.NotNil(t, got2)
 	require.NotSame(t, mismatch, got2)
 	require.Equal(t, img1, got2)
+
+	t.Run("returns nil and does not mutate dst when buffer has no raw data", func(t *testing.T) {
+		require.True(t, imageBuffer.Clear())
+
+		gotNilDst := imageBuffer.GetInto(nil)
+		require.Nil(t, gotNilDst)
+
+		dst := image.NewNRGBA(image.Rect(0, 0, width, height))
+		copy(dst.Pix, []byte{
+			1, 2, 3, 4,
+			5, 6, 7, 8,
+			9, 10, 11, 12,
+			13, 14, 15, 16,
+		})
+		before := append([]byte(nil), dst.Pix...)
+		gotNonNilDst := imageBuffer.GetInto(dst)
+		require.Nil(t, gotNonNilDst)
+		require.Equal(t, before, dst.Pix)
+	})
+
+	t.Run("reuses dst with larger stride and takes slow path", func(t *testing.T) {
+		require.True(t, imageBuffer.Set(img1))
+
+		parent := image.NewNRGBA(image.Rect(0, 0, 4, 4))
+		sub := parent.SubImage(image.Rect(1, 1, 3, 3)).(*image.NRGBA)
+		require.Greater(t, sub.Stride, width*4)
+
+		got := imageBuffer.GetInto(sub)
+		require.NotNil(t, got)
+		require.Same(t, sub, got)
+		require.Equal(t, width, got.Rect.Dx())
+		require.Equal(t, height, got.Rect.Dy())
+
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				require.Equal(t, img1.NRGBAAt(x, y), got.NRGBAAt(got.Rect.Min.X+x, got.Rect.Min.Y+y))
+			}
+		}
+	})
 }
