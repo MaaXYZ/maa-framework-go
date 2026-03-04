@@ -98,6 +98,10 @@ func (i *ImageBuffer) Set(img image.Image) bool {
 	height := bounds.Dy()
 	imageType := int32(16) // CV_8UC3
 
+	if width == 0 || height == 0 {
+		return i.Clear()
+	}
+
 	rawData := make([]byte, width*height*3)
 
 	nrgbaImg, ok := img.(*image.NRGBA)

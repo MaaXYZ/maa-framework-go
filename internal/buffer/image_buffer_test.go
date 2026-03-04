@@ -80,6 +80,16 @@ func TestImageBuffer_Set(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("handles zero-sized image without panic", func(t *testing.T) {
+		empty := image.NewNRGBA(image.Rect(0, 0, 0, 0))
+
+		require.NotPanics(t, func() {
+			require.True(t, imageBuffer.Set(empty))
+		})
+		require.True(t, imageBuffer.IsEmpty())
+		require.Nil(t, imageBuffer.Get())
+	})
 }
 
 func TestImageBuffer_GetInto(t *testing.T) {
