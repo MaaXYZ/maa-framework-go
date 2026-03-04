@@ -1,7 +1,6 @@
 package maa
 
 import (
-	"encoding/json"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -177,7 +176,7 @@ func handleResourceLoading(sink any, handle uintptr, status EventStatus, details
 	}
 
 	var detail ResourceLoadingDetail
-	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
+	if err := unmarshalJSON(detailsJSON, &detail); err != nil {
 		return
 	}
 
@@ -191,7 +190,7 @@ func handleControllerAction(sink any, handle uintptr, status EventStatus, detail
 	}
 
 	var detail ControllerActionDetail
-	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
+	if err := unmarshalJSON(detailsJSON, &detail); err != nil {
 		return
 	}
 
@@ -205,7 +204,7 @@ func handleTaskerTask(sink any, handle uintptr, status EventStatus, detailsJSON 
 	}
 
 	var detail TaskerTaskDetail
-	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
+	if err := unmarshalJSON(detailsJSON, &detail); err != nil {
 		return
 	}
 
@@ -219,7 +218,7 @@ func handleNodePipelineNode(sink any, handle uintptr, status EventStatus, detail
 	}
 
 	var detail NodePipelineNodeDetail
-	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
+	if err := unmarshalJSON(detailsJSON, &detail); err != nil {
 		return
 	}
 
@@ -233,7 +232,7 @@ func handleNodeRecognitionNode(sink any, handle uintptr, status EventStatus, det
 	}
 
 	var detail NodeRecognitionNodeDetail
-	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
+	if err := unmarshalJSON(detailsJSON, &detail); err != nil {
 		return
 	}
 
@@ -247,7 +246,7 @@ func handleNodeActionNode(sink any, handle uintptr, status EventStatus, detailsJ
 	}
 
 	var detail NodeActionNodeDetail
-	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
+	if err := unmarshalJSON(detailsJSON, &detail); err != nil {
 		return
 	}
 
@@ -261,7 +260,7 @@ func handleNodeNextList(sink any, handle uintptr, status EventStatus, detailsJSO
 	}
 
 	var detail NodeNextListDetail
-	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
+	if err := unmarshalJSON(detailsJSON, &detail); err != nil {
 		return
 	}
 
@@ -275,7 +274,7 @@ func handleNodeRecognition(sink any, handle uintptr, status EventStatus, details
 	}
 
 	var detail NodeRecognitionDetail
-	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
+	if err := unmarshalJSON(detailsJSON, &detail); err != nil {
 		return
 	}
 
@@ -289,7 +288,7 @@ func handleNodeAction(sink any, handle uintptr, status EventStatus, detailsJSON 
 	}
 
 	var detail NodeActionDetail
-	if err := json.Unmarshal(detailsJSON, &detail); err != nil {
+	if err := unmarshalJSON(detailsJSON, &detail); err != nil {
 		return
 	}
 

@@ -58,6 +58,14 @@ type initConfig struct {
 	// PluginPaths specifies the paths to the plugins to load.
 	// Nil means Init will not process plugin loading.
 	PluginPaths *[]string
+
+	// JSONEncoder sets a custom JSON encoder for the framework.
+	// Nil means Init will not change the current encoder.
+	JSONEncoder *JSONEncoder
+
+	// JSONDecoder sets a custom JSON decoder for the framework.
+	// Nil means Init will not change the current decoder.
+	JSONDecoder *JSONDecoder
 }
 
 // InitOption defines a function type for configuring initialization through functional options.
@@ -109,6 +117,26 @@ func WithPluginPaths(path ...string) InitOption {
 	return func(ic *initConfig) {
 		pluginPaths := append([]string(nil), path...)
 		ic.PluginPaths = &pluginPaths
+	}
+}
+
+// WithJSONEncoder returns an InitOption that sets a custom JSON encoder.
+func WithJSONEncoder(encoder JSONEncoder) InitOption {
+	if encoder == nil {
+		panic("json encoder cannot be nil")
+	}
+	return func(ic *initConfig) {
+		ic.JSONEncoder = &encoder
+	}
+}
+
+// WithJSONDecoder returns an InitOption that sets a custom JSON decoder.
+func WithJSONDecoder(decoder JSONDecoder) InitOption {
+	if decoder == nil {
+		panic("json decoder cannot be nil")
+	}
+	return func(ic *initConfig) {
+		ic.JSONDecoder = &decoder
 	}
 }
 
@@ -165,6 +193,13 @@ func Init(opts ...InitOption) error {
 				return err
 			}
 		}
+	}
+
+	if cfg.JSONEncoder != nil {
+		SetJSONEncoder(*cfg.JSONEncoder)
+	}
+	if cfg.JSONDecoder != nil {
+		SetJSONDecoder(*cfg.JSONDecoder)
 	}
 
 	inited = true

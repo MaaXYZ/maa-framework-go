@@ -20,7 +20,7 @@ func (na *Action) UnmarshalJSON(data []byte) error {
 		Type  ActionType      `json:"type,omitempty"`
 		Param json.RawMessage `json:"param,omitempty"`
 	}
-	if err := json.Unmarshal(data, &raw); err != nil {
+	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
 
@@ -78,7 +78,7 @@ func (na *Action) UnmarshalJSON(data []byte) error {
 		return errors.New("unsupported action type: " + string(na.Type))
 	}
 
-	if err := json.Unmarshal(raw.Param, param); err != nil {
+	if err := unmarshalJSON(raw.Param, param); err != nil {
 		return err
 	}
 	na.Param = param
@@ -165,7 +165,7 @@ func (n LongPressParam) isActionParam() {}
 
 func (p LongPressParam) MarshalJSON() ([]byte, error) {
 	type NoMethod LongPressParam
-	return json.Marshal(struct {
+	return marshalJSON(struct {
 		NoMethod
 		Duration int64 `json:"duration,omitempty"`
 	}{NoMethod: NoMethod(p), Duration: p.Duration.Milliseconds()})
@@ -177,7 +177,7 @@ func (p *LongPressParam) UnmarshalJSON(data []byte) error {
 		NoMethod
 		Duration int64 `json:"duration,omitempty"`
 	}{}
-	if err := json.Unmarshal(data, &raw); err != nil {
+	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
 	*p = LongPressParam(raw.NoMethod)
@@ -217,7 +217,7 @@ func (n SwipeParam) isActionParam() {}
 
 func (p SwipeParam) MarshalJSON() ([]byte, error) {
 	type NoMethod SwipeParam
-	return json.Marshal(struct {
+	return marshalJSON(struct {
 		NoMethod
 		Duration []int64 `json:"duration,omitempty"`
 		EndHold  []int64 `json:"end_hold,omitempty"`
@@ -231,7 +231,7 @@ func (p *SwipeParam) UnmarshalJSON(data []byte) error {
 		Duration []int64 `json:"duration,omitempty"`
 		EndHold  []int64 `json:"end_hold,omitempty"`
 	}{}
-	if err := json.Unmarshal(data, &raw); err != nil {
+	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
 	*p = SwipeParam(raw.NoMethod)
@@ -277,7 +277,7 @@ type MultiSwipeItem struct {
 
 func (p MultiSwipeItem) MarshalJSON() ([]byte, error) {
 	type NoMethod MultiSwipeItem
-	return json.Marshal(struct {
+	return marshalJSON(struct {
 		NoMethod
 		Starting int64   `json:"starting,omitempty"`
 		Duration []int64 `json:"duration,omitempty"`
@@ -298,7 +298,7 @@ func (p *MultiSwipeItem) UnmarshalJSON(data []byte) error {
 		Duration []int64 `json:"duration,omitempty"`
 		EndHold  []int64 `json:"end_hold,omitempty"`
 	}{}
-	if err := json.Unmarshal(data, &raw); err != nil {
+	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
 	*p = MultiSwipeItem(raw.NoMethod)
@@ -428,7 +428,7 @@ func (n LongPressKeyParam) isActionParam() {}
 
 func (p LongPressKeyParam) MarshalJSON() ([]byte, error) {
 	type NoMethod LongPressKeyParam
-	return json.Marshal(struct {
+	return marshalJSON(struct {
 		NoMethod
 		Duration int64 `json:"duration,omitempty"`
 	}{NoMethod: NoMethod(p), Duration: p.Duration.Milliseconds()})
@@ -440,7 +440,7 @@ func (p *LongPressKeyParam) UnmarshalJSON(data []byte) error {
 		NoMethod
 		Duration int64 `json:"duration,omitempty"`
 	}{}
-	if err := json.Unmarshal(data, &raw); err != nil {
+	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
 	*p = LongPressKeyParam(raw.NoMethod)

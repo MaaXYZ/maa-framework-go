@@ -137,7 +137,7 @@ type customRecognitionResultRaw struct {
 // parseCustomRecognitionResult parses custom recognition JSON. Detail is accepted as either a JSON string or a JSON object (e.g. from MaaCore); both are normalized to a string for CustomRecognitionResult.Detail.
 func parseCustomRecognitionResult(resultJson []byte) (*CustomRecognitionResult, error) {
 	var raw customRecognitionResultRaw
-	if err := json.Unmarshal(resultJson, &raw); err != nil {
+	if err := unmarshalJSON(resultJson, &raw); err != nil {
 		return nil, err
 	}
 	detailStr := detailRawToString(raw.Detail)
@@ -150,7 +150,7 @@ func detailRawToString(raw json.RawMessage) string {
 	}
 	if raw[0] == '"' {
 		var s string
-		if err := json.Unmarshal(raw, &s); err != nil {
+		if err := unmarshalJSON(raw, &s); err != nil {
 			return string(raw)
 		}
 		return s
@@ -193,7 +193,7 @@ func parseRecognitionResult(algorithm string, resultJson []byte) (*RecognitionRe
 	}
 
 	if algorithmType != RecognitionTypeCustom {
-		if err := json.Unmarshal(resultJson, resultVal); err != nil {
+		if err := unmarshalJSON(resultJson, resultVal); err != nil {
 			return nil, err
 		}
 	}
@@ -225,7 +225,7 @@ func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults,
 		Filtered json.RawMessage `json:"filtered"`
 	}
 
-	if err := json.Unmarshal([]byte(detailJson), &raw); err != nil {
+	if err := unmarshalJSON([]byte(detailJson), &raw); err != nil {
 		return nil, err
 	}
 
@@ -269,7 +269,7 @@ func parseRecognitionResultList(algorithm string, raw json.RawMessage) ([]*Recog
 	switch trimmed[0] {
 	case '[':
 		var items []json.RawMessage
-		if err := json.Unmarshal(trimmed, &items); err != nil {
+		if err := unmarshalJSON(trimmed, &items); err != nil {
 			return nil, err
 		}
 		for _, item := range items {
@@ -320,7 +320,7 @@ func parseCombinedResult(detailJson string) ([]*RecognitionDetail, error) {
 	}
 
 	var items []combinedResultItem
-	if err := json.Unmarshal([]byte(detailJson), &items); err != nil {
+	if err := unmarshalJSON([]byte(detailJson), &items); err != nil {
 		return []*RecognitionDetail{}, err
 	}
 

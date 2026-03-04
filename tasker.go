@@ -1,7 +1,6 @@
 package maa
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -94,7 +93,7 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 	case []byte:
 		return postFunc(entry, string(v))
 	default:
-		jsonBytes, err := json.Marshal(v)
+		jsonBytes, err := marshalJSON(v)
 		if err != nil {
 			return postFunc(entry, "{}")
 		}
@@ -119,7 +118,7 @@ func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionPa
 	defer imgBuf.Destroy()
 	imgBuf.Set(img)
 
-	recParamJSON, err := json.Marshal(recParam)
+	recParamJSON, err := marshalJSON(recParam)
 	if err != nil {
 		return newTaskJob(0, nil, nil, nil, nil,
 			fmt.Errorf("failed to marshal recognition param: %w", err))
@@ -136,13 +135,13 @@ func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box 
 	defer rectBuf.Destroy()
 	rectBuf.Set(box)
 
-	actParamJSON, err := json.Marshal(actionParam)
+	actParamJSON, err := marshalJSON(actionParam)
 	if err != nil {
 		return newTaskJob(0, nil, nil, nil, nil,
 			fmt.Errorf("failed to marshal action param: %w", err))
 	}
 
-	recoDetailJSON, err := json.Marshal(recoDetail)
+	recoDetailJSON, err := marshalJSON(recoDetail)
 	if err != nil {
 		return newTaskJob(0, nil, nil, nil, nil,
 			fmt.Errorf("failed to marshal recognition detail: %w", err))
@@ -211,7 +210,7 @@ func (t *Tasker) overridePipeline(taskId int64, override any) error {
 		if v == nil {
 			overrideStr = "{}"
 		} else {
-			jsonBytes, err := json.Marshal(v)
+			jsonBytes, err := marshalJSON(v)
 			if err != nil {
 				return err
 			}

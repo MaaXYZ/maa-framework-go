@@ -1,7 +1,6 @@
 package maa
 
 import (
-	"encoding/json"
 	"time"
 )
 
@@ -29,7 +28,7 @@ type WaitFreezesParam struct {
 
 func (w WaitFreezesParam) MarshalJSON() ([]byte, error) {
 	type NoMethod WaitFreezesParam
-	return json.Marshal(struct {
+	return marshalJSON(struct {
 		NoMethod
 		Time      int64 `json:"time,omitempty"`
 		RateLimit int64 `json:"rate_limit,omitempty"`
@@ -50,7 +49,7 @@ func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error {
 		RateLimit int64 `json:"rate_limit,omitempty"`
 		Timeout   int64 `json:"timeout,omitempty"`
 	}{}
-	if err := json.Unmarshal(data, &raw); err != nil {
+	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
 	*w = WaitFreezesParam(raw.NoMethod)
