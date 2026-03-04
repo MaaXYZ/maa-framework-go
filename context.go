@@ -3,10 +3,7 @@ package maa
 import (
 	"errors"
 	"image"
-	"log"
-	"os"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/buffer"
