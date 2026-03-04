@@ -11,6 +11,12 @@ import (
 
 var benchmarkImageSink image.Image
 
+func isLittleEndian() bool {
+	var v uint16 = 0x0102
+	b := *(*[2]byte)(unsafe.Pointer(&v))
+	return b[0] == 0x02
+}
+
 // decodeBGRToNRGBASetNRGBA matches the original per-pixel SetNRGBA path in ImageBuffer.Get.
 func decodeBGRToNRGBASetNRGBA(raw []byte, width, height int) *image.NRGBA {
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
@@ -139,6 +145,9 @@ func benchmarkDecodeBGRToNRGBA(b *testing.B, width, height int) {
 	})
 
 	b.Run("Uint32", func(b *testing.B) {
+		if !isLittleEndian() {
+			b.Skip("requires little-endian byte order")
+		}
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
