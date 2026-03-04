@@ -56,6 +56,40 @@ func TestImageBuffer_Set(t *testing.T) {
 	img2 := imageBuffer.Get()
 	require.NotNil(t, img2)
 	require.Equal(t, img1, img2)
+
+	t.Run("supports NRGBA sub-image with larger stride", func(t *testing.T) {
+		parent := image.NewNRGBA(image.Rect(0, 0, width+2, height+2))
+		sub := parent.SubImage(image.Rect(1, 1, 1+width, 1+height)).(*image.NRGBA)
+		require.Greater(t, sub.Stride, width*4)
+
+		for y := 0; y < height; y++ {
+			srcRow := img1.Pix[y*img1.Stride : y*img1.Stride+width*4]
+			dstRow := sub.Pix[y*sub.Stride : y*sub.Stride+width*4]
+			copy(dstRow, srcRow)
+		}
+
+		require.True(t, imageBuffer.Set(sub))
+		got := imageBuffer.Get()
+		require.NotNil(t, got)
+
+		gotNRGBA, ok := got.(*image.NRGBA)
+		require.True(t, ok)
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				require.Equal(t, img1.NRGBAAt(x, y), gotNRGBA.NRGBAAt(x, y))
+			}
+		}
+	})
+
+	t.Run("handles zero-sized image without panic", func(t *testing.T) {
+		empty := image.NewNRGBA(image.Rect(0, 0, 0, 0))
+
+		require.NotPanics(t, func() {
+			require.True(t, imageBuffer.Set(empty))
+		})
+		require.True(t, imageBuffer.IsEmpty())
+		require.Nil(t, imageBuffer.Get())
+	})
 }
 
 func TestImageBuffer_GetInto(t *testing.T) {

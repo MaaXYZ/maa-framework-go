@@ -3,6 +3,7 @@ package buffer
 import (
 	"image"
 	"image/color"
+	"image/draw"
 	"runtime"
 	"sync"
 	"testing"
@@ -10,6 +11,7 @@ import (
 )
 
 var benchmarkImageSink image.Image
+var benchmarkBoolSink bool
 
 func isLittleEndian() bool {
 	var v uint16 = 0x0102
@@ -118,6 +120,24 @@ func makeSourceImage(width, height int) *image.NRGBA {
 		}
 	}
 	return img
+}
+
+// makeSourceSubImage creates an NRGBA sub-image with stride > width*4.
+// This exercises the non-contiguous row path used by Set.
+func makeSourceSubImage(width, height int) *image.NRGBA {
+	parent := image.NewNRGBA(image.Rect(0, 0, width+2, height+2))
+	sub := parent.SubImage(image.Rect(1, 1, 1+width, 1+height)).(*image.NRGBA)
+	for y := 0; y < height; y++ {
+		row := sub.Pix[y*sub.Stride : y*sub.Stride+width*4]
+		for x := 0; x < width; x++ {
+			off := x * 4
+			row[off] = byte((x*17 + y*3) & 0xff)
+			row[off+1] = byte((x*7 + y*29) & 0xff)
+			row[off+2] = byte((x*31 + y*11) & 0xff)
+			row[off+3] = 255
+		}
+	}
+	return sub
 }
 
 // benchmarkDecodeBGRToNRGBA is a micro-benchmark that isolates BGR->NRGBA conversion cost only.
@@ -254,6 +274,75 @@ func benchmarkImageBufferGetReuseDst(b *testing.B, width, height int) {
 	}
 }
 
+func benchmarkImageBufferSetWithSource(b *testing.B, src image.Image) {
+	imageBuffer := NewImageBuffer()
+	if imageBuffer == nil {
+		b.Skip("failed to create image buffer")
+	}
+	defer imageBuffer.Destroy()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ok := imageBuffer.Set(src)
+		if !ok {
+			b.Fatal("Set returned false")
+		}
+		benchmarkBoolSink = ok
+	}
+}
+
+func benchmarkImageBufferSet(b *testing.B, width, height int) {
+	benchmarkImageBufferSetWithSource(b, makeSourceImage(width, height))
+}
+
+func benchmarkImageBufferSetSubImage(b *testing.B, width, height int) {
+	benchmarkImageBufferSetWithSource(b, makeSourceSubImage(width, height))
+}
+
+// benchmarkImageBufferSetLegacy measures end-to-end behavior equivalent to the historical Set path.
+// Use this as "before" baseline when comparing current Set optimizations.
+func benchmarkImageBufferSetLegacy(b *testing.B, width, height int) {
+	imageBuffer := NewImageBuffer()
+	if imageBuffer == nil {
+		b.Skip("failed to create image buffer")
+	}
+	defer imageBuffer.Destroy()
+
+	var src image.Image = makeSourceImage(width, height)
+	imageType := int32(16) // CV_8UC3
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		rawData := make([]byte, width*height*3)
+
+		nrgbaImg, ok := src.(*image.NRGBA)
+		if !ok {
+			nrgbaImg = image.NewNRGBA(src.Bounds())
+			draw.Draw(nrgbaImg, src.Bounds(), src, image.Point{}, draw.Src)
+		}
+
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				offset := (y*width + x) * 4
+				r := nrgbaImg.Pix[offset]
+				g := nrgbaImg.Pix[offset+1]
+				bl := nrgbaImg.Pix[offset+2]
+				rawData[(y*width+x)*3] = bl
+				rawData[(y*width+x)*3+1] = g
+				rawData[(y*width+x)*3+2] = r
+			}
+		}
+
+		ok = imageBuffer.setRawData(unsafe.Pointer(&rawData[0]), int32(width), int32(height), imageType)
+		if !ok {
+			b.Fatal("setRawData returned false")
+		}
+		benchmarkBoolSink = ok
+	}
+}
+
 func BenchmarkDecodeBGRToNRGBA_1280x720(b *testing.B) {
 	benchmarkDecodeBGRToNRGBA(b, 1280, 720)
 }
@@ -284,4 +373,28 @@ func BenchmarkImageBufferGetReuseDst_1280x720(b *testing.B) {
 
 func BenchmarkImageBufferGetReuseDst_1920x1080(b *testing.B) {
 	benchmarkImageBufferGetReuseDst(b, 1920, 1080)
+}
+
+func BenchmarkImageBufferSet_1280x720(b *testing.B) {
+	benchmarkImageBufferSet(b, 1280, 720)
+}
+
+func BenchmarkImageBufferSet_1920x1080(b *testing.B) {
+	benchmarkImageBufferSet(b, 1920, 1080)
+}
+
+func BenchmarkImageBufferSetSubImage_1280x720(b *testing.B) {
+	benchmarkImageBufferSetSubImage(b, 1280, 720)
+}
+
+func BenchmarkImageBufferSetSubImage_1920x1080(b *testing.B) {
+	benchmarkImageBufferSetSubImage(b, 1920, 1080)
+}
+
+func BenchmarkImageBufferSetLegacy_1280x720(b *testing.B) {
+	benchmarkImageBufferSetLegacy(b, 1280, 720)
+}
+
+func BenchmarkImageBufferSetLegacy_1920x1080(b *testing.B) {
+	benchmarkImageBufferSetLegacy(b, 1920, 1080)
 }
