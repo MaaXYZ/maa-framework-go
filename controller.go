@@ -429,6 +429,16 @@ func (c *Controller) Connected() bool {
 
 // CacheImage gets the image buffer of the last screencap request.
 func (c *Controller) CacheImage() (image.Image, error) {
+	img, err := c.CacheImageInto(nil)
+	if err != nil {
+		return nil, err
+	}
+	return img, nil
+}
+
+// CacheImageInto gets the image buffer of the last screencap request and writes into dst when possible.
+// If dst is nil or size mismatched, a new *image.NRGBA is allocated and returned.
+func (c *Controller) CacheImageInto(dst *image.NRGBA) (*image.NRGBA, error) {
 	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 
@@ -437,7 +447,7 @@ func (c *Controller) CacheImage() (image.Image, error) {
 		return nil, errors.New("failed to get cached image")
 	}
 
-	img := imgBuffer.Get()
+	img := imgBuffer.GetInto(dst)
 
 	return img, nil
 }
