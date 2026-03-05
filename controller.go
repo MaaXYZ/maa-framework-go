@@ -437,8 +437,8 @@ func (c *Controller) CacheImage() (image.Image, error) {
 }
 
 // CacheImageInto gets the image buffer of the last screencap request and writes into dst when possible.
-// If dst is nil or size mismatched, a new *image.NRGBA is allocated and returned.
-func (c *Controller) CacheImageInto(dst *image.NRGBA) (*image.NRGBA, error) {
+// If dst is nil or size mismatched, a new *image.RGBA is allocated and returned.
+func (c *Controller) CacheImageInto(dst *image.RGBA) (*image.RGBA, error) {
 	imgBuffer := buffer.NewImageBuffer()
 	defer imgBuffer.Destroy()
 

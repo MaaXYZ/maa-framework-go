@@ -261,7 +261,7 @@ func benchmarkImageBufferGetReuseDst(b *testing.B, width, height int) {
 		b.Fatal("failed to set source image")
 	}
 
-	dst := image.NewNRGBA(image.Rect(0, 0, width, height))
+	dst := image.NewRGBA(image.Rect(0, 0, width, height))
 
 	b.ReportAllocs()
 	b.ResetTimer()

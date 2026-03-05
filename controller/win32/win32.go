@@ -25,6 +25,10 @@ const (
 	ScreencapPrintWindow          ScreencapMethod = 1 << 4
 	ScreencapScreenDC             ScreencapMethod = 1 << 5
 
+	ScreencapAll         ScreencapMethod = ^ScreencapNone
+	ScreencapForeground  ScreencapMethod = ScreencapDXGIDesktopDupWindow | ScreencapScreenDC
+	ScreencapBackground  ScreencapMethod = ScreencapFramePool | ScreencapPrintWindow
+
 	InputNone                     InputMethod = 0
 	InputSeize                    InputMethod = 1
 	InputSendMessage              InputMethod = 1 << 1
@@ -45,6 +49,10 @@ const (
 	screencapDXGIDesktopDupWindowStr = "DXGIDesktopDupWindow"
 	screencapPrintWindowStr          = "PrintWindow"
 	screencapScreenDCStr             = "ScreenDC"
+
+	screencapAllStr         = "All"
+	screencapForegroundStr  = "Foreground"
+	screencapBackgroundStr  = "Background"
 
 	inputNoneStr                     = ""
 	inputSeizeStr                    = "Seize"
@@ -74,6 +82,12 @@ func (m ScreencapMethod) String() string {
 		return screencapPrintWindowStr
 	case ScreencapScreenDC:
 		return screencapScreenDCStr
+	case ScreencapAll:
+		return screencapAllStr
+	case ScreencapForeground:
+		return screencapForegroundStr
+	case ScreencapBackground:
+		return screencapBackgroundStr
 	}
 	return strconv.FormatUint(uint64(m), 10)
 }
@@ -121,6 +135,12 @@ func ParseScreencapMethod(s string) (ScreencapMethod, error) {
 		return ScreencapPrintWindow, nil
 	case strings.EqualFold(screencapScreenDCStr, s):
 		return ScreencapScreenDC, nil
+	case strings.EqualFold(screencapAllStr, s):
+		return ScreencapAll, nil
+	case strings.EqualFold(screencapForegroundStr, s):
+		return ScreencapForeground, nil
+	case strings.EqualFold(screencapBackgroundStr, s):
+		return ScreencapBackground, nil
 	default:
 		i, err := strconv.ParseUint(s, 10, 64)
 		if err != nil {

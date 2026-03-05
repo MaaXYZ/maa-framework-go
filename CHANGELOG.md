@@ -57,7 +57,7 @@
 |---------|-------------|
 | 构造函数 | `NewAdbController`, `NewPlayCoverController`, `NewWin32Controller`, `NewGamepadController`, `NewCustomController`, `NewCarouselImageController`, `NewBlankController` |
 | 设置方法 | `SetScreenshot`（改用 Option 模式） |
-| 查询方法 | `GetShellOutput`, `CacheImage`, `GetUUID`, `GetResolution` |
+| 查询方法 | `GetShellOutput`, `CacheImage`, `CacheImageInto`, `GetUUID`, `GetResolution` |
 
 **移除方法**：`SetScreenshotTargetLongSide`, `SetScreenshotTargetShortSide`, `SetScreenshotUseRawSize`
 **新增**：`SetScreenshot(opts ...ScreenshotOption) error` 与配套选项函数
@@ -65,6 +65,7 @@
 **Win32 InputMethod 命名对齐**：
 - `InputSendMessageWithCursorPosAndBlockInput` → `InputSendMessageWithWindowPos`
 - `InputPostMessageWithCursorPosAndBlockInput` → `InputPostMessageWithWindowPos`
+**截图缓存类型变更**：`Controller.CacheImageInto` 入参与返回值由 `*image.NRGBA` 调整为 `*image.RGBA`
 
 #### Tasker
 
@@ -369,8 +370,13 @@ if best != nil {
 - OCR 颜色过滤：`OCRParam.ColorFilter` 字段 & `WithOCRColorFilter` 选项函数，指定 ColorMatch 节点名对图像进行颜色二值化后再送入 OCR 识别（适配 [MaaFramework#1145](https://github.com/MaaXYZ/MaaFramework/pull/1145)）
 - Controller inactive：`Controller.PostInactive() *Job` 与 `CustomController.Inactive() bool`，用于在任务结束后恢复窗口/输入状态（适配 [MaaFramework#1155](https://github.com/MaaXYZ/MaaFramework/pull/1155)；Win32 控制器会恢复窗口与解除输入阻塞，其他控制器为 no-op）
 - Screencap Action：新增 `ActionTypeScreencap` / `ActScreencap(ScreencapParam)`，支持在流水线动作中保存当前截图（适配 [MaaFramework#1165](https://github.com/MaaXYZ/MaaFramework/pull/1165)）
+- Win32 截图方式：`ScreencapMethod` 新增 `ScreencapAll`、`ScreencapForeground`、`ScreencapBackground`，并支持对应字符串解析/序列化
 - Controller info：新增 `Controller.GetInfo() (string, error)`，以 JSON 格式获取控制器结构化信息（类型、构造参数、当前状态等）（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - `CustomController` 接口新增 `GetInfo() (string, bool)` 方法，自定义控制器可提供额外信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - `ControllerActionDetail` 新增 `Info map[string]any` 字段，控制器动作事件回调中包含控制器信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - WlRoots Controller：新增 NewWlRootsController(wlrSocketPath string) (*Controller, error)，支持通过 Wayland socket 创建 WlRoots 控制器（适配 [MaaFramework#1131](https://github.com/MaaXYZ/MaaFramework/pull/1131)）
+
+## Performance
+
+- ImageBuffer RGBA 路径优化：`Set` 对 `*image.RGBA` 走直通转换路径，减少高频图像写入时的额外转换与分配开销
 
