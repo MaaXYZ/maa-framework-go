@@ -232,13 +232,13 @@ func TestController_CacheImageInto(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, img1)
 
-	reused := image.NewNRGBA(img1.Bounds())
+	reused := image.NewRGBA(img1.Bounds())
 	img2, err := ctrl.CacheImageInto(reused)
 	require.NoError(t, err)
 	require.NotNil(t, img2)
 	require.Same(t, reused, img2)
 
-	mismatch := image.NewNRGBA(image.Rect(0, 0, 1, 1))
+	mismatch := image.NewRGBA(image.Rect(0, 0, 1, 1))
 	img3, err := ctrl.CacheImageInto(mismatch)
 	require.NoError(t, err)
 	require.NotNil(t, img3)
