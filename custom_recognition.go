@@ -87,13 +87,14 @@ func _MaaCustomRecognitionCallbackAgent(
 			Roi:                    buffer.NewRectBufferByHandle(roi).Get(),
 		},
 	)
-	if ok {
-		box := ret.Box
-		outBoxRect := buffer.NewRectBufferByHandle(outBox)
-		outBoxRect.Set(box)
-		outDetailString := buffer.NewStringBufferByHandle(outDetail)
-		outDetailString.Set(ret.Detail)
-		return 1
+	if !ok || ret == nil {
+		return 0
 	}
-	return 0
+
+	box := ret.Box
+	outBoxRect := buffer.NewRectBufferByHandle(outBox)
+	outBoxRect.Set(box)
+	outDetailString := buffer.NewStringBufferByHandle(outDetail)
+	outDetailString.Set(ret.Detail)
+	return 1
 }
