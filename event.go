@@ -350,7 +350,8 @@ func _MaaEventCallbackAgent(handle uintptr, message, detailsJson *byte, transArg
 
 	cb.handleRaw(
 		handle,
-		cStringToString(message),
+		// Event message is consumed immediately in this stack frame.
+		cStringToStringNoCopy(message),
 		cStringToBytes(detailsJson),
 	)
 	return 0
@@ -361,7 +362,16 @@ func cStringToString(b *byte) string {
 		return ""
 	}
 
+	// Keep copy semantics for user-facing callback arguments.
 	return string(cStringToBytes(b))
+}
+
+func cStringToStringNoCopy(b *byte) string {
+	if b == nil {
+		return ""
+	}
+
+	return unsafe.String(b, cStringLen(b))
 }
 
 func cStringToBytes(b *byte) []byte {
@@ -369,6 +379,10 @@ func cStringToBytes(b *byte) []byte {
 		return nil
 	}
 
+	return unsafe.Slice(b, cStringLen(b))
+}
+
+func cStringLen(b *byte) int {
 	ptr := unsafe.Pointer(b)
 	length := 0
 
@@ -380,5 +394,5 @@ func cStringToBytes(b *byte) []byte {
 		length++
 	}
 
-	return unsafe.Slice(b, length)
+	return length
 }
