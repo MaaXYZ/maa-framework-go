@@ -64,7 +64,7 @@ func TestImageListBuffer_Append(t *testing.T) {
 
 	img2 := imageListBuffer.Get(0)
 	require.NotNil(t, img2)
-	require.Equal(t, img1, img2)
+	requireImagesEqual(t, img1, img2)
 }
 
 func TestImageListBuffer_Remove(t *testing.T) {
