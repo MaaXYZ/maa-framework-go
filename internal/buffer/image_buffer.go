@@ -12,6 +12,13 @@ type ImageBuffer struct {
 	handle uintptr
 }
 
+const (
+	cvType8UC3   int32 = 16
+	bytesPerBGR        = 3
+	bytesPerRGBA       = 4
+	opaqueAlpha  byte  = 0xff
+)
+
 func NewImageBuffer() *ImageBuffer {
 	handle := native.MaaImageBufferCreate()
 	if handle == 0 {
@@ -59,36 +66,43 @@ func (i *ImageBuffer) GetInto(dst *image.RGBA) *image.RGBA {
 	width := int(i.getWidth())
 	height := int(i.getHeight())
 
-	if dst == nil || dst.Rect.Dx() != width || dst.Rect.Dy() != height {
-		dst = image.NewRGBA(image.Rect(0, 0, width, height))
-	}
+	dst = ensureRGBA(dst, width, height)
+	raw := unsafe.Slice((*byte)(rawData), width*height*bytesPerBGR)
+	decodeBGRToRGBA(raw, dst, width, height)
+	return dst
+}
 
-	raw := unsafe.Slice((*byte)(rawData), width*height*3)
-	pix := dst.Pix
-	if dst.Stride == width*4 {
-		for src, dstIdx := 0, 0; src < len(raw); src, dstIdx = src+3, dstIdx+4 {
-			// Native buffer stores pixels as BGR, convert to RGBA (alpha fixed to 255).
-			pix[dstIdx] = raw[src+2]
-			pix[dstIdx+1] = raw[src+1]
-			pix[dstIdx+2] = raw[src]
-			pix[dstIdx+3] = 255
-		}
-		return dst
+func ensureRGBA(dst *image.RGBA, width, height int) *image.RGBA {
+	if dst == nil || dst.Rect.Dx() != width || dst.Rect.Dy() != height {
+		return image.NewRGBA(image.Rect(0, 0, width, height))
+	}
+	return dst
+}
+
+func decodeBGRToRGBA(src []byte, dst *image.RGBA, width, height int) {
+	srcRowBytes := width * bytesPerBGR
+	dstRowBytes := width * bytesPerRGBA
+
+	if dst.Stride == dstRowBytes {
+		decodeBGRRowToRGBA(dst.Pix[:dstRowBytes*height], src)
+		return
 	}
 
 	for y := 0; y < height; y++ {
-		srcIdx := y * width * 3
-		dstIdx := y * dst.Stride
-		for x := 0; x < width; x++ {
-			pix[dstIdx] = raw[srcIdx+2]
-			pix[dstIdx+1] = raw[srcIdx+1]
-			pix[dstIdx+2] = raw[srcIdx]
-			pix[dstIdx+3] = 255
-			srcIdx += 3
-			dstIdx += 4
-		}
+		srcStart := y * srcRowBytes
+		dstStart := y * dst.Stride
+		decodeBGRRowToRGBA(dst.Pix[dstStart:dstStart+dstRowBytes], src[srcStart:srcStart+srcRowBytes])
 	}
-	return dst
+}
+
+func decodeBGRRowToRGBA(dst, src []byte) {
+	for srcIdx, dstIdx := 0, 0; srcIdx < len(src); srcIdx, dstIdx = srcIdx+bytesPerBGR, dstIdx+bytesPerRGBA {
+		// Native buffer stores pixels as BGR, convert to RGBA (alpha fixed to 255).
+		dst[dstIdx] = src[srcIdx+2]
+		dst[dstIdx+1] = src[srcIdx+1]
+		dst[dstIdx+2] = src[srcIdx]
+		dst[dstIdx+3] = opaqueAlpha
+	}
 }
 
 // Set converts an image.Image to raw data and sets it in the buffer.
@@ -96,54 +110,58 @@ func (i *ImageBuffer) Set(img image.Image) bool {
 	bounds := img.Bounds()
 	width := bounds.Dx()
 	height := bounds.Dy()
-	imageType := int32(16) // CV_8UC3
 
 	if width == 0 || height == 0 {
 		return i.Clear()
 	}
 
-	rawData := make([]byte, width*height*3)
+	rawData := make([]byte, width*height*bytesPerBGR)
+	encodeImageToBGR(img, bounds, width, height, rawData)
+	return i.setRawData(unsafe.Pointer(&rawData[0]), int32(width), int32(height), cvType8UC3)
+}
 
+func encodeImageToBGR(img image.Image, bounds image.Rectangle, width, height int, dst []byte) {
 	switch sourceImg := img.(type) {
 	case *image.NRGBA:
-		encodeNRGBAToBGR(sourceImg, rawData, width, height)
+		encodeNRGBAToBGR(sourceImg, dst, width, height)
 	case *image.RGBA:
-		encodeRGBAToBGR(sourceImg, rawData, width, height)
+		encodeRGBAToBGR(sourceImg, dst, width, height)
 	default:
 		nrgbaImg := image.NewNRGBA(image.Rect(0, 0, width, height))
 		draw.Draw(nrgbaImg, nrgbaImg.Bounds(), img, bounds.Min, draw.Src)
-		encodeNRGBAToBGR(nrgbaImg, rawData, width, height)
+		encodeNRGBAToBGR(nrgbaImg, dst, width, height)
 	}
-
-	return i.setRawData(unsafe.Pointer(&rawData[0]), int32(width), int32(height), imageType)
 }
 
 func encodeNRGBAToBGR(src *image.NRGBA, dst []byte, width, height int) {
+	encodeRGBABytesToBGR(src.Pix, src.Stride, dst, width, height)
+}
+
+func encodeRGBABytesToBGR(srcPix []byte, srcStride int, dst []byte, width, height int) {
 	if width == 0 || height == 0 {
 		return
 	}
 
-	pix := src.Pix
-	if src.Stride == width*4 {
-		for srcIdx, dstIdx := 0, 0; dstIdx < len(dst); srcIdx, dstIdx = srcIdx+4, dstIdx+3 {
-			dst[dstIdx] = pix[srcIdx+2]
-			dst[dstIdx+1] = pix[srcIdx+1]
-			dst[dstIdx+2] = pix[srcIdx]
-		}
+	srcRowBytes := width * bytesPerRGBA
+	dstRowBytes := width * bytesPerBGR
+
+	if srcStride == srcRowBytes {
+		encodeRGBARowToBGR(srcPix[:srcRowBytes*height], dst)
 		return
 	}
 
 	for y := 0; y < height; y++ {
-		srcIdx := y * src.Stride
-		dstIdx := y * width * 3
-		rowEnd := srcIdx + width*4
-		for srcIdx < rowEnd {
-			dst[dstIdx] = pix[srcIdx+2]
-			dst[dstIdx+1] = pix[srcIdx+1]
-			dst[dstIdx+2] = pix[srcIdx]
-			srcIdx += 4
-			dstIdx += 3
-		}
+		srcStart := y * srcStride
+		dstStart := y * dstRowBytes
+		encodeRGBARowToBGR(srcPix[srcStart:srcStart+srcRowBytes], dst[dstStart:dstStart+dstRowBytes])
+	}
+}
+
+func encodeRGBARowToBGR(src, dst []byte) {
+	for srcIdx, dstIdx := 0, 0; dstIdx < len(dst); srcIdx, dstIdx = srcIdx+bytesPerRGBA, dstIdx+bytesPerBGR {
+		dst[dstIdx] = src[srcIdx+2]
+		dst[dstIdx+1] = src[srcIdx+1]
+		dst[dstIdx+2] = src[srcIdx]
 	}
 }
 
@@ -161,79 +179,67 @@ func encodeRGBAToBGR(src *image.RGBA, dst []byte, width, height int) {
 }
 
 func rgbaIsOpaque(src *image.RGBA, width, height int) bool {
-	pix := src.Pix
-	if src.Stride == width*4 {
-		end := width * height * 4
-		for alphaIdx := 3; alphaIdx < end; alphaIdx += 4 {
-			if pix[alphaIdx] != 0xff {
-				return false
-			}
-		}
-		return true
+	return rgbaBytesAreOpaque(src.Pix, src.Stride, width, height)
+}
+
+func rgbaBytesAreOpaque(srcPix []byte, srcStride, width, height int) bool {
+	srcRowBytes := width * bytesPerRGBA
+	if srcStride == srcRowBytes {
+		return rgbaRowIsOpaque(srcPix[:srcRowBytes*height])
 	}
 
 	for y := 0; y < height; y++ {
-		alphaIdx := y*src.Stride + 3
-		rowEnd := alphaIdx + width*4
-		for alphaIdx < rowEnd {
-			if pix[alphaIdx] != 0xff {
-				return false
-			}
-			alphaIdx += 4
+		srcStart := y * srcStride
+		if !rgbaRowIsOpaque(srcPix[srcStart : srcStart+srcRowBytes]) {
+			return false
+		}
+	}
+	return true
+}
+
+func rgbaRowIsOpaque(row []byte) bool {
+	for alphaIdx := 3; alphaIdx < len(row); alphaIdx += bytesPerRGBA {
+		if row[alphaIdx] != opaqueAlpha {
+			return false
 		}
 	}
 	return true
 }
 
 func encodeOpaqueRGBAToBGR(src *image.RGBA, dst []byte, width, height int) {
-	pix := src.Pix
-	if src.Stride == width*4 {
-		for srcIdx, dstIdx := 0, 0; dstIdx < len(dst); srcIdx, dstIdx = srcIdx+4, dstIdx+3 {
-			dst[dstIdx] = pix[srcIdx+2]
-			dst[dstIdx+1] = pix[srcIdx+1]
-			dst[dstIdx+2] = pix[srcIdx]
-		}
-		return
-	}
-
-	for y := 0; y < height; y++ {
-		srcIdx := y * src.Stride
-		dstIdx := y * width * 3
-		rowEnd := srcIdx + width*4
-		for srcIdx < rowEnd {
-			dst[dstIdx] = pix[srcIdx+2]
-			dst[dstIdx+1] = pix[srcIdx+1]
-			dst[dstIdx+2] = pix[srcIdx]
-			srcIdx += 4
-			dstIdx += 3
-		}
-	}
+	encodeRGBABytesToBGR(src.Pix, src.Stride, dst, width, height)
 }
 
 func encodeUnpremultipliedRGBAToBGR(src *image.RGBA, dst []byte, width, height int) {
-	pix := src.Pix
-	if src.Stride == width*4 {
-		for srcIdx, dstIdx := 0, 0; dstIdx < len(dst); srcIdx, dstIdx = srcIdx+4, dstIdx+3 {
-			r, g, b := unpremultiplyRGBAExact(pix[srcIdx], pix[srcIdx+1], pix[srcIdx+2], pix[srcIdx+3])
-			dst[dstIdx] = b
-			dst[dstIdx+1] = g
-			dst[dstIdx+2] = r
-		}
+	encodeUnpremultipliedRGBABytesToBGR(src.Pix, src.Stride, dst, width, height)
+}
+
+func encodeUnpremultipliedRGBABytesToBGR(srcPix []byte, srcStride int, dst []byte, width, height int) {
+	if width == 0 || height == 0 {
+		return
+	}
+
+	srcRowBytes := width * bytesPerRGBA
+	dstRowBytes := width * bytesPerBGR
+
+	if srcStride == srcRowBytes {
+		encodeUnpremultipliedRGBARowToBGR(srcPix[:srcRowBytes*height], dst)
 		return
 	}
 
 	for y := 0; y < height; y++ {
-		srcIdx := y * src.Stride
-		dstIdx := y * width * 3
-		rowEnd := srcIdx + width*4
-		for srcIdx < rowEnd {
-			r, g, b := unpremultiplyRGBAExact(pix[srcIdx], pix[srcIdx+1], pix[srcIdx+2], pix[srcIdx+3])
-			dst[dstIdx] = b
-			dst[dstIdx+1] = g
-			dst[dstIdx+2] = r
-			srcIdx += 4
-			dstIdx += 3
-		}
+		srcStart := y * srcStride
+		dstStart := y * dstRowBytes
+		encodeUnpremultipliedRGBARowToBGR(srcPix[srcStart:srcStart+srcRowBytes], dst[dstStart:dstStart+dstRowBytes])
+	}
+}
+
+func encodeUnpremultipliedRGBARowToBGR(src, dst []byte) {
+	for srcIdx, dstIdx := 0, 0; dstIdx < len(dst); srcIdx, dstIdx = srcIdx+bytesPerRGBA, dstIdx+bytesPerBGR {
+		r, g, b := unpremultiplyRGBAExact(src[srcIdx], src[srcIdx+1], src[srcIdx+2], src[srcIdx+3])
+		dst[dstIdx] = b
+		dst[dstIdx+1] = g
+		dst[dstIdx+2] = r
 	}
 }
 
