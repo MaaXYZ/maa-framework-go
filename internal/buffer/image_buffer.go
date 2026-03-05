@@ -50,8 +50,8 @@ func (i *ImageBuffer) Get() image.Image {
 }
 
 // GetInto retrieves the image from raw data stored in the buffer and writes into dst when possible.
-// If dst is nil or size mismatched, a new *image.NRGBA is allocated and returned.
-func (i *ImageBuffer) GetInto(dst *image.NRGBA) *image.NRGBA {
+// If dst is nil or size mismatched, a new *image.RGBA is allocated and returned.
+func (i *ImageBuffer) GetInto(dst *image.RGBA) *image.RGBA {
 	rawData := i.getRawData()
 	if rawData == nil {
 		return nil
@@ -60,14 +60,14 @@ func (i *ImageBuffer) GetInto(dst *image.NRGBA) *image.NRGBA {
 	height := int(i.getHeight())
 
 	if dst == nil || dst.Rect.Dx() != width || dst.Rect.Dy() != height {
-		dst = image.NewNRGBA(image.Rect(0, 0, width, height))
+		dst = image.NewRGBA(image.Rect(0, 0, width, height))
 	}
 
 	raw := unsafe.Slice((*byte)(rawData), width*height*3)
 	pix := dst.Pix
 	if dst.Stride == width*4 {
 		for src, dstIdx := 0, 0; src < len(raw); src, dstIdx = src+3, dstIdx+4 {
-			// Native buffer stores pixels as BGR, convert to NRGBA (alpha fixed to 255).
+			// Native buffer stores pixels as BGR, convert to RGBA (alpha fixed to 255).
 			pix[dstIdx] = raw[src+2]
 			pix[dstIdx+1] = raw[src+1]
 			pix[dstIdx+2] = raw[src]
