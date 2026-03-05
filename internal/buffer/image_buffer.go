@@ -163,7 +163,8 @@ func encodeRGBAToBGR(src *image.RGBA, dst []byte, width, height int) {
 func rgbaIsOpaque(src *image.RGBA, width, height int) bool {
 	pix := src.Pix
 	if src.Stride == width*4 {
-		for alphaIdx := 3; alphaIdx < len(pix); alphaIdx += 4 {
+		end := width * height * 4
+		for alphaIdx := 3; alphaIdx < end; alphaIdx += 4 {
 			if pix[alphaIdx] != 0xff {
 				return false
 			}

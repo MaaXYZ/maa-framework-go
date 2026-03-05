@@ -183,6 +183,28 @@ func TestImageBuffer_Set(t *testing.T) {
 	})
 }
 
+func TestRGBAIsOpaque_FastPathIgnoresTrailingRowsOutsideSubImage(t *testing.T) {
+	width, height := 2, 2
+	parent := image.NewRGBA(image.Rect(0, 0, width, height+2))
+	sub := parent.SubImage(image.Rect(0, 1, width, 1+height)).(*image.RGBA)
+	require.Equal(t, width*4, sub.Stride)
+
+	for y := 0; y < height; y++ {
+		rowStart := y * sub.Stride
+		for x := 0; x < width; x++ {
+			sub.Pix[rowStart+x*4+3] = 0xff
+		}
+	}
+
+	// The first row after the sub-image remains transparent and must not affect the opacity check.
+	outsideRowStart := height * sub.Stride
+	for x := 0; x < width; x++ {
+		sub.Pix[outsideRowStart+x*4+3] = 0x00
+	}
+
+	require.True(t, rgbaIsOpaque(sub, width, height))
+}
+
 func TestImageBuffer_GetInto(t *testing.T) {
 	imageBuffer := createImageBuffer(t)
 	defer imageBuffer.Destroy()
