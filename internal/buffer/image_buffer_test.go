@@ -57,6 +57,77 @@ func TestImageBuffer_Set(t *testing.T) {
 	require.NotNil(t, img2)
 	require.Equal(t, img1, img2)
 
+	t.Run("supports RGBA input", func(t *testing.T) {
+		rgba := image.NewRGBA(image.Rect(0, 0, width, height))
+		rgba.SetRGBA(0, 0, color.RGBA{R: 255, G: 0, B: 0, A: 255})
+		rgba.SetRGBA(1, 0, color.RGBA{R: 0, G: 255, B: 0, A: 255})
+		rgba.SetRGBA(0, 1, color.RGBA{R: 0, G: 0, B: 255, A: 255})
+		rgba.SetRGBA(1, 1, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+
+		require.True(t, imageBuffer.Set(rgba))
+		got := imageBuffer.Get()
+		require.NotNil(t, got)
+		require.Equal(t, img1, got)
+	})
+
+	t.Run("supports premultiplied RGBA input", func(t *testing.T) {
+		rgba := image.NewRGBA(image.Rect(0, 0, 1, 1))
+		rgba.Pix[0] = 128
+		rgba.Pix[1] = 0
+		rgba.Pix[2] = 0
+		rgba.Pix[3] = 128
+
+		require.True(t, imageBuffer.Set(rgba))
+		got := imageBuffer.Get()
+		require.NotNil(t, got)
+
+		gotNRGBA, ok := got.(*image.NRGBA)
+		require.True(t, ok)
+		require.Equal(t, color.NRGBA{R: 255, G: 0, B: 0, A: 255}, gotNRGBA.NRGBAAt(0, 0))
+	})
+
+	t.Run("matches legacy conversion for low-alpha RGBA input", func(t *testing.T) {
+		rgba := image.NewRGBA(image.Rect(0, 0, 1, 1))
+		rgba.Pix[0] = 1
+		rgba.Pix[1] = 0
+		rgba.Pix[2] = 0
+		rgba.Pix[3] = 2
+
+		require.True(t, imageBuffer.Set(rgba))
+		got := imageBuffer.Get()
+		require.NotNil(t, got)
+
+		gotNRGBA, ok := got.(*image.NRGBA)
+		require.True(t, ok)
+
+		expected := color.NRGBAModel.Convert(color.RGBA{R: 1, G: 0, B: 0, A: 2}).(color.NRGBA)
+		expected.A = 255
+		require.Equal(t, expected, gotNRGBA.NRGBAAt(0, 0))
+	})
+
+	t.Run("supports RGBA sub-image with larger stride", func(t *testing.T) {
+		parent := image.NewRGBA(image.Rect(0, 0, width+2, height+2))
+		sub := parent.SubImage(image.Rect(1, 1, 1+width, 1+height)).(*image.RGBA)
+		require.Greater(t, sub.Stride, width*4)
+
+		src := image.NewRGBA(image.Rect(0, 0, width, height))
+		src.SetRGBA(0, 0, color.RGBA{R: 255, G: 0, B: 0, A: 255})
+		src.SetRGBA(1, 0, color.RGBA{R: 0, G: 255, B: 0, A: 255})
+		src.SetRGBA(0, 1, color.RGBA{R: 0, G: 0, B: 255, A: 255})
+		src.SetRGBA(1, 1, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+
+		for y := 0; y < height; y++ {
+			srcRow := src.Pix[y*src.Stride : y*src.Stride+width*4]
+			dstRow := sub.Pix[y*sub.Stride : y*sub.Stride+width*4]
+			copy(dstRow, srcRow)
+		}
+
+		require.True(t, imageBuffer.Set(sub))
+		got := imageBuffer.Get()
+		require.NotNil(t, got)
+		require.Equal(t, img1, got)
+	})
+
 	t.Run("supports NRGBA sub-image with larger stride", func(t *testing.T) {
 		parent := image.NewNRGBA(image.Rect(0, 0, width+2, height+2))
 		sub := parent.SubImage(image.Rect(1, 1, 1+width, 1+height)).(*image.NRGBA)
