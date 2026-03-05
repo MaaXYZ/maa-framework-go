@@ -344,7 +344,7 @@ func requireRecognitionDetailMatchesCombinedRaw(t *testing.T, detail *Recognitio
 	require.NotNil(t, detail)
 	require.NotNil(t, detail.CombinedResult)
 
-	combined, err := parseCombinedResult(detail.DetailJson)
+	combined, err := parseCombinedResult([]byte(detail.DetailJson))
 	require.NoError(t, err)
 	require.Len(t, detail.CombinedResult, len(combined))
 

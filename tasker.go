@@ -272,6 +272,7 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	DrawImages := draws.GetAll()
 
 	detailJsonStr := detailJson.Get()
+	detailJsonBytes := []byte(detailJsonStr)
 	algorithmStr := algorithm.Get()
 
 	var err error
@@ -279,12 +280,12 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	var combinedResults []*RecognitionDetail
 
 	if isCombinedRecognition(algorithmStr) {
-		combinedResults, err = parseCombinedResult(detailJsonStr)
+		combinedResults, err = parseCombinedResult(detailJsonBytes)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		results, err = parseRecognitionResults(algorithmStr, detailJsonStr)
+		results, err = parseRecognitionResults(algorithmStr, detailJsonBytes)
 		if err != nil {
 			return nil, err
 		}

@@ -6,6 +6,12 @@ import (
 	"fmt"
 )
 
+var (
+	jsonNull        = []byte("null")
+	jsonEmptyObject = []byte("{}")
+	jsonEmptyArray  = []byte("[]")
+)
+
 type RecognitionResult struct {
 	tp  RecognitionType
 	val any
@@ -206,13 +212,15 @@ func parseRecognitionResult(algorithm string, resultJson []byte) (*RecognitionRe
 
 // parseRecognitionResults parses detailJson and returns RecognitionResults containing all, best, and filtered results.
 // Detail JSON format: {"all": [Result...], "best": Result | null, "filtered": [Result...]}
-func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults, error) {
+func parseRecognitionResults(algorithm string, detailJson []byte) (*RecognitionResults, error) {
 	if algorithm == string(RecognitionTypeDirectHit) {
 		return nil, nil
 	}
 
+	trimmed := bytes.TrimSpace(detailJson)
+
 	// Handle empty or invalid JSON
-	if detailJson == "" || detailJson == "{}" || detailJson == "null" {
+	if len(trimmed) == 0 || bytes.Equal(trimmed, jsonEmptyObject) || bytes.Equal(trimmed, jsonNull) {
 		return &RecognitionResults{
 			All:      []*RecognitionResult{},
 			Filtered: []*RecognitionResult{},
@@ -225,7 +233,7 @@ func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults,
 		Filtered json.RawMessage `json:"filtered"`
 	}
 
-	if err := unmarshalJSON([]byte(detailJson), &raw); err != nil {
+	if err := unmarshalJSON(trimmed, &raw); err != nil {
 		return nil, err
 	}
 
@@ -250,7 +258,7 @@ func parseRecognitionResults(algorithm, detailJson string) (*RecognitionResults,
 
 func parseRecognitionResultSingle(algorithm string, raw json.RawMessage) (*RecognitionResult, error) {
 	trimmed := bytes.TrimSpace(raw)
-	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+	if len(trimmed) == 0 || bytes.Equal(trimmed, jsonNull) {
 		return nil, nil
 	}
 	if trimmed[0] != '{' {
@@ -261,7 +269,7 @@ func parseRecognitionResultSingle(algorithm string, raw json.RawMessage) (*Recog
 
 func parseRecognitionResultList(algorithm string, raw json.RawMessage) ([]*RecognitionResult, error) {
 	trimmed := bytes.TrimSpace(raw)
-	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+	if len(trimmed) == 0 || bytes.Equal(trimmed, jsonNull) {
 		return []*RecognitionResult{}, nil
 	}
 
@@ -314,13 +322,14 @@ func isCombinedRecognition(algorithm string) bool {
 
 // parseCombinedResult parses detailJson for And/Or recognition and returns an array of RecognitionDetail.
 // Detail JSON format: [{"algorithm": "...", "box": [...], "detail": {...}, "name": "...", "reco_id": ...}, ...]
-func parseCombinedResult(detailJson string) ([]*RecognitionDetail, error) {
-	if detailJson == "" || detailJson == "[]" {
+func parseCombinedResult(detailJson []byte) ([]*RecognitionDetail, error) {
+	trimmed := bytes.TrimSpace(detailJson)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, jsonEmptyArray) || bytes.Equal(trimmed, jsonNull) {
 		return []*RecognitionDetail{}, nil
 	}
 
 	var items []combinedResultItem
-	if err := unmarshalJSON([]byte(detailJson), &items); err != nil {
+	if err := unmarshalJSON(trimmed, &items); err != nil {
 		return []*RecognitionDetail{}, err
 	}
 
@@ -330,14 +339,15 @@ func parseCombinedResult(detailJson string) ([]*RecognitionDetail, error) {
 		var detail *RecognitionResults
 		var combined []*RecognitionDetail
 
-		if len(item.Detail) > 0 {
+		itemDetailTrimmed := bytes.TrimSpace(item.Detail)
+		if len(itemDetailTrimmed) > 0 && !bytes.Equal(itemDetailTrimmed, jsonNull) {
 			if isCombinedRecognition(item.Algorithm) {
-				combined, err = parseCombinedResult(string(item.Detail))
+				combined, err = parseCombinedResult(itemDetailTrimmed)
 				if err != nil {
 					return []*RecognitionDetail{}, err
 				}
 			} else {
-				detail, err = parseRecognitionResults(item.Algorithm, string(item.Detail))
+				detail, err = parseRecognitionResults(item.Algorithm, itemDetailTrimmed)
 				if err != nil {
 					return []*RecognitionDetail{}, err
 				}
