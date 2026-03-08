@@ -189,30 +189,31 @@ var (
 	MaaControllerPostClick       func(ctrl uintptr, x, y int32) int64
 	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
 	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
-	MaaControllerPostClickV2    func(ctrl uintptr, x, y, contact, pressure int32) int64
-	MaaControllerPostSwipe      func(ctrl uintptr, x1, y1, x2, y2, duration int32) int64
-	MaaControllerPostSwipeV2    func(ctrl uintptr, x1, y1, x2, y2, duration, contact, pressure int32) int64
-	MaaControllerPostClickKey   func(ctrl uintptr, keycode int32) int64
-	MaaControllerPostInputText  func(ctrl uintptr, text string) int64
-	MaaControllerPostStartApp   func(ctrl uintptr, intent string) int64
-	MaaControllerPostStopApp    func(ctrl uintptr, intent string) int64
-	MaaControllerPostTouchDown  func(ctrl uintptr, contact, x, y, pressure int32) int64
-	MaaControllerPostTouchMove  func(ctrl uintptr, contact, x, y, pressure int32) int64
-	MaaControllerPostTouchUp    func(ctrl uintptr, contact int32) int64
-	MaaControllerPostKeyDown    func(ctrl uintptr, keycode int32) int64
-	MaaControllerPostKeyUp      func(ctrl uintptr, keycode int32) int64
-	MaaControllerPostScreencap  func(ctrl uintptr) int64
-	MaaControllerPostScroll     func(ctrl uintptr, dx, dy int32) int64
-	MaaControllerPostInactive   func(ctrl uintptr) int64
-	MaaControllerPostShell      func(ctrl uintptr, cmd string, timeout int64) int64
-	MaaControllerGetShellOutput func(ctrl uintptr, buffer uintptr) bool
-	MaaControllerStatus         func(ctrl uintptr, id int64) int32
-	MaaControllerWait           func(ctrl uintptr, id int64) int32
-	MaaControllerConnected      func(ctrl uintptr) bool
-	MaaControllerCachedImage    func(ctrl uintptr, buffer uintptr) bool
-	MaaControllerGetUuid        func(ctrl uintptr, buffer uintptr) bool
-	MaaControllerGetResolution  func(ctrl uintptr, width, height *int32) bool
-	MaaControllerGetInfo        func(ctrl uintptr, buffer uintptr) bool
+	MaaControllerPostClickV2      func(ctrl uintptr, x, y, contact, pressure int32) int64
+	MaaControllerPostSwipe        func(ctrl uintptr, x1, y1, x2, y2, duration int32) int64
+	MaaControllerPostSwipeV2      func(ctrl uintptr, x1, y1, x2, y2, duration, contact, pressure int32) int64
+	MaaControllerPostClickKey     func(ctrl uintptr, keycode int32) int64
+	MaaControllerPostInputText    func(ctrl uintptr, text string) int64
+	MaaControllerPostStartApp     func(ctrl uintptr, intent string) int64
+	MaaControllerPostStopApp      func(ctrl uintptr, intent string) int64
+	MaaControllerPostTouchDown    func(ctrl uintptr, contact, x, y, pressure int32) int64
+	MaaControllerPostTouchMove    func(ctrl uintptr, contact, x, y, pressure int32) int64
+	MaaControllerPostTouchUp      func(ctrl uintptr, contact int32) int64
+	MaaControllerPostRelativeMove func(ctrl uintptr, dx, dy int32) int64
+	MaaControllerPostKeyDown      func(ctrl uintptr, keycode int32) int64
+	MaaControllerPostKeyUp        func(ctrl uintptr, keycode int32) int64
+	MaaControllerPostScreencap    func(ctrl uintptr) int64
+	MaaControllerPostScroll       func(ctrl uintptr, dx, dy int32) int64
+	MaaControllerPostInactive     func(ctrl uintptr) int64
+	MaaControllerPostShell        func(ctrl uintptr, cmd string, timeout int64) int64
+	MaaControllerGetShellOutput   func(ctrl uintptr, buffer uintptr) bool
+	MaaControllerStatus           func(ctrl uintptr, id int64) int32
+	MaaControllerWait             func(ctrl uintptr, id int64) int32
+	MaaControllerConnected        func(ctrl uintptr) bool
+	MaaControllerCachedImage      func(ctrl uintptr, buffer uintptr) bool
+	MaaControllerGetUuid          func(ctrl uintptr, buffer uintptr) bool
+	MaaControllerGetResolution    func(ctrl uintptr, width, height *int32) bool
+	MaaControllerGetInfo          func(ctrl uintptr, buffer uintptr) bool
 )
 
 var (
@@ -456,6 +457,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaControllerPostTouchDown, maaFramework, "MaaControllerPostTouchDown")
 	purego.RegisterLibFunc(&MaaControllerPostTouchMove, maaFramework, "MaaControllerPostTouchMove")
 	purego.RegisterLibFunc(&MaaControllerPostTouchUp, maaFramework, "MaaControllerPostTouchUp")
+	purego.RegisterLibFunc(&MaaControllerPostRelativeMove, maaFramework, "MaaControllerPostRelativeMove")
 	purego.RegisterLibFunc(&MaaControllerPostKeyDown, maaFramework, "MaaControllerPostKeyDown")
 	purego.RegisterLibFunc(&MaaControllerPostKeyUp, maaFramework, "MaaControllerPostKeyUp")
 	purego.RegisterLibFunc(&MaaControllerPostScreencap, maaFramework, "MaaControllerPostScreencap")

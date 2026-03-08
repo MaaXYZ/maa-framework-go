@@ -364,6 +364,12 @@ func (c *Controller) PostTouchUp(contact int32) *Job {
 	return newJob(id, c.status, c.wait)
 }
 
+// PostRelativeMove posts a relative cursor move.
+func (c *Controller) PostRelativeMove(dx, dy int32) *Job {
+	id := native.MaaControllerPostRelativeMove(c.handle, dx, dy)
+	return newJob(id, c.status, c.wait)
+}
+
 func (c *Controller) PostKeyDown(keycode int32) *Job {
 	id := native.MaaControllerPostKeyDown(c.handle, keycode)
 	return newJob(id, c.status, c.wait)
