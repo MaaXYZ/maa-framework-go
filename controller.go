@@ -365,6 +365,9 @@ func (c *Controller) PostTouchUp(contact int32) *Job {
 }
 
 // PostRelativeMove posts a relative cursor move.
+// dx and dy are the horizontal and vertical move offsets.
+// This is currently only supported by Win32 controllers.
+// If the controller does not support relative move, the posted action will fail.
 func (c *Controller) PostRelativeMove(dx, dy int32) *Job {
 	id := native.MaaControllerPostRelativeMove(c.handle, dx, dy)
 	return newJob(id, c.status, c.wait)
