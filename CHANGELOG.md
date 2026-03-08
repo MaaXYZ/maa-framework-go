@@ -375,6 +375,7 @@ if best != nil {
 - `CustomController` 接口新增 `GetInfo() (string, bool)` 方法，自定义控制器可提供额外信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - `ControllerActionDetail` 新增 `Info map[string]any` 字段，控制器动作事件回调中包含控制器信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - WlRoots Controller：新增 NewWlRootsController(wlrSocketPath string) (*Controller, error)，支持通过 Wayland socket 创建 WlRoots 控制器（适配 [MaaFramework#1131](https://github.com/MaaXYZ/MaaFramework/pull/1131)）
+- Controller relative move：新增 `Controller.PostRelativeMove(dx, dy int32) *Job`，支持提交相对光标移动事件（适配 [MaaFramework#1189](https://github.com/MaaXYZ/MaaFramework/pull/1189)）
 
 ## Performance
 
