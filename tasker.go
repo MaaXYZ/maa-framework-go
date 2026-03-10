@@ -305,7 +305,7 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	}, nil
 }
 
-// ActionDetail contains action information.
+// ActionDetail contains the detail returned for an executed action.
 type ActionDetail struct {
 	ID         int64
 	Name       string
@@ -316,6 +316,11 @@ type ActionDetail struct {
 	Result     *ActionResult
 }
 
+// GetActionDetail returns the detail recorded for actionId.
+// The returned detail mirrors MaaTaskerGetActionDetail in the C++ API: Box is
+// the recognition box passed to the action, Success is the controller return
+// value, and Result is the action-specific decoding of DetailJson.
+// It returns (nil, nil) when no detail is available for actionId.
 func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
@@ -597,6 +602,8 @@ type contextEventSinkAdapter struct {
 	onNodeAction          func(*Context, EventStatus, NodeActionDetail)
 }
 
+// OnNodePipelineNode implements ContextEventSink by forwarding
+// Node.PipelineNode events to the registered callback, if any.
 func (a *contextEventSinkAdapter) OnNodePipelineNode(ctx *Context, status EventStatus, detail NodePipelineNodeDetail) {
 	if a == nil || a.onNodePipelineNode == nil {
 		return
@@ -604,6 +611,8 @@ func (a *contextEventSinkAdapter) OnNodePipelineNode(ctx *Context, status EventS
 	a.onNodePipelineNode(ctx, status, detail)
 }
 
+// OnNodeRecognitionNode implements ContextEventSink by forwarding
+// Node.RecognitionNode events to the registered callback, if any.
 func (a *contextEventSinkAdapter) OnNodeRecognitionNode(ctx *Context, status EventStatus, detail NodeRecognitionNodeDetail) {
 	if a == nil || a.onNodeRecognitionNode == nil {
 		return
@@ -611,6 +620,8 @@ func (a *contextEventSinkAdapter) OnNodeRecognitionNode(ctx *Context, status Eve
 	a.onNodeRecognitionNode(ctx, status, detail)
 }
 
+// OnNodeActionNode implements ContextEventSink by forwarding
+// Node.ActionNode events to the registered callback, if any.
 func (a *contextEventSinkAdapter) OnNodeActionNode(ctx *Context, status EventStatus, detail NodeActionNodeDetail) {
 	if a == nil || a.onNodeActionNode == nil {
 		return
@@ -618,6 +629,8 @@ func (a *contextEventSinkAdapter) OnNodeActionNode(ctx *Context, status EventSta
 	a.onNodeActionNode(ctx, status, detail)
 }
 
+// OnNodeNextList implements ContextEventSink by forwarding
+// Node.NextList events to the registered callback, if any.
 func (a *contextEventSinkAdapter) OnNodeNextList(ctx *Context, status EventStatus, detail NodeNextListDetail) {
 	if a == nil || a.onNodeNextList == nil {
 		return
@@ -625,6 +638,8 @@ func (a *contextEventSinkAdapter) OnNodeNextList(ctx *Context, status EventStatu
 	a.onNodeNextList(ctx, status, detail)
 }
 
+// OnNodeRecognition implements ContextEventSink by forwarding
+// Node.Recognition events to the registered callback, if any.
 func (a *contextEventSinkAdapter) OnNodeRecognition(ctx *Context, status EventStatus, detail NodeRecognitionDetail) {
 	if a == nil || a.onNodeRecognition == nil {
 		return
@@ -632,6 +647,8 @@ func (a *contextEventSinkAdapter) OnNodeRecognition(ctx *Context, status EventSt
 	a.onNodeRecognition(ctx, status, detail)
 }
 
+// OnNodeAction implements ContextEventSink by forwarding
+// Node.Action events to the registered callback, if any.
 func (a *contextEventSinkAdapter) OnNodeAction(ctx *Context, status EventStatus, detail NodeActionDetail) {
 	if a == nil || a.onNodeAction == nil {
 		return
