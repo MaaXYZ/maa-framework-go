@@ -1,4 +1,4 @@
-﻿## Breaking Change
+## Breaking Change
 
 ### API 变更概览
 
@@ -72,8 +72,10 @@
 | 变更类型 | 受影响的方法 |
 |---------|-------------|
 | 构造函数 | `NewTasker` |
-| 查询方法 | `GetLatestNode`, `GetTaskDetail` |
+| 查询方法 | `GetLatestNode`, `GetNodeDetail`, `GetTaskDetail` |
 | 设置方法 | `BindResource`, `BindController`, `ClearCache` |
+
+**补充说明**：`TaskDetail` 不再预取完整 `NodeDetail` 列表，现改为返回懒加载的 `Nodes []NodeRef`；可通过 `NodeRef.GetDetail()` 或 `Tasker.GetNodeDetail(nodeId)` 按需获取节点详情。
 
 #### Resource
 

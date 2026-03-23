@@ -91,6 +91,42 @@ func TestTasker_PostPipeline(t *testing.T) {
 	t.Logf("%#v", detail)
 }
 
+func TestTasker_GetTaskDetail_NodesAndGetNodeDetail(t *testing.T) {
+	ctrl := createCarouselImageController(t)
+	defer ctrl.Destroy()
+	isConnected := ctrl.PostConnect().Wait().Success()
+	require.True(t, isConnected)
+
+	res := createResource(t)
+	defer res.Destroy()
+
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+	taskerBind(t, tasker, ctrl, res)
+
+	pipeline := NewPipeline()
+	testNode := NewNode("TestTasker_GetTaskDetail_NodeIDs").
+		SetAction(ActClick(ClickParam{
+			Target: NewTargetRect(Rect{100, 200, 100, 100}),
+		}))
+	pipeline.AddNode(testNode)
+
+	taskJob := tasker.PostTask(testNode.Name, pipeline)
+	require.True(t, taskJob.Wait().Success())
+
+	detail, err := taskJob.GetDetail()
+	require.NoError(t, err)
+	require.NotNil(t, detail)
+	require.Len(t, detail.Nodes, 1)
+	require.NotZero(t, detail.Nodes[0].ID())
+
+	nodeDetail, err := detail.Nodes[0].GetDetail()
+	require.NoError(t, err)
+	require.NotNil(t, nodeDetail)
+	require.Equal(t, detail.Nodes[0].ID(), nodeDetail.ID)
+	require.Equal(t, testNode.Name, nodeDetail.Name)
+}
+
 func TestTasker_handleOverride(t *testing.T) {
 	tasker := &Tasker{}
 

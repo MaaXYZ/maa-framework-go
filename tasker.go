@@ -371,8 +371,34 @@ type NodeDetail struct {
 	RunCompleted bool
 }
 
-// getNodeDetail queries running detail.
-func (t *Tasker) getNodeDetail(nodeId int64) (*NodeDetail, error) {
+// NodeRef is a lightweight reference to a node detail that can be queried on demand.
+type NodeRef struct {
+	tasker *Tasker
+	id     int64
+}
+
+func newNodeRef(tasker *Tasker, id int64) NodeRef {
+	return NodeRef{
+		tasker: tasker,
+		id:     id,
+	}
+}
+
+// ID returns the referenced node ID.
+func (n NodeRef) ID() int64 {
+	return n.id
+}
+
+// GetDetail queries the referenced node detail on demand.
+func (n NodeRef) GetDetail() (*NodeDetail, error) {
+	if n.tasker == nil {
+		return nil, errors.New("tasker is nil")
+	}
+	return n.tasker.GetNodeDetail(n.id)
+}
+
+// GetNodeDetail queries node detail by node ID.
+func (t *Tasker) GetNodeDetail(nodeId int64) (*NodeDetail, error) {
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId, actionId int64
@@ -409,11 +435,12 @@ func (t *Tasker) getNodeDetail(nodeId int64) (*NodeDetail, error) {
 }
 
 // TaskDetail contains task information.
+// Nodes lists nodes in execution order and supports querying details on demand.
 type TaskDetail struct {
-	ID          int64
-	Entry       string
-	NodeDetails []*NodeDetail
-	Status      Status
+	ID     int64
+	Entry  string
+	Nodes  []NodeRef
+	Status Status
 }
 
 // GetTaskDetail queries task detail by task ID.
@@ -434,9 +461,9 @@ func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
 	}
 	if size == 0 {
 		return &TaskDetail{
-			ID:          taskId,
-			Entry:       entry.Get(),
-			NodeDetails: nil,
+			ID:    taskId,
+			Entry: entry.Get(),
+			Nodes: nil,
 		}, nil
 	}
 	nodeIdList := make([]int64, size)
@@ -453,20 +480,16 @@ func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
 		return nil, errors.New("failed to get task detail data")
 	}
 
-	var err error
-	nodeDetails := make([]*NodeDetail, size)
+	nodes := make([]NodeRef, size)
 	for i, nodeId := range nodeIdList {
-		nodeDetails[i], err = t.getNodeDetail(nodeId)
-		if err != nil {
-			return nil, err
-		}
+		nodes[i] = newNodeRef(t, nodeId)
 	}
 
 	return &TaskDetail{
-		ID:          taskId,
-		Entry:       entry.Get(),
-		NodeDetails: nodeDetails,
-		Status:      status,
+		ID:     taskId,
+		Entry:  entry.Get(),
+		Nodes:  nodes,
+		Status: status,
 	}, nil
 }
 
@@ -478,7 +501,7 @@ func (t *Tasker) GetLatestNode(taskName string) (*NodeDetail, error) {
 	if !got {
 		return nil, errors.New("failed to get latest node")
 	}
-	return t.getNodeDetail(nodeId)
+	return t.GetNodeDetail(nodeId)
 }
 
 // AddSink adds an event listener and returns the sink ID for later removal.
