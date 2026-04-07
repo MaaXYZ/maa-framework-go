@@ -299,6 +299,7 @@ const (
 	screenshotOptionLongSide
 	screenshotOptionShortSide
 	screenshotOptionRawSize
+	screenshotOptionResizeMethod
 )
 
 type screenshotOptionConfig struct {
@@ -306,7 +307,20 @@ type screenshotOptionConfig struct {
 	targetLongSide  int32
 	targetShortSide int32
 	useRawSize      bool
+	resizeMethod    int32
 }
+
+// ScreenshotResizeMethod is the interpolation method used when resizing screenshots.
+// Values correspond to cv::InterpolationFlags.
+type ScreenshotResizeMethod int32
+
+const (
+	ScreenshotResizeMethodNearestNeighbor ScreenshotResizeMethod = 0 // cv::INTER_NEAREST
+	ScreenshotResizeMethodLinear          ScreenshotResizeMethod = 1 // cv::INTER_LINEAR
+	ScreenshotResizeMethodCubic           ScreenshotResizeMethod = 2 // cv::INTER_CUBIC
+	ScreenshotResizeMethodArea            ScreenshotResizeMethod = 3 // cv::INTER_AREA (default)
+	ScreenshotResizeMethodLanczos4        ScreenshotResizeMethod = 4 // cv::INTER_LANCZOS4
+)
 
 // ScreenshotOption configures how the screenshot is resized.
 // If multiple options are provided, only the last one is applied.
@@ -339,6 +353,15 @@ func WithScreenshotUseRawSize(enabled bool) ScreenshotOption {
 	return func(cfg *screenshotOptionConfig) {
 		cfg.kind = screenshotOptionRawSize
 		cfg.useRawSize = enabled
+	}
+}
+
+// WithScreenshotResizeMethod sets the interpolation method used when resizing screenshots.
+// Defaults to ScreenshotResizeMethodArea (cv::INTER_AREA).
+func WithScreenshotResizeMethod(method ScreenshotResizeMethod) ScreenshotOption {
+	return func(cfg *screenshotOptionConfig) {
+		cfg.kind = screenshotOptionResizeMethod
+		cfg.resizeMethod = int32(method)
 	}
 }
 
@@ -376,9 +399,26 @@ func (c *Controller) SetScreenshot(opts ...ScreenshotOption) error {
 			unsafe.Pointer(&cfg.useRawSize),
 			unsafe.Sizeof(cfg.useRawSize),
 		)
+	case screenshotOptionResizeMethod:
+		return c.setOption(
+			native.MaaCtrlOption_ScreenshotResizeMethod,
+			unsafe.Pointer(&cfg.resizeMethod),
+			unsafe.Sizeof(cfg.resizeMethod),
+		)
 	default:
 		return fmt.Errorf("unknown screenshot option kind: %v", cfg.kind)
 	}
+}
+
+// SetMouseLockFollow enables or disables mouse-lock-follow mode.
+// This is designed for TPS/FPS games that lock the mouse to their window in the background.
+// Only valid for Win32 controllers using message-based input methods.
+func (c *Controller) SetMouseLockFollow(enabled bool) error {
+	return c.setOption(
+		native.MaaCtrlOption_MouseLockFollow,
+		unsafe.Pointer(&enabled),
+		unsafe.Sizeof(enabled),
+	)
 }
 
 // PostConnect posts a connection.

@@ -161,6 +161,21 @@ const (
 	// MaaCtrlOptionScreenshotUseRawSize specifies that the screenshot uses the raw size without scaling.
 	// Note that this option may cause incorrect coordinates on user devices with different resolutions if scaling is not performed.
 	MaaCtrlOption_ScreenshotUseRawSize MaaCtrlOption = 3
+
+	// MaaCtrlOption_MouseLockFollow enables or disables mouse-lock-follow mode for Win32 controllers.
+	// This is designed for TPS/FPS games that lock the mouse to their window in the background.
+	// Only valid for Win32 controllers using message-based input methods.
+	//
+	// value: bool, eg: true; val_size: sizeof(bool)
+	MaaCtrlOption_MouseLockFollow MaaCtrlOption = 4
+
+	// MaaCtrlOption_ScreenshotResizeMethod sets the interpolation method used when resizing screenshots.
+	// Value corresponds to cv::InterpolationFlags:
+	//   INTER_NEAREST=0, INTER_LINEAR=1, INTER_CUBIC=2, INTER_AREA=3, INTER_LANCZOS4=4
+	// Default is INTER_AREA (3).
+	//
+	// value: int, eg: 3; val_size: sizeof(int)
+	MaaCtrlOption_ScreenshotResizeMethod MaaCtrlOption = 6
 )
 
 type MaaGamepadType uint64
