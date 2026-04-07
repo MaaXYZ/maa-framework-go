@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v4/controller/adb"
+	"github.com/MaaXYZ/maa-framework-go/v4/controller/macos"
 	"github.com/MaaXYZ/maa-framework-go/v4/controller/win32"
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
@@ -100,6 +101,98 @@ func NewWlRootsController(
 	handle := native.MaaWlRootsControllerCreate(wlrSocketPath)
 	if handle == 0 {
 		return nil, errors.New("failed to create WlRoots controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
+// NewMacOSController creates a macOS controller for native macOS applications.
+// windowID is the CGWindowID of the target window (0 for desktop).
+// screencapMethod is the macOS screencap method to use.
+// inputMethod is the macOS input method to use.
+//
+// Note: Requires Screen Recording permission for screencap.
+// Input simulation requires Accessibility permission.
+// Some features are not supported: start_app, stop_app, scroll.
+// Only single touch is supported (contact must be 0).
+func NewMacOSController(
+	windowID uint32,
+	screencapMethod macos.ScreencapMethod,
+	inputMethod macos.InputMethod,
+) (*Controller, error) {
+	handle := native.MaaMacOSControllerCreate(
+		windowID,
+		native.MaaMacOSScreencapMethod(screencapMethod),
+		native.MaaMacOSInputMethod(inputMethod),
+	)
+	if handle == 0 {
+		return nil, errors.New("failed to create macOS controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
+// NewAndroidNativeController creates an Android native controller backed by MaaAndroidNativeControlUnit.
+// configJson is the JSON config for the control unit. Required fields:
+//   - library_path: path to the Android native control unit library
+//   - screen_resolution.width / screen_resolution.height: raw screenshot and touch resolution
+//
+// Optional fields:
+//   - display_id: target display id, defaults to 0
+//   - force_stop: whether to force stop before start_app, defaults to false
+//
+// Note: This controller is only available on Android.
+// The configured screen_resolution must match the control unit's raw screenshot/touch coordinate space.
+func NewAndroidNativeController(configJson string) (*Controller, error) {
+	handle := native.MaaAndroidNativeControllerCreate(configJson)
+	if handle == 0 {
+		return nil, errors.New("failed to create Android native controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
+// NewReplayController creates a replay controller that replays recorded operations.
+// recordingPath is the path to the recording JSONL file written by a record controller.
+// Screenshot image paths in the file are resolved relative to this file's parent directory.
+func NewReplayController(recordingPath string) (*Controller, error) {
+	handle := native.MaaReplayControllerCreate(recordingPath)
+	if handle == 0 {
+		return nil, errors.New("failed to create replay controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
+// NewRecordController creates a record controller that wraps an existing controller and records all operations.
+// inner is the inner controller to forward all operations to; it must not be nil.
+// The record controller does NOT take ownership of the inner controller.
+// recordingPath is the path to the recording JSONL file to write.
+// Screenshot images will be saved to a "{stem}-Screenshot" folder in the same directory as this file.
+// The recorded file can be replayed using NewReplayController.
+func NewRecordController(inner *Controller, recordingPath string) (*Controller, error) {
+	if inner == nil {
+		return nil, errors.New("inner controller is nil")
+	}
+	handle := native.MaaRecordControllerCreate(inner.handle, recordingPath)
+	if handle == 0 {
+		return nil, errors.New("failed to create record controller")
 	}
 
 	initControllerStore(handle)
