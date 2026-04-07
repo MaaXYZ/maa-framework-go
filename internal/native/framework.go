@@ -204,9 +204,13 @@ const (
 	MaaMacOSInputMethod_PostToPid    MaaMacOSInputMethod = 1 << 1
 )
 
-// NOTE: MaaDbgControllerCreate and MaaDbgControllerType are intentionally NOT implemented in Go binding.
-// The Go binding provides CarouselImageController and BlankController as alternatives for debugging purposes.
-// Do not add MaaDbgController bindings here.
+// NOTE: MaaDbgControllerCreate is intentionally NOT implemented in the Go binding.
+// MaaDbgControllerCreate has been superseded by more specific Go-native alternatives:
+//   - CarouselImageController (carousel_controller.go): cycles through images from a directory
+//   - BlankController (carousel_controller.go): no-op stub that always succeeds
+//   - NewReplayController: replay recorded operations from a JSONL file
+// Do NOT add a Go binding for MaaDbgControllerCreate or MaaDbgControllerType here.
+// The api-check CI tool also blacklists MaaDbgControllerCreate for the same reason.
 
 var (
 	MaaAdbControllerCreate             func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr

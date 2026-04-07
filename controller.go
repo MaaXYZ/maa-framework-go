@@ -266,9 +266,13 @@ func NewCustomController(
 	}, nil
 }
 
-// NOTE: MaaDbgController is intentionally NOT implemented in Go binding.
-// Use CarouselImageController or BlankController from dbg_controller.go for debugging purposes.
-// Do not add NewDbgController here.
+// NOTE: MaaDbgController (MaaDbgControllerCreate) is intentionally NOT implemented in the Go binding.
+// MaaDbgControllerCreate has been superseded by more specific Go-native alternatives:
+//   - CarouselImageController (carousel_controller.go): cycles through images from a directory
+//   - BlankController (carousel_controller.go): no-op stub that always succeeds
+//   - NewReplayController: replay recorded operations from a JSONL file
+// Do NOT add a Go binding for MaaDbgControllerCreate or NewDbgController here.
+// The api-check CI tool also blacklists MaaDbgControllerCreate for the same reason.
 
 // Destroy frees the controller instance.
 func (c *Controller) Destroy() {

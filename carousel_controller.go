@@ -1,3 +1,14 @@
+// Package maa provides the Go binding for MaaFramework.
+//
+// This file provides CarouselImageController and BlankController, which are
+// pure-Go custom controller implementations (via NewCustomController) for testing
+// and development purposes.
+//
+// NOTE: These are NOT bindings to MaaDbgControllerCreate from the C API.
+// MaaDbgControllerCreate is intentionally excluded from the Go binding.
+// Do NOT add a NewDbgController or any wrapper for MaaDbgControllerCreate here.
+// Use CarouselImageController (for image-based testing) or BlankController (for
+// no-op stubs) as Go-native alternatives.
 package maa
 
 import (
