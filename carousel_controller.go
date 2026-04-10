@@ -185,6 +185,16 @@ func (c *CarouselImageController) Scroll(dx int32, dy int32) bool {
 	return true
 }
 
+// RelativeMove implements CustomController.
+func (c *CarouselImageController) RelativeMove(dx int32, dy int32) bool {
+	return true
+}
+
+// Shell implements CustomController.
+func (c *CarouselImageController) Shell(cmd string, timeout int64) (string, bool) {
+	return "", true
+}
+
 // Inactive implements CustomController.
 func (c *CarouselImageController) Inactive() bool {
 	return true
@@ -296,6 +306,16 @@ func (c *BlankController) TouchUp(contact int32) bool {
 // Scroll implements CustomController.
 func (c *BlankController) Scroll(dx int32, dy int32) bool {
 	return true
+}
+
+// RelativeMove implements CustomController.
+func (c *BlankController) RelativeMove(dx int32, dy int32) bool {
+	return true
+}
+
+// Shell implements CustomController.
+func (c *BlankController) Shell(cmd string, timeout int64) (string, bool) {
+	return "", true
 }
 
 // Inactive implements CustomController.
