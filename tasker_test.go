@@ -303,8 +303,8 @@ func TestTasker_GetLatestNode(t *testing.T) {
 	detail, err := tasker.GetLatestNode("Wilderness")
 	require.NoError(t, err)
 	t.Log(detail)
-	got := job.Wait().Success()
-	require.True(t, got)
+	ok := tasker.PostStop().Wait().Success()
+	require.True(t, ok)
 }
 
 func TestTasker_OverridePipeline(t *testing.T) {
