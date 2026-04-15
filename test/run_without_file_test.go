@@ -8,9 +8,7 @@ import (
 )
 
 func TestRunWithoutFile(t *testing.T) {
-	testingPath := "./data_set/PipelineSmoking/Screenshot"
-
-	ctrl, err := maa.NewCarouselImageController(testingPath)
+	ctrl, err := maa.NewBlankController()
 	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()

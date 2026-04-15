@@ -8,34 +8,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createCarouselImageController(t *testing.T) *Controller {
-	testingPath := "./test/data_set/PipelineSmoking/Screenshot"
-	ctrl, err := NewCarouselImageController(testingPath)
+func createBlankController(t *testing.T) *Controller {
+	ctrl, err := NewBlankController()
 	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	return ctrl
 }
 
-func TestNewCarouselImageController(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+func TestNewBlankController(t *testing.T) {
+	ctrl := createBlankController(t)
 	ctrl.Destroy()
 }
 
 func TestController_Handle(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	require.NotNil(t, ctrl)
 }
 
 func TestController_SetScreenshotTargetLongSide(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	err := ctrl.SetScreenshot(WithScreenshotTargetLongSide(1280))
 	require.NoError(t, err)
 }
 
 func TestController_SetScreenshotTargetShortSide(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	err := ctrl.SetScreenshot(WithScreenshotTargetShortSide(720))
 	require.NoError(t, err)
@@ -59,7 +58,7 @@ func TestController_SetScreenshotUseRawSize(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctrl := createCarouselImageController(t)
+			ctrl := createBlankController(t)
 			defer ctrl.Destroy()
 			err := ctrl.SetScreenshot(WithScreenshotUseRawSize(tc.enabled))
 			require.NoError(t, err)
@@ -68,14 +67,14 @@ func TestController_SetScreenshotUseRawSize(t *testing.T) {
 }
 
 func TestController_PostConnect(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
 }
 
 func TestController_Connected(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -84,7 +83,7 @@ func TestController_Connected(t *testing.T) {
 }
 
 func TestController_PostClick(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -93,7 +92,7 @@ func TestController_PostClick(t *testing.T) {
 }
 
 func TestController_PostSwipe(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -102,7 +101,7 @@ func TestController_PostSwipe(t *testing.T) {
 }
 
 func TestController_PostClickKey(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -111,7 +110,7 @@ func TestController_PostClickKey(t *testing.T) {
 }
 
 func TestController_PostInputText(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -120,7 +119,7 @@ func TestController_PostInputText(t *testing.T) {
 }
 
 func TestController_PostStartApp(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -129,7 +128,7 @@ func TestController_PostStartApp(t *testing.T) {
 }
 
 func TestController_PostStopApp(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -138,7 +137,7 @@ func TestController_PostStopApp(t *testing.T) {
 }
 
 func TestController_PostTouchDown(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -147,7 +146,7 @@ func TestController_PostTouchDown(t *testing.T) {
 }
 
 func TestController_PostTouchMove(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -158,7 +157,7 @@ func TestController_PostTouchMove(t *testing.T) {
 }
 
 func TestController_PostTouchUp(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -171,7 +170,7 @@ func TestController_PostTouchUp(t *testing.T) {
 }
 
 func TestController_PostKeyDown(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -180,7 +179,7 @@ func TestController_PostKeyDown(t *testing.T) {
 }
 
 func TestController_PostKeyUp(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -191,7 +190,7 @@ func TestController_PostKeyUp(t *testing.T) {
 }
 
 func TestController_PostScreencap(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -200,7 +199,7 @@ func TestController_PostScreencap(t *testing.T) {
 }
 
 func TestController_PostInactive(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -209,7 +208,7 @@ func TestController_PostInactive(t *testing.T) {
 }
 
 func TestController_CacheImage(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -221,7 +220,7 @@ func TestController_CacheImage(t *testing.T) {
 }
 
 func TestController_CacheImageInto(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -246,7 +245,7 @@ func TestController_CacheImageInto(t *testing.T) {
 }
 
 func TestController_GetUUID(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -256,7 +255,7 @@ func TestController_GetUUID(t *testing.T) {
 }
 
 func TestController_GetInfo(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
