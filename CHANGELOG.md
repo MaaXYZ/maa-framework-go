@@ -55,13 +55,15 @@
 
 | 变更类型 | 受影响的方法 |
 |---------|-------------|
-| 构造函数 | `NewAdbController`, `NewPlayCoverController`, `NewWin32Controller`, `NewGamepadController`, `NewCustomController`, `NewCarouselImageController`, `NewBlankController` |
-| 设置方法 | `SetScreenshot`（改用 Option 模式） |
-| 查询方法 | `GetShellOutput`, `CacheImage`, `CacheImageInto`, `GetUUID`, `GetResolution` |
+| 构造函数 | `NewAdbController`, `NewPlayCoverController`, `NewWin32Controller`, `NewWlRootsController`, `NewMacOSController`, `NewAndroidNativeController`, `NewReplayController`, `NewRecordController`, `NewGamepadController`, `NewCustomController`, `NewBlankController`, `NewCarouselImageController` |
+| 设置方法 | `SetScreenshot`（改用 Option 模式）, `SetMouseLockFollow` |
+| 查询方法 | `GetShellOutput`, `CacheImage`, `CacheImageInto`, `GetUUID`, `GetResolution`, `GetInfo` |
 
 **移除方法**：`SetScreenshotTargetLongSide`, `SetScreenshotTargetShortSide`, `SetScreenshotUseRawSize`
-**新增**：`SetScreenshot(opts ...ScreenshotOption) error` 与配套选项函数
-**接口变更**：`CustomController` 接口新增 `GetInfo() (string, bool)` 必须实现方法，已有实现需补充该方法（返回 `("", true)` 即可）
+**移除构造函数**：`NewCarouselImageController` 已移除。若仅需空操作控制器，请使用 `NewBlankController()`；若需基于录制数据回放，请使用 `NewReplayController(recordingPath)`，录制入口为 `NewRecordController(inner, recordingPath)`。
+**新增**：`SetScreenshot(opts ...ScreenshotOption) error` 与配套选项函数；新增 `WithScreenshotResizeMethod(...)` / `ScreenshotResizeMethod*` 常量，以及 `SetMouseLockFollow(enabled bool) error`
+**新增控制器构造函数**：`NewMacOSController(...)`、`NewAndroidNativeController(...)`、`NewReplayController(...)`、`NewRecordController(...)`
+**接口变更**：`CustomController` 接口新增 `RelativeMove(dx, dy int32) bool`、`Shell(cmd string, timeout int64) (string, bool)`、`GetInfo() (string, bool)` 必须实现方法。已有实现若无需支持，可返回 no-op 成功值
 **Win32 InputMethod 命名对齐**：
 - `InputSendMessageWithCursorPosAndBlockInput` → `InputSendMessageWithWindowPos`
 - `InputPostMessageWithCursorPosAndBlockInput` → `InputPostMessageWithWindowPos`
@@ -72,10 +74,11 @@
 | 变更类型 | 受影响的方法 |
 |---------|-------------|
 | 构造函数 | `NewTasker` |
-| 查询方法 | `GetLatestNode`, `GetNodeDetail`, `GetTaskDetail` |
+| 查询方法 | `GetLatestNode`, `GetNodeDetail`, `GetTaskDetail`, `GetWaitFreezesDetail` |
 | 设置方法 | `BindResource`, `BindController`, `ClearCache` |
 
 **补充说明**：`TaskDetail` 不再预取完整 `NodeDetail` 列表，现改为返回懒加载的 `Nodes []NodeRef`；可通过 `NodeRef.GetDetail()` 或 `Tasker.GetNodeDetail(nodeId)` 按需获取节点详情。
+**新增 WaitFreezes 查询**：`Tasker.GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error)` 可根据回调中的 `wf_id` 查询阶段、耗时、识别 ID 列表和 ROI；无详情时返回 `(nil, nil)`。
 
 #### Resource
 
@@ -117,6 +120,8 @@
 |---------|-------------|
 | 设置方法 | `ConfigInitOption` |
 | 查询方法 | `FindAdbDevices`, `FindDesktopWindows` |
+
+**新增 macOS 权限接口**：`MacOSCheckPermission`、`MacOSRequestPermission`、`MacOSRevealPermissionSettings`，用于查询/申请权限并跳转系统设置。
 
 ### 类型名称修正
 
@@ -218,6 +223,19 @@ client, err := maa.NewAgentClient(maa.WithIdentifier("7788"))
 if err != nil {
     // 处理错误
 }
+```
+
+#### 调试控制器迁移（CarouselImageController → Blank / Replay）
+
+```go
+// 旧 API
+ctrl, err := maa.NewCarouselImageController("./images")
+
+// 新 API：仅需空操作 / 生命周期测试
+ctrl, err := maa.NewBlankController()
+
+// 新 API：需要基于录制文件回放截图与操作
+ctrl, err := maa.NewReplayController("./MaaRecording.jsonl")
 ```
 
 #### 设置方法迁移（bool → error）
@@ -359,6 +377,7 @@ if best != nil {
 
 - `Tasker.GetRecognitionDetail(recId int64) (*RecognitionDetail, error)`
 - `Tasker.GetActionDetail(actionId int64) (*ActionDetail, error)`
+- `Tasker.GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error)` 与 `WaitFreezesDetail`
 - `Resource.GetNode`
 - `Pipeline.GetNode`
 - `Pipeline.HasNode`
@@ -369,15 +388,23 @@ if best != nil {
 - And/Or 识别：`SubRecognitionItem`、`InlineSubRecognition`、`Ref`、`Inline`（与 C++ GetNodeData 的 all_of/any_of 对齐；`RecAnd`/`RecOr` 均为 variadic）
 - `Recognition.SetBoxIndex`：链式方法，替代原 `WithBoxIndex`，指定 And 识别使用哪个子结果的 box
 - `WaitFreezesParam` 与 `Context.WaitFreezes(duration, box, *WaitFreezesParam)`：等待画面稳定
+- `NewMacOSController(windowID uint32, screencapMethod macos.ScreencapMethod, inputMethod macos.InputMethod) (*Controller, error)`，以及 `controller/macos` 子包中的 `ScreencapMethod` / `InputMethod` 枚举
+- `NewAndroidNativeController(configJson string) (*Controller, error)`
+- `NewReplayController(recordingPath string) (*Controller, error)`
+- `NewRecordController(inner *Controller, recordingPath string) (*Controller, error)`
 - OCR 颜色过滤：`OCRParam.ColorFilter` 字段 & `WithOCRColorFilter` 选项函数，指定 ColorMatch 节点名对图像进行颜色二值化后再送入 OCR 识别（适配 [MaaFramework#1145](https://github.com/MaaXYZ/MaaFramework/pull/1145)）
 - Controller inactive：`Controller.PostInactive() *Job` 与 `CustomController.Inactive() bool`，用于在任务结束后恢复窗口/输入状态（适配 [MaaFramework#1155](https://github.com/MaaXYZ/MaaFramework/pull/1155)；Win32 控制器会恢复窗口与解除输入阻塞，其他控制器为 no-op）
 - Screencap Action：新增 `ActionTypeScreencap` / `ActScreencap(ScreencapParam)`，支持在流水线动作中保存当前截图（适配 [MaaFramework#1165](https://github.com/MaaXYZ/MaaFramework/pull/1165)）
 - Win32 截图方式：`ScreencapMethod` 新增 `ScreencapAll`、`ScreencapForeground`、`ScreencapBackground`，并支持对应字符串解析/序列化
+- `Controller.SetMouseLockFollow(enabled bool) error`
+- `ScreenshotResizeMethod` / `WithScreenshotResizeMethod(method)`，用于指定截图缩放插值方式
 - Controller info：新增 `Controller.GetInfo() (string, error)`，以 JSON 格式获取控制器结构化信息（类型、构造参数、当前状态等）（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - `CustomController` 接口新增 `GetInfo() (string, bool)` 方法，自定义控制器可提供额外信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - `ControllerActionDetail` 新增 `Info map[string]any` 字段，控制器动作事件回调中包含控制器信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - WlRoots Controller：新增 NewWlRootsController(wlrSocketPath string) (*Controller, error)，支持通过 Wayland socket 创建 WlRoots 控制器（适配 [MaaFramework#1131](https://github.com/MaaXYZ/MaaFramework/pull/1131)）
 - Controller relative move：新增 `Controller.PostRelativeMove(dx, dy int32) *Job`，支持提交相对光标移动事件（适配 [MaaFramework#1189](https://github.com/MaaXYZ/MaaFramework/pull/1189)）
+- `CustomController.RelativeMove(dx, dy int32) bool` 与 `CustomController.Shell(cmd string, timeout int64) (string, bool)`，补齐自定义控制器的相对移动与 shell 能力
+- `MacOSPermission`、`MacOSCheckPermission`、`MacOSRequestPermission`、`MacOSRevealPermissionSettings`，用于检查或申请 macOS Screen Recording / Accessibility 权限
 
 ## Performance
 
