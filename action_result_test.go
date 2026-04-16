@@ -296,7 +296,7 @@ func requireActionResultMatchesRaw(t *testing.T, detail *ActionDetail) {
 }
 
 func TestActionDetail_ResultMatchesRaw(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)

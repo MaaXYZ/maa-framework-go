@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v4/controller/adb"
+	"github.com/MaaXYZ/maa-framework-go/v4/controller/macos"
 	"github.com/MaaXYZ/maa-framework-go/v4/controller/win32"
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
@@ -109,6 +110,98 @@ func NewWlRootsController(
 	}, nil
 }
 
+// NewMacOSController creates a macOS controller for native macOS applications.
+// windowID is the CGWindowID of the target window (0 for desktop).
+// screencapMethod is the macOS screencap method to use.
+// inputMethod is the macOS input method to use.
+//
+// Note: Requires Screen Recording permission for screencap.
+// Input simulation requires Accessibility permission.
+// Some features are not supported: start_app, stop_app, scroll.
+// Only single touch is supported (contact must be 0).
+func NewMacOSController(
+	windowID uint32,
+	screencapMethod macos.ScreencapMethod,
+	inputMethod macos.InputMethod,
+) (*Controller, error) {
+	handle := native.MaaMacOSControllerCreate(
+		windowID,
+		native.MaaMacOSScreencapMethod(screencapMethod),
+		native.MaaMacOSInputMethod(inputMethod),
+	)
+	if handle == 0 {
+		return nil, errors.New("failed to create macOS controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
+// NewAndroidNativeController creates an Android native controller backed by MaaAndroidNativeControlUnit.
+// configJson is the JSON config for the control unit. Required fields:
+//   - library_path: path to the Android native control unit library
+//   - screen_resolution.width / screen_resolution.height: raw screenshot and touch resolution
+//
+// Optional fields:
+//   - display_id: target display id, defaults to 0
+//   - force_stop: whether to force stop before start_app, defaults to false
+//
+// Note: This controller is only available on Android.
+// The configured screen_resolution must match the control unit's raw screenshot/touch coordinate space.
+func NewAndroidNativeController(configJson string) (*Controller, error) {
+	handle := native.MaaAndroidNativeControllerCreate(configJson)
+	if handle == 0 {
+		return nil, errors.New("failed to create Android native controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
+// NewReplayController creates a replay controller that replays recorded operations.
+// recordingPath is the path to the recording JSONL file written by a record controller.
+// Screenshot image paths in the file are resolved relative to this file's parent directory.
+func NewReplayController(recordingPath string) (*Controller, error) {
+	handle := native.MaaReplayControllerCreate(recordingPath)
+	if handle == 0 {
+		return nil, errors.New("failed to create replay controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
+// NewRecordController creates a record controller that wraps an existing controller and records all operations.
+// inner is the inner controller to forward all operations to; it must not be nil.
+// The record controller does NOT take ownership of the inner controller.
+// recordingPath is the path to the recording JSONL file to write.
+// Screenshot images will be saved to a "{stem}-Screenshot" folder in the same directory as this file.
+// The recorded file can be replayed using NewReplayController.
+func NewRecordController(inner *Controller, recordingPath string) (*Controller, error) {
+	if inner == nil {
+		return nil, errors.New("inner controller is nil")
+	}
+	handle := native.MaaRecordControllerCreate(inner.handle, recordingPath)
+	if handle == 0 {
+		return nil, errors.New("failed to create record controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
 // GamepadType defines the type of virtual gamepad.
 type GamepadType = native.MaaGamepadType
 
@@ -173,9 +266,12 @@ func NewCustomController(
 	}, nil
 }
 
-// NOTE: MaaDbgController is intentionally NOT implemented in Go binding.
-// Use CarouselImageController or BlankController from dbg_controller.go for debugging purposes.
-// Do not add NewDbgController here.
+// NOTE: MaaDbgController (MaaDbgControllerCreate) is intentionally NOT implemented in the Go binding.
+// MaaDbgControllerCreate has been superseded by more specific alternatives:
+//   - BlankController (blank_controller.go): no-op stub that always succeeds
+//   - NewReplayController: replay recorded operations from a JSONL file
+// Do NOT add a Go binding for MaaDbgControllerCreate or NewDbgController here.
+// The api-check CI tool also blacklists MaaDbgControllerCreate for the same reason.
 
 // Destroy frees the controller instance.
 func (c *Controller) Destroy() {
@@ -206,6 +302,7 @@ const (
 	screenshotOptionLongSide
 	screenshotOptionShortSide
 	screenshotOptionRawSize
+	screenshotOptionResizeMethod
 )
 
 type screenshotOptionConfig struct {
@@ -213,7 +310,20 @@ type screenshotOptionConfig struct {
 	targetLongSide  int32
 	targetShortSide int32
 	useRawSize      bool
+	resizeMethod    int32
 }
+
+// ScreenshotResizeMethod is the interpolation method used when resizing screenshots.
+// Values correspond to cv::InterpolationFlags.
+type ScreenshotResizeMethod int32
+
+const (
+	ScreenshotResizeMethodNearestNeighbor ScreenshotResizeMethod = 0 // cv::INTER_NEAREST
+	ScreenshotResizeMethodLinear          ScreenshotResizeMethod = 1 // cv::INTER_LINEAR
+	ScreenshotResizeMethodCubic           ScreenshotResizeMethod = 2 // cv::INTER_CUBIC
+	ScreenshotResizeMethodArea            ScreenshotResizeMethod = 3 // cv::INTER_AREA (default)
+	ScreenshotResizeMethodLanczos4        ScreenshotResizeMethod = 4 // cv::INTER_LANCZOS4
+)
 
 // ScreenshotOption configures how the screenshot is resized.
 // If multiple options are provided, only the last one is applied.
@@ -246,6 +356,15 @@ func WithScreenshotUseRawSize(enabled bool) ScreenshotOption {
 	return func(cfg *screenshotOptionConfig) {
 		cfg.kind = screenshotOptionRawSize
 		cfg.useRawSize = enabled
+	}
+}
+
+// WithScreenshotResizeMethod sets the interpolation method used when resizing screenshots.
+// Defaults to ScreenshotResizeMethodArea (cv::INTER_AREA).
+func WithScreenshotResizeMethod(method ScreenshotResizeMethod) ScreenshotOption {
+	return func(cfg *screenshotOptionConfig) {
+		cfg.kind = screenshotOptionResizeMethod
+		cfg.resizeMethod = int32(method)
 	}
 }
 
@@ -283,9 +402,26 @@ func (c *Controller) SetScreenshot(opts ...ScreenshotOption) error {
 			unsafe.Pointer(&cfg.useRawSize),
 			unsafe.Sizeof(cfg.useRawSize),
 		)
+	case screenshotOptionResizeMethod:
+		return c.setOption(
+			native.MaaCtrlOption_ScreenshotResizeMethod,
+			unsafe.Pointer(&cfg.resizeMethod),
+			unsafe.Sizeof(cfg.resizeMethod),
+		)
 	default:
 		return fmt.Errorf("unknown screenshot option kind: %v", cfg.kind)
 	}
+}
+
+// SetMouseLockFollow enables or disables mouse-lock-follow mode.
+// This is designed for TPS/FPS games that lock the mouse to their window in the background.
+// Only valid for Win32 controllers using message-based input methods.
+func (c *Controller) SetMouseLockFollow(enabled bool) error {
+	return c.setOption(
+		native.MaaCtrlOption_MouseLockFollow,
+		unsafe.Pointer(&enabled),
+		unsafe.Sizeof(enabled),
+	)
 }
 
 // PostConnect posts a connection.

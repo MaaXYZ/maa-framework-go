@@ -13,6 +13,14 @@ var maaToolkit uintptr
 
 var MaaToolkitConfigInitOption func(userPath, defaultJson string) bool
 
+// MaaMacOSPermission defines the macOS permission type.
+type MaaMacOSPermission int32
+
+const (
+	MaaMacOSPermissionScreenCapture MaaMacOSPermission = 1
+	MaaMacOSPermissionAccessibility MaaMacOSPermission = 2
+)
+
 var (
 	MaaToolkitAdbDeviceListCreate          func() uintptr
 	MaaToolkitAdbDeviceListDestroy         func(handle uintptr)
@@ -37,6 +45,12 @@ var (
 	MaaToolkitDesktopWindowGetHandle     func(window uintptr) unsafe.Pointer
 	MaaToolkitDesktopWindowGetClassName  func(window uintptr) string
 	MaaToolkitDesktopWindowGetWindowName func(window uintptr) string
+)
+
+var (
+	MaaToolkitMacOSCheckPermission        func(perm MaaMacOSPermission) bool
+	MaaToolkitMacOSRequestPermission      func(perm MaaMacOSPermission) bool
+	MaaToolkitMacOSRevealPermissionSettings func(perm MaaMacOSPermission) bool
 )
 
 func initToolkit(libDir string) error {
@@ -97,6 +111,10 @@ func registerToolkit() {
 	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetHandle, maaToolkit, "MaaToolkitDesktopWindowGetHandle")
 	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetClassName, maaToolkit, "MaaToolkitDesktopWindowGetClassName")
 	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetWindowName, maaToolkit, "MaaToolkitDesktopWindowGetWindowName")
+	// MacOS
+	purego.RegisterLibFunc(&MaaToolkitMacOSCheckPermission, maaToolkit, "MaaToolkitMacOSCheckPermission")
+	purego.RegisterLibFunc(&MaaToolkitMacOSRequestPermission, maaToolkit, "MaaToolkitMacOSRequestPermission")
+	purego.RegisterLibFunc(&MaaToolkitMacOSRevealPermissionSettings, maaToolkit, "MaaToolkitMacOSRevealPermissionSettings")
 }
 
 func unregisterToolkit() error {

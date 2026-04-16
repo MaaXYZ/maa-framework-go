@@ -504,6 +504,88 @@ func (t *Tasker) GetLatestNode(taskName string) (*NodeDetail, error) {
 	return t.GetNodeDetail(nodeId)
 }
 
+// WaitFreezesDetail contains the detail for a wait-freezes action.
+type WaitFreezesDetail struct {
+	ID        int64
+	NodeName  string
+	Phase     string
+	Success   bool
+	ElapsedMs uint64
+	RecoIDs   []int64
+	ROI       Rect
+}
+
+// GetWaitFreezesDetail queries wait-freezes detail by wait-freezes ID.
+// Returns (nil, nil) when no detail is available for wfId.
+func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
+	nodeName := buffer.NewStringBuffer()
+	defer nodeName.Destroy()
+	phase := buffer.NewStringBuffer()
+	defer phase.Destroy()
+	var successByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
+	var elapsedMs uint64
+	roi := buffer.NewRectBuffer()
+	defer roi.Destroy()
+
+	// First call to get the reco_id_list size
+	var size uint64
+	got := native.MaaTaskerGetWaitFreezesDetail(
+		t.handle,
+		wfId,
+		0,
+		0,
+		nil,
+		nil,
+		0,
+		&size,
+		0,
+	)
+	if !got {
+		return nil, nil
+	}
+
+	var recoIdList []int64
+	if size > 0 {
+		recoIdList = make([]int64, size)
+		got = native.MaaTaskerGetWaitFreezesDetail(
+			t.handle,
+			wfId,
+			nodeName.Handle(),
+			phase.Handle(),
+			(*bool)(unsafe.Pointer(&successByte)), // Convert uint8* to bool* for FFI call
+			&elapsedMs,
+			uintptr(unsafe.Pointer(&recoIdList[0])),
+			&size,
+			roi.Handle(),
+		)
+	} else {
+		got = native.MaaTaskerGetWaitFreezesDetail(
+			t.handle,
+			wfId,
+			nodeName.Handle(),
+			phase.Handle(),
+			(*bool)(unsafe.Pointer(&successByte)), // Convert uint8* to bool* for FFI call
+			&elapsedMs,
+			0,
+			&size,
+			roi.Handle(),
+		)
+	}
+	if !got {
+		return nil, errors.New("failed to get wait freezes detail")
+	}
+
+	return &WaitFreezesDetail{
+		ID:        wfId,
+		NodeName:  nodeName.Get(),
+		Phase:     phase.Get(),
+		Success:   successByte != 0,
+		ElapsedMs: elapsedMs,
+		RecoIDs:   recoIdList,
+		ROI:       roi.Get(),
+	}, nil
+}
+
 // AddSink adds an event listener and returns the sink ID for later removal.
 func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
 	id := registerEventCallback(sink)

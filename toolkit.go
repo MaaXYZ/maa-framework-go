@@ -93,3 +93,29 @@ func FindDesktopWindows() ([]*DesktopWindow, error) {
 	}
 	return list, nil
 }
+
+// MacOSPermission defines a macOS permission type.
+type MacOSPermission = native.MaaMacOSPermission
+
+// MacOS permission constants.
+const (
+	MacOSPermissionScreenCapture MacOSPermission = native.MaaMacOSPermissionScreenCapture
+	MacOSPermissionAccessibility MacOSPermission = native.MaaMacOSPermissionAccessibility
+)
+
+// MacOSCheckPermission checks whether the given macOS permission has been granted.
+func MacOSCheckPermission(perm MacOSPermission) bool {
+	return native.MaaToolkitMacOSCheckPermission(perm)
+}
+
+// MacOSRequestPermission requests the given macOS permission from the user.
+// Returns true if the permission was granted, false otherwise.
+func MacOSRequestPermission(perm MacOSPermission) bool {
+	return native.MaaToolkitMacOSRequestPermission(perm)
+}
+
+// MacOSRevealPermissionSettings opens the System Settings page for the given macOS permission.
+// Returns true on success.
+func MacOSRevealPermissionSettings(perm MacOSPermission) bool {
+	return native.MaaToolkitMacOSRevealPermissionSettings(perm)
+}

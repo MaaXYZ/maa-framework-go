@@ -37,7 +37,7 @@ func TestTasker_BindResource(t *testing.T) {
 }
 
 func TestTasker_BindController(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 
 	tasker := createTasker(t)
@@ -47,7 +47,7 @@ func TestTasker_BindController(t *testing.T) {
 }
 
 func TestTasker_Initialized(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	connected := ctrl.PostConnect().Wait().Success()
 	require.True(t, connected)
@@ -64,7 +64,7 @@ func TestTasker_Initialized(t *testing.T) {
 }
 
 func TestTasker_PostPipeline(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -92,7 +92,7 @@ func TestTasker_PostPipeline(t *testing.T) {
 }
 
 func TestTasker_GetTaskDetail_NodesAndGetNodeDetail(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -204,7 +204,7 @@ func TestTasker_handleOverride(t *testing.T) {
 }
 
 func TestTasker_Running(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -221,7 +221,7 @@ func TestTasker_Running(t *testing.T) {
 }
 
 func TestTasker_PostStop(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -252,7 +252,7 @@ func TestTasker_GetResource(t *testing.T) {
 }
 
 func TestTasker_GetController(t *testing.T) {
-	ctrl1 := createCarouselImageController(t)
+	ctrl1 := createBlankController(t)
 	defer ctrl1.Destroy()
 
 	tasker := createTasker(t)
@@ -266,7 +266,7 @@ func TestTasker_GetController(t *testing.T) {
 }
 
 func TestTasker_ClearCache(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -283,7 +283,7 @@ func TestTasker_ClearCache(t *testing.T) {
 }
 
 func TestTasker_GetLatestNode(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
@@ -303,12 +303,12 @@ func TestTasker_GetLatestNode(t *testing.T) {
 	detail, err := tasker.GetLatestNode("Wilderness")
 	require.NoError(t, err)
 	t.Log(detail)
-	got := job.Wait().Success()
-	require.True(t, got)
+	ok := tasker.PostStop().Wait().Success()
+	require.True(t, ok)
 }
 
 func TestTasker_OverridePipeline(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)

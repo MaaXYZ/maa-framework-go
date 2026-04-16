@@ -44,7 +44,7 @@ const (
 // and provide implementations for the following methods:
 // Connect, RequestUUID, StartApp, StopApp,
 // Screencap, Click, Swipe, TouchDown, TouchMove, TouchUp,
-// ClickKey, InputText, KeyDown, KeyUp, Scroll and Inactive.
+// ClickKey, InputText, KeyDown, KeyUp, Scroll, RelativeMove, Shell and Inactive.
 type CustomController interface {
 	Connect() bool
 	Connected() bool
@@ -63,6 +63,10 @@ type CustomController interface {
 	KeyDown(keycode int32) bool
 	KeyUp(keycode int32) bool
 	Scroll(dx, dy int32) bool
+	RelativeMove(dx, dy int32) bool
+	// Shell runs a controller-side shell command and returns its textual output.
+	// Return ("", true) if the command succeeded but produced no output.
+	Shell(cmd string, timeout int64) (string, bool)
 	// Inactive is called when the framework requests restoring controller/window state (e.g. after tasks finish).
 	// Return true for success or when no action is needed.
 	Inactive() bool
@@ -72,25 +76,27 @@ type CustomController interface {
 }
 
 type MaaCustomControllerCallbacks struct {
-	Connect     uintptr
-	Connected   uintptr
-	RequestUUID uintptr
-	GetFeature  uintptr
-	StartApp    uintptr
-	StopApp     uintptr
-	Screencap   uintptr
-	Click       uintptr
-	Swipe       uintptr
-	TouchDown   uintptr
-	TouchMove   uintptr
-	TouchUp     uintptr
-	ClickKey    uintptr
-	InputText   uintptr
-	KeyDown     uintptr
-	KeyUp       uintptr
-	Scroll      uintptr
-	Inactive    uintptr
-	GetInfo     uintptr
+	Connect      uintptr
+	Connected    uintptr
+	RequestUUID  uintptr
+	GetFeature   uintptr
+	StartApp     uintptr
+	StopApp      uintptr
+	Screencap    uintptr
+	Click        uintptr
+	Swipe        uintptr
+	TouchDown    uintptr
+	TouchMove    uintptr
+	TouchUp      uintptr
+	ClickKey     uintptr
+	InputText    uintptr
+	KeyDown      uintptr
+	KeyUp        uintptr
+	Scroll       uintptr
+	RelativeMove uintptr
+	Shell        uintptr
+	Inactive     uintptr
+	GetInfo      uintptr
 }
 
 var customControllerCallbacksHandle = new(MaaCustomControllerCallbacks)
@@ -113,6 +119,8 @@ func init() {
 	customControllerCallbacksHandle.KeyDown = purego.NewCallback(_KeyDown)
 	customControllerCallbacksHandle.KeyUp = purego.NewCallback(_KeyUp)
 	customControllerCallbacksHandle.Scroll = purego.NewCallback(_ScrollAgent)
+	customControllerCallbacksHandle.RelativeMove = purego.NewCallback(_RelativeMoveAgent)
+	customControllerCallbacksHandle.Shell = purego.NewCallback(_ShellAgent)
 	customControllerCallbacksHandle.Inactive = purego.NewCallback(_InactiveAgent)
 	customControllerCallbacksHandle.GetInfo = purego.NewCallback(_GetInfoAgent)
 }
@@ -439,6 +447,47 @@ func _ScrollAgent(dx, dy int32, handleArg uintptr) uintptr {
 	}
 
 	if ctrl.Scroll(dx, dy) {
+		return uintptr(1)
+	}
+	return uintptr(0)
+}
+
+func _RelativeMoveAgent(dx, dy int32, handleArg uintptr) uintptr {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(handleArg)
+
+	customControllerCallbacksAgentsMutex.RLock()
+	ctrl, exists := customControllerCallbacksAgents[id]
+	customControllerCallbacksAgentsMutex.RUnlock()
+
+	if !exists || ctrl == nil {
+		return uintptr(0)
+	}
+
+	if ctrl.RelativeMove(dx, dy) {
+		return uintptr(1)
+	}
+	return uintptr(0)
+}
+
+func _ShellAgent(cmd *byte, timeout int64, handleArg uintptr, outputBuffer uintptr) uintptr {
+	// Here, we are simply passing the uint64 value as a pointer
+	// and will not actually dereference this pointer.
+	id := uint64(handleArg)
+
+	customControllerCallbacksAgentsMutex.RLock()
+	ctrl, exists := customControllerCallbacksAgents[id]
+	customControllerCallbacksAgentsMutex.RUnlock()
+
+	if !exists || ctrl == nil {
+		return uintptr(0)
+	}
+
+	output, ok := ctrl.Shell(cStringToString(cmd), timeout)
+	if ok {
+		buf := buffer.NewStringBufferByHandle(outputBuffer)
+		buf.Set(output)
 		return uintptr(1)
 	}
 	return uintptr(0)

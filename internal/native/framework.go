@@ -43,12 +43,13 @@ var (
 	MaaTaskerGetResource          func(tasker uintptr) uintptr
 	MaaTaskerGetController        func(tasker uintptr) uintptr
 	MaaTaskerClearCache           func(tasker uintptr) bool
-	MaaTaskerGetRecognitionDetail func(tasker uintptr, recoId int64, nodeName uintptr, algorithm uintptr, hit *bool, box uintptr, detailJson uintptr, raw uintptr, draws uintptr) bool
-	MaaTaskerGetActionDetail      func(tasker uintptr, actionId int64, nodeName uintptr, action uintptr, box uintptr, success *bool, detailJson uintptr) bool
-	MaaTaskerGetNodeDetail        func(tasker uintptr, nodeId int64, nodeName uintptr, recoId *int64, actionId *int64, completed *bool) bool
-	MaaTaskerGetTaskDetail        func(tasker uintptr, taskId int64, entry uintptr, nodeIdList uintptr, nodeIdListSize *uint64, status *int32) bool
-	MaaTaskerGetLatestNode        func(tasker uintptr, taskName string, latestId *int64) bool
-	MaaTaskerOverridePipeline     func(tasker uintptr, taskId int64, pipelineOverride string) bool
+	MaaTaskerGetRecognitionDetail  func(tasker uintptr, recoId int64, nodeName uintptr, algorithm uintptr, hit *bool, box uintptr, detailJson uintptr, raw uintptr, draws uintptr) bool
+	MaaTaskerGetActionDetail       func(tasker uintptr, actionId int64, nodeName uintptr, action uintptr, box uintptr, success *bool, detailJson uintptr) bool
+	MaaTaskerGetWaitFreezesDetail  func(tasker uintptr, wfId int64, nodeName uintptr, phase uintptr, success *bool, elapsedMs *uint64, recoIdList uintptr, recoIdListSize *uint64, roi uintptr) bool
+	MaaTaskerGetNodeDetail         func(tasker uintptr, nodeId int64, nodeName uintptr, recoId *int64, actionId *int64, completed *bool) bool
+	MaaTaskerGetTaskDetail         func(tasker uintptr, taskId int64, entry uintptr, nodeIdList uintptr, nodeIdListSize *uint64, status *int32) bool
+	MaaTaskerGetLatestNode         func(tasker uintptr, taskName string, latestId *int64) bool
+	MaaTaskerOverridePipeline      func(tasker uintptr, taskId int64, pipelineOverride string) bool
 )
 
 type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi, transArg, outBox, outDetail uintptr) uintptr
@@ -160,6 +161,21 @@ const (
 	// MaaCtrlOptionScreenshotUseRawSize specifies that the screenshot uses the raw size without scaling.
 	// Note that this option may cause incorrect coordinates on user devices with different resolutions if scaling is not performed.
 	MaaCtrlOption_ScreenshotUseRawSize MaaCtrlOption = 3
+
+	// MaaCtrlOption_MouseLockFollow enables or disables mouse-lock-follow mode for Win32 controllers.
+	// This is designed for TPS/FPS games that lock the mouse to their window in the background.
+	// Only valid for Win32 controllers using message-based input methods.
+	//
+	// value: bool, eg: true; val_size: sizeof(bool)
+	MaaCtrlOption_MouseLockFollow MaaCtrlOption = 4
+
+	// MaaCtrlOption_ScreenshotResizeMethod sets the interpolation method used when resizing screenshots.
+	// Value corresponds to cv::InterpolationFlags:
+	//   INTER_NEAREST=0, INTER_LINEAR=1, INTER_CUBIC=2, INTER_AREA=3, INTER_LANCZOS4=4
+	// Default is INTER_AREA (3).
+	//
+	// value: int, eg: 3; val_size: sizeof(int)
+	MaaCtrlOption_ScreenshotResizeMethod MaaCtrlOption = 6
 )
 
 type MaaGamepadType uint64
@@ -169,17 +185,43 @@ const (
 	MaaGamepadType_DualShock4 MaaGamepadType = 1
 )
 
-// NOTE: MaaDbgControllerCreate and MaaDbgControllerType are intentionally NOT implemented in Go binding.
-// The Go binding provides CarouselImageController and BlankController as alternatives for debugging purposes.
-// Do not add MaaDbgController bindings here.
+// MaaMacOSScreencapMethod defines the macOS screencap method.
+// Select ONE method only.
+type MaaMacOSScreencapMethod uint64
+
+const (
+	MaaMacOSScreencapMethod_None             MaaMacOSScreencapMethod = 0
+	MaaMacOSScreencapMethod_ScreenCaptureKit MaaMacOSScreencapMethod = 1
+)
+
+// MaaMacOSInputMethod defines the macOS input method.
+// Select ONE method only.
+type MaaMacOSInputMethod uint64
+
+const (
+	MaaMacOSInputMethod_None         MaaMacOSInputMethod = 0
+	MaaMacOSInputMethod_GlobalEvent  MaaMacOSInputMethod = 1
+	MaaMacOSInputMethod_PostToPid    MaaMacOSInputMethod = 1 << 1
+)
+
+// NOTE: MaaDbgControllerCreate is intentionally NOT implemented in the Go binding.
+// MaaDbgControllerCreate has been superseded by more specific alternatives:
+//   - BlankController (blank_controller.go): no-op stub that always succeeds
+//   - NewReplayController: replay recorded operations from a JSONL file
+// Do NOT add a Go binding for MaaDbgControllerCreate or MaaDbgControllerType here.
+// The api-check CI tool also blacklists MaaDbgControllerCreate for the same reason.
 
 var (
-	MaaAdbControllerCreate       func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
-	MaaPlayCoverControllerCreate func(address, uuid string) uintptr
-	MaaWin32ControllerCreate     func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
-	MaaWlRootsControllerCreate   func(wlrSocketPath string) uintptr
-	MaaCustomControllerCreate    func(controller unsafe.Pointer, controllerArg uintptr) uintptr
-	MaaGamepadControllerCreate   func(hWnd unsafe.Pointer, gamepadType MaaGamepadType, screencapMethod uint64) uintptr
+	MaaAdbControllerCreate             func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
+	MaaPlayCoverControllerCreate       func(address, uuid string) uintptr
+	MaaWin32ControllerCreate           func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
+	MaaWlRootsControllerCreate         func(wlrSocketPath string) uintptr
+	MaaCustomControllerCreate          func(controller unsafe.Pointer, controllerArg uintptr) uintptr
+	MaaGamepadControllerCreate         func(hWnd unsafe.Pointer, gamepadType MaaGamepadType, screencapMethod uint64) uintptr
+	MaaMacOSControllerCreate           func(windowID uint32, screencapMethod MaaMacOSScreencapMethod, inputMethod MaaMacOSInputMethod) uintptr
+	MaaAndroidNativeControllerCreate   func(configJson string) uintptr
+	MaaReplayControllerCreate          func(recordingPath string) uintptr
+	MaaRecordControllerCreate          func(inner uintptr, recordingPath string) uintptr
 	MaaControllerDestroy         func(ctrl uintptr)
 	MaaControllerAddSink         func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64
 	MaaControllerRemoveSink      func(ctrl uintptr, sinkId int64)
@@ -398,6 +440,7 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaTaskerClearCache, maaFramework, "MaaTaskerClearCache")
 	purego.RegisterLibFunc(&MaaTaskerGetRecognitionDetail, maaFramework, "MaaTaskerGetRecognitionDetail")
 	purego.RegisterLibFunc(&MaaTaskerGetActionDetail, maaFramework, "MaaTaskerGetActionDetail")
+	purego.RegisterLibFunc(&MaaTaskerGetWaitFreezesDetail, maaFramework, "MaaTaskerGetWaitFreezesDetail")
 	purego.RegisterLibFunc(&MaaTaskerGetNodeDetail, maaFramework, "MaaTaskerGetNodeDetail")
 	purego.RegisterLibFunc(&MaaTaskerGetTaskDetail, maaFramework, "MaaTaskerGetTaskDetail")
 	purego.RegisterLibFunc(&MaaTaskerGetLatestNode, maaFramework, "MaaTaskerGetLatestNode")
@@ -440,6 +483,10 @@ func registerFramework() {
 	purego.RegisterLibFunc(&MaaWlRootsControllerCreate, maaFramework, "MaaWlRootsControllerCreate")
 	purego.RegisterLibFunc(&MaaCustomControllerCreate, maaFramework, "MaaCustomControllerCreate")
 	purego.RegisterLibFunc(&MaaGamepadControllerCreate, maaFramework, "MaaGamepadControllerCreate")
+	purego.RegisterLibFunc(&MaaMacOSControllerCreate, maaFramework, "MaaMacOSControllerCreate")
+	purego.RegisterLibFunc(&MaaAndroidNativeControllerCreate, maaFramework, "MaaAndroidNativeControllerCreate")
+	purego.RegisterLibFunc(&MaaReplayControllerCreate, maaFramework, "MaaReplayControllerCreate")
+	purego.RegisterLibFunc(&MaaRecordControllerCreate, maaFramework, "MaaRecordControllerCreate")
 	purego.RegisterLibFunc(&MaaControllerDestroy, maaFramework, "MaaControllerDestroy")
 	purego.RegisterLibFunc(&MaaControllerAddSink, maaFramework, "MaaControllerAddSink")
 	purego.RegisterLibFunc(&MaaControllerRemoveSink, maaFramework, "MaaControllerRemoveSink")

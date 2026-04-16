@@ -366,7 +366,7 @@ func requireRecognitionDetailMatchesCombinedRaw(t *testing.T, detail *Recognitio
 }
 
 func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
-	ctrl := createCarouselImageController(t)
+	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)

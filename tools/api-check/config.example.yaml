@@ -1,4 +1,5 @@
 header_dir: ../../deps/include
 blacklist:
   # Known intentional exceptions can be listed here.
+  # MaaDbgControllerCreate is excluded from the Go binding by design; see blank_controller.go.
   # - MaaDbgControllerCreate
