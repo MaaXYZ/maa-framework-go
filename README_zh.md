@@ -39,15 +39,15 @@
 
 ## ✨ 特性
 
-- **ADB 控制器** - 通过 ADB 实现 Android 设备自动化
-- **Win32 控制器** - Windows 桌面应用自动化
-- **PlayCover 控制器** - 在 macOS 上控制通过 PlayCover 运行的 iOS 应用
-- **虚拟手柄控制器** - 通过 ViGEm 模拟手柄输入（仅 Windows）
-- **图像识别** - 模板匹配、OCR、特征检测等
-- **自定义识别** - 实现自定义图像识别算法
-- **自定义动作** - 定义你自己的自动化逻辑
-- **Agent 支持** - 支持从外部进程挂载自定义识别和动作
-- **流水线驱动** - 基于 JSON 配置的声明式任务流
+- **跨平台控制器** - 提供 ADB、Win32、WlRoots、macOS、PlayCover 与 Android Native 等控制后端
+- **录制与回放** - 支持将控制器操作记录为 JSONL，并用于调试与回归复现
+- **虚拟手柄控制器** - 通过 ViGEm 实现 Windows 手柄自动化
+- **Toolkit 工具能力** - 支持发现 ADB 设备和桌面窗口，并管理 macOS 自动化权限
+- **图像识别** - 支持模板匹配、OCR、特征检测等识别能力
+- **自定义扩展** - 以纯 Go 实现自定义识别、自定义动作和自定义控制器
+- **Agent 支持** - 支持从外部进程挂载自定义识别与动作逻辑
+- **异步任务与事件** - 支持 Job 状态轮询、详情查询以及 Resource、Controller、Tasker 事件订阅
+- **流水线与运行时编排** - 基于 JSON 的声明式任务流，并支持在 Context 中动态执行任务、识别和动作
 
 ## 📦 安装
 
@@ -171,7 +171,7 @@ func main() {
 - [MaaFramework 快速开始](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md)
 - [任务流水线协议](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.1-%E4%BB%BB%E5%8A%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%8D%8F%E8%AE%AE.md)
 - [集成文档](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/2.1-%E9%9B%86%E6%88%90%E6%96%87%E6%A1%A3.md)
-- [Go 包文档](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v3)
+- [Go 包文档](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4)
 
 ## 🤝 贡献
 

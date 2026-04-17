@@ -39,15 +39,15 @@ Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-p
 
 ## ✨ Features
 
-- **ADB Controller** - Android device automation via ADB
-- **Win32 Controller** - Windows desktop application automation
-- **PlayCover Controller** - Control iOS apps via PlayCover on macOS
+- **Cross-platform Controllers** - ADB, Win32, WlRoots, macOS, PlayCover, and Android native control backends
+- **Recording and Replay** - Capture controller operations to JSONL and replay them for debugging and regression testing
 - **Virtual Gamepad Controller** - Gamepad automation via ViGEm (Windows only)
-- **Image Recognition** - Template matching, OCR, feature detection and more
-- **Custom Recognition** - Implement custom image recognition algorithms
-- **Custom Actions** - Define your own automation logic
-- **Agent Support** - Mount custom recognition and actions from external processes
-- **Pipeline-based** - Declarative task flow with JSON configuration
+- **Toolkit Utilities** - Discover ADB devices and desktop windows, and manage macOS automation permissions
+- **Image Recognition** - Template matching, OCR, feature detection, and more
+- **Custom Extensions** - Implement custom recognitions, actions, and controllers in pure Go
+- **Agent Support** - Mount custom recognition and action logic from external processes
+- **Async Jobs and Events** - Poll job status, inspect task details, and subscribe to resource, controller, and tasker events
+- **Pipeline and Runtime APIs** - Declarative JSON task flows with runtime task, recognition, and action orchestration
 
 ## 📦 Installation
 
@@ -170,7 +170,7 @@ For more examples, see the [examples](examples) directory:
 - [MaaFramework Quick Start](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/1.1-QuickStarted.md)
 - [Pipeline Protocol](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md)
 - [Integration Guide](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/2.1-Integration.md)
-- [Go Package Documentation](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v3)
+- [Go Package Documentation](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4)
 
 ## 🤝 Contributing
 
