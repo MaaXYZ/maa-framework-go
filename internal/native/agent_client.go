@@ -8,7 +8,10 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-var maaAgentClient uintptr
+var (
+	maaAgentClient     uintptr
+	maaAgentClientName = "MaaAgentClient"
+)
 
 var (
 	MaaAgentClientCreateV2                 func(identifier uintptr) uintptr
@@ -35,7 +38,7 @@ func initAgentClient(libDir string) error {
 	handle, err := openLibrary(libPath)
 	if err != nil {
 		return &LibraryLoadError{
-			LibraryName: "MaaAgentClient",
+			LibraryName: maaAgentClientName,
 			LibraryPath: libPath,
 			Err:         err,
 		}

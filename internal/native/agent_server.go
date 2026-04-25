@@ -9,7 +9,10 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-var maaAgentServer uintptr
+var (
+	maaAgentServer     uintptr
+	maaAgentServerName = "MaaAgentServer"
+)
 
 var (
 	MaaAgentServerRegisterCustomRecognition func(name string, recognition MaaCustomRecognitionCallback, transArg unsafe.Pointer) bool
@@ -31,7 +34,7 @@ func initAgentServer(libDir string) error {
 	handle, err := openLibrary(libPath)
 	if err != nil {
 		return &LibraryLoadError{
-			LibraryName: "MaaAgentServer",
+			LibraryName: maaAgentServerName,
 			LibraryPath: libPath,
 			Err:         err,
 		}

@@ -9,7 +9,10 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-var maaFramework uintptr
+var (
+	maaFramework     uintptr
+	maaFrameworkName = "MaaFramework"
+)
 
 var (
 	MaaVersion func() string
@@ -43,13 +46,13 @@ var (
 	MaaTaskerGetResource          func(tasker uintptr) uintptr
 	MaaTaskerGetController        func(tasker uintptr) uintptr
 	MaaTaskerClearCache           func(tasker uintptr) bool
-	MaaTaskerGetRecognitionDetail  func(tasker uintptr, recoId int64, nodeName uintptr, algorithm uintptr, hit *bool, box uintptr, detailJson uintptr, raw uintptr, draws uintptr) bool
-	MaaTaskerGetActionDetail       func(tasker uintptr, actionId int64, nodeName uintptr, action uintptr, box uintptr, success *bool, detailJson uintptr) bool
-	MaaTaskerGetWaitFreezesDetail  func(tasker uintptr, wfId int64, nodeName uintptr, phase uintptr, success *bool, elapsedMs *uint64, recoIdList uintptr, recoIdListSize *uint64, roi uintptr) bool
-	MaaTaskerGetNodeDetail         func(tasker uintptr, nodeId int64, nodeName uintptr, recoId *int64, actionId *int64, completed *bool) bool
-	MaaTaskerGetTaskDetail         func(tasker uintptr, taskId int64, entry uintptr, nodeIdList uintptr, nodeIdListSize *uint64, status *int32) bool
-	MaaTaskerGetLatestNode         func(tasker uintptr, taskName string, latestId *int64) bool
-	MaaTaskerOverridePipeline      func(tasker uintptr, taskId int64, pipelineOverride string) bool
+	MaaTaskerGetRecognitionDetail func(tasker uintptr, recoId int64, nodeName uintptr, algorithm uintptr, hit *bool, box uintptr, detailJson uintptr, raw uintptr, draws uintptr) bool
+	MaaTaskerGetActionDetail      func(tasker uintptr, actionId int64, nodeName uintptr, action uintptr, box uintptr, success *bool, detailJson uintptr) bool
+	MaaTaskerGetWaitFreezesDetail func(tasker uintptr, wfId int64, nodeName uintptr, phase uintptr, success *bool, elapsedMs *uint64, recoIdList uintptr, recoIdListSize *uint64, roi uintptr) bool
+	MaaTaskerGetNodeDetail        func(tasker uintptr, nodeId int64, nodeName uintptr, recoId *int64, actionId *int64, completed *bool) bool
+	MaaTaskerGetTaskDetail        func(tasker uintptr, taskId int64, entry uintptr, nodeIdList uintptr, nodeIdListSize *uint64, status *int32) bool
+	MaaTaskerGetLatestNode        func(tasker uintptr, taskName string, latestId *int64) bool
+	MaaTaskerOverridePipeline     func(tasker uintptr, taskId int64, pipelineOverride string) bool
 )
 
 type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi, transArg, outBox, outDetail uintptr) uintptr
@@ -199,9 +202,9 @@ const (
 type MaaMacOSInputMethod uint64
 
 const (
-	MaaMacOSInputMethod_None         MaaMacOSInputMethod = 0
-	MaaMacOSInputMethod_GlobalEvent  MaaMacOSInputMethod = 1
-	MaaMacOSInputMethod_PostToPid    MaaMacOSInputMethod = 1 << 1
+	MaaMacOSInputMethod_None        MaaMacOSInputMethod = 0
+	MaaMacOSInputMethod_GlobalEvent MaaMacOSInputMethod = 1
+	MaaMacOSInputMethod_PostToPid   MaaMacOSInputMethod = 1 << 1
 )
 
 // NOTE: MaaDbgControllerCreate is intentionally NOT implemented in the Go binding.
@@ -212,23 +215,23 @@ const (
 // The api-check CI tool also blacklists MaaDbgControllerCreate for the same reason.
 
 var (
-	MaaAdbControllerCreate             func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
-	MaaPlayCoverControllerCreate       func(address, uuid string) uintptr
-	MaaWin32ControllerCreate           func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
-	MaaWlRootsControllerCreate         func(wlrSocketPath string) uintptr
-	MaaCustomControllerCreate          func(controller unsafe.Pointer, controllerArg uintptr) uintptr
-	MaaGamepadControllerCreate         func(hWnd unsafe.Pointer, gamepadType MaaGamepadType, screencapMethod uint64) uintptr
-	MaaMacOSControllerCreate           func(windowID uint32, screencapMethod MaaMacOSScreencapMethod, inputMethod MaaMacOSInputMethod) uintptr
-	MaaAndroidNativeControllerCreate   func(configJson string) uintptr
-	MaaReplayControllerCreate          func(recordingPath string) uintptr
-	MaaRecordControllerCreate          func(inner uintptr, recordingPath string) uintptr
-	MaaControllerDestroy         func(ctrl uintptr)
-	MaaControllerAddSink         func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64
-	MaaControllerRemoveSink      func(ctrl uintptr, sinkId int64)
-	MaaControllerClearSinks      func(ctrl uintptr)
-	MaaControllerSetOption       func(ctrl uintptr, key MaaCtrlOption, value unsafe.Pointer, valSize uint64) bool
-	MaaControllerPostConnection  func(ctrl uintptr) int64
-	MaaControllerPostClick       func(ctrl uintptr, x, y int32) int64
+	MaaAdbControllerCreate           func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
+	MaaPlayCoverControllerCreate     func(address, uuid string) uintptr
+	MaaWin32ControllerCreate         func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
+	MaaWlRootsControllerCreate       func(wlrSocketPath string) uintptr
+	MaaCustomControllerCreate        func(controller unsafe.Pointer, controllerArg uintptr) uintptr
+	MaaGamepadControllerCreate       func(hWnd unsafe.Pointer, gamepadType MaaGamepadType, screencapMethod uint64) uintptr
+	MaaMacOSControllerCreate         func(windowID uint32, screencapMethod MaaMacOSScreencapMethod, inputMethod MaaMacOSInputMethod) uintptr
+	MaaAndroidNativeControllerCreate func(configJson string) uintptr
+	MaaReplayControllerCreate        func(recordingPath string) uintptr
+	MaaRecordControllerCreate        func(inner uintptr, recordingPath string) uintptr
+	MaaControllerDestroy             func(ctrl uintptr)
+	MaaControllerAddSink             func(ctrl uintptr, sink MaaEventCallback, transArg uintptr) int64
+	MaaControllerRemoveSink          func(ctrl uintptr, sinkId int64)
+	MaaControllerClearSinks          func(ctrl uintptr)
+	MaaControllerSetOption           func(ctrl uintptr, key MaaCtrlOption, value unsafe.Pointer, valSize uint64) bool
+	MaaControllerPostConnection      func(ctrl uintptr) int64
+	MaaControllerPostClick           func(ctrl uintptr, x, y int32) int64
 	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
 	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
 	MaaControllerPostClickV2      func(ctrl uintptr, x, y, contact, pressure int32) int64
@@ -386,7 +389,7 @@ func initFramework(libDir string) error {
 	handle, err := openLibrary(libPath)
 	if err != nil {
 		return &LibraryLoadError{
-			LibraryName: "MaaFramework",
+			LibraryName: maaFrameworkName,
 			LibraryPath: libPath,
 			Err:         err,
 		}

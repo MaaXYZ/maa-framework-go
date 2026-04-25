@@ -9,7 +9,10 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-var maaToolkit uintptr
+var (
+	maaToolkit     uintptr
+	maaToolkitName = "MaaToolkit"
+)
 
 var MaaToolkitConfigInitOption func(userPath, defaultJson string) bool
 
@@ -48,8 +51,8 @@ var (
 )
 
 var (
-	MaaToolkitMacOSCheckPermission        func(perm MaaMacOSPermission) bool
-	MaaToolkitMacOSRequestPermission      func(perm MaaMacOSPermission) bool
+	MaaToolkitMacOSCheckPermission          func(perm MaaMacOSPermission) bool
+	MaaToolkitMacOSRequestPermission        func(perm MaaMacOSPermission) bool
 	MaaToolkitMacOSRevealPermissionSettings func(perm MaaMacOSPermission) bool
 )
 
@@ -60,7 +63,7 @@ func initToolkit(libDir string) error {
 	handle, err := openLibrary(libPath)
 	if err != nil {
 		return &LibraryLoadError{
-			LibraryName: "MaaToolkit",
+			LibraryName: maaToolkitName,
 			LibraryPath: libPath,
 			Err:         err,
 		}
