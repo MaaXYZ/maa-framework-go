@@ -10,7 +10,6 @@ import (
 var (
 	inited bool
 
-	ErrNotInitialized         = errors.New("maa framework not initialized")
 	ErrSetLogDir              = errors.New("failed to set log directory")
 	ErrSetSaveDraw            = errors.New("failed to set save draw option")
 	ErrSetStdoutLevel         = errors.New("failed to set stdout level")
@@ -213,12 +212,7 @@ func IsInited() bool {
 }
 
 // Release releases the dynamic library resources of the MAA framework and unregisters its related functions.
-// It must be called only after the framework has been initialized via Init.
 func Release() error {
-
-	if !inited {
-		return ErrNotInitialized
-	}
 
 	if err := native.Shutdown(); err != nil {
 		return err
