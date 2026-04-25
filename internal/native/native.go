@@ -23,7 +23,7 @@ var (
 	loadedLibs []Library
 )
 
-func Init(libDir string) error {
+func Initialize(libDir string) error {
 
 	err := handleLibDir(libDir)
 	if err != nil {
@@ -32,7 +32,7 @@ func Init(libDir string) error {
 
 	for _, lib := range libraries {
 		if err := lib.init(libDir); err != nil {
-			releaseErr := Release()
+			releaseErr := Shutdown()
 
 			if releaseErr != nil {
 				return fmt.Errorf("%w; error while releasing already loaded libraries: %w", err, releaseErr)
@@ -45,7 +45,7 @@ func Init(libDir string) error {
 	return nil
 }
 
-func Release() error {
+func Shutdown() error {
 
 	var (
 		errs   []error

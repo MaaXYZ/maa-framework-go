@@ -155,14 +155,14 @@ func Init(opts ...InitOption) error {
 		opt(&cfg)
 	}
 
-	if err := native.Init(cfg.LibDir); err != nil {
+	if err := native.Initialize(cfg.LibDir); err != nil {
 		return err
 	}
 
 	success := false
 	defer func() {
 		if !success {
-			_ = native.Release()
+			_ = native.Shutdown()
 		}
 	}()
 
@@ -221,7 +221,7 @@ func Release() error {
 		return ErrNotInitialized
 	}
 
-	if err := native.Release(); err != nil {
+	if err := native.Shutdown(); err != nil {
 		return err
 	}
 
