@@ -10,7 +10,6 @@ import (
 var (
 	inited bool
 
-	ErrAlreadyInitialized     = errors.New("maa framework already initialized")
 	ErrNotInitialized         = errors.New("maa framework not initialized")
 	ErrSetLogDir              = errors.New("failed to set log directory")
 	ErrSetSaveDraw            = errors.New("failed to set save draw option")
@@ -146,7 +145,7 @@ func WithJSONDecoder(decoder JSONDecoder) InitOption {
 func Init(opts ...InitOption) error {
 
 	if inited {
-		return ErrAlreadyInitialized
+		return nil
 	}
 
 	cfg := initConfig{}
