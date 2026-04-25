@@ -56,6 +56,33 @@ var (
 	MaaToolkitMacOSRevealPermissionSettings func(perm MaaMacOSPermission) bool
 )
 
+var toolkitEntries = []Entry{
+	{&MaaToolkitConfigInitOption, "MaaToolkitConfigInitOption"},
+	{&MaaToolkitAdbDeviceListCreate, "MaaToolkitAdbDeviceListCreate"},
+	{&MaaToolkitAdbDeviceListDestroy, "MaaToolkitAdbDeviceListDestroy"},
+	{&MaaToolkitAdbDeviceFind, "MaaToolkitAdbDeviceFind"},
+	{&MaaToolkitAdbDeviceFindSpecified, "MaaToolkitAdbDeviceFindSpecified"},
+	{&MaaToolkitAdbDeviceListSize, "MaaToolkitAdbDeviceListSize"},
+	{&MaaToolkitAdbDeviceListAt, "MaaToolkitAdbDeviceListAt"},
+	{&MaaToolkitAdbDeviceGetName, "MaaToolkitAdbDeviceGetName"},
+	{&MaaToolkitAdbDeviceGetAdbPath, "MaaToolkitAdbDeviceGetAdbPath"},
+	{&MaaToolkitAdbDeviceGetAddress, "MaaToolkitAdbDeviceGetAddress"},
+	{&MaaToolkitAdbDeviceGetScreencapMethods, "MaaToolkitAdbDeviceGetScreencapMethods"},
+	{&MaaToolkitAdbDeviceGetInputMethods, "MaaToolkitAdbDeviceGetInputMethods"},
+	{&MaaToolkitAdbDeviceGetConfig, "MaaToolkitAdbDeviceGetConfig"},
+	{&MaaToolkitDesktopWindowListCreate, "MaaToolkitDesktopWindowListCreate"},
+	{&MaaToolkitDesktopWindowListDestroy, "MaaToolkitDesktopWindowListDestroy"},
+	{&MaaToolkitDesktopWindowFindAll, "MaaToolkitDesktopWindowFindAll"},
+	{&MaaToolkitDesktopWindowListSize, "MaaToolkitDesktopWindowListSize"},
+	{&MaaToolkitDesktopWindowListAt, "MaaToolkitDesktopWindowListAt"},
+	{&MaaToolkitDesktopWindowGetHandle, "MaaToolkitDesktopWindowGetHandle"},
+	{&MaaToolkitDesktopWindowGetClassName, "MaaToolkitDesktopWindowGetClassName"},
+	{&MaaToolkitDesktopWindowGetWindowName, "MaaToolkitDesktopWindowGetWindowName"},
+	{&MaaToolkitMacOSCheckPermission, "MaaToolkitMacOSCheckPermission"},
+	{&MaaToolkitMacOSRequestPermission, "MaaToolkitMacOSRequestPermission"},
+	{&MaaToolkitMacOSRevealPermissionSettings, "MaaToolkitMacOSRevealPermissionSettings"},
+}
+
 func initToolkit(libDir string) error {
 	libName := getMaaToolkitLibrary()
 	libPath := filepath.Join(libDir, libName)
@@ -90,36 +117,24 @@ func getMaaToolkitLibrary() string {
 }
 
 func registerToolkit() {
-	// Config
-	purego.RegisterLibFunc(&MaaToolkitConfigInitOption, maaToolkit, "MaaToolkitConfigInitOption")
-	// AdbDevice
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceListCreate, maaToolkit, "MaaToolkitAdbDeviceListCreate")
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceListDestroy, maaToolkit, "MaaToolkitAdbDeviceListDestroy")
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceFind, maaToolkit, "MaaToolkitAdbDeviceFind")
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceFindSpecified, maaToolkit, "MaaToolkitAdbDeviceFindSpecified")
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceListSize, maaToolkit, "MaaToolkitAdbDeviceListSize")
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceListAt, maaToolkit, "MaaToolkitAdbDeviceListAt")
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceGetName, maaToolkit, "MaaToolkitAdbDeviceGetName")
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceGetAdbPath, maaToolkit, "MaaToolkitAdbDeviceGetAdbPath")
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceGetAddress, maaToolkit, "MaaToolkitAdbDeviceGetAddress")
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceGetScreencapMethods, maaToolkit, "MaaToolkitAdbDeviceGetScreencapMethods")
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceGetInputMethods, maaToolkit, "MaaToolkitAdbDeviceGetInputMethods")
-	purego.RegisterLibFunc(&MaaToolkitAdbDeviceGetConfig, maaToolkit, "MaaToolkitAdbDeviceGetConfig")
-	// DesktopWindow
-	purego.RegisterLibFunc(&MaaToolkitDesktopWindowListCreate, maaToolkit, "MaaToolkitDesktopWindowListCreate")
-	purego.RegisterLibFunc(&MaaToolkitDesktopWindowListDestroy, maaToolkit, "MaaToolkitDesktopWindowListDestroy")
-	purego.RegisterLibFunc(&MaaToolkitDesktopWindowFindAll, maaToolkit, "MaaToolkitDesktopWindowFindAll")
-	purego.RegisterLibFunc(&MaaToolkitDesktopWindowListSize, maaToolkit, "MaaToolkitDesktopWindowListSize")
-	purego.RegisterLibFunc(&MaaToolkitDesktopWindowListAt, maaToolkit, "MaaToolkitDesktopWindowListAt")
-	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetHandle, maaToolkit, "MaaToolkitDesktopWindowGetHandle")
-	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetClassName, maaToolkit, "MaaToolkitDesktopWindowGetClassName")
-	purego.RegisterLibFunc(&MaaToolkitDesktopWindowGetWindowName, maaToolkit, "MaaToolkitDesktopWindowGetWindowName")
-	// MacOS
-	purego.RegisterLibFunc(&MaaToolkitMacOSCheckPermission, maaToolkit, "MaaToolkitMacOSCheckPermission")
-	purego.RegisterLibFunc(&MaaToolkitMacOSRequestPermission, maaToolkit, "MaaToolkitMacOSRequestPermission")
-	purego.RegisterLibFunc(&MaaToolkitMacOSRevealPermissionSettings, maaToolkit, "MaaToolkitMacOSRevealPermissionSettings")
+	for _, entry := range toolkitEntries {
+		purego.RegisterLibFunc(entry.ptrToFunc, maaToolkit, entry.name)
+	}
 }
 
-func unregisterToolkit() error {
-	return unloadLibrary(maaToolkit)
+func releaseToolkit() error {
+	err := unloadLibrary(maaToolkit)
+	if err != nil {
+		return err
+	}
+
+	unregisterToolkit()
+
+	return nil
+}
+
+func unregisterToolkit() {
+	for _, entry := range toolkitEntries {
+		clearFuncVar(entry.ptrToFunc)
+	}
 }

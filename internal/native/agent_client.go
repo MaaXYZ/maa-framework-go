@@ -31,6 +31,24 @@ var (
 	MaaAgentClientGetCustomActionList      func(client uintptr, buffer uintptr) bool
 )
 
+var agentClientEntries = []Entry{
+	{&MaaAgentClientCreateV2, "MaaAgentClientCreateV2"},
+	{&MaaAgentClientCreateTcp, "MaaAgentClientCreateTcp"},
+	{&MaaAgentClientDestroy, "MaaAgentClientDestroy"},
+	{&MaaAgentClientIdentifier, "MaaAgentClientIdentifier"},
+	{&MaaAgentClientBindResource, "MaaAgentClientBindResource"},
+	{&MaaAgentClientRegisterResourceSink, "MaaAgentClientRegisterResourceSink"},
+	{&MaaAgentClientRegisterControllerSink, "MaaAgentClientRegisterControllerSink"},
+	{&MaaAgentClientRegisterTaskerSink, "MaaAgentClientRegisterTaskerSink"},
+	{&MaaAgentClientConnect, "MaaAgentClientConnect"},
+	{&MaaAgentClientDisconnect, "MaaAgentClientDisconnect"},
+	{&MaaAgentClientConnected, "MaaAgentClientConnected"},
+	{&MaaAgentClientAlive, "MaaAgentClientAlive"},
+	{&MaaAgentClientSetTimeout, "MaaAgentClientSetTimeout"},
+	{&MaaAgentClientGetCustomRecognitionList, "MaaAgentClientGetCustomRecognitionList"},
+	{&MaaAgentClientGetCustomActionList, "MaaAgentClientGetCustomActionList"},
+}
+
 func initAgentClient(libDir string) error {
 	libName := getMaaAgentClientLibrary()
 	libPath := filepath.Join(libDir, libName)
@@ -65,23 +83,24 @@ func getMaaAgentClientLibrary() string {
 }
 
 func registerAgentClient() {
-	purego.RegisterLibFunc(&MaaAgentClientCreateV2, maaAgentClient, "MaaAgentClientCreateV2")
-	purego.RegisterLibFunc(&MaaAgentClientCreateTcp, maaAgentClient, "MaaAgentClientCreateTcp")
-	purego.RegisterLibFunc(&MaaAgentClientDestroy, maaAgentClient, "MaaAgentClientDestroy")
-	purego.RegisterLibFunc(&MaaAgentClientIdentifier, maaAgentClient, "MaaAgentClientIdentifier")
-	purego.RegisterLibFunc(&MaaAgentClientBindResource, maaAgentClient, "MaaAgentClientBindResource")
-	purego.RegisterLibFunc(&MaaAgentClientRegisterResourceSink, maaAgentClient, "MaaAgentClientRegisterResourceSink")
-	purego.RegisterLibFunc(&MaaAgentClientRegisterControllerSink, maaAgentClient, "MaaAgentClientRegisterControllerSink")
-	purego.RegisterLibFunc(&MaaAgentClientRegisterTaskerSink, maaAgentClient, "MaaAgentClientRegisterTaskerSink")
-	purego.RegisterLibFunc(&MaaAgentClientConnect, maaAgentClient, "MaaAgentClientConnect")
-	purego.RegisterLibFunc(&MaaAgentClientDisconnect, maaAgentClient, "MaaAgentClientDisconnect")
-	purego.RegisterLibFunc(&MaaAgentClientConnected, maaAgentClient, "MaaAgentClientConnected")
-	purego.RegisterLibFunc(&MaaAgentClientAlive, maaAgentClient, "MaaAgentClientAlive")
-	purego.RegisterLibFunc(&MaaAgentClientSetTimeout, maaAgentClient, "MaaAgentClientSetTimeout")
-	purego.RegisterLibFunc(&MaaAgentClientGetCustomRecognitionList, maaAgentClient, "MaaAgentClientGetCustomRecognitionList")
-	purego.RegisterLibFunc(&MaaAgentClientGetCustomActionList, maaAgentClient, "MaaAgentClientGetCustomActionList")
+	for _, entry := range agentClientEntries {
+		purego.RegisterLibFunc(entry.ptrToFunc, maaAgentClient, entry.name)
+	}
 }
 
-func unregisterAgentClient() error {
-	return unloadLibrary(maaAgentClient)
+func releaseAgentClient() error {
+	err := unloadLibrary(maaAgentClient)
+	if err != nil {
+		return err
+	}
+
+	unregisterAgentClient()
+
+	return nil
+}
+
+func unregisterAgentClient() {
+	for _, entry := range agentClientEntries {
+		clearFuncVar(entry.ptrToFunc)
+	}
 }

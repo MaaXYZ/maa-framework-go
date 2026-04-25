@@ -5,6 +5,7 @@ package native
 import (
 	"errors"
 	"fmt"
+	"reflect"
 )
 
 type Library struct {
@@ -13,12 +14,17 @@ type Library struct {
 	release func() error
 }
 
+type Entry struct {
+	ptrToFunc any
+	name      string
+}
+
 var (
 	libraries = []Library{
-		{name: maaFrameworkName, init: initFramework, release: unregisterFramework},
-		{name: maaToolkitName, init: initToolkit, release: unregisterToolkit},
-		{name: maaAgentServerName, init: initAgentServer, release: unregisterAgentServer},
-		{name: maaAgentClientName, init: initAgentClient, release: unregisterAgentClient},
+		{name: maaFrameworkName, init: initFramework, release: releaseFramework},
+		{name: maaToolkitName, init: initToolkit, release: releaseToolkit},
+		{name: maaAgentServerName, init: initAgentServer, release: releaseAgentServer},
+		{name: maaAgentClientName, init: initAgentClient, release: releaseAgentClient},
 	}
 	loadedLibs []Library
 )
@@ -71,4 +77,12 @@ func Shutdown() error {
 	}
 
 	return nil
+}
+
+func clearFuncVar(ptr any) {
+	val := reflect.ValueOf(ptr)
+	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Func {
+		return
+	}
+	val.Elem().Set(reflect.Zero(val.Elem().Type()))
 }

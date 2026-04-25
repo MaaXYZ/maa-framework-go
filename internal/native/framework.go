@@ -382,6 +382,173 @@ var (
 	MaaGlobalLoadPlugin func(path string) bool
 )
 
+var frameworkEntries = []Entry{
+	{&MaaVersion, "MaaVersion"},
+	{&MaaTaskerCreate, "MaaTaskerCreate"},
+	{&MaaTaskerDestroy, "MaaTaskerDestroy"},
+	{&MaaTaskerAddSink, "MaaTaskerAddSink"},
+	{&MaaTaskerRemoveSink, "MaaTaskerRemoveSink"},
+	{&MaaTaskerClearSinks, "MaaTaskerClearSinks"},
+	{&MaaTaskerAddContextSink, "MaaTaskerAddContextSink"},
+	{&MaaTaskerRemoveContextSink, "MaaTaskerRemoveContextSink"},
+	{&MaaTaskerClearContextSinks, "MaaTaskerClearContextSinks"},
+	{&MaaTaskerSetOption, "MaaTaskerSetOption"},
+	{&MaaTaskerBindResource, "MaaTaskerBindResource"},
+	{&MaaTaskerBindController, "MaaTaskerBindController"},
+	{&MaaTaskerInited, "MaaTaskerInited"},
+	{&MaaTaskerPostTask, "MaaTaskerPostTask"},
+	{&MaaTaskerPostRecognition, "MaaTaskerPostRecognition"},
+	{&MaaTaskerPostAction, "MaaTaskerPostAction"},
+	{&MaaTaskerStopping, "MaaTaskerStopping"},
+	{&MaaTaskerStatus, "MaaTaskerStatus"},
+	{&MaaTaskerWait, "MaaTaskerWait"},
+	{&MaaTaskerRunning, "MaaTaskerRunning"},
+	{&MaaTaskerPostStop, "MaaTaskerPostStop"},
+	{&MaaTaskerGetResource, "MaaTaskerGetResource"},
+	{&MaaTaskerGetController, "MaaTaskerGetController"},
+	{&MaaTaskerClearCache, "MaaTaskerClearCache"},
+	{&MaaTaskerGetRecognitionDetail, "MaaTaskerGetRecognitionDetail"},
+	{&MaaTaskerGetActionDetail, "MaaTaskerGetActionDetail"},
+	{&MaaTaskerGetWaitFreezesDetail, "MaaTaskerGetWaitFreezesDetail"},
+	{&MaaTaskerGetNodeDetail, "MaaTaskerGetNodeDetail"},
+	{&MaaTaskerGetTaskDetail, "MaaTaskerGetTaskDetail"},
+	{&MaaTaskerGetLatestNode, "MaaTaskerGetLatestNode"},
+	{&MaaTaskerOverridePipeline, "MaaTaskerOverridePipeline"},
+	{&MaaResourceCreate, "MaaResourceCreate"},
+	{&MaaResourceDestroy, "MaaResourceDestroy"},
+	{&MaaResourceAddSink, "MaaResourceAddSink"},
+	{&MaaResourceRemoveSink, "MaaResourceRemoveSink"},
+	{&MaaResourceClearSinks, "MaaResourceClearSinks"},
+	{&MaaResourceRegisterCustomRecognition, "MaaResourceRegisterCustomRecognition"},
+	{&MaaResourceUnregisterCustomRecognition, "MaaResourceUnregisterCustomRecognition"},
+	{&MaaResourceClearCustomRecognition, "MaaResourceClearCustomRecognition"},
+	{&MaaResourceRegisterCustomAction, "MaaResourceRegisterCustomAction"},
+	{&MaaResourceUnregisterCustomAction, "MaaResourceUnregisterCustomAction"},
+	{&MaaResourceClearCustomAction, "MaaResourceClearCustomAction"},
+	{&MaaResourcePostBundle, "MaaResourcePostBundle"},
+	{&MaaResourcePostOcrModel, "MaaResourcePostOcrModel"},
+	{&MaaResourcePostPipeline, "MaaResourcePostPipeline"},
+	{&MaaResourcePostImage, "MaaResourcePostImage"},
+	{&MaaResourceOverridePipeline, "MaaResourceOverridePipeline"},
+	{&MaaResourceOverrideNext, "MaaResourceOverrideNext"},
+	{&MaaResourceOverrideImage, "MaaResourceOverrideImage"},
+	{&MaaResourceGetNodeData, "MaaResourceGetNodeData"},
+	{&MaaResourceClear, "MaaResourceClear"},
+	{&MaaResourceStatus, "MaaResourceStatus"},
+	{&MaaResourceWait, "MaaResourceWait"},
+	{&MaaResourceLoaded, "MaaResourceLoaded"},
+	{&MaaResourceSetOption, "MaaResourceSetOption"},
+	{&MaaResourceGetHash, "MaaResourceGetHash"},
+	{&MaaResourceGetNodeList, "MaaResourceGetNodeList"},
+	{&MaaResourceGetCustomRecognitionList, "MaaResourceGetCustomRecognitionList"},
+	{&MaaResourceGetCustomActionList, "MaaResourceGetCustomActionList"},
+	{&MaaResourceGetDefaultRecognitionParam, "MaaResourceGetDefaultRecognitionParam"},
+	{&MaaResourceGetDefaultActionParam, "MaaResourceGetDefaultActionParam"},
+	{&MaaAdbControllerCreate, "MaaAdbControllerCreate"},
+	{&MaaPlayCoverControllerCreate, "MaaPlayCoverControllerCreate"},
+	{&MaaWin32ControllerCreate, "MaaWin32ControllerCreate"},
+	{&MaaWlRootsControllerCreate, "MaaWlRootsControllerCreate"},
+	{&MaaCustomControllerCreate, "MaaCustomControllerCreate"},
+	{&MaaGamepadControllerCreate, "MaaGamepadControllerCreate"},
+	{&MaaMacOSControllerCreate, "MaaMacOSControllerCreate"},
+	{&MaaAndroidNativeControllerCreate, "MaaAndroidNativeControllerCreate"},
+	{&MaaReplayControllerCreate, "MaaReplayControllerCreate"},
+	{&MaaRecordControllerCreate, "MaaRecordControllerCreate"},
+	{&MaaControllerDestroy, "MaaControllerDestroy"},
+	{&MaaControllerAddSink, "MaaControllerAddSink"},
+	{&MaaControllerRemoveSink, "MaaControllerRemoveSink"},
+	{&MaaControllerClearSinks, "MaaControllerClearSinks"},
+	{&MaaControllerSetOption, "MaaControllerSetOption"},
+	{&MaaControllerPostConnection, "MaaControllerPostConnection"},
+	{&MaaControllerPostClick, "MaaControllerPostClick"},
+	{&MaaControllerPostClickV2, "MaaControllerPostClickV2"},
+	{&MaaControllerPostSwipe, "MaaControllerPostSwipe"},
+	{&MaaControllerPostSwipeV2, "MaaControllerPostSwipeV2"},
+	{&MaaControllerPostClickKey, "MaaControllerPostClickKey"},
+	{&MaaControllerPostInputText, "MaaControllerPostInputText"},
+	{&MaaControllerPostStartApp, "MaaControllerPostStartApp"},
+	{&MaaControllerPostStopApp, "MaaControllerPostStopApp"},
+	{&MaaControllerPostTouchDown, "MaaControllerPostTouchDown"},
+	{&MaaControllerPostTouchMove, "MaaControllerPostTouchMove"},
+	{&MaaControllerPostTouchUp, "MaaControllerPostTouchUp"},
+	{&MaaControllerPostRelativeMove, "MaaControllerPostRelativeMove"},
+	{&MaaControllerPostKeyDown, "MaaControllerPostKeyDown"},
+	{&MaaControllerPostKeyUp, "MaaControllerPostKeyUp"},
+	{&MaaControllerPostScreencap, "MaaControllerPostScreencap"},
+	{&MaaControllerPostScroll, "MaaControllerPostScroll"},
+	{&MaaControllerPostInactive, "MaaControllerPostInactive"},
+	{&MaaControllerPostShell, "MaaControllerPostShell"},
+	{&MaaControllerGetShellOutput, "MaaControllerGetShellOutput"},
+	{&MaaControllerStatus, "MaaControllerStatus"},
+	{&MaaControllerWait, "MaaControllerWait"},
+	{&MaaControllerConnected, "MaaControllerConnected"},
+	{&MaaControllerCachedImage, "MaaControllerCachedImage"},
+	{&MaaControllerGetUuid, "MaaControllerGetUuid"},
+	{&MaaControllerGetResolution, "MaaControllerGetResolution"},
+	{&MaaControllerGetInfo, "MaaControllerGetInfo"},
+	{&MaaContextRunTask, "MaaContextRunTask"},
+	{&MaaContextRunRecognition, "MaaContextRunRecognition"},
+	{&MaaContextRunAction, "MaaContextRunAction"},
+	{&MaaContextRunRecognitionDirect, "MaaContextRunRecognitionDirect"},
+	{&MaaContextRunActionDirect, "MaaContextRunActionDirect"},
+	{&MaaContextWaitFreezes, "MaaContextWaitFreezes"},
+	{&MaaContextOverridePipeline, "MaaContextOverridePipeline"},
+	{&MaaContextOverrideNext, "MaaContextOverrideNext"},
+	{&MaaContextOverrideImage, "MaaContextOverrideImage"},
+	{&MaaContextGetNodeData, "MaaContextGetNodeData"},
+	{&MaaContextGetTaskId, "MaaContextGetTaskId"},
+	{&MaaContextGetTasker, "MaaContextGetTasker"},
+	{&MaaContextClone, "MaaContextClone"},
+	{&MaaContextSetAnchor, "MaaContextSetAnchor"},
+	{&MaaContextGetAnchor, "MaaContextGetAnchor"},
+	{&MaaContextGetHitCount, "MaaContextGetHitCount"},
+	{&MaaContextClearHitCount, "MaaContextClearHitCount"},
+	{&MaaStringBufferCreate, "MaaStringBufferCreate"},
+	{&MaaStringBufferDestroy, "MaaStringBufferDestroy"},
+	{&MaaStringBufferIsEmpty, "MaaStringBufferIsEmpty"},
+	{&MaaStringBufferClear, "MaaStringBufferClear"},
+	{&MaaStringBufferGet, "MaaStringBufferGet"},
+	{&MaaStringBufferSize, "MaaStringBufferSize"},
+	{&MaaStringBufferSet, "MaaStringBufferSet"},
+	{&MaaStringBufferSetEx, "MaaStringBufferSetEx"},
+	{&MaaStringListBufferCreate, "MaaStringListBufferCreate"},
+	{&MaaStringListBufferDestroy, "MaaStringListBufferDestroy"},
+	{&MaaStringListBufferIsEmpty, "MaaStringListBufferIsEmpty"},
+	{&MaaStringListBufferSize, "MaaStringListBufferSize"},
+	{&MaaStringListBufferAt, "MaaStringListBufferAt"},
+	{&MaaStringListBufferAppend, "MaaStringListBufferAppend"},
+	{&MaaStringListBufferRemove, "MaaStringListBufferRemove"},
+	{&MaaStringListBufferClear, "MaaStringListBufferClear"},
+	{&MaaImageBufferCreate, "MaaImageBufferCreate"},
+	{&MaaImageBufferDestroy, "MaaImageBufferDestroy"},
+	{&MaaImageBufferIsEmpty, "MaaImageBufferIsEmpty"},
+	{&MaaImageBufferClear, "MaaImageBufferClear"},
+	{&MaaImageBufferGetRawData, "MaaImageBufferGetRawData"},
+	{&MaaImageBufferWidth, "MaaImageBufferWidth"},
+	{&MaaImageBufferHeight, "MaaImageBufferHeight"},
+	{&MaaImageBufferChannels, "MaaImageBufferChannels"},
+	{&MaaImageBufferType, "MaaImageBufferType"},
+	{&MaaImageBufferSetRawData, "MaaImageBufferSetRawData"},
+	{&MaaImageBufferResize, "MaaImageBufferResize"},
+	{&MaaImageListBufferCreate, "MaaImageListBufferCreate"},
+	{&MaaImageListBufferDestroy, "MaaImageListBufferDestroy"},
+	{&MaaImageListBufferIsEmpty, "MaaImageListBufferIsEmpty"},
+	{&MaaImageListBufferSize, "MaaImageListBufferSize"},
+	{&MaaImageListBufferAt, "MaaImageListBufferAt"},
+	{&MaaImageListBufferAppend, "MaaImageListBufferAppend"},
+	{&MaaImageListBufferRemove, "MaaImageListBufferRemove"},
+	{&MaaImageListBufferClear, "MaaImageListBufferClear"},
+	{&MaaRectCreate, "MaaRectCreate"},
+	{&MaaRectDestroy, "MaaRectDestroy"},
+	{&MaaRectGetX, "MaaRectGetX"},
+	{&MaaRectGetY, "MaaRectGetY"},
+	{&MaaRectGetW, "MaaRectGetW"},
+	{&MaaRectGetH, "MaaRectGetH"},
+	{&MaaRectSet, "MaaRectSet"},
+	{&MaaGlobalSetOption, "MaaGlobalSetOption"},
+	{&MaaGlobalLoadPlugin, "MaaGlobalLoadPlugin"},
+}
+
 func initFramework(libDir string) error {
 	libName := getMaaFrameworkLibrary()
 	libPath := filepath.Join(libDir, libName)
@@ -416,178 +583,24 @@ func getMaaFrameworkLibrary() string {
 }
 
 func registerFramework() {
-	purego.RegisterLibFunc(&MaaVersion, maaFramework, "MaaVersion")
-	// Tasker
-	purego.RegisterLibFunc(&MaaTaskerCreate, maaFramework, "MaaTaskerCreate")
-	purego.RegisterLibFunc(&MaaTaskerDestroy, maaFramework, "MaaTaskerDestroy")
-	purego.RegisterLibFunc(&MaaTaskerAddSink, maaFramework, "MaaTaskerAddSink")
-	purego.RegisterLibFunc(&MaaTaskerRemoveSink, maaFramework, "MaaTaskerRemoveSink")
-	purego.RegisterLibFunc(&MaaTaskerClearSinks, maaFramework, "MaaTaskerClearSinks")
-	purego.RegisterLibFunc(&MaaTaskerAddContextSink, maaFramework, "MaaTaskerAddContextSink")
-	purego.RegisterLibFunc(&MaaTaskerRemoveContextSink, maaFramework, "MaaTaskerRemoveContextSink")
-	purego.RegisterLibFunc(&MaaTaskerClearContextSinks, maaFramework, "MaaTaskerClearContextSinks")
-	purego.RegisterLibFunc(&MaaTaskerSetOption, maaFramework, "MaaTaskerSetOption")
-	purego.RegisterLibFunc(&MaaTaskerBindResource, maaFramework, "MaaTaskerBindResource")
-	purego.RegisterLibFunc(&MaaTaskerBindController, maaFramework, "MaaTaskerBindController")
-	purego.RegisterLibFunc(&MaaTaskerInited, maaFramework, "MaaTaskerInited")
-	purego.RegisterLibFunc(&MaaTaskerPostTask, maaFramework, "MaaTaskerPostTask")
-	purego.RegisterLibFunc(&MaaTaskerPostRecognition, maaFramework, "MaaTaskerPostRecognition")
-	purego.RegisterLibFunc(&MaaTaskerPostAction, maaFramework, "MaaTaskerPostAction")
-	purego.RegisterLibFunc(&MaaTaskerStopping, maaFramework, "MaaTaskerStopping")
-	purego.RegisterLibFunc(&MaaTaskerStatus, maaFramework, "MaaTaskerStatus")
-	purego.RegisterLibFunc(&MaaTaskerWait, maaFramework, "MaaTaskerWait")
-	purego.RegisterLibFunc(&MaaTaskerRunning, maaFramework, "MaaTaskerRunning")
-	purego.RegisterLibFunc(&MaaTaskerPostStop, maaFramework, "MaaTaskerPostStop")
-	purego.RegisterLibFunc(&MaaTaskerGetResource, maaFramework, "MaaTaskerGetResource")
-	purego.RegisterLibFunc(&MaaTaskerGetController, maaFramework, "MaaTaskerGetController")
-	purego.RegisterLibFunc(&MaaTaskerClearCache, maaFramework, "MaaTaskerClearCache")
-	purego.RegisterLibFunc(&MaaTaskerGetRecognitionDetail, maaFramework, "MaaTaskerGetRecognitionDetail")
-	purego.RegisterLibFunc(&MaaTaskerGetActionDetail, maaFramework, "MaaTaskerGetActionDetail")
-	purego.RegisterLibFunc(&MaaTaskerGetWaitFreezesDetail, maaFramework, "MaaTaskerGetWaitFreezesDetail")
-	purego.RegisterLibFunc(&MaaTaskerGetNodeDetail, maaFramework, "MaaTaskerGetNodeDetail")
-	purego.RegisterLibFunc(&MaaTaskerGetTaskDetail, maaFramework, "MaaTaskerGetTaskDetail")
-	purego.RegisterLibFunc(&MaaTaskerGetLatestNode, maaFramework, "MaaTaskerGetLatestNode")
-	purego.RegisterLibFunc(&MaaTaskerOverridePipeline, maaFramework, "MaaTaskerOverridePipeline")
-	// Resource
-	purego.RegisterLibFunc(&MaaResourceCreate, maaFramework, "MaaResourceCreate")
-	purego.RegisterLibFunc(&MaaResourceDestroy, maaFramework, "MaaResourceDestroy")
-	purego.RegisterLibFunc(&MaaResourceAddSink, maaFramework, "MaaResourceAddSink")
-	purego.RegisterLibFunc(&MaaResourceRemoveSink, maaFramework, "MaaResourceRemoveSink")
-	purego.RegisterLibFunc(&MaaResourceClearSinks, maaFramework, "MaaResourceClearSinks")
-	purego.RegisterLibFunc(&MaaResourceRegisterCustomRecognition, maaFramework, "MaaResourceRegisterCustomRecognition")
-	purego.RegisterLibFunc(&MaaResourceUnregisterCustomRecognition, maaFramework, "MaaResourceUnregisterCustomRecognition")
-	purego.RegisterLibFunc(&MaaResourceClearCustomRecognition, maaFramework, "MaaResourceClearCustomRecognition")
-	purego.RegisterLibFunc(&MaaResourceRegisterCustomAction, maaFramework, "MaaResourceRegisterCustomAction")
-	purego.RegisterLibFunc(&MaaResourceUnregisterCustomAction, maaFramework, "MaaResourceUnregisterCustomAction")
-	purego.RegisterLibFunc(&MaaResourceClearCustomAction, maaFramework, "MaaResourceClearCustomAction")
-	purego.RegisterLibFunc(&MaaResourcePostBundle, maaFramework, "MaaResourcePostBundle")
-	purego.RegisterLibFunc(&MaaResourcePostOcrModel, maaFramework, "MaaResourcePostOcrModel")
-	purego.RegisterLibFunc(&MaaResourcePostPipeline, maaFramework, "MaaResourcePostPipeline")
-	purego.RegisterLibFunc(&MaaResourcePostImage, maaFramework, "MaaResourcePostImage")
-	purego.RegisterLibFunc(&MaaResourceOverridePipeline, maaFramework, "MaaResourceOverridePipeline")
-	purego.RegisterLibFunc(&MaaResourceOverrideNext, maaFramework, "MaaResourceOverrideNext")
-	purego.RegisterLibFunc(&MaaResourceOverrideImage, maaFramework, "MaaResourceOverrideImage")
-	purego.RegisterLibFunc(&MaaResourceGetNodeData, maaFramework, "MaaResourceGetNodeData")
-	purego.RegisterLibFunc(&MaaResourceClear, maaFramework, "MaaResourceClear")
-	purego.RegisterLibFunc(&MaaResourceStatus, maaFramework, "MaaResourceStatus")
-	purego.RegisterLibFunc(&MaaResourceWait, maaFramework, "MaaResourceWait")
-	purego.RegisterLibFunc(&MaaResourceLoaded, maaFramework, "MaaResourceLoaded")
-	purego.RegisterLibFunc(&MaaResourceSetOption, maaFramework, "MaaResourceSetOption")
-	purego.RegisterLibFunc(&MaaResourceGetHash, maaFramework, "MaaResourceGetHash")
-	purego.RegisterLibFunc(&MaaResourceGetNodeList, maaFramework, "MaaResourceGetNodeList")
-	purego.RegisterLibFunc(&MaaResourceGetCustomRecognitionList, maaFramework, "MaaResourceGetCustomRecognitionList")
-	purego.RegisterLibFunc(&MaaResourceGetCustomActionList, maaFramework, "MaaResourceGetCustomActionList")
-	purego.RegisterLibFunc(&MaaResourceGetDefaultRecognitionParam, maaFramework, "MaaResourceGetDefaultRecognitionParam")
-	purego.RegisterLibFunc(&MaaResourceGetDefaultActionParam, maaFramework, "MaaResourceGetDefaultActionParam")
-	// Controller
-	purego.RegisterLibFunc(&MaaAdbControllerCreate, maaFramework, "MaaAdbControllerCreate")
-	purego.RegisterLibFunc(&MaaPlayCoverControllerCreate, maaFramework, "MaaPlayCoverControllerCreate")
-	purego.RegisterLibFunc(&MaaWin32ControllerCreate, maaFramework, "MaaWin32ControllerCreate")
-	purego.RegisterLibFunc(&MaaWlRootsControllerCreate, maaFramework, "MaaWlRootsControllerCreate")
-	purego.RegisterLibFunc(&MaaCustomControllerCreate, maaFramework, "MaaCustomControllerCreate")
-	purego.RegisterLibFunc(&MaaGamepadControllerCreate, maaFramework, "MaaGamepadControllerCreate")
-	purego.RegisterLibFunc(&MaaMacOSControllerCreate, maaFramework, "MaaMacOSControllerCreate")
-	purego.RegisterLibFunc(&MaaAndroidNativeControllerCreate, maaFramework, "MaaAndroidNativeControllerCreate")
-	purego.RegisterLibFunc(&MaaReplayControllerCreate, maaFramework, "MaaReplayControllerCreate")
-	purego.RegisterLibFunc(&MaaRecordControllerCreate, maaFramework, "MaaRecordControllerCreate")
-	purego.RegisterLibFunc(&MaaControllerDestroy, maaFramework, "MaaControllerDestroy")
-	purego.RegisterLibFunc(&MaaControllerAddSink, maaFramework, "MaaControllerAddSink")
-	purego.RegisterLibFunc(&MaaControllerRemoveSink, maaFramework, "MaaControllerRemoveSink")
-	purego.RegisterLibFunc(&MaaControllerClearSinks, maaFramework, "MaaControllerClearSinks")
-	purego.RegisterLibFunc(&MaaControllerSetOption, maaFramework, "MaaControllerSetOption")
-	purego.RegisterLibFunc(&MaaControllerPostConnection, maaFramework, "MaaControllerPostConnection")
-	purego.RegisterLibFunc(&MaaControllerPostClick, maaFramework, "MaaControllerPostClick")
-	purego.RegisterLibFunc(&MaaControllerPostClickV2, maaFramework, "MaaControllerPostClickV2")
-	purego.RegisterLibFunc(&MaaControllerPostSwipe, maaFramework, "MaaControllerPostSwipe")
-	purego.RegisterLibFunc(&MaaControllerPostSwipeV2, maaFramework, "MaaControllerPostSwipeV2")
-	purego.RegisterLibFunc(&MaaControllerPostClickKey, maaFramework, "MaaControllerPostClickKey")
-	purego.RegisterLibFunc(&MaaControllerPostInputText, maaFramework, "MaaControllerPostInputText")
-	purego.RegisterLibFunc(&MaaControllerPostStartApp, maaFramework, "MaaControllerPostStartApp")
-	purego.RegisterLibFunc(&MaaControllerPostStopApp, maaFramework, "MaaControllerPostStopApp")
-	purego.RegisterLibFunc(&MaaControllerPostTouchDown, maaFramework, "MaaControllerPostTouchDown")
-	purego.RegisterLibFunc(&MaaControllerPostTouchMove, maaFramework, "MaaControllerPostTouchMove")
-	purego.RegisterLibFunc(&MaaControllerPostTouchUp, maaFramework, "MaaControllerPostTouchUp")
-	purego.RegisterLibFunc(&MaaControllerPostRelativeMove, maaFramework, "MaaControllerPostRelativeMove")
-	purego.RegisterLibFunc(&MaaControllerPostKeyDown, maaFramework, "MaaControllerPostKeyDown")
-	purego.RegisterLibFunc(&MaaControllerPostKeyUp, maaFramework, "MaaControllerPostKeyUp")
-	purego.RegisterLibFunc(&MaaControllerPostScreencap, maaFramework, "MaaControllerPostScreencap")
-	purego.RegisterLibFunc(&MaaControllerPostScroll, maaFramework, "MaaControllerPostScroll")
-	purego.RegisterLibFunc(&MaaControllerPostInactive, maaFramework, "MaaControllerPostInactive")
-	purego.RegisterLibFunc(&MaaControllerPostShell, maaFramework, "MaaControllerPostShell")
-	purego.RegisterLibFunc(&MaaControllerGetShellOutput, maaFramework, "MaaControllerGetShellOutput")
-	purego.RegisterLibFunc(&MaaControllerStatus, maaFramework, "MaaControllerStatus")
-	purego.RegisterLibFunc(&MaaControllerWait, maaFramework, "MaaControllerWait")
-	purego.RegisterLibFunc(&MaaControllerConnected, maaFramework, "MaaControllerConnected")
-	purego.RegisterLibFunc(&MaaControllerCachedImage, maaFramework, "MaaControllerCachedImage")
-	purego.RegisterLibFunc(&MaaControllerGetUuid, maaFramework, "MaaControllerGetUuid")
-	purego.RegisterLibFunc(&MaaControllerGetResolution, maaFramework, "MaaControllerGetResolution")
-	purego.RegisterLibFunc(&MaaControllerGetInfo, maaFramework, "MaaControllerGetInfo")
-	// Context
-	purego.RegisterLibFunc(&MaaContextRunTask, maaFramework, "MaaContextRunTask")
-	purego.RegisterLibFunc(&MaaContextRunRecognition, maaFramework, "MaaContextRunRecognition")
-	purego.RegisterLibFunc(&MaaContextRunAction, maaFramework, "MaaContextRunAction")
-	purego.RegisterLibFunc(&MaaContextRunRecognitionDirect, maaFramework, "MaaContextRunRecognitionDirect")
-	purego.RegisterLibFunc(&MaaContextRunActionDirect, maaFramework, "MaaContextRunActionDirect")
-	purego.RegisterLibFunc(&MaaContextWaitFreezes, maaFramework, "MaaContextWaitFreezes")
-	purego.RegisterLibFunc(&MaaContextOverridePipeline, maaFramework, "MaaContextOverridePipeline")
-	purego.RegisterLibFunc(&MaaContextOverrideNext, maaFramework, "MaaContextOverrideNext")
-	purego.RegisterLibFunc(&MaaContextOverrideImage, maaFramework, "MaaContextOverrideImage")
-	purego.RegisterLibFunc(&MaaContextGetNodeData, maaFramework, "MaaContextGetNodeData")
-	purego.RegisterLibFunc(&MaaContextGetTaskId, maaFramework, "MaaContextGetTaskId")
-	purego.RegisterLibFunc(&MaaContextGetTasker, maaFramework, "MaaContextGetTasker")
-	purego.RegisterLibFunc(&MaaContextClone, maaFramework, "MaaContextClone")
-	purego.RegisterLibFunc(&MaaContextSetAnchor, maaFramework, "MaaContextSetAnchor")
-	purego.RegisterLibFunc(&MaaContextGetAnchor, maaFramework, "MaaContextGetAnchor")
-	purego.RegisterLibFunc(&MaaContextGetHitCount, maaFramework, "MaaContextGetHitCount")
-	purego.RegisterLibFunc(&MaaContextClearHitCount, maaFramework, "MaaContextClearHitCount")
-	// Buffer
-	purego.RegisterLibFunc(&MaaStringBufferCreate, maaFramework, "MaaStringBufferCreate")
-	purego.RegisterLibFunc(&MaaStringBufferDestroy, maaFramework, "MaaStringBufferDestroy")
-	purego.RegisterLibFunc(&MaaStringBufferIsEmpty, maaFramework, "MaaStringBufferIsEmpty")
-	purego.RegisterLibFunc(&MaaStringBufferClear, maaFramework, "MaaStringBufferClear")
-	purego.RegisterLibFunc(&MaaStringBufferGet, maaFramework, "MaaStringBufferGet")
-	purego.RegisterLibFunc(&MaaStringBufferSize, maaFramework, "MaaStringBufferSize")
-	purego.RegisterLibFunc(&MaaStringBufferSet, maaFramework, "MaaStringBufferSet")
-	purego.RegisterLibFunc(&MaaStringBufferSetEx, maaFramework, "MaaStringBufferSetEx")
-	purego.RegisterLibFunc(&MaaStringListBufferCreate, maaFramework, "MaaStringListBufferCreate")
-	purego.RegisterLibFunc(&MaaStringListBufferDestroy, maaFramework, "MaaStringListBufferDestroy")
-	purego.RegisterLibFunc(&MaaStringListBufferIsEmpty, maaFramework, "MaaStringListBufferIsEmpty")
-	purego.RegisterLibFunc(&MaaStringListBufferSize, maaFramework, "MaaStringListBufferSize")
-	purego.RegisterLibFunc(&MaaStringListBufferAt, maaFramework, "MaaStringListBufferAt")
-	purego.RegisterLibFunc(&MaaStringListBufferAppend, maaFramework, "MaaStringListBufferAppend")
-	purego.RegisterLibFunc(&MaaStringListBufferRemove, maaFramework, "MaaStringListBufferRemove")
-	purego.RegisterLibFunc(&MaaStringListBufferClear, maaFramework, "MaaStringListBufferClear")
-	purego.RegisterLibFunc(&MaaImageBufferCreate, maaFramework, "MaaImageBufferCreate")
-	purego.RegisterLibFunc(&MaaImageBufferDestroy, maaFramework, "MaaImageBufferDestroy")
-	purego.RegisterLibFunc(&MaaImageBufferIsEmpty, maaFramework, "MaaImageBufferIsEmpty")
-	purego.RegisterLibFunc(&MaaImageBufferClear, maaFramework, "MaaImageBufferClear")
-	purego.RegisterLibFunc(&MaaImageBufferGetRawData, maaFramework, "MaaImageBufferGetRawData")
-	purego.RegisterLibFunc(&MaaImageBufferWidth, maaFramework, "MaaImageBufferWidth")
-	purego.RegisterLibFunc(&MaaImageBufferHeight, maaFramework, "MaaImageBufferHeight")
-	purego.RegisterLibFunc(&MaaImageBufferChannels, maaFramework, "MaaImageBufferChannels")
-	purego.RegisterLibFunc(&MaaImageBufferType, maaFramework, "MaaImageBufferType")
-	purego.RegisterLibFunc(&MaaImageBufferSetRawData, maaFramework, "MaaImageBufferSetRawData")
-	purego.RegisterLibFunc(&MaaImageBufferResize, maaFramework, "MaaImageBufferResize")
-	purego.RegisterLibFunc(&MaaImageListBufferCreate, maaFramework, "MaaImageListBufferCreate")
-	purego.RegisterLibFunc(&MaaImageListBufferDestroy, maaFramework, "MaaImageListBufferDestroy")
-	purego.RegisterLibFunc(&MaaImageListBufferIsEmpty, maaFramework, "MaaImageListBufferIsEmpty")
-	purego.RegisterLibFunc(&MaaImageListBufferSize, maaFramework, "MaaImageListBufferSize")
-	purego.RegisterLibFunc(&MaaImageListBufferAt, maaFramework, "MaaImageListBufferAt")
-	purego.RegisterLibFunc(&MaaImageListBufferAppend, maaFramework, "MaaImageListBufferAppend")
-	purego.RegisterLibFunc(&MaaImageListBufferRemove, maaFramework, "MaaImageListBufferRemove")
-	purego.RegisterLibFunc(&MaaImageListBufferClear, maaFramework, "MaaImageListBufferClear")
-	purego.RegisterLibFunc(&MaaRectCreate, maaFramework, "MaaRectCreate")
-	purego.RegisterLibFunc(&MaaRectDestroy, maaFramework, "MaaRectDestroy")
-	purego.RegisterLibFunc(&MaaRectGetX, maaFramework, "MaaRectGetX")
-	purego.RegisterLibFunc(&MaaRectGetY, maaFramework, "MaaRectGetY")
-	purego.RegisterLibFunc(&MaaRectGetW, maaFramework, "MaaRectGetW")
-	purego.RegisterLibFunc(&MaaRectGetH, maaFramework, "MaaRectGetH")
-	purego.RegisterLibFunc(&MaaRectSet, maaFramework, "MaaRectSet")
-	// Global
-	purego.RegisterLibFunc(&MaaGlobalSetOption, maaFramework, "MaaGlobalSetOption")
-	purego.RegisterLibFunc(&MaaGlobalLoadPlugin, maaFramework, "MaaGlobalLoadPlugin")
+	for _, entry := range frameworkEntries {
+		purego.RegisterLibFunc(entry.ptrToFunc, maaFramework, entry.name)
+	}
 }
 
-func unregisterFramework() error {
-	return unloadLibrary(maaFramework)
+func releaseFramework() error {
+	err := unloadLibrary(maaFramework)
+	if err != nil {
+		return err
+	}
+
+	unregisterFramework()
+
+	return nil
+}
+
+func unregisterFramework() {
+	for _, entry := range frameworkEntries {
+		clearFuncVar(entry.ptrToFunc)
+	}
 }
