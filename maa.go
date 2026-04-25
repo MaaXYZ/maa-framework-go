@@ -10,8 +10,6 @@ import (
 var (
 	inited bool
 
-	ErrAlreadyInitialized     = errors.New("maa framework already initialized")
-	ErrNotInitialized         = errors.New("maa framework not initialized")
 	ErrSetLogDir              = errors.New("failed to set log directory")
 	ErrSetSaveDraw            = errors.New("failed to set save draw option")
 	ErrSetStdoutLevel         = errors.New("failed to set stdout level")
@@ -146,7 +144,7 @@ func WithJSONDecoder(decoder JSONDecoder) InitOption {
 func Init(opts ...InitOption) error {
 
 	if inited {
-		return ErrAlreadyInitialized
+		return nil
 	}
 
 	cfg := initConfig{}
@@ -155,14 +153,14 @@ func Init(opts ...InitOption) error {
 		opt(&cfg)
 	}
 
-	if err := native.Init(cfg.LibDir); err != nil {
+	if err := native.Initialize(cfg.LibDir); err != nil {
 		return err
 	}
 
 	success := false
 	defer func() {
 		if !success {
-			_ = native.Release()
+			_ = native.Shutdown()
 		}
 	}()
 
@@ -214,14 +212,9 @@ func IsInited() bool {
 }
 
 // Release releases the dynamic library resources of the MAA framework and unregisters its related functions.
-// It must be called only after the framework has been initialized via Init.
 func Release() error {
 
-	if !inited {
-		return ErrNotInitialized
-	}
-
-	if err := native.Release(); err != nil {
+	if err := native.Shutdown(); err != nil {
 		return err
 	}
 

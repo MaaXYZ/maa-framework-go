@@ -2,7 +2,7 @@
 
 `tools/api-check` is a consistency checker for:
 
-- `internal/native` registered C symbols (`purego.RegisterLibFunc`)
+- `internal/native` registered C symbols declared in `[]Entry` tables and bound by `purego.RegisterLibFunc`
 - exported C functions in header files
 - `CustomController` interface vs `MaaCustomControllerCallbacks`
 - controller method enums/constants in `controller/adb` and `controller/win32` vs `MaaDef.h`
@@ -14,7 +14,7 @@ It checks both symbol coverage and function signatures.
 - Native API coverage:
   - header function exists but Go is not registering it
   - Go registers function not found in headers
-  - `RegisterLibFunc` arg mismatch: first arg var name != third arg symbol string
+  - `Entry` mismatch: `ptrToFunc` target name != symbol string
 - Native API signature consistency:
   - compare Go var function signature vs C exported function signature
   - compare params/returns with strict arity/order

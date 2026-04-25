@@ -8,7 +8,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	native.Init("")
+	native.Initialize("")
 
 	os.Exit(m.Run())
 }

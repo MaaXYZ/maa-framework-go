@@ -126,63 +126,117 @@ func parseGoRegistrations(nativeFiles map[string][]string) (map[string]map[strin
 			}
 			varSigs, varDeclLocs := parseGoVarFuncSignaturesWithLoc(parsedFile, fset, file)
 
-			ast.Inspect(parsedFile, func(n ast.Node) bool {
-				call, ok := n.(*ast.CallExpr)
-				if !ok {
-					return true
+			entryRegistrations, entryIssues := parseGoEntryRegistrations(parsedFile, fset, file, module)
+			issues = append(issues, entryIssues...)
+			for _, registration := range entryRegistrations {
+				result[module][registration.name] = struct{}{}
+				if sig, ok := varSigs[registration.funcVar]; ok {
+					goSigs[module][registration.name] = sig
 				}
-
-				switch fun := call.Fun.(type) {
-				case *ast.Ident:
-					if fun.Name != "RegisterLibFunc" {
-						return true
-					}
-				case *ast.SelectorExpr:
-					if fun.Sel == nil || fun.Sel.Name != "RegisterLibFunc" {
-						return true
-					}
-				default:
-					return true
+				if declLoc, ok := varDeclLocs[registration.funcVar]; ok {
+					goDeclLocs[module][registration.name] = declLoc
 				}
-
-				if len(call.Args) < 3 {
-					return true
+				goRegisterLocs[module][registration.name] = goRegistrationLoc{
+					file: registration.file,
+					line: registration.line,
 				}
-
-				funcVar := extractRegisterFuncVarName(call.Args[0])
-				lit, ok := call.Args[2].(*ast.BasicLit)
-				if !ok || lit.Kind != token.STRING {
-					return true
-				}
-
-				name, err := strconv.Unquote(lit.Value)
-				if err != nil || name == "" {
-					return true
-				}
-				pos := fset.Position(call.Pos())
-				if funcVar != "" && funcVar != name {
-					issues = append(issues, issue{
-						section: sectionNativeAPI,
-						message: fmt.Sprintf("[%s] RegisterLibFunc argument mismatch in %s:%d: var=%s symbol=%s", module, filepath.Clean(file), pos.Line, funcVar, name),
-					})
-				}
-				result[module][name] = struct{}{}
-				if sig, ok := varSigs[funcVar]; ok {
-					goSigs[module][name] = sig
-				}
-				if declLoc, ok := varDeclLocs[funcVar]; ok {
-					goDeclLocs[module][name] = declLoc
-				}
-				goRegisterLocs[module][name] = goRegistrationLoc{
-					file: filepath.Clean(file),
-					line: pos.Line,
-				}
-				return true
-			})
+			}
 		}
 	}
 
 	return result, goSigs, goRegisterLocs, goDeclLocs, issues, nil
+}
+
+type goEntryRegistration struct {
+	funcVar string
+	name    string
+	file    string
+	line    int
+}
+
+func parseGoEntryRegistrations(parsedFile *ast.File, fset *token.FileSet, sourceFile, module string) ([]goEntryRegistration, []issue) {
+	registrations := make([]goEntryRegistration, 0)
+	issues := make([]issue, 0)
+
+	for _, decl := range parsedFile.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.VAR {
+			continue
+		}
+
+		for _, spec := range gen.Specs {
+			valueSpec, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+
+			for _, value := range valueSpec.Values {
+				entriesLit, ok := value.(*ast.CompositeLit)
+				if !ok || !isEntrySliceLiteral(entriesLit.Type) {
+					continue
+				}
+
+				for _, entryExpr := range entriesLit.Elts {
+					registration, ok := parseGoEntryRegistration(entryExpr, fset, sourceFile)
+					if !ok {
+						continue
+					}
+
+					if registration.funcVar != registration.name {
+						issues = append(issues, issue{
+							section: sectionNativeAPI,
+							message: fmt.Sprintf("[%s] Entry mismatch in %s:%d: var=%s symbol=%s", module, registration.file, registration.line, registration.funcVar, registration.name),
+						})
+					}
+
+					registrations = append(registrations, registration)
+				}
+			}
+		}
+	}
+
+	return registrations, issues
+}
+
+func isEntrySliceLiteral(expr ast.Expr) bool {
+	arrayType, ok := expr.(*ast.ArrayType)
+	if !ok {
+		return false
+	}
+
+	ident, ok := arrayType.Elt.(*ast.Ident)
+	return ok && ident.Name == "Entry"
+}
+
+func parseGoEntryRegistration(entryExpr ast.Expr, fset *token.FileSet, sourceFile string) (goEntryRegistration, bool) {
+	entryLit, ok := entryExpr.(*ast.CompositeLit)
+	if !ok || len(entryLit.Elts) < 2 {
+		return goEntryRegistration{}, false
+	}
+
+	funcVar := extractRegisterFuncVarName(entryLit.Elts[0])
+	nameLit, ok := entryLit.Elts[1].(*ast.BasicLit)
+	if !ok || nameLit.Kind != token.STRING {
+		return goEntryRegistration{}, false
+	}
+
+	name, err := strconv.Unquote(nameLit.Value)
+	if err != nil || name == "" {
+		return goEntryRegistration{}, false
+	}
+
+	pos := fset.Position(entryLit.Pos())
+	file := filepath.Clean(sourceFile)
+	if pos.Filename != "" {
+		file = filepath.Clean(pos.Filename)
+	}
+
+	return goEntryRegistration{
+		funcVar: funcVar,
+		name:    name,
+		file:    file,
+		line:    pos.Line,
+	}, true
 }
 
 func extractRegisterFuncVarName(arg ast.Expr) string {
