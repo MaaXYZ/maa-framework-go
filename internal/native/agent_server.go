@@ -9,10 +9,9 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-var (
-	maaAgentServer     uintptr
-	maaAgentServerName = "MaaAgentServer"
-)
+var maaAgentServer uintptr
+
+const maaAgentServerName = "MaaAgentServer"
 
 var (
 	MaaAgentServerRegisterCustomRecognition func(name string, recognition MaaCustomRecognitionCallback, transArg unsafe.Pointer) bool

@@ -9,10 +9,9 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-var (
-	maaToolkit     uintptr
-	maaToolkitName = "MaaToolkit"
-)
+var maaToolkit uintptr
+
+const maaToolkitName = "MaaToolkit"
 
 var MaaToolkitConfigInitOption func(userPath, defaultJson string) bool
 

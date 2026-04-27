@@ -8,10 +8,9 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-var (
-	maaAgentClient     uintptr
-	maaAgentClientName = "MaaAgentClient"
-)
+var maaAgentClient uintptr
+
+const maaAgentClientName = "MaaAgentClient"
 
 var (
 	MaaAgentClientCreateV2                 func(identifier uintptr) uintptr

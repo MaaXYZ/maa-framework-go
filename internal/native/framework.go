@@ -9,10 +9,9 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-var (
-	maaFramework     uintptr
-	maaFrameworkName = "MaaFramework"
-)
+var maaFramework uintptr
+
+const maaFrameworkName = "MaaFramework"
 
 var (
 	MaaVersion func() string
