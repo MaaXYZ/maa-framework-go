@@ -11,6 +11,8 @@ import (
 
 var maaAgentServer uintptr
 
+const maaAgentServerName = "MaaAgentServer"
+
 var (
 	MaaAgentServerRegisterCustomRecognition func(name string, recognition MaaCustomRecognitionCallback, transArg unsafe.Pointer) bool
 	MaaAgentServerRegisterCustomAction      func(name string, action MaaCustomActionCallback, transArg unsafe.Pointer) bool
@@ -24,6 +26,19 @@ var (
 	MaaAgentServerDetach                    func()
 )
 
+var agentServerEntries = []Entry{
+	{&MaaAgentServerRegisterCustomRecognition, "MaaAgentServerRegisterCustomRecognition"},
+	{&MaaAgentServerRegisterCustomAction, "MaaAgentServerRegisterCustomAction"},
+	{&MaaAgentServerAddResourceSink, "MaaAgentServerAddResourceSink"},
+	{&MaaAgentServerAddControllerSink, "MaaAgentServerAddControllerSink"},
+	{&MaaAgentServerAddTaskerSink, "MaaAgentServerAddTaskerSink"},
+	{&MaaAgentServerAddContextSink, "MaaAgentServerAddContextSink"},
+	{&MaaAgentServerStartUp, "MaaAgentServerStartUp"},
+	{&MaaAgentServerShutDown, "MaaAgentServerShutDown"},
+	{&MaaAgentServerJoin, "MaaAgentServerJoin"},
+	{&MaaAgentServerDetach, "MaaAgentServerDetach"},
+}
+
 func initAgentServer(libDir string) error {
 	libName := getMaaAgentServerLibrary()
 	libPath := filepath.Join(libDir, libName)
@@ -31,7 +46,7 @@ func initAgentServer(libDir string) error {
 	handle, err := openLibrary(libPath)
 	if err != nil {
 		return &LibraryLoadError{
-			LibraryName: "MaaAgentServer",
+			LibraryName: maaAgentServerName,
 			LibraryPath: libPath,
 			Err:         err,
 		}
@@ -58,18 +73,24 @@ func getMaaAgentServerLibrary() string {
 }
 
 func registerAgentServer() {
-	purego.RegisterLibFunc(&MaaAgentServerRegisterCustomRecognition, maaAgentServer, "MaaAgentServerRegisterCustomRecognition")
-	purego.RegisterLibFunc(&MaaAgentServerRegisterCustomAction, maaAgentServer, "MaaAgentServerRegisterCustomAction")
-	purego.RegisterLibFunc(&MaaAgentServerAddResourceSink, maaAgentServer, "MaaAgentServerAddResourceSink")
-	purego.RegisterLibFunc(&MaaAgentServerAddControllerSink, maaAgentServer, "MaaAgentServerAddControllerSink")
-	purego.RegisterLibFunc(&MaaAgentServerAddTaskerSink, maaAgentServer, "MaaAgentServerAddTaskerSink")
-	purego.RegisterLibFunc(&MaaAgentServerAddContextSink, maaAgentServer, "MaaAgentServerAddContextSink")
-	purego.RegisterLibFunc(&MaaAgentServerStartUp, maaAgentServer, "MaaAgentServerStartUp")
-	purego.RegisterLibFunc(&MaaAgentServerShutDown, maaAgentServer, "MaaAgentServerShutDown")
-	purego.RegisterLibFunc(&MaaAgentServerJoin, maaAgentServer, "MaaAgentServerJoin")
-	purego.RegisterLibFunc(&MaaAgentServerDetach, maaAgentServer, "MaaAgentServerDetach")
+	for _, entry := range agentServerEntries {
+		purego.RegisterLibFunc(entry.ptrToFunc, maaAgentServer, entry.name)
+	}
 }
 
-func unregisterAgentServer() error {
-	return unloadLibrary(maaAgentServer)
+func releaseAgentServer() error {
+	err := unloadLibrary(maaAgentServer)
+	if err != nil {
+		return err
+	}
+
+	unregisterAgentServer()
+
+	return nil
+}
+
+func unregisterAgentServer() {
+	for _, entry := range agentServerEntries {
+		clearFuncVar(entry.ptrToFunc)
+	}
 }

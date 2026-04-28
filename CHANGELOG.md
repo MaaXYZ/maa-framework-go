@@ -113,6 +113,9 @@
 - `Init()` 不再隐式应用默认全局配置，仅在显式传入对应 `WithXxx` 时才会调用设置。
 - `defaultInitConfig()` 已移除，`Init()` 现在直接使用 `initConfig{}` 初始化。
 - `WithPluginPaths` 会对输入切片进行拷贝，避免外部后续修改影响已构建的选项。
+- `Init()` 与 `Release()` 现为幂等操作：重复初始化或在未初始化状态下释放都会直接返回 `nil`；原导出的 `ErrAlreadyInitialized`、`ErrNotInitialized` 已移除。
+- `Init()` 过程中若某个原生库加载失败，会自动释放此前已成功加载的库，避免残留半初始化状态。
+- `LibraryLoadError` 现在会稳定包含库名与尝试加载的完整路径，便于排查动态库装载问题。
 
 #### Toolkit
 
