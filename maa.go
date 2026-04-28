@@ -140,6 +140,7 @@ func WithJSONDecoder(decoder JSONDecoder) InitOption {
 
 // Init loads the dynamic library related to the MAA framework and registers its related functions.
 // It must be called before invoking any other MAA-related functions.
+// It must not be called concurrently with Release or other MAA-related functions.
 // Note: If this function is not called before other MAA functions, it will trigger a null pointer panic.
 func Init(opts ...InitOption) error {
 
@@ -207,11 +208,13 @@ func Init(opts ...InitOption) error {
 }
 
 // IsInited checks if the MAA framework has been initialized.
+// It must not be called concurrently with Init or Release.
 func IsInited() bool {
 	return inited
 }
 
 // Release releases the dynamic library resources of the MAA framework and unregisters its related functions.
+// It must not be called concurrently with Init or other MAA-related functions.
 func Release() error {
 
 	if err := native.Shutdown(); err != nil {
