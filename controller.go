@@ -97,8 +97,9 @@ func NewWin32Controller(
 // NewWlRootsController creates a WlRoots controller instance.
 func NewWlRootsController(
 	wlrSocketPath string,
+	useWin32VkCode bool,
 ) (*Controller, error) {
-	handle := native.MaaWlRootsControllerCreate(wlrSocketPath)
+	handle := native.MaaWlRootsControllerCreate(wlrSocketPath, useWin32VkCode)
 	if handle == 0 {
 		return nil, errors.New("failed to create WlRoots controller")
 	}
