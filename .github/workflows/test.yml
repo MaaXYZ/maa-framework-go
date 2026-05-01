@@ -72,12 +72,38 @@ jobs:
         with:
           go-version: 'stable'
 
+      - name: Resolve MaaFramework Release
+        id: resolve_maa_release
+        uses: actions/github-script@v9
+        env:
+          TARGET_REPOSITORY: MaaXYZ/MaaFramework
+        with:
+          result-encoding: string
+          script: |
+            const repository = process.env.TARGET_REPOSITORY
+            const [owner, repo] = repository.split('/')
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner,
+              repo,
+              per_page: 100,
+            })
+
+            const latestRelease = releases.find(release => !release.draft)
+            if (!latestRelease) {
+              core.setFailed(`No published release found for ${repository}`)
+              return ''
+            }
+
+            core.info(
+              `Resolved MaaFramework release: ${latestRelease.tag_name} (prerelease=${latestRelease.prerelease})`
+            )
+            return latestRelease.tag_name
+
       - name: Download MaaFramework
         uses: robinraju/release-downloader@v1
         with:
           repository: MaaXYZ/MaaFramework
-          latest: true
-          preRelease: true
+          tag: ${{ steps.resolve_maa_release.outputs.result }}
           fileName: "${{ env.MAA_FILE_PREFIX }}-${{ env.ARCH }}*"
           out-file-path: "deps"
           extract: true
