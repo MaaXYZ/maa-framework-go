@@ -63,7 +63,9 @@
 **移除构造函数**：`NewCarouselImageController` 已移除。若仅需空操作控制器，请使用 `NewBlankController()`；若需基于录制数据回放，请使用 `NewReplayController(recordingPath)`，录制入口为 `NewRecordController(inner, recordingPath)`。
 **新增**：`SetScreenshot(opts ...ScreenshotOption) error` 与配套选项函数；新增 `WithScreenshotResizeMethod(...)` / `ScreenshotResizeMethod*` 常量，以及 `SetMouseLockFollow(enabled bool) error`
 **新增控制器构造函数**：`NewMacOSController(...)`、`NewAndroidNativeController(...)`、`NewReplayController(...)`、`NewRecordController(...)`
-**接口变更**：`CustomController` 接口新增 `RelativeMove(dx, dy int32) bool`、`Shell(cmd string, timeout int64) (string, bool)`、`GetInfo() (string, bool)` 必须实现方法。已有实现若无需支持，可返回 no-op 成功值
+**接口变更**：
+- `CustomController` 接口新增 `RelativeMove(dx, dy int32) bool`、`Shell(cmd string, timeout int64) (string, bool)`、`GetInfo() (string, bool)` 必须实现方法。已有实现若无需支持，可返回 no-op 成功值
+- WlRoots 支持将按键视为 Win32 VK 键码：`NewWlRootsController(wlrSocketPath string, useWin32VkCode bool)`
 **Win32 InputMethod 命名对齐**：
 - `InputSendMessageWithCursorPosAndBlockInput` → `InputSendMessageWithWindowPos`
 - `InputPostMessageWithCursorPosAndBlockInput` → `InputPostMessageWithWindowPos`
