@@ -411,6 +411,10 @@ if best != nil {
 - `CustomController.RelativeMove(dx, dy int32) bool` 与 `CustomController.Shell(cmd string, timeout int64) (string, bool)`，补齐自定义控制器的相对移动与 shell 能力
 - `MacOSPermission`、`MacOSCheckPermission`、`MacOSRequestPermission`、`MacOSRevealPermissionSettings`，用于检查或申请 macOS Screen Recording / Accessibility 权限
 
+## Fixed
+
+- `Context.GetTasker`、`Tasker.GetController`、`Tasker.GetResource` 现在会缓存返回的 Go wrapper，避免重复调用后旧 wrapper 的方法调用崩溃 ([#41](https://github.com/MaaXYZ/maa-framework-go/issues/41))
+
 ## Performance
 
 - ImageBuffer RGBA 路径优化：`Set` 对 `*image.RGBA` 走直通转换路径，减少高频图像写入时的额外转换与分配开销
