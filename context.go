@@ -14,6 +14,7 @@ import (
 // and exposes task, recognition, action, and pipeline operations.
 type Context struct {
 	handle uintptr
+	tasker *Tasker
 }
 
 func isNilOverride(v any) bool {
@@ -425,8 +426,12 @@ func (ctx *Context) GetTaskJob() *TaskJob {
 
 // GetTasker returns the current Tasker.
 func (ctx *Context) GetTasker() *Tasker {
+	if ctx.tasker != nil {
+		return ctx.tasker
+	}
 	handle := native.MaaContextGetTasker(ctx.handle)
-	return &Tasker{handle: handle}
+	ctx.tasker = &Tasker{handle: handle}
+	return ctx.tasker
 }
 
 // WaitFreezes waits until the screen stabilizes (no significant changes).

@@ -14,7 +14,9 @@ import (
 // Tasker is the main task executor that coordinates resources and controllers
 // to perform automated tasks.
 type Tasker struct {
-	handle uintptr
+	handle     uintptr
+	controller *Controller
+	resource   *Resource
 }
 
 // NewTasker creates a new tasker instance.
@@ -180,14 +182,22 @@ func (t *Tasker) PostStop() *TaskJob {
 
 // GetResource returns the bound resource of the tasker.
 func (t *Tasker) GetResource() *Resource {
+	if t.resource != nil {
+		return t.resource
+	}
 	handle := native.MaaTaskerGetResource(t.handle)
-	return &Resource{handle: handle}
+	t.resource = &Resource{handle: handle}
+	return t.resource
 }
 
 // GetController returns the bound controller of the tasker.
 func (t *Tasker) GetController() *Controller {
+	if t.controller != nil {
+		return t.controller
+	}
 	handle := native.MaaTaskerGetController(t.handle)
-	return &Controller{handle: handle}
+	t.controller = &Controller{handle: handle}
+	return t.controller
 }
 
 // ClearCache clears all queryable runtime cache.
