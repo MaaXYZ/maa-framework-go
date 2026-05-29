@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -19,36 +20,78 @@ func TestNewResource(t *testing.T) {
 	res.Destroy()
 }
 
-type testResourceTestRec struct{}
+type testResourceTestRec struct {
+	run func(*Context, *CustomRecognitionArg) (*CustomRecognitionResult, bool)
+}
 
-func (t *testResourceTestRec) Run(_ *Context, _ *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
+func (t *testResourceTestRec) Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
+	if t.run != nil {
+		return t.run(ctx, arg)
+	}
 	return &CustomRecognitionResult{}, true
 }
 
 func TestResource_RegisterCustomRecognition(t *testing.T) {
-	ctrl := createBlankController(t)
-	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
-	require.True(t, isConnected)
+	testCases := []struct {
+		name      string
+		newRunner func(*int32) CustomRecognitionRunner
+	}{
+		{
+			name: "struct runner",
+			newRunner: func(calls *int32) CustomRecognitionRunner {
+				return &testResourceTestRec{
+					run: func(_ *Context, _ *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
+						atomic.AddInt32(calls, 1)
+						return &CustomRecognitionResult{
+							Box:    Rect{10, 20, 30, 40},
+							Detail: "struct runner",
+						}, true
+					},
+				}
+			},
+		},
+		{
+			name: "func adapter",
+			newRunner: func(calls *int32) CustomRecognitionRunner {
+				return CustomRecognitionFunc(func(_ *Context, _ *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
+					atomic.AddInt32(calls, 1)
+					return &CustomRecognitionResult{
+						Box:    Rect{50, 60, 70, 80},
+						Detail: "func adapter",
+					}, true
+				})
+			},
+		},
+	}
 
-	res := createResource(t)
-	defer res.Destroy()
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := createBlankController(t)
+			defer ctrl.Destroy()
+			isConnected := ctrl.PostConnect().Wait().Success()
+			require.True(t, isConnected)
 
-	tasker := createTasker(t)
-	defer tasker.Destroy()
-	taskerBind(t, tasker, ctrl, res)
+			res := createResource(t)
+			defer res.Destroy()
 
-	err := res.RegisterCustomRecognition("TestRec", &testResourceTestRec{})
-	require.NoError(t, err)
+			tasker := createTasker(t)
+			defer tasker.Destroy()
+			taskerBind(t, tasker, ctrl, res)
 
-	pipeline := NewPipeline()
-	testResource_RegisterCustomRecognitionNode := NewNode("TestResource_RegisterCustomRecognition").
-		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec"}))
-	pipeline.AddNode(testResource_RegisterCustomRecognitionNode)
+			var calls int32
+			err := res.RegisterCustomRecognition("TestRec", tc.newRunner(&calls))
+			require.NoError(t, err)
 
-	got2 := tasker.PostTask(testResource_RegisterCustomRecognitionNode.Name, pipeline).
-		Wait().Success()
-	require.True(t, got2)
+			pipeline := NewPipeline()
+			node := NewNode("TestResource_RegisterCustomRecognition").
+				SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec"}))
+			pipeline.AddNode(node)
+
+			got := tasker.PostTask(node.Name, pipeline).Wait().Success()
+			require.True(t, got)
+			require.NotZero(t, atomic.LoadInt32(&calls))
+		})
+	}
 }
 
 func TestResource_UnregisterCustomRecognition(t *testing.T) {
@@ -132,36 +175,72 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 	require.True(t, got7)
 }
 
-type testResourceTestAct struct{}
+type testResourceTestAct struct {
+	run func(*Context, *CustomActionArg) bool
+}
 
-func (t *testResourceTestAct) Run(_ *Context, _ *CustomActionArg) bool {
+func (t *testResourceTestAct) Run(ctx *Context, arg *CustomActionArg) bool {
+	if t.run != nil {
+		return t.run(ctx, arg)
+	}
 	return true
 }
 
 func TestResource_RegisterCustomAction(t *testing.T) {
-	ctrl := createBlankController(t)
-	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
-	require.True(t, isConnected)
+	testCases := []struct {
+		name      string
+		newRunner func(*int32) CustomActionRunner
+	}{
+		{
+			name: "struct runner",
+			newRunner: func(calls *int32) CustomActionRunner {
+				return &testResourceTestAct{
+					run: func(_ *Context, _ *CustomActionArg) bool {
+						atomic.AddInt32(calls, 1)
+						return true
+					},
+				}
+			},
+		},
+		{
+			name: "func adapter",
+			newRunner: func(calls *int32) CustomActionRunner {
+				return CustomActionFunc(func(_ *Context, _ *CustomActionArg) bool {
+					atomic.AddInt32(calls, 1)
+					return true
+				})
+			},
+		},
+	}
 
-	res := createResource(t)
-	defer res.Destroy()
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := createBlankController(t)
+			defer ctrl.Destroy()
+			isConnected := ctrl.PostConnect().Wait().Success()
+			require.True(t, isConnected)
 
-	tasker := createTasker(t)
-	defer tasker.Destroy()
-	taskerBind(t, tasker, ctrl, res)
+			res := createResource(t)
+			defer res.Destroy()
 
-	err := res.RegisterCustomAction("TestAct", &testResourceTestAct{})
-	require.NoError(t, err)
+			tasker := createTasker(t)
+			defer tasker.Destroy()
+			taskerBind(t, tasker, ctrl, res)
 
-	pipeline := NewPipeline()
-	testResource_RegisterCustomActionNode := NewNode("TestResource_RegisterCustomAction").
-		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct"}))
-	pipeline.AddNode(testResource_RegisterCustomActionNode)
+			var calls int32
+			err := res.RegisterCustomAction("TestAct", tc.newRunner(&calls))
+			require.NoError(t, err)
 
-	got := tasker.PostTask(testResource_RegisterCustomActionNode.Name, pipeline).
-		Wait().Success()
-	require.True(t, got)
+			pipeline := NewPipeline()
+			node := NewNode("TestResource_RegisterCustomAction").
+				SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct"}))
+			pipeline.AddNode(node)
+
+			got := tasker.PostTask(node.Name, pipeline).Wait().Success()
+			require.True(t, got)
+			require.NotZero(t, atomic.LoadInt32(&calls))
+		})
+	}
 }
 
 func TestResource_UnregisterCustomAction(t *testing.T) {

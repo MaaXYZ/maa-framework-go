@@ -102,6 +102,7 @@
 | 回调参数 | `CustomRecognitionArg.TaskDetail *TaskDetail` | `CustomRecognitionArg.TaskID int64` |
 
 **补充说明**：自定义识别与动作回调默认不再预取任务详情。若确有需要，请通过 `Tasker.GetTaskDetail(taskId int64)` 按需查询。
+`CustomActionFunc` 与 `CustomRecognitionFunc` 可将普通函数直接适配为对应 Runner，并传给 `Resource.RegisterCustomAction` / `Resource.RegisterCustomRecognition`。
 
 #### Global Configuration
 
@@ -383,6 +384,7 @@ if best != nil {
 - `Tasker.GetRecognitionDetail(recId int64) (*RecognitionDetail, error)`
 - `Tasker.GetActionDetail(actionId int64) (*ActionDetail, error)`
 - `Tasker.GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error)` 与 `WaitFreezesDetail`
+- `CustomActionFunc`、`CustomRecognitionFunc`，用于将普通函数适配为 `CustomActionRunner` / `CustomRecognitionRunner`，可直接传给 `Resource.RegisterCustomAction` / `Resource.RegisterCustomRecognition`
 - `Resource.GetNode`
 - `Pipeline.GetNode`
 - `Pipeline.HasNode`

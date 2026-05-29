@@ -135,6 +135,40 @@ func (r *Resource) UseAutoExecutionProvider() error {
 }
 
 // RegisterCustomRecognition registers a custom recognition runner to the resource.
+// The registered name is referenced by pipeline nodes via
+// CustomRecognitionParam{CustomRecognition: name}.
+//
+// Common registration forms are:
+//
+// 1. A type that implements CustomRecognitionRunner.
+//
+//	type screenTextRecognition struct{}
+//
+//	func (screenTextRecognition) Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
+//	...
+//	}
+//
+//	err := res.RegisterCustomRecognition("ScreenText", screenTextRecognition{})
+//
+// 2. A named function adapted with CustomRecognitionFunc.
+//
+//	func runScreenText(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
+//	...
+//	}
+//
+//	err := res.RegisterCustomRecognition("ScreenText", CustomRecognitionFunc(runScreenText))
+//
+// 3. An inline function adapted with CustomRecognitionFunc.
+//
+//	err := res.RegisterCustomRecognition("ScreenText", CustomRecognitionFunc(
+//	func(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
+//	...
+//	},
+//	))
+//
+// Use UnregisterCustomRecognition or ClearCustomRecognition to remove
+// registrations. Use GetCustomRecognitionList to inspect the currently
+// registered names.
 func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognitionRunner) error {
 	id := registerCustomRecognition(recognition)
 
@@ -212,6 +246,39 @@ func (r *Resource) ClearCustomRecognition() error {
 }
 
 // RegisterCustomAction registers a custom action runner to the resource.
+// The registered name is referenced by pipeline nodes via
+// CustomActionParam{CustomAction: name}.
+//
+// Common registration forms are:
+//
+// 1. A type that implements CustomActionRunner.
+//
+//	type closeDialogAction struct{}
+//
+//	func (closeDialogAction) Run(ctx *Context, arg *CustomActionArg) bool {
+//	...
+//	}
+//
+//	err := res.RegisterCustomAction("CloseDialog", closeDialogAction{})
+//
+// 2. A named function adapted with CustomActionFunc.
+//
+//	func runCloseDialog(ctx *Context, arg *CustomActionArg) bool {
+//	...
+//	}
+//
+//	err := res.RegisterCustomAction("CloseDialog", CustomActionFunc(runCloseDialog))
+//
+// 3. An inline function adapted with CustomActionFunc.
+//
+//	err := res.RegisterCustomAction("CloseDialog", CustomActionFunc(
+//	func(ctx *Context, arg *CustomActionArg) bool {
+//	...
+//	},
+//	))
+//
+// Use UnregisterCustomAction or ClearCustomAction to remove registrations.
+// Use GetCustomActionList to inspect the currently registered names.
 func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) error {
 	id := registerCustomAction(action)
 

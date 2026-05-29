@@ -47,6 +47,15 @@ type CustomActionRunner interface {
 	Run(ctx *Context, arg *CustomActionArg) bool
 }
 
+// CustomActionFunc is an adapter to allow use of ordinary functions as CustomActionRunner.
+// If f is a function with the appropriate signature, CustomActionFunc(f) is a
+// CustomActionRunner that calls f.
+type CustomActionFunc func(ctx *Context, arg *CustomActionArg) bool
+
+func (f CustomActionFunc) Run(ctx *Context, arg *CustomActionArg) bool {
+	return f(ctx, arg)
+}
+
 func _MaaCustomActionCallbackAgent(
 	context uintptr,
 	taskId int64,

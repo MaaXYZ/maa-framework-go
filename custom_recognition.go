@@ -53,6 +53,15 @@ type CustomRecognitionRunner interface {
 	Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool)
 }
 
+// CustomRecognitionFunc is an adapter to allow use of ordinary functions as CustomRecognitionRunner.
+// If f is a function with the appropriate signature, CustomRecognitionFunc(f) is a
+// CustomRecognitionRunner that calls f.
+type CustomRecognitionFunc func(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool)
+
+func (f CustomRecognitionFunc) Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
+	return f(ctx, arg)
+}
+
 func _MaaCustomRecognitionCallbackAgent(
 	context uintptr,
 	taskId int64,
