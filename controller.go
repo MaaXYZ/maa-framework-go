@@ -111,6 +111,33 @@ func NewWlRootsController(
 	}, nil
 }
 
+// NewKWinController creates a KWin / Linux Wayland controller instance.
+
+// deviceNode: The uinput device node path (e.g., "/dev/uinput").
+// screenWidth: The screen width in pixels.
+// screenHeight: The screen height in pixels.
+// useWin32VkCode: If true, key codes passed to click_key / key_down / key_up are
+// interpreted as Win32 Virtual-Key codes (VK_*) and translated to Linux evdev codes
+// internally. If false, key codes are passed through as raw evdev codes.
+//
+
+func NewKWinController(
+	deviceNode string,
+	screenWidth, screenHeight int32,
+	useWin32VkCode bool,
+) (*Controller, error) {
+	handle := native.MaaKWinControllerCreate(deviceNode, screenWidth, screenHeight, useWin32VkCode)
+	if handle == 0 {
+		return nil, errors.New("failed to create KWin controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
 // NewMacOSController creates a macOS controller for native macOS applications.
 // windowID is the CGWindowID of the target window (0 for desktop).
 // screencapMethod is the macOS screencap method to use.
