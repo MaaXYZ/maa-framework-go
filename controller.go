@@ -111,16 +111,18 @@ func NewWlRootsController(
 	}, nil
 }
 
-// NewKWinController creates a KWin / Linux Wayland controller instance.
-
-// deviceNode: The uinput device node path (e.g., "/dev/uinput").
-// screenWidth: The screen width in pixels.
-// screenHeight: The screen height in pixels.
-// useWin32VkCode: If true, key codes passed to click_key / key_down / key_up are
-// interpreted as Win32 Virtual-Key codes (VK_*) and translated to Linux evdev codes
-// internally. If false, key codes are passed through as raw evdev codes.
+// NewKWinController creates a KWin / Linux Wayland controller via PipeWire and /dev/uinput.
 //
-
+// Despite the name "KWin", this controller works with any Wayland compositor that
+// implements the XDG Screencast Portal and kernel has uinput support (e.g., GNOME).
+//
+// deviceNode is the uinput device node path (e.g., "/dev/uinput").
+// screenWidth and screenHeight are the screen dimensions in pixels.
+// useWin32VkCode specifies whether key codes are interpreted as Win32 Virtual-Key codes
+// (VK_*) and translated to Linux evdev codes internally. If false, key codes are passed
+// through as raw evdev codes.
+//
+// Dependencies: pipewire (1.0+), xdg-desktop-portal.
 func NewKWinController(
 	deviceNode string,
 	screenWidth, screenHeight int32,
