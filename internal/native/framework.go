@@ -218,7 +218,7 @@ var (
 	MaaPlayCoverControllerCreate     func(address, uuid string) uintptr
 	MaaWin32ControllerCreate         func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
 	MaaWlRootsControllerCreate       func(wlrSocketPath string, useWin32VkCode bool) uintptr
-	MaaKWinControllerCreate          func(deviceNode string, screenWidth, screenHeight int32, useWin32VkCode bool) uintptr
+	MaaKWinControllerCreate          func(deviceNode string, screenWidth, screenHeight int, useWin32VkCode bool) uintptr
 	MaaCustomControllerCreate        func(controller unsafe.Pointer, controllerArg uintptr) uintptr
 	MaaGamepadControllerCreate       func(hWnd unsafe.Pointer, gamepadType MaaGamepadType, screencapMethod uint64) uintptr
 	MaaMacOSControllerCreate         func(windowID uint32, screencapMethod MaaMacOSScreencapMethod, inputMethod MaaMacOSInputMethod) uintptr

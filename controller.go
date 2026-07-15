@@ -125,7 +125,7 @@ func NewWlRootsController(
 // Dependencies: pipewire (1.0+), xdg-desktop-portal.
 func NewKWinController(
 	deviceNode string,
-	screenWidth, screenHeight int32,
+	screenWidth, screenHeight int,
 	useWin32VkCode bool,
 ) (*Controller, error) {
 	handle := native.MaaKWinControllerCreate(deviceNode, screenWidth, screenHeight, useWin32VkCode)
