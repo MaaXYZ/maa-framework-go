@@ -25,9 +25,9 @@ const (
 	ScreencapPrintWindow          ScreencapMethod = 1 << 4
 	ScreencapScreenDC             ScreencapMethod = 1 << 5
 
-	ScreencapAll         ScreencapMethod = ^ScreencapNone
-	ScreencapForeground  ScreencapMethod = ScreencapDXGIDesktopDupWindow | ScreencapScreenDC
-	ScreencapBackground  ScreencapMethod = ScreencapFramePool | ScreencapPrintWindow
+	ScreencapAll        ScreencapMethod = ^ScreencapNone
+	ScreencapForeground ScreencapMethod = ScreencapDXGIDesktopDupWindow | ScreencapScreenDC
+	ScreencapBackground ScreencapMethod = ScreencapFramePool | ScreencapPrintWindow
 
 	InputNone                     InputMethod = 0
 	InputSeize                    InputMethod = 1
@@ -39,6 +39,7 @@ const (
 	InputPostMessageWithCursorPos InputMethod = 1 << 6
 	InputSendMessageWithWindowPos InputMethod = 1 << 7
 	InputPostMessageWithWindowPos InputMethod = 1 << 8
+	InputInterception             InputMethod = 1 << 9
 )
 
 const (
@@ -50,9 +51,9 @@ const (
 	screencapPrintWindowStr          = "PrintWindow"
 	screencapScreenDCStr             = "ScreenDC"
 
-	screencapAllStr         = "All"
-	screencapForegroundStr  = "Foreground"
-	screencapBackgroundStr  = "Background"
+	screencapAllStr        = "All"
+	screencapForegroundStr = "Foreground"
+	screencapBackgroundStr = "Background"
 
 	inputNoneStr                     = ""
 	inputSeizeStr                    = "Seize"
@@ -64,6 +65,7 @@ const (
 	inputPostMessageWithCursorPosStr = "PostMessageWithCursorPos"
 	inputSendMessageWithWindowPosStr = "SendMessageWithWindowPos"
 	inputPostMessageWithWindowPosStr = "PostMessageWithWindowPos"
+	inputInterceptionStr             = "Interception"
 )
 
 func (m ScreencapMethod) String() string {
@@ -114,6 +116,8 @@ func (m InputMethod) String() string {
 		return inputSendMessageWithWindowPosStr
 	case InputPostMessageWithWindowPos:
 		return inputPostMessageWithWindowPosStr
+	case InputInterception:
+		return inputInterceptionStr
 	}
 	return strconv.FormatUint(uint64(m), 10)
 }
@@ -173,6 +177,8 @@ func ParseInputMethod(s string) (InputMethod, error) {
 		return InputSendMessageWithWindowPos, nil
 	case strings.EqualFold(inputPostMessageWithWindowPosStr, s):
 		return InputPostMessageWithWindowPos, nil
+	case strings.EqualFold(inputInterceptionStr, s):
+		return InputInterception, nil
 	default:
 		i, err := strconv.ParseUint(s, 10, 64)
 		if err != nil {
