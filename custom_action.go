@@ -78,9 +78,17 @@ func _MaaCustomActionCallbackAgent(
 
 	ctx := &Context{handle: context}
 	tasker := ctx.GetTasker()
-	recognitionDetail, err := tasker.GetRecognitionDetail(recoId)
-	if err != nil {
-		return 0
+	// recoId is invalid (0) when the custom action runs on an action-only node
+	// (e.g. invoked via Context.RunAction). Querying recognition detail with an
+	// invalid id makes the framework log a spurious error, so skip it and leave
+	// RecognitionDetail nil in that case.
+	var recognitionDetail *RecognitionDetail
+	if recoId != 0 {
+		var err error
+		recognitionDetail, err = tasker.GetRecognitionDetail(recoId)
+		if err != nil {
+			return 0
+		}
 	}
 	curBoxRectBuffer := buffer.NewRectBufferByHandle(box)
 
