@@ -111,6 +111,35 @@ func NewWlRootsController(
 	}, nil
 }
 
+// NewKWinController creates a KWin / Linux Wayland controller via PipeWire and /dev/uinput.
+//
+// Despite the name "KWin", this controller works with any Wayland compositor that
+// implements the XDG Screencast Portal and kernel has uinput support (e.g., GNOME).
+//
+// deviceNode is the uinput device node path (e.g., "/dev/uinput").
+// screenWidth and screenHeight are the screen dimensions in pixels.
+// useWin32VkCode specifies whether key codes are interpreted as Win32 Virtual-Key codes
+// (VK_*) and translated to Linux evdev codes internally. If false, key codes are passed
+// through as raw evdev codes.
+//
+// Dependencies: pipewire (1.0+), xdg-desktop-portal.
+func NewKWinController(
+	deviceNode string,
+	screenWidth, screenHeight int,
+	useWin32VkCode bool,
+) (*Controller, error) {
+	handle := native.MaaKWinControllerCreate(deviceNode, screenWidth, screenHeight, useWin32VkCode)
+	if handle == 0 {
+		return nil, errors.New("failed to create KWin controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
 // NewMacOSController creates a macOS controller for native macOS applications.
 // windowID is the CGWindowID of the target window (0 for desktop).
 // screencapMethod is the macOS screencap method to use.
