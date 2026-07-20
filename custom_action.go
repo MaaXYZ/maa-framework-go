@@ -39,6 +39,8 @@ type CustomActionArg struct {
 	CurrentTaskName   string
 	CustomActionName  string
 	CustomActionParam string
+	// RecognitionDetail may be nil when the custom action runs on an action-only
+	// node (e.g. invoked via Context.RunAction), where reco_id is invalid.
 	RecognitionDetail *RecognitionDetail
 	Box               Rect
 }
@@ -78,10 +80,7 @@ func _MaaCustomActionCallbackAgent(
 
 	ctx := &Context{handle: context}
 	tasker := ctx.GetTasker()
-	// recoId is invalid (0) when the custom action runs on an action-only node
-	// (e.g. invoked via Context.RunAction). Querying recognition detail with an
-	// invalid id makes the framework log a spurious error, so skip it and leave
-	// RecognitionDetail nil in that case.
+	// Skip GetRecognitionDetail for invalid recoId to avoid a spurious framework error log.
 	var recognitionDetail *RecognitionDetail
 	if recoId != 0 {
 		var err error
