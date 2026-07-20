@@ -4,3 +4,4 @@ blacklist:
   - MaaImageBufferGetEncoded
   - MaaImageBufferGetEncodedSize
   - MaaImageBufferSetEncoded
+  - MaaKWinControllerCreate
