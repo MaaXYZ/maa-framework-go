@@ -412,6 +412,7 @@ if best != nil {
 - Controller relative move：新增 `Controller.PostRelativeMove(dx, dy int32) *Job`，支持提交相对光标移动事件（适配 [MaaFramework#1189](https://github.com/MaaXYZ/MaaFramework/pull/1189)）
 - `CustomController.RelativeMove(dx, dy int32) bool` 与 `CustomController.Shell(cmd string, timeout int64) (string, bool)`，补齐自定义控制器的相对移动与 shell 能力
 - `MacOSPermission`、`MacOSCheckPermission`、`MacOSRequestPermission`、`MacOSRevealPermissionSettings`，用于检查或申请 macOS Screen Recording / Accessibility 权限
+- `AgentServerSetShutdownCallback(callback func()) error`：注册关闭回调，AgentServer 收到 ShutDownRequest 时、停止消息循环前调用；回调返回后服务端才回复 ShutDownResponse——agent 可以在退出前阻塞完成收尾（如冲走在途通知），客户端的 Disconnect() 返回即代表收尾完毕。须在 AgentServerStartUp 之前调用（适配 [MaaFramework#1469](https://github.com/MaaXYZ/MaaFramework/pull/1469)）
 
 ## Fixed
 
