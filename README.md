@@ -19,7 +19,7 @@
   </div>
   <div>
     <a href="https://github.com/MaaXYZ/MaaFramework/releases/tag/v5.14.0-beta.1">
-      <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.14.0-beta.1-blue">
+      <img alt="maa framework" src="https://img.shields.io/badge/MaaFramework-v5.14.0--beta.1-blue">
     </a>
     <a href="https://deepwiki.com/MaaXYZ/maa-framework-go">
       <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki">
