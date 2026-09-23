@@ -217,7 +217,6 @@ var (
 	MaaAdbControllerCreate           func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
 	MaaPlayCoverControllerCreate     func(address, uuid string) uintptr
 	MaaWin32ControllerCreate         func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
-	MaaWlRootsControllerCreate       func(wlrSocketPath string, useWin32VkCode bool) uintptr
 	MaaLinuxControllerCreate         func(configJson string) uintptr
 	MaaCustomControllerCreate        func(controller unsafe.Pointer, controllerArg uintptr) uintptr
 	MaaGamepadControllerCreate       func(hWnd unsafe.Pointer, gamepadType MaaGamepadType, screencapMethod uint64) uintptr
@@ -447,7 +446,6 @@ var frameworkEntries = []Entry{
 	{&MaaAdbControllerCreate, "MaaAdbControllerCreate"},
 	{&MaaPlayCoverControllerCreate, "MaaPlayCoverControllerCreate"},
 	{&MaaWin32ControllerCreate, "MaaWin32ControllerCreate"},
-	{&MaaWlRootsControllerCreate, "MaaWlRootsControllerCreate"},
 	{&MaaLinuxControllerCreate, "MaaLinuxControllerCreate"},
 	{&MaaCustomControllerCreate, "MaaCustomControllerCreate"},
 	{&MaaGamepadControllerCreate, "MaaGamepadControllerCreate"},
