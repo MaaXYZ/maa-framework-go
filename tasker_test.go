@@ -68,6 +68,7 @@ func TestTasker_PostPipeline(t *testing.T) {
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
+	require.True(t, ctrl.PostScreencap().Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -96,6 +97,7 @@ func TestTasker_GetTaskDetail_NodesAndGetNodeDetail(t *testing.T) {
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
+	require.True(t, ctrl.PostScreencap().Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -312,6 +314,7 @@ func TestTasker_OverridePipeline(t *testing.T) {
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
+	require.True(t, ctrl.PostScreencap().Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()

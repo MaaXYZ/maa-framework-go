@@ -9,21 +9,17 @@ import (
 )
 
 type testActionDetailFromActionAct struct {
-	t *testing.T
+	results chan []testActionDetailResult
+}
+
+type testActionDetailResult struct {
+	name   string
+	detail *ActionDetail
+	err    error
+	assert func(*testing.T, *ActionDetail)
 }
 
 func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
-	runAction := func(actionType ActionType, param ActionParam) *ActionDetail {
-		detail, err := ctx.RunActionDirect(actionType, param, arg.Box, arg.RecognitionDetail)
-		require.NoError(a.t, err)
-		require.NotNil(a.t, detail)
-		require.NotEmpty(a.t, detail.DetailJson)
-		require.NotNil(a.t, detail.Result)
-
-		requireActionResultMatchesRaw(a.t, detail)
-		return detail
-	}
-
 	type testCase struct {
 		name       string
 		actionType ActionType
@@ -196,8 +192,9 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 			name:       "scroll",
 			actionType: ActionTypeScroll,
 			param: &ScrollParam{
-				Dx: 120,
-				Dy: -240,
+				Target: NewTargetRect(Rect{100, 100, 10, 10}),
+				Dx:     120,
+				Dy:     -240,
 			},
 			assert: func(t *testing.T, detail *ActionDetail) {
 				scroll, ok := detail.Result.AsScroll()
@@ -265,12 +262,12 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 		},
 	}
 
+	results := make([]testActionDetailResult, 0, len(testCases))
 	for _, tc := range testCases {
-		a.t.Run(tc.name, func(t *testing.T) {
-			detail := runAction(tc.actionType, tc.param)
-			tc.assert(t, detail)
-		})
+		detail, err := ctx.RunActionDirect(tc.actionType, tc.param, arg.Box, arg.RecognitionDetail)
+		results = append(results, testActionDetailResult{tc.name, detail, err, tc.assert})
 	}
+	a.results <- results
 
 	return true
 }
@@ -300,6 +297,7 @@ func TestActionDetail_ResultMatchesRaw(t *testing.T) {
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
+	require.True(t, ctrl.PostScreencap().Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -308,7 +306,8 @@ func TestActionDetail_ResultMatchesRaw(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestActionDetail_ResultMatchesRawAct", &testActionDetailFromActionAct{t})
+	resultsCh := make(chan []testActionDetailResult, 1)
+	err := res.RegisterCustomAction("TestActionDetail_ResultMatchesRawAct", &testActionDetailFromActionAct{resultsCh})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -319,4 +318,26 @@ func TestActionDetail_ResultMatchesRaw(t *testing.T) {
 	got := tasker.PostTask(testNode.Name, pipeline).
 		Wait().Success()
 	require.True(t, got)
+
+	select {
+	case results := <-resultsCh:
+		for _, result := range results {
+			t.Run(result.name, func(t *testing.T) {
+				require.NoError(t, result.err)
+				require.NotNil(t, result.detail)
+				require.NotEmpty(t, result.detail.DetailJson)
+				require.NotNil(t, result.detail.Result)
+				requireActionResultMatchesRaw(t, result.detail)
+				result.assert(t, result.detail)
+			})
+		}
+	default:
+		t.Fatal("custom action callback was not called")
+	}
+}
+
+func TestParseActionResultNullDetail(t *testing.T) {
+	result, err := parseActionResult(string(ActionTypeSwipe), "null")
+	require.NoError(t, err)
+	require.Nil(t, result)
 }

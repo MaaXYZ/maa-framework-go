@@ -176,13 +176,30 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 }
 
 type testRecognitionDetailFromRecognitionAct struct {
-	t *testing.T
+	results chan testRecognitionDetailResult
+}
+
+type testRecognitionDetailResult struct {
+	imageErr       error
+	imageAvailable bool
+	cases          []testRecognitionCaseResult
+}
+
+type testRecognitionCaseResult struct {
+	name   string
+	typ    RecognitionType
+	detail *RecognitionDetail
+	err    error
+	assert func(*testing.T, *RecognitionDetail)
 }
 
 func (a *testRecognitionDetailFromRecognitionAct) Run(ctx *Context, _ *CustomActionArg) bool {
 	img, err := ctx.GetTasker().GetController().CacheImage()
-	require.NoError(a.t, err)
-	require.NotNil(a.t, img)
+	results := testRecognitionDetailResult{imageErr: err, imageAvailable: img != nil}
+	if err != nil || img == nil {
+		a.results <- results
+		return true
+	}
 
 	assertions := map[string]func(t *testing.T, detail *RecognitionDetail){
 		"direct_hit": func(t *testing.T, detail *RecognitionDetail) {
@@ -257,32 +274,11 @@ func (a *testRecognitionDetailFromRecognitionAct) Run(ctx *Context, _ *CustomAct
 		},
 	}
 
-	runRecognition := func(t *testing.T, name string, recoType RecognitionType, param RecognitionParam) {
-		detail, err := ctx.RunRecognitionDirect(recoType, param, img)
-		require.NoError(t, err)
-		require.NotNil(t, detail)
-
-		switch recoType {
-		case RecognitionTypeAnd, RecognitionTypeOr:
-			requireRecognitionDetailMatchesCombinedRaw(t, detail)
-		case RecognitionTypeDirectHit:
-			require.Nil(t, detail.Results)
-			requireRecognitionDetailMatchesRaw(t, detail)
-		default:
-			require.NotNil(t, detail.Results)
-			requireRecognitionDetailMatchesRaw(t, detail)
-		}
-
-		assert, ok := assertions[name]
-		require.True(t, ok, "missing assertion for %s", name)
-		assert(t, detail)
-	}
-
 	for _, tc := range recognitionDetailTestCases() {
-		a.t.Run(tc.name, func(t *testing.T) {
-			runRecognition(t, tc.name, tc.typ, tc.param)
-		})
+		detail, err := ctx.RunRecognitionDirect(tc.typ, tc.param, img)
+		results.cases = append(results.cases, testRecognitionCaseResult{tc.name, tc.typ, detail, err, assertions[tc.name]})
 	}
+	a.results <- results
 
 	return true
 }
@@ -370,6 +366,7 @@ func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
+	require.True(t, ctrl.PostScreencap().Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -384,7 +381,8 @@ func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 	err := res.RegisterCustomRecognition("TestRecognitionDetail_Custom", &testRecognitionDetailCustomRec{})
 	require.NoError(t, err)
 
-	act := &testRecognitionDetailFromRecognitionAct{t: t}
+	resultsCh := make(chan testRecognitionDetailResult, 1)
+	act := &testRecognitionDetailFromRecognitionAct{results: resultsCh}
 	err = res.RegisterCustomAction("TestRecognitionDetail_ResultMatchesRawAct", act)
 	require.NoError(t, err)
 
@@ -397,5 +395,29 @@ func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 		Wait().Success()
 	require.True(t, got)
 
-	require.NotNil(t, act)
+	select {
+	case results := <-resultsCh:
+		require.NoError(t, results.imageErr)
+		require.True(t, results.imageAvailable)
+		for _, result := range results.cases {
+			t.Run(result.name, func(t *testing.T) {
+				require.NoError(t, result.err)
+				require.NotNil(t, result.detail)
+				switch result.typ {
+				case RecognitionTypeAnd, RecognitionTypeOr:
+					requireRecognitionDetailMatchesCombinedRaw(t, result.detail)
+				case RecognitionTypeDirectHit:
+					require.Nil(t, result.detail.Results)
+					requireRecognitionDetailMatchesRaw(t, result.detail)
+				default:
+					require.NotNil(t, result.detail.Results)
+					requireRecognitionDetailMatchesRaw(t, result.detail)
+				}
+				require.NotNil(t, result.assert, "missing assertion for %s", result.name)
+				result.assert(t, result.detail)
+			})
+		}
+	default:
+		t.Fatal("custom action callback was not called")
+	}
 }

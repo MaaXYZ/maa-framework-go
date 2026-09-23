@@ -30,6 +30,19 @@ func TestSubRecognitionItem_UnmarshalJSON_Object(t *testing.T) {
 	require.IsType(t, (*TemplateMatchParam)(nil), item.Inline.Param)
 }
 
+func TestSubRecognitionItem_UnmarshalJSON_NestedRecognition(t *testing.T) {
+	data := []byte(`{"sub_name":"MySub","recognition":{"type":"TemplateMatch","param":{"template":["a.png"]}}}`)
+	var item SubRecognitionItem
+	require.NoError(t, json.Unmarshal(data, &item))
+	require.Empty(t, item.NodeName)
+	require.NotNil(t, item.Inline)
+	require.Equal(t, "MySub", item.Inline.SubName)
+	require.Equal(t, RecognitionTypeTemplateMatch, item.Inline.Type)
+	param, ok := item.Inline.Param.(*TemplateMatchParam)
+	require.True(t, ok)
+	require.Equal(t, []string{"a.png"}, param.Template)
+}
+
 func TestSubRecognitionItem_UnmarshalJSON_Invalid(t *testing.T) {
 	data := []byte(`123`)
 	var item SubRecognitionItem

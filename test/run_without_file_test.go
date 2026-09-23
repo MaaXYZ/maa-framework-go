@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/MaaXYZ/maa-framework-go/v4"
@@ -14,6 +15,7 @@ func TestRunWithoutFile(t *testing.T) {
 	defer ctrl.Destroy()
 	isConnected := ctrl.PostConnect().Wait().Success()
 	require.True(t, isConnected)
+	require.True(t, ctrl.PostScreencap().Wait().Success())
 
 	res, err := maa.NewResource()
 	require.NoError(t, err)
@@ -29,7 +31,8 @@ func TestRunWithoutFile(t *testing.T) {
 	err = tasker.BindController(ctrl)
 	require.NoError(t, err)
 
-	err = res.RegisterCustomAction("MyAct", &MyAct{t})
+	resultsCh := make(chan error, 1)
+	err = res.RegisterCustomAction("MyAct", &MyAct{resultsCh})
 	require.NoError(t, err)
 
 	pipeline := maa.NewPipeline()
@@ -41,21 +44,41 @@ func TestRunWithoutFile(t *testing.T) {
 	pipeline.AddNode(myTaskNode)
 
 	got := tasker.PostTask("MyTask", pipeline).Wait().Success()
+	select {
+	case callbackErr := <-resultsCh:
+		require.NoError(t, callbackErr)
+	default:
+		t.Fatal("custom action callback was not called")
+	}
 	require.True(t, got)
 }
 
 type MyAct struct {
-	t *testing.T
+	results chan error
 }
 
 func (a *MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
+	err := a.run(ctx)
+	a.results <- err
+	return err == nil
+}
+
+func (a *MyAct) run(ctx *maa.Context) error {
 	tasker := ctx.GetTasker()
-	require.NotNil(a.t, tasker)
+	if tasker == nil {
+		return fmt.Errorf("context has no tasker")
+	}
 	ctrl := tasker.GetController()
-	require.NotNil(a.t, ctrl)
+	if ctrl == nil {
+		return fmt.Errorf("tasker has no controller")
+	}
 	img, err := ctrl.CacheImage()
-	require.NoError(a.t, err)
-	require.NotNil(a.t, img)
+	if err != nil {
+		return fmt.Errorf("get cached image: %w", err)
+	}
+	if img == nil {
+		return fmt.Errorf("cached image is nil")
+	}
 
 	pipeline := maa.NewPipeline()
 	myColorMatchingNode := maa.NewNode("MyColorMatching").
@@ -66,8 +89,12 @@ func (a *MyAct) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	pipeline.AddNode(myColorMatchingNode)
 
 	detail, err := ctx.RunRecognition("MyColorMatching", img, pipeline)
-	require.NoError(a.t, err)
-	require.NotNil(a.t, detail)
+	if err != nil {
+		return fmt.Errorf("run recognition: %w", err)
+	}
+	if detail == nil {
+		return fmt.Errorf("recognition detail is nil")
+	}
 
-	return true
+	return nil
 }
