@@ -46,6 +46,7 @@ func TestInputMethod_String(t *testing.T) {
 		{"SendMessageWithWindowPos", InputSendMessageWithWindowPos, "SendMessageWithWindowPos"},
 		{"PostMessageWithWindowPos", InputPostMessageWithWindowPos, "PostMessageWithWindowPos"},
 		{"Interception", InputInterception, "Interception"},
+		{"AnchoredTouch", InputAnchoredTouch, "AnchoredTouch"},
 		{"Unknown", InputMethod(999), "999"},
 	}
 
@@ -116,6 +117,7 @@ func TestParseInputMethod(t *testing.T) {
 		{"SendMessageWithWindowPos", "SendMessageWithWindowPos", InputSendMessageWithWindowPos, false},
 		{"PostMessageWithWindowPos", "PostMessageWithWindowPos", InputPostMessageWithWindowPos, false},
 		{"Interception", "Interception", InputInterception, false},
+		{"AnchoredTouch", "AnchoredTouch", InputAnchoredTouch, false},
 		// Case insensitive
 		{"LowerCase", "seize", InputSeize, false},
 		{"UpperCase", "SEIZE", InputSeize, false},
@@ -179,6 +181,7 @@ func TestInputMethodRoundTrip(t *testing.T) {
 		InputSendMessageWithWindowPos,
 		InputPostMessageWithWindowPos,
 		InputInterception,
+		InputAnchoredTouch,
 	}
 
 	for _, m := range methods {
