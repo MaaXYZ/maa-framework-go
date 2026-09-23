@@ -2,6 +2,7 @@ package maa
 
 import (
 	"image"
+	"runtime"
 	"testing"
 	"time"
 
@@ -18,6 +19,16 @@ func createBlankController(t *testing.T) *Controller {
 func TestNewBlankController(t *testing.T) {
 	ctrl := createBlankController(t)
 	ctrl.Destroy()
+}
+
+func TestNewLinuxController_InvalidConfig(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux controller is only available on Linux")
+	}
+
+	ctrl, err := NewLinuxController(`{}`)
+	require.Error(t, err)
+	require.Nil(t, ctrl)
 }
 
 func TestController_Handle(t *testing.T) {
