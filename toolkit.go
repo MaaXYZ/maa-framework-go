@@ -25,6 +25,13 @@ type DesktopWindow struct {
 	WindowName string
 }
 
+// GamescopeInstance describes a running gamescope instance.
+type GamescopeInstance struct {
+	DisplayNo      uint32
+	PipeWireNodeID uint32
+	EisSocketPath  string
+}
+
 // ConfigInitOption inits the toolkit config option.
 func ConfigInitOption(userPath, defaultJson string) error {
 	if !native.MaaToolkitConfigInitOption(userPath, defaultJson) {
@@ -92,6 +99,103 @@ func FindDesktopWindows() ([]*DesktopWindow, error) {
 		}
 	}
 	return list, nil
+}
+
+// FindGamescopeInstances finds running gamescope instances, ordered by display number.
+// An empty slice means no instances were found. A zero PipeWireNodeID or empty
+// EisSocketPath means the corresponding capture or input endpoint is unavailable.
+func FindGamescopeInstances() ([]*GamescopeInstance, error) {
+	listHandle := native.MaaToolkitGamescopeInstanceListCreate()
+	if listHandle == 0 {
+		return nil, errors.New("failed to create gamescope instance list")
+	}
+	defer native.MaaToolkitGamescopeInstanceListDestroy(listHandle)
+
+	if !native.MaaToolkitGamescopeInstanceFindAll(listHandle) {
+		return nil, errors.New("failed to find gamescope instances")
+	}
+
+	size := native.MaaToolkitGamescopeInstanceListSize(listHandle)
+	list := make([]*GamescopeInstance, size)
+	for i := uint64(0); i < size; i++ {
+		instance := native.MaaToolkitGamescopeInstanceListAt(listHandle, i)
+		if instance == 0 {
+			return nil, errors.New("failed to get gamescope instance")
+		}
+		list[i] = &GamescopeInstance{
+			DisplayNo:      native.MaaToolkitGamescopeInstanceGetDisplayNo(instance),
+			PipeWireNodeID: native.MaaToolkitGamescopeInstanceGetPipeWireNodeId(instance),
+			EisSocketPath:  native.MaaToolkitGamescopeInstanceGetEisSocketPath(instance),
+		}
+	}
+	return list, nil
+}
+
+// PortalHelper manages an xdg-desktop-portal ScreenCast session.
+// Call Destroy when the session and its PipeWire FD are no longer needed.
+// Do not use the helper after Destroy.
+type PortalHelper struct {
+	handle uintptr
+}
+
+// NewPortalHelper creates a ScreenCast portal helper.
+func NewPortalHelper() (*PortalHelper, error) {
+	handle := native.MaaToolkitPortalHelperCreate()
+	if handle == 0 {
+		return nil, errors.New("failed to create portal helper")
+	}
+	return &PortalHelper{handle: handle}, nil
+}
+
+// Destroy closes the portal session and frees the helper. It is safe to call more than once.
+func (p *PortalHelper) Destroy() {
+	if p == nil || p.handle == 0 {
+		return
+	}
+	native.MaaToolkitPortalHelperDestroy(p.handle)
+	p.handle = 0
+}
+
+// OpenStream opens a ScreenCast stream through xdg-desktop-portal.
+func (p *PortalHelper) OpenStream() error {
+	if p == nil || p.handle == 0 {
+		return errors.New("portal helper is destroyed")
+	}
+	if !native.MaaToolkitPortalHelperOpenStream(p.handle) {
+		return errors.New("failed to open portal stream")
+	}
+	return nil
+}
+
+// Persist reports whether the portal session is configured to persist.
+func (p *PortalHelper) Persist() bool {
+	return native.MaaToolkitPortalHelperGetPersist(p.handle)
+}
+
+// SetPersist configures whether the portal session should persist.
+func (p *PortalHelper) SetPersist(enable bool) {
+	native.MaaToolkitPortalHelperSetPersist(p.handle, enable)
+}
+
+// PipeWireFD returns the portal's PipeWire socket FD for pw_socket_fd.
+// The helper owns the FD; keep it alive while a controller uses the stream.
+func (p *PortalHelper) PipeWireFD() int {
+	return int(native.MaaToolkitPortalHelperGetPipeWireFD(p.handle))
+}
+
+// PipeWireNodeID returns the stream node ID for pw_node_id.
+func (p *PortalHelper) PipeWireNodeID() uint32 {
+	return native.MaaToolkitPortalHelperGetPipeWireNodeID(p.handle)
+}
+
+// RestoreToken returns the token that can restore a persistent session.
+func (p *PortalHelper) RestoreToken() string {
+	return native.MaaToolkitPortalHelperGetRestoreToken(p.handle)
+}
+
+// SetRestoreToken sets a token from a previous persistent session before OpenStream.
+func (p *PortalHelper) SetRestoreToken(token string) {
+	native.MaaToolkitPortalHelperSetRestoreToken(p.handle, token)
 }
 
 // MacOSPermission defines a macOS permission type.

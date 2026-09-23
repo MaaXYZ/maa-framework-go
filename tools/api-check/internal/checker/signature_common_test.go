@@ -82,3 +82,11 @@ func TestNormalizeCTypeCanonicalAliasNonConverged(t *testing.T) {
 		t.Fatalf("unexpected canonical type: %s", got)
 	}
 }
+
+func TestNormalizeCTypeCanonicalInt(t *testing.T) {
+	t.Parallel()
+
+	if got := normalizeCTypeCanonical("int", nil); got != "int32" {
+		t.Fatalf("C int should match Go int32, got %q", got)
+	}
+}

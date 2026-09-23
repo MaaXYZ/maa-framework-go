@@ -350,7 +350,7 @@ func normalizeCTypeCanonical(raw string, aliases map[string]string) string {
 		return "void"
 	case "bool":
 		return "bool"
-	case "int32_t":
+	case "int", "int32_t":
 		return "int32"
 	case "int64_t":
 		return "int64"
