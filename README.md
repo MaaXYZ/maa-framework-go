@@ -39,17 +39,19 @@ Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-p
 
 ## ✨ Features
 
-- **Cross-platform Controllers** - ADB, Win32, WlRoots, macOS, PlayCover, and Android native control backends
-- **Recording and Replay** - Capture controller operations to JSONL and replay them for debugging and regression testing
-- **Virtual Gamepad Controller** - Gamepad automation via ViGEm (Windows only)
-- **Toolkit Utilities** - Discover ADB devices and desktop windows, and manage macOS automation permissions
-- **Image Recognition** - Template matching, OCR, feature detection, and more
-- **Custom Extensions** - Implement custom recognitions, actions, and controllers in pure Go
-- **Agent Support** - Mount custom recognition and action logic from external processes
-- **Async Jobs and Events** - Poll job status, inspect task details, and subscribe to resource, controller, and tasker events
-- **Pipeline and Runtime APIs** - Declarative JSON task flows with runtime task, recognition, and action orchestration
+- **Cross-platform Controllers** - ADB, Win32, Linux, macOS, PlayCover, and Android Native
+- **Recording and Replay** - Capture controller operations to JSONL, then replay them for debugging and regression testing
+- **Virtual Gamepad Controller** (Windows only) - Gamepad automation via ViGEm
+- **Toolkit Utilities** - Find ADB devices and desktop windows; manage macOS automation permissions
+- **Image Recognition** - Template matching, OCR, and feature detection
+- **Custom Extensions** - Custom recognitions, actions, and controllers in pure Go
+- **Agent Support** - Run custom recognition and action logic from an external process
+- **Async Jobs and Events** - Poll job status and task details, or subscribe to resource, controller, and tasker events
+- **Pipeline and Runtime APIs** - Declarative JSON task flows; run tasks, recognitions, and actions from a Context at runtime
 
 ## 📦 Installation
+
+Requires Go 1.24 or later.
 
 ### 1. Install Go Package
 
@@ -61,18 +63,20 @@ go get github.com/MaaXYZ/maa-framework-go/v4
 
 Download the [MaaFramework Release](https://github.com/MaaXYZ/MaaFramework/releases) for your platform and extract it.
 
-| Platform | Architecture | Download                  |
-| -------- | ------------ | ------------------------- |
-| Windows  | amd64        | `MAA-win-x86_64-*.zip`    |
-| Windows  | arm64        | `MAA-win-aarch64-*.zip`   |
-| Linux    | amd64        | `MAA-linux-x86_64-*.zip`  |
-| Linux    | arm64        | `MAA-linux-aarch64-*.zip` |
-| macOS    | amd64        | `MAA-macos-x86_64-*.zip`  |
-| macOS    | arm64        | `MAA-macos-aarch64-*.zip` |
+| Platform | Architecture | Download                    |
+| -------- | ------------ | --------------------------- |
+| Windows  | amd64        | `MAA-win-x86_64-*.zip`      |
+| Windows  | arm64        | `MAA-win-aarch64-*.zip`     |
+| Linux    | amd64        | `MAA-linux-x86_64-*.zip`    |
+| Linux    | arm64        | `MAA-linux-aarch64-*.zip`   |
+| macOS    | amd64        | `MAA-macos-x86_64-*.zip`    |
+| macOS    | arm64        | `MAA-macos-aarch64-*.zip`   |
+| Android  | amd64        | `MAA-android-x86_64-*.zip`  |
+| Android  | arm64        | `MAA-android-aarch64-*.zip` |
 
 ## ⚙️ Runtime Requirements
 
-Programs built with maa-framework-go require MaaFramework dynamic libraries at runtime. You have several options:
+Programs built with maa-framework-go require MaaFramework dynamic libraries at runtime. Provide them in one of these ways:
 
 1. **Via `Init()` Option** - Specify library path programmatically:
 
@@ -82,7 +86,7 @@ Programs built with maa-framework-go require MaaFramework dynamic libraries at r
 
 2. **Working Directory** - Place MaaFramework libraries in your program's working directory
 
-3. **Environment Variables** - Add library path to `PATH` (Windows) or `LD_LIBRARY_PATH` (Linux/macOS)
+3. **Environment Variables** - Add library path to `PATH` (Windows), `LD_LIBRARY_PATH` (Linux), or `DYLD_LIBRARY_PATH` (macOS)
 
 4. **System Library Path** - Install libraries to system library directories
 
@@ -99,7 +103,10 @@ import (
 )
 
 func main() {
-	maa.Init()
+	if err := maa.Init(); err != nil {
+		fmt.Println("Failed to init MAA:", err)
+		os.Exit(1)
+	}
 	if err := maa.ConfigInitOption("./", "{}"); err != nil {
 		fmt.Println("Failed to init config:", err)
 		os.Exit(1)
@@ -160,8 +167,8 @@ func main() {
 For more examples, see the [examples](examples) directory:
 
 - [quick-start](examples/quick-start) - Basic usage
-- [custom-action](examples/custom-action) - Custom action implementation
-- [custom-recognition](examples/custom-recognition) - Custom recognition implementation
+- [custom-action](examples/custom-action) - Custom action
+- [custom-recognition](examples/custom-recognition) - Custom recognition
 - [agent-client](examples/agent-client) - Agent client
 - [agent-server](examples/agent-server) - Agent server
 
@@ -174,11 +181,7 @@ For more examples, see the [examples](examples) directory:
 
 ## 🤝 Contributing
 
-Contributions are welcome! Feel free to:
-
-- Report bugs by opening issues
-- Suggest features or improvements
-- Submit pull requests
+Bug reports, feature suggestions, and pull requests are welcome.
 
 ## 📄 License
 

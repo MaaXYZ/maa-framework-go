@@ -39,17 +39,19 @@
 
 ## ✨ 特性
 
-- **跨平台控制器** - 提供 ADB、Win32、WlRoots、macOS、PlayCover 与 Android Native 等控制后端
-- **录制与回放** - 支持将控制器操作记录为 JSONL，并用于调试与回归复现
-- **虚拟手柄控制器** - 通过 ViGEm 实现 Windows 手柄自动化
-- **Toolkit 工具能力** - 支持发现 ADB 设备和桌面窗口，并管理 macOS 自动化权限
-- **图像识别** - 支持模板匹配、OCR、特征检测等识别能力
-- **自定义扩展** - 以纯 Go 实现自定义识别、自定义动作和自定义控制器
-- **Agent 支持** - 支持从外部进程挂载自定义识别与动作逻辑
-- **异步任务与事件** - 支持 Job 状态轮询、详情查询以及 Resource、Controller、Tasker 事件订阅
-- **流水线与运行时编排** - 基于 JSON 的声明式任务流，并支持在 Context 中动态执行任务、识别和动作
+- **跨平台控制器** - ADB、Win32、Linux、macOS、PlayCover 与 Android Native
+- **录制与回放** - 将控制器操作记录为 JSONL，并用于调试与回归测试
+- **虚拟手柄控制器**（仅 Windows）- 通过 ViGEm 实现手柄自动化
+- **Toolkit 工具能力** - 发现 ADB 设备和桌面窗口，管理 macOS 自动化权限
+- **图像识别** - 模板匹配、OCR、特征检测
+- **自定义扩展** - 以纯 Go 编写自定义识别、动作和控制器
+- **Agent 支持** - 从外部进程执行自定义识别与动作逻辑
+- **异步任务与事件** - 轮询 Job 状态与任务详情，或订阅 Resource、Controller、Tasker 事件
+- **流水线与运行时 API** - 基于 JSON 的声明式任务流；可在 Context 中动态执行任务、识别和动作
 
 ## 📦 安装
+
+需要 Go 1.24 及以上。
 
 ### 1. 安装 Go 包
 
@@ -66,13 +68,15 @@ go get github.com/MaaXYZ/maa-framework-go/v4
 | Windows  | amd64       | `MAA-win-x86_64-*.zip` |
 | Windows  | arm64       | `MAA-win-aarch64-*.zip` |
 | Linux    | amd64       | `MAA-linux-x86_64-*.zip` |
-| Linux    | arm64      | `MAA-linux-aarch64-*.zip` |
+| Linux    | arm64       | `MAA-linux-aarch64-*.zip` |
 | macOS    | amd64       | `MAA-macos-x86_64-*.zip` |
-| macOS    | arm64      | `MAA-macos-aarch64-*.zip` |
+| macOS    | arm64       | `MAA-macos-aarch64-*.zip` |
+| Android  | amd64       | `MAA-android-x86_64-*.zip` |
+| Android  | arm64       | `MAA-android-aarch64-*.zip` |
 
 ## ⚙️ 运行时要求
 
-使用 maa-framework-go 构建的程序需要 MaaFramework 动态库才能运行。你有以下几种方式：
+使用 maa-framework-go 构建的程序需要 MaaFramework 动态库才能运行。可通过以下任一方式提供：
 
 1. **通过 `Init()` 选项** - 在代码中指定库文件路径：
 
@@ -82,7 +86,7 @@ go get github.com/MaaXYZ/maa-framework-go/v4
 
 2. **工作目录** - 将 MaaFramework 库文件放在程序的工作目录中
 
-3. **环境变量** - 将库文件路径添加到 `PATH`（Windows）或 `LD_LIBRARY_PATH`（Linux/macOS）
+3. **环境变量** - 将库文件路径添加到 `PATH`（Windows）、`LD_LIBRARY_PATH`（Linux）或 `DYLD_LIBRARY_PATH`（macOS）
 
 4. **系统库路径** - 将库文件安装到系统库目录
 
@@ -99,7 +103,10 @@ import (
 )
 
 func main() {
-	maa.Init()
+	if err := maa.Init(); err != nil {
+		fmt.Println("Failed to init MAA:", err)
+		os.Exit(1)
+	}
 	if err := maa.ConfigInitOption("./", "{}"); err != nil {
 		fmt.Println("Failed to init config:", err)
 		os.Exit(1)
@@ -175,11 +182,7 @@ func main() {
 
 ## 🤝 贡献
 
-欢迎贡献！你可以：
-
-- 通过 Issue 报告 Bug
-- 提出功能建议或改进意见
-- 提交 Pull Request
+欢迎提交 Issue 与 Pull Request。
 
 ## 📄 许可证
 

@@ -8,7 +8,10 @@ import (
 )
 
 func main() {
-	maa.Init()
+	if err := maa.Init(); err != nil {
+		fmt.Println("Failed to init MAA:", err)
+		os.Exit(1)
+	}
 	if err := maa.ConfigInitOption("./", "{}"); err != nil {
 		fmt.Println("Failed to init config:", err)
 		os.Exit(1)
