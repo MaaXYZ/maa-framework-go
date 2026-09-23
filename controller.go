@@ -94,23 +94,6 @@ func NewWin32Controller(
 	}, nil
 }
 
-// NewWlRootsController creates a WlRoots controller instance.
-func NewWlRootsController(
-	wlrSocketPath string,
-	useWin32VkCode bool,
-) (*Controller, error) {
-	handle := native.MaaWlRootsControllerCreate(wlrSocketPath, useWin32VkCode)
-	if handle == 0 {
-		return nil, errors.New("failed to create WlRoots controller")
-	}
-
-	initControllerStore(handle)
-
-	return &Controller{
-		handle: handle,
-	}, nil
-}
-
 // NewLinuxController creates a Linux controller from a JSON configuration.
 // configJson must specify screencap_method and input_method, plus the fields
 // required by the selected methods (such as wlr_socket_path for wlroots,
