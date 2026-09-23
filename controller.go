@@ -111,6 +111,25 @@ func NewWlRootsController(
 	}, nil
 }
 
+// NewLinuxController creates a Linux controller from a JSON configuration.
+// configJson must specify screencap_method and input_method, plus the fields
+// required by the selected methods (such as wlr_socket_path for wlroots,
+// pw_node_id for PipeWire, or eis_socket_path for libei). See the MaaFramework
+// MaaLinuxControllerCreate documentation for the complete configuration format.
+// This controller is only available on Linux.
+func NewLinuxController(configJson string) (*Controller, error) {
+	handle := native.MaaLinuxControllerCreate(configJson)
+	if handle == 0 {
+		return nil, errors.New("failed to create Linux controller")
+	}
+
+	initControllerStore(handle)
+
+	return &Controller{
+		handle: handle,
+	}, nil
+}
+
 // NewMacOSController creates a macOS controller for native macOS applications.
 // windowID is the CGWindowID of the target window (0 for desktop).
 // screencapMethod is the macOS screencap method to use.
