@@ -2,10 +2,13 @@ package maa
 
 import (
 	"fmt"
+	"sync/atomic"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 )
+
+var agentServerRunning atomic.Bool
 
 // AgentServerRegisterCustomRecognition registers a custom recognition runner.
 // The name should match the custom_recognition field in Pipeline.
@@ -99,18 +102,21 @@ func AgentServerStartUp(identifier string) error {
 	if !native.MaaAgentServerStartUp(identifier) {
 		return fmt.Errorf("failed to start agent server: %s", identifier)
 	}
+	agentServerRunning.Store(true)
 	return nil
 }
 
 // AgentServerShutDown shuts down the MAA Agent Server.
 func AgentServerShutDown() {
 	native.MaaAgentServerShutDown()
+	agentServerRunning.Store(false)
 }
 
 // AgentServerJoin waits for the agent service to end.
 // It blocks the current goroutine until the service ends.
 func AgentServerJoin() {
 	native.MaaAgentServerJoin()
+	agentServerRunning.Store(false)
 }
 
 // AgentServerDetach detaches the service thread to run independently.

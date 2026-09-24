@@ -144,6 +144,7 @@ func NewPortalHelper() (*PortalHelper, error) {
 	if handle == 0 {
 		return nil, errors.New("failed to create portal helper")
 	}
+	liveNativeObjects.Add(1)
 	return &PortalHelper{handle: handle}, nil
 }
 
@@ -154,6 +155,7 @@ func (p *PortalHelper) Destroy() {
 	}
 	native.MaaToolkitPortalHelperDestroy(p.handle)
 	p.handle = 0
+	liveNativeObjects.Add(-1)
 }
 
 // OpenStream opens a ScreenCast stream through xdg-desktop-portal.

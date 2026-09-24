@@ -3,6 +3,7 @@ package maa
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -45,9 +46,15 @@ type handleState struct {
 
 const jobReapInterval = 250 * time.Millisecond
 
+// liveNativeObjects counts owned native handles until their cleanup finishes.
+// Release uses it to avoid unloading a library while one of those handles
+// still needs its native destroy function.
+var liveNativeObjects atomic.Int64
+
 func newHandleState(handle uintptr, cleanup func(uintptr)) *handleState {
 	state := &handleState{handle: handle, cleanup: cleanup}
 	if cleanup != nil {
+		liveNativeObjects.Add(1)
 		state.cleanupDone = make(chan struct{})
 	}
 	state.cond = sync.NewCond(&state.mu)
@@ -202,6 +209,7 @@ func (s *handleState) runCleanup(handle uintptr, cleanup func(uintptr)) {
 	if cleanup == nil {
 		return
 	}
+	defer liveNativeObjects.Add(-1)
 	defer close(s.cleanupDone)
 	cleanup(handle)
 }
