@@ -72,22 +72,32 @@ func TestHandleState_ConcurrentClose(t *testing.T) {
 
 func TestHandleState_UntracksObservedCompletedJobs(t *testing.T) {
 	state := newHandleState(123, func(uintptr) {})
-	state.jobStatus = func(uintptr, int64) Status { return StatusSuccess }
-	status := StatusPending
+	var firstStatus, secondStatus atomic.Int32
+	firstStatus.Store(int32(StatusPending))
+	secondStatus.Store(int32(StatusPending))
+	state.jobStatus = func(_ uintptr, id int64) Status {
+		if id == 1 {
+			return Status(firstStatus.Load())
+		}
+		return Status(secondStatus.Load())
+	}
 	job := newJob(1,
-		func(int64) Status { return status },
+		func(int64) Status { return Status(firstStatus.Load()) },
 		func(int64) Status { return StatusSuccess },
 		state,
 	)
 	require.Equal(t, StatusPending, job.Status())
 	require.Len(t, state.jobs, 1)
-	status = StatusSuccess
+	firstStatus.Store(int32(StatusSuccess))
 	require.Equal(t, StatusSuccess, job.Status())
 	require.Empty(t, state.jobs)
 
 	job = newJob(2,
 		func(int64) Status { return StatusPending },
-		func(int64) Status { return StatusSuccess },
+		func(int64) Status {
+			secondStatus.Store(int32(StatusSuccess))
+			return StatusSuccess
+		},
 		state,
 	)
 	job.Wait()
@@ -97,19 +107,35 @@ func TestHandleState_UntracksObservedCompletedJobs(t *testing.T) {
 
 func TestHandleState_PrunesDiscardedCompletedJobs(t *testing.T) {
 	state := newHandleState(123, func(uintptr) {})
-	firstStatus := StatusRunning
+	var firstStatus, otherStatus atomic.Int32
+	firstStatus.Store(int32(StatusRunning))
+	otherStatus.Store(int32(StatusPending))
 	state.jobStatus = func(_ uintptr, id int64) Status {
 		if id == 1 {
-			return firstStatus
+			return Status(firstStatus.Load())
 		}
-		return StatusSuccess
+		return Status(otherStatus.Load())
 	}
 	for id := int64(1); id <= 128; id++ {
 		newJob(id, nil, nil, state)
 	}
-	require.Equal(t, map[int64]struct{}{1: {}}, state.jobs)
+	otherStatus.Store(int32(StatusSuccess))
+	require.Eventually(t, func() bool {
+		state.mu.Lock()
+		defer state.mu.Unlock()
+		return len(state.jobs) == 1
+	}, 3*time.Second, 10*time.Millisecond)
+	state.mu.Lock()
+	_, retained := state.jobs[1]
+	state.mu.Unlock()
+	require.True(t, retained)
 	require.ErrorIs(t, state.close(), ErrInUse)
-	firstStatus = StatusSuccess
+	firstStatus.Store(int32(StatusSuccess))
+	require.Eventually(t, func() bool {
+		state.mu.Lock()
+		defer state.mu.Unlock()
+		return len(state.jobs) == 0
+	}, 3*time.Second, 10*time.Millisecond)
 	require.NoError(t, state.close())
 }
 

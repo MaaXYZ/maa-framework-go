@@ -3,6 +3,7 @@ package maa
 import (
 	"errors"
 	"sync"
+	"time"
 )
 
 // ErrClosed reports an operation on a destroyed native object.
@@ -39,10 +40,10 @@ type handleState struct {
 	jobStatus   func(uintptr, int64) Status
 	jobRunning  func(uintptr) bool
 	jobs        map[int64]struct{}
-	postedJobs  uint64
+	reapingJobs bool
 }
 
-const jobPruneInterval = 64
+const jobReapInterval = 250 * time.Millisecond
 
 func newHandleState(handle uintptr, cleanup func(uintptr)) *handleState {
 	state := &handleState{handle: handle, cleanup: cleanup}
@@ -118,18 +119,41 @@ func (s *handleState) trackJob(id int64) {
 	if s == nil || id == 0 {
 		return
 	}
+	startReaper := false
 	s.mu.Lock()
 	if s.jobStatus != nil && !s.closed {
 		if s.jobs == nil {
 			s.jobs = make(map[int64]struct{})
 		}
 		s.jobs[id] = struct{}{}
-		s.postedJobs++
-		if s.postedJobs%jobPruneInterval == 0 {
-			s.pruneCompletedJobsLocked()
+		if !s.reapingJobs {
+			s.reapingJobs = true
+			startReaper = true
 		}
 	}
 	s.mu.Unlock()
+	if startReaper {
+		go s.reapJobs()
+	}
+}
+
+// reapJobs removes completed jobs even when callers discard their Jobs and
+// submit no further work. One reaper runs per owner while jobs are tracked.
+func (s *handleState) reapJobs() {
+	ticker := time.NewTicker(jobReapInterval)
+	defer ticker.Stop()
+	for range ticker.C {
+		s.mu.Lock()
+		if !s.closed && len(s.jobs) != 0 {
+			s.pruneCompletedJobsLocked()
+		}
+		if s.closed || len(s.jobs) == 0 {
+			s.reapingJobs = false
+			s.mu.Unlock()
+			return
+		}
+		s.mu.Unlock()
+	}
 }
 
 func (s *handleState) untrackJob(id int64) {
