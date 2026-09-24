@@ -14,19 +14,33 @@ var ErrBorrowed = errors.New("maa: borrowed object cannot be destroyed")
 // ErrBound reports an attempt to destroy a resource or controller still bound to a tasker.
 var ErrBound = errors.New("maa: object is bound to a tasker")
 
+// ErrInCallback reports an attempt to destroy an object from one of its callbacks.
+var ErrInCallback = errors.New("maa: object cannot be destroyed during a callback")
+
 // handleState keeps a native handle alive until calls already using it finish.
 // Its cleanup runs once, after close and the last active call.
 type handleState struct {
-	mu       sync.Mutex
-	handle   uintptr
-	active   int
-	bindings int
-	closed   bool
-	cleanup  func(uintptr)
+	mu        sync.Mutex
+	cond      *sync.Cond
+	handle    uintptr
+	active    int
+	callbacks int
+	bindings  int
+	closed    bool
+	external  bool
+	cleanup   func(uintptr)
 }
 
 func newHandleState(handle uintptr, cleanup func(uintptr)) *handleState {
-	return &handleState{handle: handle, cleanup: cleanup}
+	state := &handleState{handle: handle, cleanup: cleanup}
+	state.cond = sync.NewCond(&state.mu)
+	return state
+}
+
+func newExternalHandleState(handle uintptr) *handleState {
+	state := newHandleState(handle, nil)
+	state.external = true
+	return state
 }
 
 func (s *handleState) begin() (uintptr, func(), error) {
@@ -44,14 +58,66 @@ func (s *handleState) begin() (uintptr, func(), error) {
 	return handle, s.end, nil
 }
 
+func (s *handleState) beginCallback() (func(), error) {
+	if s == nil {
+		return nil, ErrClosed
+	}
+	s.mu.Lock()
+	if s.closed || s.handle == 0 {
+		s.mu.Unlock()
+		return nil, ErrClosed
+	}
+	s.active++
+	s.callbacks++
+	s.mu.Unlock()
+	return func() {
+		s.mu.Lock()
+		s.callbacks--
+		s.active--
+		if s.active == 0 {
+			s.cond.Broadcast()
+		}
+		handle, cleanup := s.takeCleanupLocked()
+		s.mu.Unlock()
+		if cleanup != nil {
+			cleanup(handle)
+		}
+	}, nil
+}
+
+func (s *handleState) check() error {
+	if s == nil {
+		return ErrClosed
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed || s.handle == 0 {
+		return ErrClosed
+	}
+	return nil
+}
+
 func (s *handleState) end() {
 	s.mu.Lock()
 	s.active--
+	if s.active == 0 {
+		s.cond.Broadcast()
+	}
 	handle, cleanup := s.takeCleanupLocked()
 	s.mu.Unlock()
 	if cleanup != nil {
 		cleanup(handle)
 	}
+}
+
+// expire invalidates a borrowed external handle and waits for calls in flight.
+func (s *handleState) expire() {
+	s.mu.Lock()
+	s.closed = true
+	for s.active != 0 {
+		s.cond.Wait()
+	}
+	s.mu.Unlock()
 }
 
 func (s *handleState) takeCleanupLocked() (uintptr, func(uintptr)) {
@@ -76,6 +142,10 @@ func (s *handleState) close() error {
 	if s.bindings != 0 {
 		s.mu.Unlock()
 		return ErrBound
+	}
+	if s.callbacks != 0 {
+		s.mu.Unlock()
+		return ErrInCallback
 	}
 	s.closed = true
 	handle, cleanup := s.takeCleanupLocked()
@@ -110,6 +180,8 @@ type taskerState struct {
 	bindingsMu sync.Mutex
 	resource   *Resource
 	controller *Controller
+	external   bool
+	scope      *contextState
 }
 
 var (
@@ -125,6 +197,24 @@ func borrowTasker(handle uintptr) *Tasker {
 	return nil
 }
 
+func borrowTaskerForContext(handle uintptr, scope *contextState) *Tasker {
+	if handle == 0 {
+		return nil
+	}
+	if tasker := borrowTasker(handle); tasker != nil {
+		return tasker
+	}
+	state := &taskerState{
+		handleState: newExternalHandleState(handle),
+		external:    true,
+		scope:       scope,
+	}
+	if !scope.track(state.handleState) {
+		return nil
+	}
+	return &Tasker{handle: handle, state: state}
+}
+
 func borrowResource(handle uintptr) *Resource {
 	if state, ok := resourceStates.Load(handle); ok {
 		return &Resource{handle: handle, state: state.(*handleState)}
@@ -132,9 +222,37 @@ func borrowResource(handle uintptr) *Resource {
 	return nil
 }
 
+func borrowResourceForContext(handle uintptr, scope *contextState) *Resource {
+	if handle == 0 {
+		return nil
+	}
+	if res := borrowResource(handle); res != nil {
+		return res
+	}
+	state := newExternalHandleState(handle)
+	if !scope.track(state) {
+		return nil
+	}
+	return &Resource{handle: handle, state: state}
+}
+
 func borrowController(handle uintptr) *Controller {
 	if state, ok := controllerStates.Load(handle); ok {
 		return &Controller{handle: handle, state: state.(*handleState)}
 	}
 	return nil
+}
+
+func borrowControllerForContext(handle uintptr, scope *contextState) *Controller {
+	if handle == 0 {
+		return nil
+	}
+	if ctrl := borrowController(handle); ctrl != nil {
+		return ctrl
+	}
+	state := newExternalHandleState(handle)
+	if !scope.track(state) {
+		return nil
+	}
+	return &Controller{handle: handle, state: state}
 }

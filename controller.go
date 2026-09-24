@@ -199,7 +199,12 @@ func NewRecordController(inner *Controller, recordingPath string) (*Controller, 
 	if inner == nil {
 		return nil, errors.New("inner controller is nil")
 	}
-	handle := native.MaaRecordControllerCreate(inner.handle, recordingPath)
+	innerHandle, done, err := inner.state.begin()
+	if err != nil {
+		return nil, err
+	}
+	defer done()
+	handle := native.MaaRecordControllerCreate(innerHandle, recordingPath)
 	if handle == 0 {
 		return nil, errors.New("failed to create record controller")
 	}
@@ -449,7 +454,7 @@ func (c *Controller) PostConnect() *Job {
 	defer done()
 
 	id := native.MaaControllerPostConnection(c.handle)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostClick posts a click.
@@ -461,7 +466,7 @@ func (c *Controller) PostClick(x, y int32) *Job {
 	defer done()
 
 	id := native.MaaControllerPostClick(c.handle, x, y)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostClickV2 posts a click with contact and pressure.
@@ -475,7 +480,7 @@ func (c *Controller) PostClickV2(x, y, contact, pressure int32) *Job {
 	defer done()
 
 	id := native.MaaControllerPostClickV2(c.handle, x, y, contact, pressure)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostSwipe posts a swipe.
@@ -487,7 +492,7 @@ func (c *Controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Jo
 	defer done()
 
 	id := native.MaaControllerPostSwipe(c.handle, x1, y1, x2, y2, int32(duration.Milliseconds()))
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostSwipeV2 posts a swipe with contact and pressure.
@@ -501,7 +506,7 @@ func (c *Controller) PostSwipeV2(x1, y1, x2, y2 int32, duration time.Duration, c
 	defer done()
 
 	id := native.MaaControllerPostSwipeV2(c.handle, x1, y1, x2, y2, int32(duration.Milliseconds()), contact, pressure)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostClickKey posts a click key.
@@ -513,7 +518,7 @@ func (c *Controller) PostClickKey(keycode int32) *Job {
 	defer done()
 
 	id := native.MaaControllerPostClickKey(c.handle, keycode)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostInputText posts an input text.
@@ -525,7 +530,7 @@ func (c *Controller) PostInputText(text string) *Job {
 	defer done()
 
 	id := native.MaaControllerPostInputText(c.handle, text)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostStartApp posts a start app.
@@ -537,7 +542,7 @@ func (c *Controller) PostStartApp(intent string) *Job {
 	defer done()
 
 	id := native.MaaControllerPostStartApp(c.handle, intent)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostStopApp posts a stop app.
@@ -549,7 +554,7 @@ func (c *Controller) PostStopApp(intent string) *Job {
 	defer done()
 
 	id := native.MaaControllerPostStopApp(c.handle, intent)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostTouchDown posts a touch-down.
@@ -561,7 +566,7 @@ func (c *Controller) PostTouchDown(contact, x, y, pressure int32) *Job {
 	defer done()
 
 	id := native.MaaControllerPostTouchDown(c.handle, contact, x, y, pressure)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostTouchMove posts a touch-move.
@@ -573,7 +578,7 @@ func (c *Controller) PostTouchMove(contact, x, y, pressure int32) *Job {
 	defer done()
 
 	id := native.MaaControllerPostTouchMove(c.handle, contact, x, y, pressure)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostTouchUp posts a touch-up.
@@ -585,7 +590,7 @@ func (c *Controller) PostTouchUp(contact int32) *Job {
 	defer done()
 
 	id := native.MaaControllerPostTouchUp(c.handle, contact)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostRelativeMove posts a relative cursor move.
@@ -600,7 +605,7 @@ func (c *Controller) PostRelativeMove(dx, dy int32) *Job {
 	defer done()
 
 	id := native.MaaControllerPostRelativeMove(c.handle, dx, dy)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 func (c *Controller) PostKeyDown(keycode int32) *Job {
@@ -611,7 +616,7 @@ func (c *Controller) PostKeyDown(keycode int32) *Job {
 	defer done()
 
 	id := native.MaaControllerPostKeyDown(c.handle, keycode)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 func (c *Controller) PostKeyUp(keycode int32) *Job {
@@ -622,7 +627,7 @@ func (c *Controller) PostKeyUp(keycode int32) *Job {
 	defer done()
 
 	id := native.MaaControllerPostKeyUp(c.handle, keycode)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostScreencap posts a screencap.
@@ -634,7 +639,7 @@ func (c *Controller) PostScreencap() *Job {
 	defer done()
 
 	id := native.MaaControllerPostScreencap(c.handle)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostScroll posts a scroll.
@@ -646,7 +651,7 @@ func (c *Controller) PostScroll(dx, dy int32) *Job {
 	defer done()
 
 	id := native.MaaControllerPostScroll(c.handle, dx, dy)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostInactive posts an inactive request to restore controller/window state.
@@ -660,7 +665,7 @@ func (c *Controller) PostInactive() *Job {
 	defer done()
 
 	id := native.MaaControllerPostInactive(c.handle)
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // PostShell posts a adb shell command.
@@ -673,7 +678,7 @@ func (c *Controller) PostShell(cmd string, timeout time.Duration) *Job {
 	defer done()
 
 	id := native.MaaControllerPostShell(c.handle, cmd, timeout.Milliseconds())
-	return newJob(id, c.status, c.wait)
+	return newJob(id, c.status, c.wait, c.state)
 }
 
 // GetShellOutput gets the output of the last shell command.
@@ -824,6 +829,9 @@ func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 		return 0
 	}
 	defer done()
+	if c.state.external {
+		return 0
+	}
 
 	id := registerEventCallback(sink)
 	sinkId := native.MaaControllerAddSink(
@@ -846,6 +854,9 @@ func (c *Controller) RemoveSink(sinkId int64) {
 		return
 	}
 	defer done()
+	if c.state.external {
+		return
+	}
 
 	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
 		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
@@ -862,6 +873,9 @@ func (c *Controller) ClearSinks() {
 		return
 	}
 	defer done()
+	if c.state.external {
+		return
+	}
 
 	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
 		for _, id := range v.SinkIDToEventCallbackID {

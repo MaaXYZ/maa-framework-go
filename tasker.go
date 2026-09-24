@@ -63,6 +63,7 @@ func NewTasker() (*Tasker, error) {
 }
 
 // Destroy closes the tasker once. Borrowed taskers cannot be destroyed.
+// Destroy returns ErrBound while an AgentClient is registered as a sink.
 // Destroy the tasker before destroying its bound resource and controller.
 func (t *Tasker) Destroy() error {
 	if t == nil || !t.owned {
@@ -78,6 +79,9 @@ func (t *Tasker) BindResource(res *Resource) error {
 		return err
 	}
 	defer done()
+	if t.state.external {
+		return ErrBorrowed
+	}
 	if res == nil {
 		return errors.New("resource is nil")
 	}
@@ -106,6 +110,9 @@ func (t *Tasker) BindController(ctrl *Controller) error {
 		return err
 	}
 	defer done()
+	if t.state.external {
+		return ErrBorrowed
+	}
 	if ctrl == nil {
 		return errors.New("controller is nil")
 	}
@@ -171,7 +178,7 @@ func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
 	defer done()
 
 	id := native.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil)
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
 }
 
 // PostTask posts a task to the tasker asynchronously.
@@ -205,7 +212,7 @@ func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionPa
 	}
 
 	id := native.MaaTaskerPostRecognition(t.handle, string(recType), string(recParamJSON), imgBuf.Handle())
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil)
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
 }
 
 // PostAction posts an action to the tasker asynchronously.
@@ -234,7 +241,7 @@ func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box 
 	}
 
 	id := native.MaaTaskerPostAction(t.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil)
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
 }
 
 // Stopping checks if the tasker is in the process of stopping (not yet fully stopped).
@@ -291,7 +298,7 @@ func (t *Tasker) PostStop() *TaskJob {
 	defer done()
 
 	id := native.MaaTaskerPostStop(t.handle)
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil)
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
 }
 
 // GetResource returns the bound resource of the tasker.
@@ -301,6 +308,9 @@ func (t *Tasker) GetResource() *Resource {
 		return nil
 	}
 	defer done()
+	if t.state.external {
+		return borrowResourceForContext(native.MaaTaskerGetResource(t.handle), t.state.scope)
+	}
 	t.state.bindingsMu.Lock()
 	defer t.state.bindingsMu.Unlock()
 	if t.state.resource == nil {
@@ -316,6 +326,9 @@ func (t *Tasker) GetController() *Controller {
 		return nil
 	}
 	defer done()
+	if t.state.external {
+		return borrowControllerForContext(native.MaaTaskerGetController(t.handle), t.state.scope)
+	}
 	t.state.bindingsMu.Lock()
 	defer t.state.bindingsMu.Unlock()
 	if t.state.controller == nil {
@@ -775,6 +788,9 @@ func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
 		return 0
 	}
 	defer done()
+	if t.state.external {
+		return 0
+	}
 
 	id := registerEventCallback(sink)
 	sinkId := native.MaaTaskerAddSink(
@@ -797,6 +813,9 @@ func (t *Tasker) RemoveSink(sinkId int64) {
 		return
 	}
 	defer done()
+	if t.state.external {
+		return
+	}
 
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
@@ -813,6 +832,9 @@ func (t *Tasker) ClearSinks() {
 		return
 	}
 	defer done()
+	if t.state.external {
+		return
+	}
 
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		for _, id := range v.SinkIDToEventCallbackID {
@@ -831,6 +853,9 @@ func (t *Tasker) AddContextSink(sink ContextEventSink) int64 {
 		return 0
 	}
 	defer done()
+	if t.state.external {
+		return 0
+	}
 
 	id := registerEventCallback(sink)
 	sinkId := native.MaaTaskerAddContextSink(
@@ -853,6 +878,9 @@ func (t *Tasker) RemoveContextSink(sinkId int64) {
 		return
 	}
 	defer done()
+	if t.state.external {
+		return
+	}
 
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		unregisterEventCallback(v.ContextSinkIDToEventCallbackID[sinkId])
@@ -869,6 +897,9 @@ func (t *Tasker) ClearContextSinks() {
 		return
 	}
 	defer done()
+	if t.state.external {
+		return
+	}
 
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		for _, id := range v.ContextSinkIDToEventCallbackID {

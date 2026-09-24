@@ -16,7 +16,6 @@ import (
 // that callback returns. Keep results rather than retaining the Context.
 type Context struct {
 	handle uintptr
-	tasker *Tasker
 	state  *contextState
 }
 
@@ -506,6 +505,9 @@ func (ctx *Context) GetTaskJob() *TaskJob {
 	defer done()
 
 	tasker := ctx.GetTasker()
+	if tasker == nil {
+		return newFailedTaskJob(ErrClosed)
+	}
 	taskId := native.MaaContextGetTaskId(ctx.handle)
 	return newTaskJob(
 		taskId,
@@ -514,6 +516,7 @@ func (ctx *Context) GetTaskJob() *TaskJob {
 		tasker.GetTaskDetail,
 		tasker.overridePipeline,
 		nil,
+		tasker.state.handleState,
 	)
 }
 
@@ -526,12 +529,8 @@ func (ctx *Context) GetTasker() *Tasker {
 	}
 	defer done()
 
-	if ctx.tasker != nil {
-		return ctx.tasker
-	}
 	handle := native.MaaContextGetTasker(ctx.handle)
-	ctx.tasker = borrowTasker(handle)
-	return ctx.tasker
+	return borrowTaskerForContext(handle, ctx.state)
 }
 
 // WaitFreezes waits until the screen stabilizes (no significant changes).

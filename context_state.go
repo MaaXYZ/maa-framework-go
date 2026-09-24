@@ -1,19 +1,38 @@
 package maa
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
+)
 
 // contextState bounds all copies and clones of a callback context to its call.
 type contextState struct {
-	mu     sync.Mutex
-	cond   *sync.Cond
-	active int
-	closed bool
+	mu         sync.Mutex
+	cond       *sync.Cond
+	active     int
+	closed     bool
+	borrowed   []*handleState
+	taskerDone func()
 }
 
 func newCallbackContext(handle uintptr) *Context {
+	state := newContextState()
+	if handle != 0 {
+		if tasker := borrowTasker(native.MaaContextGetTasker(handle)); tasker != nil {
+			done, err := tasker.state.beginCallback()
+			if err == nil {
+				state.taskerDone = done
+			}
+		}
+	}
+	return &Context{handle: handle, state: state}
+}
+
+func newContextState() *contextState {
 	state := &contextState{}
 	state.cond = sync.NewCond(&state.mu)
-	return &Context{handle: handle, state: state}
+	return state
 }
 
 func (s *contextState) begin() (func(), error) {
@@ -44,7 +63,29 @@ func (s *contextState) invalidate() {
 	for s.active != 0 {
 		s.cond.Wait()
 	}
+	borrowed := s.borrowed
+	s.borrowed = nil
+	taskerDone := s.taskerDone
+	s.taskerDone = nil
 	s.mu.Unlock()
+	for _, state := range borrowed {
+		state.expire()
+	}
+	if taskerDone != nil {
+		taskerDone()
+	}
+}
+
+func (s *contextState) track(state *handleState) bool {
+	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		state.expire()
+		return false
+	}
+	s.borrowed = append(s.borrowed, state)
+	s.mu.Unlock()
+	return true
 }
 
 func (ctx *Context) invalidate() {

@@ -232,6 +232,9 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 		return useErr
 	}
 	defer done()
+	if r.state.external {
+		return ErrBorrowed
+	}
 
 	id := registerCustomRecognition(recognition)
 
@@ -270,6 +273,9 @@ func (r *Resource) UnregisterCustomRecognition(name string) error {
 		return useErr
 	}
 	defer done()
+	if r.state.external {
+		return ErrBorrowed
+	}
 
 	var (
 		found bool
@@ -302,6 +308,9 @@ func (r *Resource) ClearCustomRecognition() error {
 		return useErr
 	}
 	defer done()
+	if r.state.external {
+		return ErrBorrowed
+	}
 
 	if !native.MaaResourceClearCustomRecognition(r.handle) {
 		return errors.New("failed to clear custom recognition")
@@ -360,6 +369,9 @@ func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) 
 		return useErr
 	}
 	defer done()
+	if r.state.external {
+		return ErrBorrowed
+	}
 
 	id := registerCustomAction(action)
 
@@ -398,6 +410,9 @@ func (r *Resource) UnregisterCustomAction(name string) error {
 		return useErr
 	}
 	defer done()
+	if r.state.external {
+		return ErrBorrowed
+	}
 
 	var (
 		found bool
@@ -430,6 +445,9 @@ func (r *Resource) ClearCustomAction() error {
 		return useErr
 	}
 	defer done()
+	if r.state.external {
+		return ErrBorrowed
+	}
 
 	if !native.MaaResourceClearCustomAction(r.handle) {
 		return errors.New("failed to clear custom action")
@@ -458,7 +476,7 @@ func (r *Resource) PostBundle(path string) *Job {
 	defer done()
 
 	id := native.MaaResourcePostBundle(r.handle, path)
-	return newJob(id, r.status, r.wait)
+	return newJob(id, r.status, r.wait, r.state)
 }
 
 // PostOcrModel asynchronously loads an OCR model directory and returns a Job.
@@ -471,7 +489,7 @@ func (r *Resource) PostOcrModel(path string) *Job {
 	defer done()
 
 	id := native.MaaResourcePostOcrModel(r.handle, path)
-	return newJob(id, r.status, r.wait)
+	return newJob(id, r.status, r.wait, r.state)
 }
 
 // PostPipeline asynchronously loads a pipeline and returns a Job.
@@ -485,7 +503,7 @@ func (r *Resource) PostPipeline(path string) *Job {
 	defer done()
 
 	id := native.MaaResourcePostPipeline(r.handle, path)
-	return newJob(id, r.status, r.wait)
+	return newJob(id, r.status, r.wait, r.state)
 }
 
 // PostImage asynchronously loads image resources and returns a Job.
@@ -499,7 +517,7 @@ func (r *Resource) PostImage(path string) *Job {
 	defer done()
 
 	id := native.MaaResourcePostImage(r.handle, path)
-	return newJob(id, r.status, r.wait)
+	return newJob(id, r.status, r.wait, r.state)
 }
 
 func (r *Resource) overridePipeline(override string) error {
@@ -893,6 +911,9 @@ func (r *Resource) AddSink(sink ResourceEventSink) int64 {
 		return 0
 	}
 	defer done()
+	if r.state.external {
+		return 0
+	}
 
 	id := registerEventCallback(sink)
 	sinkId := native.MaaResourceAddSink(
@@ -915,6 +936,9 @@ func (r *Resource) RemoveSink(sinkId int64) {
 		return
 	}
 	defer done()
+	if r.state.external {
+		return
+	}
 
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
 		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
@@ -931,6 +955,9 @@ func (r *Resource) ClearSinks() {
 		return
 	}
 	defer done()
+	if r.state.external {
+		return
+	}
 
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
 		for _, id := range v.SinkIDToEventCallbackID {
