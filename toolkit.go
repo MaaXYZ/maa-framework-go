@@ -2,6 +2,7 @@ package maa
 
 import (
 	"errors"
+	"sync"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v4/controller/adb"
@@ -134,7 +135,9 @@ func FindGamescopeInstances() ([]*GamescopeInstance, error) {
 // PortalHelper manages an xdg-desktop-portal ScreenCast session.
 // Call Destroy when the session and its PipeWire FD are no longer needed.
 // Do not use the helper after Destroy.
+// A PortalHelper must not be copied after creation.
 type PortalHelper struct {
+	mu     sync.Mutex
 	handle uintptr
 }
 
@@ -148,9 +151,15 @@ func NewPortalHelper() (*PortalHelper, error) {
 	return &PortalHelper{handle: handle}, nil
 }
 
-// Destroy closes the portal session and frees the helper. It is safe to call more than once.
+// Destroy closes the portal session and frees the helper. It is safe to call
+// more than once, including from concurrent goroutines.
 func (p *PortalHelper) Destroy() {
-	if p == nil || p.handle == 0 {
+	if p == nil {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.handle == 0 {
 		return
 	}
 	native.MaaToolkitPortalHelperDestroy(p.handle)
@@ -160,7 +169,12 @@ func (p *PortalHelper) Destroy() {
 
 // OpenStream opens a ScreenCast stream through xdg-desktop-portal.
 func (p *PortalHelper) OpenStream() error {
-	if p == nil || p.handle == 0 {
+	if p == nil {
+		return errors.New("portal helper is destroyed")
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.handle == 0 {
 		return errors.New("portal helper is destroyed")
 	}
 	if !native.MaaToolkitPortalHelperOpenStream(p.handle) {
@@ -171,32 +185,80 @@ func (p *PortalHelper) OpenStream() error {
 
 // Persist reports whether the portal session is configured to persist.
 func (p *PortalHelper) Persist() bool {
+	if p == nil {
+		return false
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.handle == 0 {
+		return false
+	}
 	return native.MaaToolkitPortalHelperGetPersist(p.handle)
 }
 
 // SetPersist configures whether the portal session should persist.
 func (p *PortalHelper) SetPersist(enable bool) {
+	if p == nil {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.handle == 0 {
+		return
+	}
 	native.MaaToolkitPortalHelperSetPersist(p.handle, enable)
 }
 
 // PipeWireFD returns the portal's PipeWire socket FD for pw_socket_fd.
 // The helper owns the FD; keep it alive while a controller uses the stream.
 func (p *PortalHelper) PipeWireFD() int {
+	if p == nil {
+		return -1
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.handle == 0 {
+		return -1
+	}
 	return int(native.MaaToolkitPortalHelperGetPipeWireFD(p.handle))
 }
 
 // PipeWireNodeID returns the stream node ID for pw_node_id.
 func (p *PortalHelper) PipeWireNodeID() uint32 {
+	if p == nil {
+		return 0
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.handle == 0 {
+		return 0
+	}
 	return native.MaaToolkitPortalHelperGetPipeWireNodeID(p.handle)
 }
 
 // RestoreToken returns the token that can restore a persistent session.
 func (p *PortalHelper) RestoreToken() string {
+	if p == nil {
+		return ""
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.handle == 0 {
+		return ""
+	}
 	return native.MaaToolkitPortalHelperGetRestoreToken(p.handle)
 }
 
 // SetRestoreToken sets a token from a previous persistent session before OpenStream.
 func (p *PortalHelper) SetRestoreToken(token string) {
+	if p == nil {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.handle == 0 {
+		return
+	}
 	native.MaaToolkitPortalHelperSetRestoreToken(p.handle, token)
 }
 

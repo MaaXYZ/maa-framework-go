@@ -4,6 +4,7 @@ package native
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -492,5 +493,145 @@ func TestRepeatedInitializeShutdown(t *testing.T) {
 func TestShutdownWithoutInitialize(t *testing.T) {
 	if err := Shutdown(); err != nil {
 		t.Fatalf("Shutdown without Initialize: %v", err)
+	}
+}
+
+func TestInitializeBlockedAfterRetainedHandlesFromFailedLoad(t *testing.T) {
+	dir := t.TempDir()
+	f := newFakePlatform()
+	missing := agentClientEntries[len(agentClientEntries)/2].name
+	f.symbolErrors[libPath(dir, getMaaAgentClientLibrary())] = map[string]bool{missing: true}
+	f.closeErr = errFakeClose
+	installFake(t, f)
+
+	err := Initialize(dir)
+	if err == nil {
+		t.Fatal("Initialize returned nil for a missing fourth-library symbol")
+	}
+	if !errors.Is(err, errFakeLookup) {
+		t.Errorf("error does not wrap the lookup failure: %v", err)
+	}
+
+	// The failed fourth library must not look registered, while every opened
+	// handle is retained because the closes failed.
+	assertFuncVarsNil(t, agentClientEntries)
+	if maaFramework == 0 || maaToolkit == 0 || maaAgentServer == 0 || maaAgentClient == 0 {
+		t.Error("expected four retained handles after failed closes")
+	}
+	if len(loadedLibs) != 4 {
+		t.Fatalf("loadedLibs = %d, want 4 retained handles", len(loadedLibs))
+	}
+
+	// Retained handles must not be mistaken for completed initialization.
+	if err := Initialize(dir); err == nil {
+		t.Fatal("Initialize succeeded while retained handles from a failed load remain")
+	}
+
+	f.closeErr = nil
+	delete(f.symbolErrors, libPath(dir, getMaaAgentClientLibrary()))
+	if err := Shutdown(); err != nil {
+		t.Fatalf("Shutdown: %v", err)
+	}
+	assertAllHandlesCleared(t)
+	assertFuncVarsNil(t, agentClientEntries)
+
+	if err := Initialize(dir); err != nil {
+		t.Fatalf("Initialize after cleanup: %v", err)
+	}
+	if MaaVersion == nil {
+		t.Error("MaaVersion was not registered after recovery")
+	}
+}
+
+func TestInitializeRepeatedAfterSuccessIsNoOp(t *testing.T) {
+	dir := t.TempDir()
+	f := newFakePlatform()
+	installFake(t, f)
+
+	if err := Initialize(dir); err != nil {
+		t.Fatalf("first Initialize: %v", err)
+	}
+	opened := len(f.opened)
+
+	if err := Initialize(dir); err != nil {
+		t.Fatalf("second Initialize: %v", err)
+	}
+	if len(f.opened) != opened {
+		t.Errorf("second Initialize opened %d libraries, want %d", len(f.opened), opened)
+	}
+	if MaaVersion == nil {
+		t.Error("function variables were disturbed by the second Initialize")
+	}
+}
+
+func TestInitializeRelativeLibDirFormsAbsoluteLibraryPaths(t *testing.T) {
+	tests := []struct {
+		name   string
+		libDir string
+	}{
+		{name: "dot", libDir: "."},
+		{name: "relative subdirectory", libDir: "libs"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			if tt.libDir != "." {
+				if err := os.Mkdir(filepath.Join(root, tt.libDir), 0o755); err != nil {
+					t.Fatalf("create subdirectory: %v", err)
+				}
+			}
+			t.Chdir(root)
+			cwd, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("Getwd: %v", err)
+			}
+			wantDir := cwd
+			if tt.libDir != "." {
+				wantDir = filepath.Join(cwd, tt.libDir)
+			}
+
+			f := newFakePlatform()
+			installFake(t, f)
+
+			if err := Initialize(tt.libDir); err != nil {
+				t.Fatalf("Initialize(%q): %v", tt.libDir, err)
+			}
+
+			if len(f.opened) != len(libraries) {
+				t.Fatalf("opened = %d libraries, want %d", len(f.opened), len(libraries))
+			}
+			for i, lib := range libraries {
+				got := f.opened[i]
+				want := filepath.Join(wantDir, lib.fileName())
+				if got != want {
+					t.Errorf("opened[%d] = %q, want %q", i, got, want)
+				}
+				if !filepath.IsAbs(got) {
+					t.Errorf("opened[%d] = %q is not absolute", i, got)
+				}
+				if got == lib.fileName() {
+					t.Errorf("opened[%d] collapsed to a bare loader-search name %q", i, got)
+				}
+			}
+		})
+	}
+}
+
+func TestInitializeEmptyLibDirUsesBareLoaderSearchNames(t *testing.T) {
+	f := newFakePlatform()
+	installFake(t, f)
+
+	if err := Initialize(""); err != nil {
+		t.Fatalf("Initialize(\"\"): %v", err)
+	}
+
+	if len(f.opened) != len(libraries) {
+		t.Fatalf("opened = %d libraries, want %d", len(f.opened), len(libraries))
+	}
+	for i, lib := range libraries {
+		if f.opened[i] != lib.fileName() {
+			t.Errorf("opened[%d] = %q, want bare name %q", i, f.opened[i], lib.fileName())
+		}
 	}
 }

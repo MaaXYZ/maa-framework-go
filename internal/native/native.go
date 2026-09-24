@@ -46,6 +46,11 @@ var (
 		{name: maaAgentClientName, fileName: getMaaAgentClientLibrary, handle: &maaAgentClient, entries: agentClientEntries},
 	}
 	loadedLibs []loadedLibrary
+	// initialized reports that every mandatory library was loaded and its
+	// symbols registered completely. It is tracked separately from
+	// len(loadedLibs) so retained handles from a failed load or unload cannot
+	// be mistaken for a finished initialization.
+	initialized bool
 )
 
 // loadedLibrary records a successfully opened library together with the handle
@@ -57,19 +62,28 @@ type loadedLibrary struct {
 }
 
 // Initialize loads all mandatory MaaFramework dynamic libraries from libDir
-// and resolves their symbols. If any library fails to open, is missing a
-// required symbol, or cannot be registered, every library opened during this
-// call is rolled back and the returned error describes the failure.
+// and resolves their symbols. A nonempty libDir is treated as an explicit
+// directory and resolved to an absolute path before any library filename is
+// formed; an empty libDir keeps the default loader-search behavior.
+// If any library fails to open, is missing a required symbol, or cannot be
+// registered, every library opened during this call is rolled back and the
+// returned error describes the failure. After a complete successful load,
+// repeated calls are a no-op success until Shutdown runs.
 func Initialize(libDir string) error {
-	if len(loadedLibs) == len(libraries) {
+	if initialized {
 		return nil
 	}
 	if len(loadedLibs) != 0 {
-		return errors.New("cannot initialize while libraries from a failed unload remain open")
+		return errors.New("cannot initialize while previously opened libraries remain from a failed load or unload; call Shutdown to clean up first")
 	}
 
-	err := handleLibDir(libDir)
+	resolvedDir, err := resolveLibraryDir(libDir)
 	if err != nil {
+		return err
+	}
+	libDir = resolvedDir
+
+	if err := handleLibDir(libDir); err != nil {
 		return err
 	}
 
@@ -86,13 +100,32 @@ func Initialize(libDir string) error {
 		loadedLibs = append(loadedLibs, loadedLibrary{lib: lib, handle: handle})
 	}
 
+	initialized = true
 	return nil
+}
+
+// resolveLibraryDir treats a nonempty libDir as an explicit directory and
+// resolves it to an absolute path so that values such as "." cannot collapse
+// into a bare loader-search filename. An empty libDir is left empty so the
+// platform loader keeps its default search behavior.
+func resolveLibraryDir(libDir string) (string, error) {
+	if libDir == "" {
+		return "", nil
+	}
+	absDir, err := filepath.Abs(libDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve library directory %q: %w", libDir, err)
+	}
+	return absDir, nil
 }
 
 // Shutdown closes every successfully opened library in reverse load order and
 // clears its handle and function variables. Libraries whose close fails are
-// kept so a later Shutdown can retry them.
+// kept so a later Shutdown can retry them. Any complete-initialization state
+// is invalidated up front so a partial unload cannot leave Initialize looking
+// finished.
 func Shutdown() error {
+	initialized = false
 
 	var (
 		errs   []error

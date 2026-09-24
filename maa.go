@@ -10,8 +10,9 @@ import (
 )
 
 var (
-	inited      bool
-	lifecycleMu sync.RWMutex
+	inited                  bool
+	lifecycleMu             sync.RWMutex
+	shutdownNativeLibraries = native.Shutdown
 
 	ErrSetLogDir              = errors.New("failed to set log directory")
 	ErrSetSaveDraw            = errors.New("failed to set save draw option")
@@ -176,7 +177,7 @@ func Init(opts ...InitOption) (err error) {
 	success := false
 	defer func() {
 		if !success {
-			if shutdownErr := native.Shutdown(); shutdownErr != nil {
+			if shutdownErr := shutdownNativeLibraries(); shutdownErr != nil {
 				err = errors.Join(err, fmt.Errorf("failed to roll back native initialization: %w", shutdownErr))
 			}
 		}
@@ -236,6 +237,8 @@ func IsInited() bool {
 // It returns ErrLibraryInUse while native objects or the Agent Server are
 // active. Calls to Init and Release are serialized. Other MAA-related
 // functions must not run concurrently with Init or Release.
+// If unloading fails, IsInited becomes false; call Release again to retry
+// cleanup before calling Init.
 func Release() error {
 	lifecycleMu.Lock()
 	defer lifecycleMu.Unlock()
@@ -244,13 +247,11 @@ func Release() error {
 		return ErrLibraryInUse
 	}
 
-	if err := native.Shutdown(); err != nil {
-		return err
-	}
-
+	// A failed shutdown can already have cleared some native function variables.
+	// Mark the package unavailable even when cleanup must be retried.
+	err := shutdownNativeLibraries()
 	inited = false
-
-	return nil
+	return err
 }
 
 func setGlobalOption(key native.MaaGlobalOption, value unsafe.Pointer, valSize uintptr) bool {

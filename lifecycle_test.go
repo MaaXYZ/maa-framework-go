@@ -3,6 +3,7 @@
 package maa
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -100,9 +101,19 @@ func runLifecycleHelper(t *testing.T) {
 	require.NoError(t, Release())
 	require.False(t, IsInited())
 
-	// The process recovers and releases cleanly one last time.
+	// A shutdown failure must not leave IsInited reporting that the native
+	// functions are usable: Shutdown may already have unloaded some libraries.
 	require.NoError(t, Init(WithStdoutLevel(LoggingLevelOff)))
 	require.True(t, IsInited())
+	shutdownErr := errors.New("injected shutdown failure")
+	actualShutdown := shutdownNativeLibraries
+	shutdownNativeLibraries = func() error { return shutdownErr }
+	require.ErrorIs(t, Release(), shutdownErr)
+	require.False(t, IsInited())
+
+	// Release still retries cleanup even when the package is no longer marked
+	// initialized. The injected failure left the real libraries open.
+	shutdownNativeLibraries = actualShutdown
 	require.NoError(t, Release())
 	require.False(t, IsInited())
 	require.Zero(t, liveNativeObjects.Load())

@@ -2,6 +2,7 @@ package maa
 
 import (
 	"testing"
+	"time"
 
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
@@ -128,4 +129,51 @@ func TestToolkit_PortalHelper(t *testing.T) {
 	helper, err = NewPortalHelper()
 	require.Error(t, err)
 	require.Nil(t, helper)
+}
+
+func TestToolkit_PortalHelperConcurrentDestroy(t *testing.T) {
+	create, destroy := native.MaaToolkitPortalHelperCreate, native.MaaToolkitPortalHelperDestroy
+	t.Cleanup(func() {
+		native.MaaToolkitPortalHelperCreate = create
+		native.MaaToolkitPortalHelperDestroy = destroy
+	})
+
+	native.MaaToolkitPortalHelperCreate = func() uintptr { return 42 }
+	entered := make(chan uintptr, 2)
+	releaseDestroy := make(chan struct{})
+	native.MaaToolkitPortalHelperDestroy = func(handle uintptr) {
+		entered <- handle
+		<-releaseDestroy
+	}
+
+	before := liveNativeObjects.Load()
+	helper, err := NewPortalHelper()
+	require.NoError(t, err)
+	done := make(chan struct{}, 2)
+	go func() {
+		helper.Destroy()
+		done <- struct{}{}
+	}()
+	require.Equal(t, uintptr(42), <-entered)
+
+	secondStarted := make(chan struct{})
+	go func() {
+		close(secondStarted)
+		helper.Destroy()
+		done <- struct{}{}
+	}()
+	<-secondStarted
+	select {
+	case handle := <-entered:
+		close(releaseDestroy)
+		<-done
+		<-done
+		t.Fatalf("native destroy called twice for handle %d", handle)
+	case <-time.After(25 * time.Millisecond):
+	}
+	close(releaseDestroy)
+	<-done
+	<-done
+	require.Empty(t, entered)
+	require.Equal(t, before, liveNativeObjects.Load())
 }

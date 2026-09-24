@@ -163,3 +163,23 @@ func TestFixtureMissingSymbolRollsBackEarlierLibraries(t *testing.T) {
 		t.Errorf("loadedLibs = %d, want 0", len(loadedLibs))
 	}
 }
+
+func TestFixtureInitializeFromCurrentDirectory(t *testing.T) {
+	dir := t.TempDir()
+	fixtures := fixtureLibraries(t)
+	buildFixtureLibraries(t, dir, fixtures, nil)
+	installFixtureLibraries(t, fixtures)
+	t.Chdir(dir)
+
+	// "." must stay an explicit directory rather than collapsing to bare
+	// loader-search names that could pick up an unrelated library.
+	if err := Initialize("."); err != nil {
+		t.Fatalf("Initialize(%q): %v", ".", err)
+	}
+	if MaaVersion == nil {
+		t.Fatal("MaaVersion was not registered")
+	}
+	if maaFramework == 0 || maaToolkit == 0 || maaAgentServer == 0 || maaAgentClient == 0 {
+		t.Fatal("not all library handles were recorded")
+	}
+}
