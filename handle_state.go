@@ -165,6 +165,9 @@ func (s *handleState) addBinding() (uintptr, error) {
 	if s.closed || s.handle == 0 {
 		return 0, ErrClosed
 	}
+	if s.external {
+		return 0, ErrBorrowed
+	}
 	s.bindings++
 	return s.handle, nil
 }
