@@ -4,6 +4,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
@@ -17,13 +18,36 @@ func TestHandleState_CloseAfterActiveCall(t *testing.T) {
 	})
 	_, done, err := state.begin()
 	require.NoError(t, err)
-	require.NoError(t, state.close())
-	require.ErrorIs(t, func() error { _, _, err := state.begin(); return err }(), ErrClosed)
+	require.ErrorIs(t, state.close(), ErrInUse)
+	require.NoError(t, state.check())
 	require.Zero(t, destroyed)
 	done()
+	require.NoError(t, state.close())
 	require.Equal(t, 1, destroyed)
 	require.NoError(t, state.close())
 	require.Equal(t, 1, destroyed)
+}
+
+func TestHandleState_ConcurrentCloseWaitsForCleanup(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	state := newHandleState(123, func(uintptr) {
+		close(started)
+		<-release
+	})
+	first := make(chan error, 1)
+	go func() { first <- state.close() }()
+	<-started
+	second := make(chan error, 1)
+	go func() { second <- state.close() }()
+	select {
+	case <-second:
+		t.Fatal("repeat close returned before native cleanup completed")
+	default:
+	}
+	close(release)
+	require.NoError(t, <-first)
+	require.NoError(t, <-second)
 }
 
 func TestHandleState_ConcurrentClose(t *testing.T) {
@@ -80,14 +104,14 @@ func TestTasker_BorrowedBindingsAndRebinding(t *testing.T) {
 
 	require.NoError(t, tasker.BindResource(res2))
 	require.NoError(t, tasker.BindController(ctrl2))
+	require.NoError(t, tasker.BindResource(res2))
+	require.NoError(t, tasker.BindController(ctrl2))
 	require.Equal(t, res2.handle, tasker.GetResource().handle)
 	require.Equal(t, ctrl2.handle, tasker.GetController().handle)
-	require.NoError(t, res1.Destroy())
-	require.NoError(t, ctrl1.Destroy())
-	_, err = borrowedRes.GetHash()
-	require.ErrorIs(t, err, ErrClosed)
-	_, err = borrowedCtrl.GetInfo()
-	require.ErrorIs(t, err, ErrClosed)
+	require.ErrorIs(t, res1.Destroy(), ErrBound)
+	require.ErrorIs(t, ctrl1.Destroy(), ErrBound)
+	require.NoError(t, borrowedRes.state.check())
+	require.NoError(t, borrowedCtrl.state.check())
 	require.ErrorIs(t, res2.Destroy(), ErrBound)
 	require.ErrorIs(t, ctrl2.Destroy(), ErrBound)
 
@@ -95,11 +119,117 @@ func TestTasker_BorrowedBindingsAndRebinding(t *testing.T) {
 	require.NoError(t, tasker.Destroy())
 	require.Nil(t, tasker.GetResource())
 	require.ErrorIs(t, tasker.PostTask("unused").Error(), ErrClosed)
+	require.NoError(t, res1.Destroy())
+	require.NoError(t, ctrl1.Destroy())
+	_, err = borrowedRes.GetHash()
+	require.ErrorIs(t, err, ErrClosed)
+	_, err = borrowedCtrl.GetInfo()
+	require.ErrorIs(t, err, ErrClosed)
 	require.NoError(t, res2.Destroy())
 	require.NoError(t, ctrl2.Destroy())
 	require.NoError(t, res2.Destroy())
 	require.NoError(t, ctrl2.Destroy())
 	require.ErrorIs(t, res2.PostBundle("unused").Error(), ErrClosed)
+}
+
+func TestTasker_RejectsBindingsWhileRunning(t *testing.T) {
+	tasker, err := NewTasker()
+	require.NoError(t, err)
+	res, err := NewResource()
+	require.NoError(t, err)
+	ctrl, err := NewBlankController()
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, tasker.Destroy())
+		require.NoError(t, res.Destroy())
+		require.NoError(t, ctrl.Destroy())
+	}()
+
+	oldRunning := native.MaaTaskerRunning
+	native.MaaTaskerRunning = func(uintptr) bool { return true }
+	defer func() { native.MaaTaskerRunning = oldRunning }()
+	require.ErrorIs(t, tasker.BindResource(res), ErrTaskerRunning)
+	require.ErrorIs(t, tasker.BindController(ctrl), ErrTaskerRunning)
+	require.Nil(t, tasker.GetResource())
+	require.Nil(t, tasker.GetController())
+	require.NoError(t, res.state.check())
+	require.NoError(t, ctrl.state.check())
+}
+
+func TestTasker_PostAndBindDoNotInterleave(t *testing.T) {
+	tasker, err := NewTasker()
+	require.NoError(t, err)
+	res, err := NewResource()
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, tasker.Destroy())
+		require.NoError(t, res.Destroy())
+	}()
+
+	oldPost := native.MaaTaskerPostTask
+	oldRunning := native.MaaTaskerRunning
+	started := make(chan struct{})
+	release := make(chan struct{})
+	defer func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	}()
+	var running atomic.Bool
+	native.MaaTaskerPostTask = func(uintptr, string, string) int64 {
+		close(started)
+		<-release
+		return 0
+	}
+	native.MaaTaskerRunning = func(uintptr) bool { return running.Load() }
+	defer func() {
+		native.MaaTaskerPostTask = oldPost
+		native.MaaTaskerRunning = oldRunning
+	}()
+
+	posted := make(chan struct{})
+	go func() {
+		tasker.PostTask("entry")
+		close(posted)
+	}()
+	<-started
+	bound := make(chan error, 1)
+	go func() { bound <- tasker.BindResource(res) }()
+	select {
+	case <-bound:
+		t.Fatal("bind completed while posting was still in progress")
+	case <-time.After(20 * time.Millisecond):
+	}
+	running.Store(true)
+	close(release)
+	<-posted
+	require.ErrorIs(t, <-bound, ErrTaskerRunning)
+	require.Nil(t, tasker.GetResource())
+}
+
+type destroyOnMarshal struct {
+	tasker *Tasker
+	err    error
+}
+
+func (v *destroyOnMarshal) MarshalJSON() ([]byte, error) {
+	v.err = v.tasker.Destroy()
+	return []byte(`{}`), nil
+}
+
+func TestTasker_DestroyFromMarshalReturnsInUse(t *testing.T) {
+	tasker, err := NewTasker()
+	require.NoError(t, err)
+	oldPost := native.MaaTaskerPostTask
+	native.MaaTaskerPostTask = func(uintptr, string, string) int64 { return 0 }
+	defer func() { native.MaaTaskerPostTask = oldPost }()
+
+	value := &destroyOnMarshal{tasker: tasker}
+	tasker.PostTask("entry", value)
+	require.ErrorIs(t, value.err, ErrInUse)
+	require.NoError(t, tasker.Destroy())
 }
 
 func TestEventBorrowDoesNotOwnHandle(t *testing.T) {
@@ -205,6 +335,54 @@ func TestCallbackContext_ExternalTaskerAndControllerExpire(t *testing.T) {
 	require.Nil(t, clone.Clone())
 }
 
+func TestCallbackContext_ActiveRunCompletesDuringInvalidation(t *testing.T) {
+	tasker, err := NewTasker()
+	require.NoError(t, err)
+	oldGetTasker := native.MaaContextGetTasker
+	oldRunTask := native.MaaContextRunTask
+	oldGetDetail := native.MaaTaskerGetTaskDetail
+	started := make(chan struct{})
+	release := make(chan struct{})
+	native.MaaContextGetTasker = func(uintptr) uintptr { return tasker.handle }
+	native.MaaContextRunTask = func(uintptr, string, string) int64 {
+		close(started)
+		<-release
+		return 42
+	}
+	native.MaaTaskerGetTaskDetail = func(_ uintptr, _ int64, _ uintptr, _ uintptr, size *uint64, _ *int32) bool {
+		*size = 0
+		return true
+	}
+	defer func() {
+		native.MaaContextGetTasker = oldGetTasker
+		native.MaaContextRunTask = oldRunTask
+		native.MaaTaskerGetTaskDetail = oldGetDetail
+		require.NoError(t, tasker.Destroy())
+	}()
+
+	ctx := newCallbackContext(789)
+	result := make(chan error, 1)
+	go func() {
+		_, runErr := ctx.RunTask("entry")
+		result <- runErr
+	}()
+	<-started
+	invalidated := make(chan struct{})
+	go func() {
+		ctx.invalidate()
+		close(invalidated)
+	}()
+	require.Eventually(t, func() bool {
+		ctx.state.mu.Lock()
+		defer ctx.state.mu.Unlock()
+		return ctx.state.closed
+	}, time.Second, time.Millisecond)
+	close(release)
+	require.NoError(t, <-result)
+	<-invalidated
+	require.Nil(t, ctx.GetTasker())
+}
+
 func TestAgentClient_HoldsRegisteredHandles(t *testing.T) {
 	res, err := NewResource()
 	require.NoError(t, err)
@@ -231,7 +409,7 @@ func TestAgentClient_HoldsRegisteredHandles(t *testing.T) {
 	}()
 	client := newAgentClientByHandle(123)
 	t.Cleanup(func() {
-		client.Destroy()
+		require.NoError(t, client.Destroy())
 		require.NoError(t, tasker.Destroy())
 		require.NoError(t, ctrl.Destroy())
 		require.NoError(t, res.Destroy())
@@ -244,9 +422,25 @@ func TestAgentClient_HoldsRegisteredHandles(t *testing.T) {
 	require.ErrorIs(t, res.Destroy(), ErrBound)
 	require.ErrorIs(t, ctrl.Destroy(), ErrBound)
 	require.ErrorIs(t, tasker.Destroy(), ErrBound)
-	client.Destroy()
-	client.Destroy()
+	require.NoError(t, client.Destroy())
+	require.NoError(t, client.Destroy())
 	require.NoError(t, tasker.Destroy())
 	require.NoError(t, ctrl.Destroy())
 	require.NoError(t, res.Destroy())
+}
+
+func TestAgentClient_DestroyReportsActiveCall(t *testing.T) {
+	oldDestroy := native.MaaAgentClientDestroy
+	var destroyed int
+	native.MaaAgentClientDestroy = func(uintptr) { destroyed++ }
+	defer func() { native.MaaAgentClientDestroy = oldDestroy }()
+	client := newAgentClientByHandle(123)
+	_, done, err := client.state.begin()
+	require.NoError(t, err)
+	require.ErrorIs(t, client.Destroy(), ErrInUse)
+	require.Zero(t, destroyed)
+	done()
+	require.NoError(t, client.Destroy())
+	require.NoError(t, client.Destroy())
+	require.Equal(t, 1, destroyed)
 }

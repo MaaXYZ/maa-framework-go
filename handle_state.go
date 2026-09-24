@@ -17,22 +17,32 @@ var ErrBound = errors.New("maa: object is bound to a tasker")
 // ErrInCallback reports an attempt to destroy an object from one of its callbacks.
 var ErrInCallback = errors.New("maa: object cannot be destroyed during a callback")
 
-// handleState keeps a native handle alive until calls already using it finish.
-// Its cleanup runs once, after close and the last active call.
+// ErrInUse reports an attempt to destroy an object while one of its calls is active.
+var ErrInUse = errors.New("maa: object has an active call")
+
+// ErrTaskerRunning reports an attempt to rebind a running tasker.
+var ErrTaskerRunning = errors.New("maa: tasker is running")
+
+// handleState keeps a native handle alive while calls use it. Successful
+// close runs cleanup once before returning.
 type handleState struct {
-	mu        sync.Mutex
-	cond      *sync.Cond
-	handle    uintptr
-	active    int
-	callbacks int
-	bindings  int
-	closed    bool
-	external  bool
-	cleanup   func(uintptr)
+	mu          sync.Mutex
+	cond        *sync.Cond
+	handle      uintptr
+	active      int
+	callbacks   int
+	bindings    int
+	closed      bool
+	external    bool
+	cleanup     func(uintptr)
+	cleanupDone chan struct{}
 }
 
 func newHandleState(handle uintptr, cleanup func(uintptr)) *handleState {
 	state := &handleState{handle: handle, cleanup: cleanup}
+	if cleanup != nil {
+		state.cleanupDone = make(chan struct{})
+	}
 	state.cond = sync.NewCond(&state.mu)
 	return state
 }
@@ -79,9 +89,7 @@ func (s *handleState) beginCallback() (func(), error) {
 		}
 		handle, cleanup := s.takeCleanupLocked()
 		s.mu.Unlock()
-		if cleanup != nil {
-			cleanup(handle)
-		}
+		s.runCleanup(handle, cleanup)
 	}, nil
 }
 
@@ -105,9 +113,15 @@ func (s *handleState) end() {
 	}
 	handle, cleanup := s.takeCleanupLocked()
 	s.mu.Unlock()
-	if cleanup != nil {
-		cleanup(handle)
+	s.runCleanup(handle, cleanup)
+}
+
+func (s *handleState) runCleanup(handle uintptr, cleanup func(uintptr)) {
+	if cleanup == nil {
+		return
 	}
+	defer close(s.cleanupDone)
+	cleanup(handle)
 }
 
 // expire invalidates a borrowed external handle and waits for calls in flight.
@@ -136,22 +150,33 @@ func (s *handleState) close() error {
 	}
 	s.mu.Lock()
 	if s.closed {
+		done := s.cleanupDone
 		s.mu.Unlock()
+		if done != nil {
+			<-done
+		}
 		return nil
-	}
-	if s.bindings != 0 {
-		s.mu.Unlock()
-		return ErrBound
 	}
 	if s.callbacks != 0 {
 		s.mu.Unlock()
 		return ErrInCallback
 	}
+	if s.bindings != 0 {
+		s.mu.Unlock()
+		return ErrBound
+	}
+	if s.active != 0 {
+		s.mu.Unlock()
+		return ErrInUse
+	}
 	s.closed = true
 	handle, cleanup := s.takeCleanupLocked()
+	done := s.cleanupDone
 	s.mu.Unlock()
 	if cleanup != nil {
-		cleanup(handle)
+		s.runCleanup(handle, cleanup)
+	} else if done != nil {
+		<-done
 	}
 	return nil
 }
@@ -180,11 +205,14 @@ func (s *handleState) removeBinding() {
 
 type taskerState struct {
 	*handleState
-	bindingsMu sync.Mutex
-	resource   *Resource
-	controller *Controller
-	external   bool
-	scope      *contextState
+	postMu          sync.Mutex
+	bindingsMu      sync.Mutex
+	resource        *Resource
+	controller      *Controller
+	heldResources   map[*handleState]struct{}
+	heldControllers map[*handleState]struct{}
+	external        bool
+	scope           *contextState
 }
 
 var (

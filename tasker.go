@@ -47,14 +47,16 @@ func NewTasker() (*Tasker, error) {
 		store.TaskerStore.Unlock()
 		native.MaaTaskerDestroy(handle)
 		state.bindingsMu.Lock()
-		if state.resource != nil {
-			state.resource.state.removeBinding()
-			state.resource = nil
+		for bound := range state.heldResources {
+			bound.removeBinding()
 		}
-		if state.controller != nil {
-			state.controller.state.removeBinding()
-			state.controller = nil
+		for bound := range state.heldControllers {
+			bound.removeBinding()
 		}
+		state.resource = nil
+		state.controller = nil
+		state.heldResources = nil
+		state.heldControllers = nil
 		state.bindingsMu.Unlock()
 		taskerStates.CompareAndDelete(handle, state)
 	})
@@ -64,6 +66,7 @@ func NewTasker() (*Tasker, error) {
 
 // Destroy closes the tasker once. Borrowed taskers cannot be destroyed.
 // Destroy returns ErrBound while an AgentClient is registered as a sink.
+// It returns ErrInUse while one of the tasker's methods is active.
 // Destroy the tasker before destroying its bound resource and controller.
 func (t *Tasker) Destroy() error {
 	if t == nil || !t.owned {
@@ -72,7 +75,9 @@ func (t *Tasker) Destroy() error {
 	return t.state.close()
 }
 
-// BindResource binds an initialized resource to the tasker.
+// BindResource binds an initialized resource to the tasker. It returns
+// ErrTaskerRunning while tasks are pending or running. A previously bound
+// resource remains retained until the tasker is destroyed.
 func (t *Tasker) BindResource(res *Resource) error {
 	_, done, err := t.state.begin()
 	if err != nil {
@@ -89,21 +94,34 @@ func (t *Tasker) BindResource(res *Resource) error {
 	if err != nil {
 		return err
 	}
+	t.state.postMu.Lock()
+	defer t.state.postMu.Unlock()
 	t.state.bindingsMu.Lock()
 	defer t.state.bindingsMu.Unlock()
+	if native.MaaTaskerRunning(t.handle) {
+		res.state.removeBinding()
+		return ErrTaskerRunning
+	}
 	ok := native.MaaTaskerBindResource(t.handle, handle)
 	if !ok {
 		res.state.removeBinding()
 		return errors.New("failed to bind resource")
 	}
-	if t.state.resource != nil {
-		t.state.resource.state.removeBinding()
+	if t.state.heldResources == nil {
+		t.state.heldResources = make(map[*handleState]struct{})
+	}
+	if _, held := t.state.heldResources[res.state]; held {
+		res.state.removeBinding()
+	} else {
+		t.state.heldResources[res.state] = struct{}{}
 	}
 	t.state.resource = res
 	return nil
 }
 
-// BindController binds an initialized controller to the tasker.
+// BindController binds an initialized controller to the tasker. It returns
+// ErrTaskerRunning while tasks are pending or running. A previously bound
+// controller remains retained until the tasker is destroyed.
 func (t *Tasker) BindController(ctrl *Controller) error {
 	_, done, err := t.state.begin()
 	if err != nil {
@@ -120,15 +138,26 @@ func (t *Tasker) BindController(ctrl *Controller) error {
 	if err != nil {
 		return err
 	}
+	t.state.postMu.Lock()
+	defer t.state.postMu.Unlock()
 	t.state.bindingsMu.Lock()
 	defer t.state.bindingsMu.Unlock()
+	if native.MaaTaskerRunning(t.handle) {
+		ctrl.state.removeBinding()
+		return ErrTaskerRunning
+	}
 	ok := native.MaaTaskerBindController(t.handle, handle)
 	if !ok {
 		ctrl.state.removeBinding()
 		return errors.New("failed to bind controller")
 	}
-	if t.state.controller != nil {
-		t.state.controller.state.removeBinding()
+	if t.state.heldControllers == nil {
+		t.state.heldControllers = make(map[*handleState]struct{})
+	}
+	if _, held := t.state.heldControllers[ctrl.state]; held {
+		ctrl.state.removeBinding()
+	} else {
+		t.state.heldControllers[ctrl.state] = struct{}{}
 	}
 	t.state.controller = ctrl
 	return nil
@@ -177,7 +206,9 @@ func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
 	}
 	defer done()
 
+	t.state.postMu.Lock()
 	id := native.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
+	t.state.postMu.Unlock()
 	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
 }
 
@@ -211,7 +242,9 @@ func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionPa
 			fmt.Errorf("failed to marshal recognition param: %w", err))
 	}
 
+	t.state.postMu.Lock()
 	id := native.MaaTaskerPostRecognition(t.handle, string(recType), string(recParamJSON), imgBuf.Handle())
+	t.state.postMu.Unlock()
 	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
 }
 
@@ -240,7 +273,9 @@ func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box 
 			fmt.Errorf("failed to marshal recognition detail: %w", err))
 	}
 
+	t.state.postMu.Lock()
 	id := native.MaaTaskerPostAction(t.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
+	t.state.postMu.Unlock()
 	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
 }
 
@@ -297,7 +332,9 @@ func (t *Tasker) PostStop() *TaskJob {
 	}
 	defer done()
 
+	t.state.postMu.Lock()
 	id := native.MaaTaskerPostStop(t.handle)
+	t.state.postMu.Unlock()
 	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
 }
 

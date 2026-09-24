@@ -282,7 +282,8 @@ func NewCustomController(
 // The api-check CI tool also blacklists MaaDbgControllerCreate for the same reason.
 
 // Destroy closes the controller once. It returns ErrBound while a tasker uses
-// it and ErrBorrowed when called on a getter or callback view.
+// it or an AgentClient retains it, ErrInUse while a call is active, and
+// ErrBorrowed when called on a getter or callback view.
 func (c *Controller) Destroy() error {
 	if c == nil || !c.owned {
 		return ErrBorrowed

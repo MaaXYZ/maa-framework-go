@@ -78,7 +78,7 @@ func (s *contextState) invalidate() {
 
 func (s *contextState) track(state *handleState) bool {
 	s.mu.Lock()
-	if s.closed {
+	if s.closed && s.active == 0 {
 		s.mu.Unlock()
 		state.expire()
 		return false

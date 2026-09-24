@@ -58,17 +58,14 @@ func (ctx *Context) handleOverride(override ...any) string {
 }
 
 func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {
-	done, useErr := ctx.state.begin()
-	if useErr != nil {
-		return nil, useErr
-	}
-	defer done()
-
 	taskId := native.MaaContextRunTask(ctx.handle, entry, override)
 	if taskId == 0 {
 		return nil, errors.New("failed to run task")
 	}
-	tasker := ctx.GetTasker()
+	tasker := ctx.getTaskerActive()
+	if tasker == nil {
+		return nil, ErrClosed
+	}
 	return tasker.GetTaskDetail(taskId)
 }
 
@@ -113,12 +110,6 @@ func (ctx *Context) runRecognition(
 	entry, override string,
 	img image.Image,
 ) (*RecognitionDetail, error) {
-	done, useErr := ctx.state.begin()
-	if useErr != nil {
-		return nil, useErr
-	}
-	defer done()
-
 	imgBuf := buffer.NewImageBuffer()
 	imgBuf.Set(img)
 	defer imgBuf.Destroy()
@@ -127,7 +118,10 @@ func (ctx *Context) runRecognition(
 	if recId == 0 {
 		return nil, errors.New("failed to run recognition")
 	}
-	tasker := ctx.GetTasker()
+	tasker := ctx.getTaskerActive()
+	if tasker == nil {
+		return nil, ErrClosed
+	}
 	recognitionDetail, err := tasker.GetRecognitionDetail(recId)
 	return recognitionDetail, err
 }
@@ -178,12 +172,6 @@ func (ctx *Context) runAction(
 	box Rect,
 	recognitionDetail string,
 ) (*ActionDetail, error) {
-	done, useErr := ctx.state.begin()
-	if useErr != nil {
-		return nil, useErr
-	}
-	defer done()
-
 	rectBuf := buffer.NewRectBuffer()
 	rectBuf.Set(box)
 	defer rectBuf.Destroy()
@@ -198,7 +186,10 @@ func (ctx *Context) runAction(
 	if actId == 0 {
 		return nil, errors.New("failed to run action")
 	}
-	tasker := ctx.GetTasker()
+	tasker := ctx.getTaskerActive()
+	if tasker == nil {
+		return nil, ErrClosed
+	}
 	actionDetail, err := tasker.GetActionDetail(actId)
 	return actionDetail, err
 }
@@ -290,7 +281,10 @@ func (ctx *Context) RunRecognitionDirect(
 	if recId == 0 {
 		return nil, errors.New("failed to run recognition direct")
 	}
-	tasker := ctx.GetTasker()
+	tasker := ctx.getTaskerActive()
+	if tasker == nil {
+		return nil, ErrClosed
+	}
 	recognitionDetail, err := tasker.GetRecognitionDetail(recId)
 	return recognitionDetail, err
 }
@@ -340,18 +334,15 @@ func (ctx *Context) RunActionDirect(
 	if actId == 0 {
 		return nil, errors.New("failed to run action direct")
 	}
-	tasker := ctx.GetTasker()
+	tasker := ctx.getTaskerActive()
+	if tasker == nil {
+		return nil, ErrClosed
+	}
 	actionDetail, err := tasker.GetActionDetail(actId)
 	return actionDetail, err
 }
 
 func (ctx *Context) overridePipeline(override string) error {
-	done, useErr := ctx.state.begin()
-	if useErr != nil {
-		return useErr
-	}
-	defer done()
-
 	if !native.MaaContextOverridePipeline(ctx.handle, override) {
 		return errors.New("failed to override pipeline")
 	}
@@ -460,7 +451,10 @@ func (ctx *Context) GetNodeJSON(name string) (string, error) {
 		return "", useErr
 	}
 	defer done()
+	return ctx.getNodeJSONActive(name)
+}
 
+func (ctx *Context) getNodeJSONActive(name string) (string, error) {
 	buf := buffer.NewStringBuffer()
 	defer buf.Destroy()
 	ok := native.MaaContextGetNodeData(ctx.handle, name, buf.Handle())
@@ -479,7 +473,7 @@ func (ctx *Context) GetNode(name string) (*Node, error) {
 	}
 	defer done()
 
-	raw, err := ctx.GetNodeJSON(name)
+	raw, err := ctx.getNodeJSONActive(name)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +498,7 @@ func (ctx *Context) GetTaskJob() *TaskJob {
 	}
 	defer done()
 
-	tasker := ctx.GetTasker()
+	tasker := ctx.getTaskerActive()
 	if tasker == nil {
 		return newFailedTaskJob(ErrClosed)
 	}
@@ -528,7 +522,10 @@ func (ctx *Context) GetTasker() *Tasker {
 		return nil
 	}
 	defer done()
+	return ctx.getTaskerActive()
+}
 
+func (ctx *Context) getTaskerActive() *Tasker {
 	handle := native.MaaContextGetTasker(ctx.handle)
 	return borrowTaskerForContext(handle, ctx.state)
 }

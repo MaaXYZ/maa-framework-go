@@ -135,10 +135,12 @@ func agentClientOpError(op string) error {
 }
 
 // Destroy releases the client and its references to native objects once.
-func (ac *AgentClient) Destroy() {
-	if ac != nil {
-		_ = ac.state.close()
+// It returns ErrInUse while a client call is active; retry after the call ends.
+func (ac *AgentClient) Destroy() error {
+	if ac == nil {
+		return nil
 	}
+	return ac.state.close()
 }
 
 // Identifier returns the identifier of the current agent client.
