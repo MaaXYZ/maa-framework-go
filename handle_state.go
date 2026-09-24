@@ -39,7 +39,10 @@ type handleState struct {
 	jobStatus   func(uintptr, int64) Status
 	jobRunning  func(uintptr) bool
 	jobs        map[int64]struct{}
+	postedJobs  uint64
 }
+
+const jobPruneInterval = 64
 
 func newHandleState(handle uintptr, cleanup func(uintptr)) *handleState {
 	state := &handleState{handle: handle, cleanup: cleanup}
@@ -121,8 +124,34 @@ func (s *handleState) trackJob(id int64) {
 			s.jobs = make(map[int64]struct{})
 		}
 		s.jobs[id] = struct{}{}
+		s.postedJobs++
+		if s.postedJobs%jobPruneInterval == 0 {
+			s.pruneCompletedJobsLocked()
+		}
 	}
 	s.mu.Unlock()
+}
+
+func (s *handleState) untrackJob(id int64) {
+	if s == nil || id == 0 {
+		return
+	}
+	s.mu.Lock()
+	delete(s.jobs, id)
+	s.mu.Unlock()
+}
+
+func (s *handleState) pruneCompletedJobsLocked() bool {
+	active := false
+	for id := range s.jobs {
+		status := s.jobStatus(s.handle, id)
+		if status.Done() || status.Invalid() {
+			delete(s.jobs, id)
+		} else {
+			active = true
+		}
+	}
+	return active
 }
 
 // jobsActiveLocked checks native completion while close still excludes new
@@ -131,15 +160,7 @@ func (s *handleState) jobsActiveLocked() bool {
 	if s.jobRunning != nil && s.jobRunning(s.handle) {
 		return true
 	}
-	for id := range s.jobs {
-		status := s.jobStatus(s.handle, id)
-		if status.Done() || status.Invalid() {
-			delete(s.jobs, id)
-			continue
-		}
-		return true
-	}
-	return false
+	return s.pruneCompletedJobsLocked()
 }
 
 func (s *handleState) end() {

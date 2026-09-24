@@ -49,7 +49,14 @@ func (j *Job) Status() Status {
 	if j.Error() != nil {
 		return StatusFailure
 	}
-	return j.statusFunc(j.id)
+	return j.trackStatus(j.statusFunc(j.id))
+}
+
+func (j *Job) trackStatus(status Status) Status {
+	if j.owner != nil && (status.Done() || status.Invalid()) {
+		j.owner.untrackJob(j.id)
+	}
+	return status
 }
 
 // Invalid reports whether the status is invalid.
@@ -88,7 +95,7 @@ func (j *Job) Wait() *Job {
 		return j
 	}
 	if j.finalStatus.Invalid() {
-		j.finalStatus = j.waitFunc(j.id)
+		j.finalStatus = j.trackStatus(j.waitFunc(j.id))
 	}
 	return j
 }

@@ -70,6 +70,49 @@ func TestHandleState_ConcurrentClose(t *testing.T) {
 	require.Equal(t, int32(1), destroyed.Load())
 }
 
+func TestHandleState_UntracksObservedCompletedJobs(t *testing.T) {
+	state := newHandleState(123, func(uintptr) {})
+	state.jobStatus = func(uintptr, int64) Status { return StatusSuccess }
+	status := StatusPending
+	job := newJob(1,
+		func(int64) Status { return status },
+		func(int64) Status { return StatusSuccess },
+		state,
+	)
+	require.Equal(t, StatusPending, job.Status())
+	require.Len(t, state.jobs, 1)
+	status = StatusSuccess
+	require.Equal(t, StatusSuccess, job.Status())
+	require.Empty(t, state.jobs)
+
+	job = newJob(2,
+		func(int64) Status { return StatusPending },
+		func(int64) Status { return StatusSuccess },
+		state,
+	)
+	job.Wait()
+	require.Empty(t, state.jobs)
+	require.NoError(t, state.close())
+}
+
+func TestHandleState_PrunesDiscardedCompletedJobs(t *testing.T) {
+	state := newHandleState(123, func(uintptr) {})
+	firstStatus := StatusRunning
+	state.jobStatus = func(_ uintptr, id int64) Status {
+		if id == 1 {
+			return firstStatus
+		}
+		return StatusSuccess
+	}
+	for id := int64(1); id <= 128; id++ {
+		newJob(id, nil, nil, state)
+	}
+	require.Equal(t, map[int64]struct{}{1: {}}, state.jobs)
+	require.ErrorIs(t, state.close(), ErrInUse)
+	firstStatus = StatusSuccess
+	require.NoError(t, state.close())
+}
+
 func TestTasker_BorrowedBindingsAndRebinding(t *testing.T) {
 	res1, err := NewResource()
 	require.NoError(t, err)
