@@ -9,6 +9,7 @@ type Job struct {
 	finalStatus Status
 	statusFunc  func(id int64) Status
 	waitFunc    func(id int64) Status
+	err         error
 }
 
 func newJob(id int64, statusFunc func(id int64) Status, waitFunc func(id int64) Status) *Job {
@@ -19,8 +20,20 @@ func newJob(id int64, statusFunc func(id int64) Status, waitFunc func(id int64) 
 	}
 }
 
+func newFailedJob(err error) *Job {
+	return &Job{err: err, finalStatus: StatusFailure}
+}
+
+// Error reports why the job could not be submitted or used.
+func (j *Job) Error() error {
+	return j.err
+}
+
 // Status returns the current status of the job.
 func (j *Job) Status() Status {
+	if j.err != nil {
+		return StatusFailure
+	}
 	if j.finalStatus.Invalid() {
 		return j.statusFunc(j.id)
 	}
@@ -59,10 +72,17 @@ func (j *Job) Done() bool {
 
 // Wait blocks until the job completes and returns the job instance.
 func (j *Job) Wait() *Job {
+	if j.err != nil {
+		return j
+	}
 	if j.finalStatus.Invalid() {
 		j.finalStatus = j.waitFunc(j.id)
 	}
 	return j
+}
+
+func newFailedTaskJob(err error) *TaskJob {
+	return newTaskJob(0, nil, nil, nil, nil, err)
 }
 
 // TaskJob extends Job with task-specific functionality.

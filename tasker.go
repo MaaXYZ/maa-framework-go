@@ -14,9 +14,9 @@ import (
 // Tasker is the main task executor that coordinates resources and controllers
 // to perform automated tasks.
 type Tasker struct {
-	handle     uintptr
-	controller *Controller
-	resource   *Resource
+	handle uintptr
+	state  *taskerState
+	owned  bool
 }
 
 // NewTasker creates a new tasker instance.
@@ -33,49 +33,109 @@ func NewTasker() (*Tasker, error) {
 	})
 	store.TaskerStore.Unlock()
 
-	return &Tasker{
-		handle: handle,
-	}, nil
+	state := &taskerState{}
+	state.handleState = newHandleState(handle, func(handle uintptr) {
+		store.TaskerStore.Lock()
+		value := store.TaskerStore.Get(handle)
+		for _, id := range value.SinkIDToEventCallbackID {
+			unregisterEventCallback(id)
+		}
+		for _, id := range value.ContextSinkIDToEventCallbackID {
+			unregisterEventCallback(id)
+		}
+		store.TaskerStore.Del(handle)
+		store.TaskerStore.Unlock()
+		native.MaaTaskerDestroy(handle)
+		state.bindingsMu.Lock()
+		if state.resource != nil {
+			state.resource.state.removeBinding()
+			state.resource = nil
+		}
+		if state.controller != nil {
+			state.controller.state.removeBinding()
+			state.controller = nil
+		}
+		state.bindingsMu.Unlock()
+		taskerStates.CompareAndDelete(handle, state)
+	})
+	taskerStates.Store(handle, state)
+	return &Tasker{handle: handle, state: state, owned: true}, nil
 }
 
-// Destroy frees the tasker and releases all associated resources.
-// After calling this method, the tasker should not be used anymore.
-func (t *Tasker) Destroy() {
-	store.TaskerStore.Lock()
-	value := store.TaskerStore.Get(t.handle)
-	for _, id := range value.SinkIDToEventCallbackID {
-		unregisterEventCallback(id)
+// Destroy closes the tasker once. Borrowed taskers cannot be destroyed.
+// Destroy the tasker before destroying its bound resource and controller.
+func (t *Tasker) Destroy() error {
+	if t == nil || !t.owned {
+		return ErrBorrowed
 	}
-	for _, id := range value.ContextSinkIDToEventCallbackID {
-		unregisterEventCallback(id)
-	}
-	store.TaskerStore.Del(t.handle)
-	store.TaskerStore.Unlock()
-
-	native.MaaTaskerDestroy(t.handle)
+	return t.state.close()
 }
 
 // BindResource binds an initialized resource to the tasker.
 func (t *Tasker) BindResource(res *Resource) error {
-	ok := native.MaaTaskerBindResource(t.handle, res.handle)
+	_, done, err := t.state.begin()
+	if err != nil {
+		return err
+	}
+	defer done()
+	if res == nil {
+		return errors.New("resource is nil")
+	}
+	handle, err := res.state.addBinding()
+	if err != nil {
+		return err
+	}
+	t.state.bindingsMu.Lock()
+	defer t.state.bindingsMu.Unlock()
+	ok := native.MaaTaskerBindResource(t.handle, handle)
 	if !ok {
+		res.state.removeBinding()
 		return errors.New("failed to bind resource")
 	}
+	if t.state.resource != nil {
+		t.state.resource.state.removeBinding()
+	}
+	t.state.resource = res
 	return nil
 }
 
 // BindController binds an initialized controller to the tasker.
 func (t *Tasker) BindController(ctrl *Controller) error {
-	ok := native.MaaTaskerBindController(t.handle, ctrl.handle)
+	_, done, err := t.state.begin()
+	if err != nil {
+		return err
+	}
+	defer done()
+	if ctrl == nil {
+		return errors.New("controller is nil")
+	}
+	handle, err := ctrl.state.addBinding()
+	if err != nil {
+		return err
+	}
+	t.state.bindingsMu.Lock()
+	defer t.state.bindingsMu.Unlock()
+	ok := native.MaaTaskerBindController(t.handle, handle)
 	if !ok {
+		ctrl.state.removeBinding()
 		return errors.New("failed to bind controller")
 	}
+	if t.state.controller != nil {
+		t.state.controller.state.removeBinding()
+	}
+	t.state.controller = ctrl
 	return nil
 }
 
 // Initialized checks if the tasker is correctly initialized.
 // A tasker is considered initialized when both a resource and a controller are bound.
 func (t *Tasker) Initialized() bool {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return false
+	}
+	defer done()
+
 	return native.MaaTaskerInited(t.handle)
 }
 
@@ -104,6 +164,12 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 }
 
 func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return newFailedTaskJob(useErr)
+	}
+	defer done()
+
 	id := native.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
 	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil)
 }
@@ -111,11 +177,23 @@ func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
 // PostTask posts a task to the tasker asynchronously.
 // The optional override can be a JSON string, []byte, or any JSON-marshalable value.
 func (t *Tasker) PostTask(entry string, override ...any) *TaskJob {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return newFailedTaskJob(useErr)
+	}
+	defer done()
+
 	return t.handleOverride(entry, t.postTask, override...)
 }
 
 // PostRecognition posts a recognition to the tasker asynchronously.
 func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionParam, img image.Image) *TaskJob {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return newFailedTaskJob(useErr)
+	}
+	defer done()
+
 	imgBuf := buffer.NewImageBuffer()
 	defer imgBuf.Destroy()
 	imgBuf.Set(img)
@@ -133,6 +211,12 @@ func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionPa
 // PostAction posts an action to the tasker asynchronously.
 // The box and recoDetail are from the previous recognition.
 func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box Rect, recoDetail *RecognitionDetail) *TaskJob {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return newFailedTaskJob(useErr)
+	}
+	defer done()
+
 	rectBuf := buffer.NewRectBuffer()
 	defer rectBuf.Destroy()
 	rectBuf.Set(box)
@@ -155,53 +239,99 @@ func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box 
 
 // Stopping checks if the tasker is in the process of stopping (not yet fully stopped).
 func (t *Tasker) Stopping() bool {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return false
+	}
+	defer done()
+
 	return native.MaaTaskerStopping(t.handle)
 }
 
 // status returns the status of a task identified by the id.
 func (t *Tasker) status(id int64) Status {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return StatusInvalid
+	}
+	defer done()
+
 	return Status(native.MaaTaskerStatus(t.handle, id))
 }
 
 // wait waits until the task is complete and returns the status of the completed task identified by the id.
 func (t *Tasker) wait(id int64) Status {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return StatusInvalid
+	}
+	defer done()
+
 	return Status(native.MaaTaskerWait(t.handle, id))
 }
 
 // Running checks if the tasker is currently running a task.
 func (t *Tasker) Running() bool {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return false
+	}
+	defer done()
+
 	return native.MaaTaskerRunning(t.handle)
 }
 
 // PostStop posts a stop signal to the tasker asynchronously.
 // It interrupts the currently running task and stops resource loading and controller operations.
 func (t *Tasker) PostStop() *TaskJob {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return newFailedTaskJob(useErr)
+	}
+	defer done()
+
 	id := native.MaaTaskerPostStop(t.handle)
 	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil)
 }
 
 // GetResource returns the bound resource of the tasker.
 func (t *Tasker) GetResource() *Resource {
-	if t.resource != nil {
-		return t.resource
+	_, done, err := t.state.begin()
+	if err != nil {
+		return nil
 	}
-	handle := native.MaaTaskerGetResource(t.handle)
-	t.resource = &Resource{handle: handle}
-	return t.resource
+	defer done()
+	t.state.bindingsMu.Lock()
+	defer t.state.bindingsMu.Unlock()
+	if t.state.resource == nil {
+		return nil
+	}
+	return borrowResource(t.state.resource.handle)
 }
 
 // GetController returns the bound controller of the tasker.
 func (t *Tasker) GetController() *Controller {
-	if t.controller != nil {
-		return t.controller
+	_, done, err := t.state.begin()
+	if err != nil {
+		return nil
 	}
-	handle := native.MaaTaskerGetController(t.handle)
-	t.controller = &Controller{handle: handle}
-	return t.controller
+	defer done()
+	t.state.bindingsMu.Lock()
+	defer t.state.bindingsMu.Unlock()
+	if t.state.controller == nil {
+		return nil
+	}
+	return borrowController(t.state.controller.handle)
 }
 
 // ClearCache clears all queryable runtime cache.
 func (t *Tasker) ClearCache() error {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return useErr
+	}
+	defer done()
+
 	ok := native.MaaTaskerClearCache(t.handle)
 	if !ok {
 		return errors.New("failed to clear cache")
@@ -210,6 +340,12 @@ func (t *Tasker) ClearCache() error {
 }
 
 func (t *Tasker) overridePipeline(taskId int64, override any) error {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return useErr
+	}
+	defer done()
+
 	var overrideStr string
 	switch v := override.(type) {
 	case string:
@@ -250,6 +386,12 @@ type RecognitionDetail struct {
 
 // GetRecognitionDetail queries recognition detail.
 func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return nil, useErr
+	}
+	defer done()
+
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	algorithm := buffer.NewStringBuffer()
@@ -332,6 +474,12 @@ type ActionDetail struct {
 // value, and Result is the action-specific decoding of DetailJson.
 // It returns (nil, nil) when no detail is available for actionId.
 func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return nil, useErr
+	}
+	defer done()
+
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	action := buffer.NewStringBuffer()
@@ -409,6 +557,12 @@ func (n NodeRef) GetDetail() (*NodeDetail, error) {
 
 // GetNodeDetail queries node detail by node ID.
 func (t *Tasker) GetNodeDetail(nodeId int64) (*NodeDetail, error) {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return nil, useErr
+	}
+	defer done()
+
 	name := buffer.NewStringBuffer()
 	defer name.Destroy()
 	var recId, actionId int64
@@ -455,6 +609,12 @@ type TaskDetail struct {
 
 // GetTaskDetail queries task detail by task ID.
 func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return nil, useErr
+	}
+	defer done()
+
 	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
@@ -505,6 +665,12 @@ func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
 
 // GetLatestNode returns the latest node detail for a given task name.
 func (t *Tasker) GetLatestNode(taskName string) (*NodeDetail, error) {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return nil, useErr
+	}
+	defer done()
+
 	var nodeId int64
 
 	got := native.MaaTaskerGetLatestNode(t.handle, taskName, &nodeId)
@@ -528,6 +694,12 @@ type WaitFreezesDetail struct {
 // GetWaitFreezesDetail queries wait-freezes detail by wait-freezes ID.
 // Returns (nil, nil) when no detail is available for wfId.
 func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return nil, useErr
+	}
+	defer done()
+
 	nodeName := buffer.NewStringBuffer()
 	defer nodeName.Destroy()
 	phase := buffer.NewStringBuffer()
@@ -598,6 +770,12 @@ func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 
 // AddSink adds an event listener and returns the sink ID for later removal.
 func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return 0
+	}
+	defer done()
+
 	id := registerEventCallback(sink)
 	sinkId := native.MaaTaskerAddSink(
 		t.handle,
@@ -614,6 +792,12 @@ func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
 
 // RemoveSink removes an event listener by sink ID.
 func (t *Tasker) RemoveSink(sinkId int64) {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return
+	}
+	defer done()
+
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
 		delete(v.SinkIDToEventCallbackID, sinkId)
@@ -624,6 +808,12 @@ func (t *Tasker) RemoveSink(sinkId int64) {
 
 // ClearSinks clears all instance event listeners.
 func (t *Tasker) ClearSinks() {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return
+	}
+	defer done()
+
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		for _, id := range v.SinkIDToEventCallbackID {
 			unregisterEventCallback(id)
@@ -636,6 +826,12 @@ func (t *Tasker) ClearSinks() {
 
 // AddContextSink adds a context event listener and returns the sink ID for later removal.
 func (t *Tasker) AddContextSink(sink ContextEventSink) int64 {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return 0
+	}
+	defer done()
+
 	id := registerEventCallback(sink)
 	sinkId := native.MaaTaskerAddContextSink(
 		t.handle,
@@ -652,6 +848,12 @@ func (t *Tasker) AddContextSink(sink ContextEventSink) int64 {
 
 // RemoveContextSink removes a context event listener by sink ID.
 func (t *Tasker) RemoveContextSink(sinkId int64) {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return
+	}
+	defer done()
+
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		unregisterEventCallback(v.ContextSinkIDToEventCallbackID[sinkId])
 		delete(v.ContextSinkIDToEventCallbackID, sinkId)
@@ -662,6 +864,12 @@ func (t *Tasker) RemoveContextSink(sinkId int64) {
 
 // ClearContextSinks clears all context event listeners.
 func (t *Tasker) ClearContextSinks() {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return
+	}
+	defer done()
+
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		for _, id := range v.ContextSinkIDToEventCallbackID {
 			unregisterEventCallback(id)
@@ -692,6 +900,12 @@ func (a *taskerEventSinkAdapter) OnTaskerTask(tasker *Tasker, status EventStatus
 
 // OnTaskerTask registers a callback for Tasker.Task events and returns the sink ID.
 func (t *Tasker) OnTaskerTask(fn func(EventStatus, TaskerTaskDetail)) int64 {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return 0
+	}
+	defer done()
+
 	sink := &taskerEventSinkAdapter{onTaskerTask: fn}
 	return t.AddSink(sink)
 }
@@ -773,36 +987,72 @@ func (a *contextEventSinkAdapter) OnNodeAction(ctx *Context, status EventStatus,
 
 // OnNodePipelineNodeInContext registers a callback for Node.PipelineNode events and returns the sink ID.
 func (t *Tasker) OnNodePipelineNodeInContext(fn func(*Context, EventStatus, NodePipelineNodeDetail)) int64 {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return 0
+	}
+	defer done()
+
 	sink := &contextEventSinkAdapter{onNodePipelineNode: fn}
 	return t.AddContextSink(sink)
 }
 
 // OnNodeRecognitionNodeInContext registers a callback for Node.RecognitionNode events and returns the sink ID.
 func (t *Tasker) OnNodeRecognitionNodeInContext(fn func(*Context, EventStatus, NodeRecognitionNodeDetail)) int64 {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return 0
+	}
+	defer done()
+
 	sink := &contextEventSinkAdapter{onNodeRecognitionNode: fn}
 	return t.AddContextSink(sink)
 }
 
 // OnNodeActionNodeInContext registers a callback for Node.ActionNode events and returns the sink ID.
 func (t *Tasker) OnNodeActionNodeInContext(fn func(*Context, EventStatus, NodeActionNodeDetail)) int64 {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return 0
+	}
+	defer done()
+
 	sink := &contextEventSinkAdapter{onNodeActionNode: fn}
 	return t.AddContextSink(sink)
 }
 
 // OnNodeNextListInContext registers a callback for Node.NextList events and returns the sink ID.
 func (t *Tasker) OnNodeNextListInContext(fn func(*Context, EventStatus, NodeNextListDetail)) int64 {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return 0
+	}
+	defer done()
+
 	sink := &contextEventSinkAdapter{onNodeNextList: fn}
 	return t.AddContextSink(sink)
 }
 
 // OnNodeRecognitionInContext registers a callback for Node.Recognition events and returns the sink ID.
 func (t *Tasker) OnNodeRecognitionInContext(fn func(*Context, EventStatus, NodeRecognitionDetail)) int64 {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return 0
+	}
+	defer done()
+
 	sink := &contextEventSinkAdapter{onNodeRecognition: fn}
 	return t.AddContextSink(sink)
 }
 
 // OnNodeActionInContext registers a callback for Node.Action events and returns the sink ID.
 func (t *Tasker) OnNodeActionInContext(fn func(*Context, EventStatus, NodeActionDetail)) int64 {
+	_, done, useErr := t.state.begin()
+	if useErr != nil {
+		return 0
+	}
+	defer done()
+
 	sink := &contextEventSinkAdapter{onNodeAction: fn}
 	return t.AddContextSink(sink)
 }

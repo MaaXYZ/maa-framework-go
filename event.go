@@ -180,7 +180,10 @@ func handleResourceLoading(sink any, handle uintptr, status EventStatus, details
 		return
 	}
 
-	s.OnResourceLoading(&Resource{handle: handle}, status, detail)
+	res := borrowResource(handle)
+	if res != nil {
+		s.OnResourceLoading(res, status, detail)
+	}
 }
 
 func handleControllerAction(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
@@ -194,7 +197,10 @@ func handleControllerAction(sink any, handle uintptr, status EventStatus, detail
 		return
 	}
 
-	s.OnControllerAction(&Controller{handle: handle}, status, detail)
+	ctrl := borrowController(handle)
+	if ctrl != nil {
+		s.OnControllerAction(ctrl, status, detail)
+	}
 }
 
 func handleTaskerTask(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
@@ -208,7 +214,10 @@ func handleTaskerTask(sink any, handle uintptr, status EventStatus, detailsJSON 
 		return
 	}
 
-	s.OnTaskerTask(&Tasker{handle: handle}, status, detail)
+	tasker := borrowTasker(handle)
+	if tasker != nil {
+		s.OnTaskerTask(tasker, status, detail)
+	}
 }
 
 func handleNodePipelineNode(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {

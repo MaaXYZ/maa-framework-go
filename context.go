@@ -430,7 +430,7 @@ func (ctx *Context) GetTasker() *Tasker {
 		return ctx.tasker
 	}
 	handle := native.MaaContextGetTasker(ctx.handle)
-	ctx.tasker = &Tasker{handle: handle}
+	ctx.tasker = borrowTasker(handle)
 	return ctx.tasker
 }
 
