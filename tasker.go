@@ -60,6 +60,12 @@ func NewTasker() (*Tasker, error) {
 		state.bindingsMu.Unlock()
 		taskerStates.CompareAndDelete(handle, state)
 	})
+	state.handleState.jobStatus = func(handle uintptr, id int64) Status {
+		return Status(native.MaaTaskerStatus(handle, id))
+	}
+	state.handleState.jobRunning = func(handle uintptr) bool {
+		return native.MaaTaskerRunning(handle)
+	}
 	taskerStates.Store(handle, state)
 	return &Tasker{handle: handle, state: state, owned: true}, nil
 }

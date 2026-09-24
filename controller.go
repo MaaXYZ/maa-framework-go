@@ -44,6 +44,9 @@ func newOwnedController(handle uintptr) *Controller {
 		native.MaaControllerDestroy(handle)
 		controllerStates.CompareAndDelete(handle, state)
 	})
+	state.jobStatus = func(handle uintptr, id int64) Status {
+		return Status(native.MaaControllerStatus(handle, id))
+	}
 	controllerStates.Store(handle, state)
 	return &Controller{handle: handle, state: state, owned: true}
 }

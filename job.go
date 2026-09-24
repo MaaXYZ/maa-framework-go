@@ -21,6 +21,7 @@ func newJob(id int64, statusFunc func(id int64) Status, waitFunc func(id int64) 
 	}
 	if len(owner) != 0 {
 		job.owner = owner[0]
+		job.owner.trackJob(id)
 	}
 	return job
 }

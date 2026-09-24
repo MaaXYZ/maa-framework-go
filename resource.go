@@ -55,6 +55,9 @@ func NewResource() (*Resource, error) {
 		native.MaaResourceDestroy(handle)
 		resourceStates.CompareAndDelete(handle, state)
 	})
+	state.jobStatus = func(handle uintptr, id int64) Status {
+		return Status(native.MaaResourceStatus(handle, id))
+	}
 	resourceStates.Store(handle, state)
 	return &Resource{handle: handle, state: state, owned: true}, nil
 }

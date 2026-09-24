@@ -36,6 +36,9 @@ type handleState struct {
 	external    bool
 	cleanup     func(uintptr)
 	cleanupDone chan struct{}
+	jobStatus   func(uintptr, int64) Status
+	jobRunning  func(uintptr) bool
+	jobs        map[int64]struct{}
 }
 
 func newHandleState(handle uintptr, cleanup func(uintptr)) *handleState {
@@ -105,6 +108,40 @@ func (s *handleState) check() error {
 	return nil
 }
 
+// trackJob records a submitted native job before the posting call releases its
+// active reference. A job need not be retained by its Go caller to keep its
+// native owner alive.
+func (s *handleState) trackJob(id int64) {
+	if s == nil || id == 0 {
+		return
+	}
+	s.mu.Lock()
+	if s.jobStatus != nil && !s.closed {
+		if s.jobs == nil {
+			s.jobs = make(map[int64]struct{})
+		}
+		s.jobs[id] = struct{}{}
+	}
+	s.mu.Unlock()
+}
+
+// jobsActiveLocked checks native completion while close still excludes new
+// calls. Only terminal or invalid jobs can be removed from the tracking set.
+func (s *handleState) jobsActiveLocked() bool {
+	if s.jobRunning != nil && s.jobRunning(s.handle) {
+		return true
+	}
+	for id := range s.jobs {
+		status := s.jobStatus(s.handle, id)
+		if status.Done() || status.Invalid() {
+			delete(s.jobs, id)
+			continue
+		}
+		return true
+	}
+	return false
+}
+
 func (s *handleState) end() {
 	s.mu.Lock()
 	s.active--
@@ -166,6 +203,10 @@ func (s *handleState) close() error {
 		return ErrBound
 	}
 	if s.active != 0 {
+		s.mu.Unlock()
+		return ErrInUse
+	}
+	if s.jobsActiveLocked() {
 		s.mu.Unlock()
 		return ErrInUse
 	}
