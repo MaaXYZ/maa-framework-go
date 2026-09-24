@@ -19,11 +19,16 @@ type contextState struct {
 func newCallbackContext(handle uintptr) *Context {
 	state := newContextState()
 	if handle != 0 {
-		if tasker := borrowTasker(native.MaaContextGetTasker(handle)); tasker != nil {
+		taskerHandle := native.MaaContextGetTasker(handle)
+		if taskerHandle == 0 {
+			return nil
+		}
+		if tasker := borrowTasker(taskerHandle); tasker != nil {
 			done, err := tasker.state.beginCallback()
-			if err == nil {
-				state.taskerDone = done
+			if err != nil {
+				return nil
 			}
+			state.taskerDone = done
 		}
 	}
 	return &Context{handle: handle, state: state}

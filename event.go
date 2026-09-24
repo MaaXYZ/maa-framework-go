@@ -258,6 +258,9 @@ func handleNodePipelineNode(sink any, handle uintptr, status EventStatus, detail
 	}
 
 	ctx := newCallbackContext(handle)
+	if ctx == nil {
+		return
+	}
 	defer ctx.invalidate()
 	s.OnNodePipelineNode(ctx, status, detail)
 }
@@ -274,6 +277,9 @@ func handleNodeRecognitionNode(sink any, handle uintptr, status EventStatus, det
 	}
 
 	ctx := newCallbackContext(handle)
+	if ctx == nil {
+		return
+	}
 	defer ctx.invalidate()
 	s.OnNodeRecognitionNode(ctx, status, detail)
 }
@@ -290,6 +296,9 @@ func handleNodeActionNode(sink any, handle uintptr, status EventStatus, detailsJ
 	}
 
 	ctx := newCallbackContext(handle)
+	if ctx == nil {
+		return
+	}
 	defer ctx.invalidate()
 	s.OnNodeActionNode(ctx, status, detail)
 }
@@ -306,6 +315,9 @@ func handleNodeNextList(sink any, handle uintptr, status EventStatus, detailsJSO
 	}
 
 	ctx := newCallbackContext(handle)
+	if ctx == nil {
+		return
+	}
 	defer ctx.invalidate()
 	s.OnNodeNextList(ctx, status, detail)
 }
@@ -322,6 +334,9 @@ func handleNodeRecognition(sink any, handle uintptr, status EventStatus, details
 	}
 
 	ctx := newCallbackContext(handle)
+	if ctx == nil {
+		return
+	}
 	defer ctx.invalidate()
 	s.OnNodeRecognition(ctx, status, detail)
 }
@@ -338,6 +353,9 @@ func handleNodeAction(sink any, handle uintptr, status EventStatus, detailsJSON 
 	}
 
 	ctx := newCallbackContext(handle)
+	if ctx == nil {
+		return
+	}
 	defer ctx.invalidate()
 	s.OnNodeAction(ctx, status, detail)
 }

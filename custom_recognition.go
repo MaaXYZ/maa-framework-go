@@ -92,6 +92,9 @@ func _MaaCustomRecognitionCallbackAgent(
 	imgImg := imgBuffer.Get()
 
 	ctx := newCallbackContext(context)
+	if ctx == nil {
+		return 0
+	}
 	defer ctx.invalidate()
 	ret, ok := recognition.Run(
 		ctx,
