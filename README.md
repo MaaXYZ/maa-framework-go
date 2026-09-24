@@ -90,6 +90,14 @@ Programs built with maa-framework-go require MaaFramework dynamic libraries at r
 
 4. **System Library Path** - Install libraries to system library directories
 
+### MaaFramework Compatibility
+
+This binding tracks the latest MaaFramework release, including prereleases; compatibility with older releases is not guaranteed. A missing library or symbol generally means the installed MaaFramework is older than the release this binding targets.
+
+`Init` requires all four libraries from one compatible release: `MaaFramework`, `MaaToolkit`, `MaaAgentServer`, and `MaaAgentClient`. Missing libraries or symbols make `Init` fail with a diagnostic error instead of leaving partial state behind.
+
+`Release` unloads the libraries only after all native objects are destroyed and the Agent Server is shut down; otherwise it returns `ErrLibraryInUse`.
+
 ## 🚀 Quick Start
 
 ```go
