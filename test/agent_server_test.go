@@ -118,16 +118,16 @@ func TestAgentServer_CallbackRoundTrip(t *testing.T) {
 		if connected {
 			_ = client.Disconnect()
 		}
+		client.Destroy()
 		if tasker != nil {
-			tasker.Destroy()
+			require.NoError(t, tasker.Destroy())
 		}
 		if ctrl != nil {
-			ctrl.Destroy()
+			require.NoError(t, ctrl.Destroy())
 		}
 		if res != nil {
-			res.Destroy()
+			require.NoError(t, res.Destroy())
 		}
-		client.Destroy()
 	})
 	require.NoError(t, client.SetTimeout(5*time.Second))
 	res, err = maa.NewResource()

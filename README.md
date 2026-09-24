@@ -116,7 +116,6 @@ func main() {
 		fmt.Println("Failed to create tasker")
 		os.Exit(1)
 	}
-	defer tasker.Destroy()
 
 	devices, err := maa.FindAdbDevices()
 	if err != nil {
@@ -148,6 +147,7 @@ func main() {
 	defer res.Destroy()
 	res.PostBundle("./resource").Wait()
 	tasker.BindResource(res)
+	defer tasker.Destroy()
 	if !tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
@@ -161,6 +161,12 @@ func main() {
 	fmt.Println(detail)
 }
 ```
+
+### Native object lifetime
+
+`NewTasker`, `NewResource`, and controller constructors return objects that own their native handles. `GetResource`, `GetController`, `Context.GetTasker`, and event callbacks return borrowed views; calling `Destroy` on one returns `ErrBorrowed`. Repeated `Destroy` calls on an owner are safe. After closing, methods that return an error report `ErrClosed`, and jobs expose it through `Error()`.
+
+Keep a bound resource and controller alive until the tasker is destroyed. Closing either one while it is bound returns `ErrBound`. An `AgentClient` also keeps its bound resource and registered event sources alive until the client is destroyed. Destroying an owner from its callback returns `ErrInCallback`. A callback `Context`, including a clone, expires when the callback returns.
 
 ## 📖 Examples
 
