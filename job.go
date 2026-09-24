@@ -43,13 +43,13 @@ func (j *Job) Error() error {
 
 // Status returns the current status of the job.
 func (j *Job) Status() Status {
+	if !j.finalStatus.Invalid() {
+		return j.finalStatus
+	}
 	if j.Error() != nil {
 		return StatusFailure
 	}
-	if j.finalStatus.Invalid() {
-		return j.statusFunc(j.id)
-	}
-	return j.finalStatus
+	return j.statusFunc(j.id)
 }
 
 // Invalid reports whether the status is invalid.
@@ -127,7 +127,7 @@ func newTaskJob(
 // Status returns the current status of the task job.
 // If the task job has an error, it returns StatusFailure.
 func (j *TaskJob) Status() Status {
-	if j.Error() != nil {
+	if j.err != nil {
 		return StatusFailure
 	}
 	return j.job.Status()

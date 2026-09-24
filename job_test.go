@@ -441,6 +441,30 @@ func TestTaskJob_Status(t *testing.T) {
 	})
 }
 
+func TestJob_CompletedStatusAfterOwnerClose(t *testing.T) {
+	for _, taskJob := range []bool{false, true} {
+		t.Run(map[bool]string{false: "Job", true: "TaskJob"}[taskJob], func(t *testing.T) {
+			state := newHandleState(1, func(uintptr) {})
+			state.jobStatus = func(uintptr, int64) Status { return StatusSuccess }
+			status := func(int64) Status { return StatusSuccess }
+
+			if taskJob {
+				job := newTaskJob(1, status, status, nil, nil, nil, state)
+				job.Wait()
+				require.NoError(t, state.close())
+				require.Equal(t, StatusSuccess, job.Status())
+				require.ErrorIs(t, job.Error(), ErrClosed)
+			} else {
+				job := newJob(1, status, status, state)
+				job.Wait()
+				require.NoError(t, state.close())
+				require.Equal(t, StatusSuccess, job.Status())
+				require.ErrorIs(t, job.Error(), ErrClosed)
+			}
+		})
+	}
+}
+
 func TestTaskJob_Wait(t *testing.T) {
 	t.Run("WithError_SkipsWait", func(t *testing.T) {
 		waitCalled := false
