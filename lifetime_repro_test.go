@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 
@@ -128,4 +129,22 @@ func TestCustomAction_NilTaskerDoesNotPanic(t *testing.T) {
 		}
 	}()
 	require.Zero(t, _MaaCustomActionCallbackAgent(123, 1, nil, nil, nil, 7, 0, uintptr(id)))
+}
+
+func TestRecordController_RemainsValidAfterExternalInnerViewExpires(t *testing.T) {
+	inner, err := NewBlankController()
+	require.NoError(t, err)
+	defer func() { require.NoError(t, inner.Destroy()) }()
+
+	external := &Controller{handle: inner.handle, state: newExternalHandleState(inner.handle)}
+	recordingPath := filepath.Join(t.TempDir(), "recording.jsonl")
+	recorded, err := NewRecordController(external, recordingPath)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, recorded.Destroy()) }()
+
+	external.state.expire()
+	_, err = external.GetInfo()
+	require.ErrorIs(t, err, ErrClosed)
+	_, err = recorded.GetInfo()
+	require.NoError(t, err)
 }

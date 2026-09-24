@@ -72,7 +72,7 @@ func NewTasker() (*Tasker, error) {
 
 // Destroy closes the tasker once. Borrowed taskers cannot be destroyed.
 // Destroy returns ErrBound while an AgentClient is registered as a sink.
-// It returns ErrInUse while one of the tasker's methods is active.
+// It returns ErrInUse while a method or asynchronous job is active.
 // Destroy the tasker before destroying its bound resource and controller.
 func (t *Tasker) Destroy() error {
 	if t == nil || !t.owned {

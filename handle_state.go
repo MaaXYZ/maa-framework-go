@@ -17,7 +17,7 @@ var ErrBound = errors.New("maa: object is bound to a tasker")
 // ErrInCallback reports an attempt to destroy an object from one of its callbacks.
 var ErrInCallback = errors.New("maa: object cannot be destroyed during a callback")
 
-// ErrInUse reports an attempt to destroy an object while one of its calls is active.
+// ErrInUse reports an attempt to destroy an object while a call or job is active.
 var ErrInUse = errors.New("maa: object has an active call")
 
 // ErrTaskerRunning reports an attempt to rebind a running tasker.

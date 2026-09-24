@@ -164,7 +164,7 @@ func main() {
 
 ### Native object lifetime
 
-`NewTasker`, `NewResource`, and controller constructors return objects that own their native handles. `GetResource`, `GetController`, `Context.GetTasker`, and event callbacks return borrowed views; calling `Destroy` on one returns `ErrBorrowed`. Repeated successful `Destroy` calls on an owner are safe. `Destroy` returns `ErrInUse` if a call is active; retry after that call finishes. After closing, methods that return an error report `ErrClosed`, and jobs expose it through `Error()`.
+`NewTasker`, `NewResource`, and controller constructors return objects that own their native handles. `GetResource`, `GetController`, `Context.GetTasker`, and event callbacks return borrowed views; calling `Destroy` on one returns `ErrBorrowed`. Repeated successful `Destroy` calls on an owner are safe. `Destroy` returns `ErrInUse` if a call or asynchronous job is active, even if the returned Job was discarded; retry after it finishes. Call `Wait` before destroying the owner if you need the job's outcome. After closing, methods that return an error report `ErrClosed`, and jobs expose it through `Error()`.
 
 Keep every resource and controller bound to a tasker alive until the tasker is destroyed, including earlier bindings after rebinding. Closing one before then returns `ErrBound`. Rebinding a running tasker returns `ErrTaskerRunning`. An `AgentClient` also keeps its bound resource and registered event sources alive until the client is destroyed. Destroying an owner from its callback returns `ErrInCallback`. A callback `Context`, including a clone, expires when the callback returns.
 

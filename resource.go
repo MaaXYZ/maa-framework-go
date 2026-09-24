@@ -63,7 +63,7 @@ func NewResource() (*Resource, error) {
 }
 
 // Destroy closes the resource once. It returns ErrBound while a tasker uses it
-// or an AgentClient retains it, ErrInUse while a call is active, and
+// or an AgentClient retains it, ErrInUse while a call or job is active, and
 // ErrBorrowed when called on a getter or callback view.
 func (r *Resource) Destroy() error {
 	if r == nil || !r.owned {
