@@ -128,7 +128,7 @@ func (t *Tasker) BindController(ctrl *Controller) error {
 }
 
 // Initialized checks if the tasker is correctly initialized.
-// A tasker is considered initialized when both a resource and a controller are bound.
+// A tasker needs a valid resource. A bound controller must be connected.
 func (t *Tasker) Initialized() bool {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {

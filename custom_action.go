@@ -78,7 +78,8 @@ func _MaaCustomActionCallbackAgent(
 		return 0
 	}
 
-	ctx := &Context{handle: context}
+	ctx := newCallbackContext(context)
+	defer ctx.invalidate()
 	tasker := ctx.GetTasker()
 	// Skip GetRecognitionDetail for invalid recoId to avoid a spurious framework error log.
 	var recognitionDetail *RecognitionDetail

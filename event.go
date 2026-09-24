@@ -231,7 +231,9 @@ func handleNodePipelineNode(sink any, handle uintptr, status EventStatus, detail
 		return
 	}
 
-	s.OnNodePipelineNode(&Context{handle: handle}, status, detail)
+	ctx := newCallbackContext(handle)
+	defer ctx.invalidate()
+	s.OnNodePipelineNode(ctx, status, detail)
 }
 
 func handleNodeRecognitionNode(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
@@ -245,7 +247,9 @@ func handleNodeRecognitionNode(sink any, handle uintptr, status EventStatus, det
 		return
 	}
 
-	s.OnNodeRecognitionNode(&Context{handle: handle}, status, detail)
+	ctx := newCallbackContext(handle)
+	defer ctx.invalidate()
+	s.OnNodeRecognitionNode(ctx, status, detail)
 }
 
 func handleNodeActionNode(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
@@ -259,7 +263,9 @@ func handleNodeActionNode(sink any, handle uintptr, status EventStatus, detailsJ
 		return
 	}
 
-	s.OnNodeActionNode(&Context{handle: handle}, status, detail)
+	ctx := newCallbackContext(handle)
+	defer ctx.invalidate()
+	s.OnNodeActionNode(ctx, status, detail)
 }
 
 func handleNodeNextList(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
@@ -273,7 +279,9 @@ func handleNodeNextList(sink any, handle uintptr, status EventStatus, detailsJSO
 		return
 	}
 
-	s.OnNodeNextList(&Context{handle: handle}, status, detail)
+	ctx := newCallbackContext(handle)
+	defer ctx.invalidate()
+	s.OnNodeNextList(ctx, status, detail)
 }
 
 func handleNodeRecognition(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
@@ -287,7 +295,9 @@ func handleNodeRecognition(sink any, handle uintptr, status EventStatus, details
 		return
 	}
 
-	s.OnNodeRecognition(&Context{handle: handle}, status, detail)
+	ctx := newCallbackContext(handle)
+	defer ctx.invalidate()
+	s.OnNodeRecognition(ctx, status, detail)
 }
 
 func handleNodeAction(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
@@ -301,7 +311,9 @@ func handleNodeAction(sink any, handle uintptr, status EventStatus, detailsJSON 
 		return
 	}
 
-	s.OnNodeAction(&Context{handle: handle}, status, detail)
+	ctx := newCallbackContext(handle)
+	defer ctx.invalidate()
+	s.OnNodeAction(ctx, status, detail)
 }
 
 func (c *eventCallback) handleRaw(handle uintptr, msg string, detailsJSON []byte) {
