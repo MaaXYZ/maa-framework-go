@@ -91,8 +91,13 @@ func _MaaCustomRecognitionCallbackAgent(
 	imgBuffer := buffer.NewImageBufferByHandle(image)
 	imgImg := imgBuffer.Get()
 
+	ctx := newCallbackContext(context)
+	if ctx == nil {
+		return 0
+	}
+	defer ctx.invalidate()
 	ret, ok := recognition.Run(
-		&Context{handle: context},
+		ctx,
 		&CustomRecognitionArg{
 			TaskID:                 taskId,
 			CurrentTaskName:        cStringToString(currentTaskName),

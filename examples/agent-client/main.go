@@ -15,7 +15,6 @@ func main() {
 		fmt.Println("Failed to create tasker")
 		os.Exit(1)
 	}
-	defer tasker.Destroy()
 
 	res, err := maa.NewResource()
 	if err != nil {
@@ -42,6 +41,7 @@ func main() {
 		fmt.Println("Failed to bind controller to MAA Tasker")
 		os.Exit(1)
 	}
+	defer tasker.Destroy()
 
 	if !tasker.Initialized() {
 		fmt.Println("Failed to init MAA Tasker")

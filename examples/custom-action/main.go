@@ -18,7 +18,6 @@ func main() {
 		fmt.Println("Failed to create tasker")
 		os.Exit(1)
 	}
-	defer tasker.Destroy()
 
 	devices, err := maa.FindAdbDevices()
 	if err != nil {
@@ -50,6 +49,7 @@ func main() {
 	defer res.Destroy()
 	res.PostBundle("./resource").Wait()
 	tasker.BindResource(res)
+	defer tasker.Destroy()
 	if !tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)

@@ -116,7 +116,6 @@ func main() {
 		fmt.Println("Failed to create tasker")
 		os.Exit(1)
 	}
-	defer tasker.Destroy()
 
 	devices, err := maa.FindAdbDevices()
 	if err != nil {
@@ -148,6 +147,7 @@ func main() {
 	defer res.Destroy()
 	res.PostBundle("./resource").Wait()
 	tasker.BindResource(res)
+	defer tasker.Destroy()
 	if !tasker.Initialized() {
 		fmt.Println("Failed to init MAA.")
 		os.Exit(1)
@@ -162,6 +162,12 @@ func main() {
 }
 
 ```
+
+### 原生对象生命周期
+
+`NewTasker`、`NewResource` 以及控制器构造函数返回的对象拥有其原生句柄。`GetResource`、`GetController`、`Context.GetTasker` 以及事件回调返回的是借用视图；对其调用 `Destroy` 会返回 `ErrBorrowed`。对所有者重复成功调用 `Destroy` 是安全的。如果仍有调用或异步 Job 执行，`Destroy` 会返回 `ErrInUse`，即使返回的 Job 已被丢弃；请在其结束后重试。如果需要取得 Job 的结果，请在销毁所有者之前调用 `Wait`。对象关闭后，会返回错误的方法将报告 `ErrClosed`，Job 则通过 `Error()` 暴露该错误。
+
+在 tasker 销毁之前，请保持所有曾绑定的 Resource 和 Controller 存活，包括重新绑定后替换下来的对象。提前关闭会返回 `ErrBound`。运行中的 tasker 重新绑定会返回 `ErrTaskerRunning`。`AgentClient` 同样会保持其绑定的 Resource 与已注册的事件源存活，直到该 client 被销毁。在回调中销毁其所属对象会返回 `ErrInCallback`。回调的 `Context`（包括克隆）会在回调返回时失效。
 
 ## 📖 示例
 
