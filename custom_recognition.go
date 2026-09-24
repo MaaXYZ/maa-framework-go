@@ -44,12 +44,18 @@ type CustomRecognitionArg struct {
 	Roi                    Rect
 }
 
+// CustomRecognitionResult contains the box and detail returned by a custom recognizer.
+// The result can include diagnostic information even when recognition does not match.
 type CustomRecognitionResult struct {
 	Box    Rect   `json:"box"`
 	Detail string `json:"detail"`
 }
 
+// CustomRecognitionRunner performs recognition for a registered custom recognizer.
 type CustomRecognitionRunner interface {
+	// Run returns a result and whether recognition matched. A non-nil result is
+	// passed to MaaFramework even when matched is false. A nil result is always
+	// treated as no match.
 	Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool)
 }
 
@@ -96,7 +102,7 @@ func _MaaCustomRecognitionCallbackAgent(
 			Roi:                    buffer.NewRectBufferByHandle(roi).Get(),
 		},
 	)
-	if !ok || ret == nil {
+	if ret == nil {
 		return 0
 	}
 
@@ -105,5 +111,8 @@ func _MaaCustomRecognitionCallbackAgent(
 	outBoxRect.Set(box)
 	outDetailString := buffer.NewStringBufferByHandle(outDetail)
 	outDetailString.Set(ret.Detail)
-	return 1
+	if ok {
+		return 1
+	}
+	return 0
 }
