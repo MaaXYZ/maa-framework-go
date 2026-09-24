@@ -17,16 +17,44 @@ import (
 type fixtureLibrary struct {
 	name    string
 	file    string
+	handle  *uintptr
 	entries []Entry
 }
 
-func fixtureLibraries() []fixtureLibrary {
-	return []fixtureLibrary{
-		{name: maaFrameworkName, file: getMaaFrameworkLibrary(), entries: frameworkEntries},
-		{name: maaToolkitName, file: getMaaToolkitLibrary(), entries: toolkitEntries},
-		{name: maaAgentServerName, file: getMaaAgentServerLibrary(), entries: agentServerEntries},
-		{name: maaAgentClientName, file: getMaaAgentClientLibrary(), entries: agentClientEntries},
+func fixtureLibraries(t *testing.T) []fixtureLibrary {
+	t.Helper()
+	ext := ".so"
+	if runtime.GOOS == "darwin" {
+		ext = ".dylib"
 	}
+	file := func(name string) string {
+		return "libMaaBindingFixture_" + t.Name() + "_" + name + ext
+	}
+	return []fixtureLibrary{
+		{name: maaFrameworkName, file: file(maaFrameworkName), handle: &maaFramework, entries: frameworkEntries},
+		{name: maaToolkitName, file: file(maaToolkitName), handle: &maaToolkit, entries: toolkitEntries},
+		{name: maaAgentServerName, file: file(maaAgentServerName), handle: &maaAgentServer, entries: agentServerEntries},
+		{name: maaAgentClientName, file: file(maaAgentClientName), handle: &maaAgentClient, entries: agentClientEntries},
+	}
+}
+
+func installFixtureLibraries(t *testing.T, fixtures []fixtureLibrary) {
+	t.Helper()
+	previous := libraries
+	libraries = make([]Library, len(fixtures))
+	for i, fixture := range fixtures {
+		file := fixture.file
+		libraries[i] = Library{
+			name:     fixture.name,
+			fileName: func() string { return file },
+			handle:   fixture.handle,
+			entries:  fixture.entries,
+		}
+	}
+	t.Cleanup(func() {
+		_ = Shutdown()
+		libraries = previous
+	})
 }
 
 // buildFixtureLibraries compiles a tiny shared library for every mandatory
@@ -34,7 +62,7 @@ func fixtureLibraries() []fixtureLibrary {
 // symbol; omitted maps a library name to a single symbol to leave out, which
 // lets tests exercise a missing symbol deterministically. The test is skipped
 // when no C compiler is available.
-func buildFixtureLibraries(t *testing.T, dir string, omitted map[string]string) {
+func buildFixtureLibraries(t *testing.T, dir string, fixtures []fixtureLibrary, omitted map[string]string) {
 	t.Helper()
 
 	cc, err := exec.LookPath("cc")
@@ -45,7 +73,7 @@ func buildFixtureLibraries(t *testing.T, dir string, omitted map[string]string) 
 		t.Skip("skipping fixture tests: no C compiler available")
 	}
 
-	for _, lib := range fixtureLibraries() {
+	for _, lib := range fixtures {
 		var source strings.Builder
 		for _, entry := range lib.entries {
 			if omitted[lib.name] == entry.name {
@@ -74,9 +102,9 @@ func buildFixtureLibraries(t *testing.T, dir string, omitted map[string]string) 
 
 func TestFixtureInitializeAndShutdown(t *testing.T) {
 	dir := t.TempDir()
-	buildFixtureLibraries(t, dir, nil)
-
-	t.Cleanup(func() { _ = Shutdown() })
+	fixtures := fixtureLibraries(t)
+	buildFixtureLibraries(t, dir, fixtures, nil)
+	installFixtureLibraries(t, fixtures)
 
 	if err := Initialize(dir); err != nil {
 		t.Fatalf("Initialize: %v", err)
@@ -100,10 +128,10 @@ func TestFixtureInitializeAndShutdown(t *testing.T) {
 
 func TestFixtureMissingSymbolRollsBackEarlierLibraries(t *testing.T) {
 	dir := t.TempDir()
+	fixtures := fixtureLibraries(t)
 	missing := toolkitEntries[len(toolkitEntries)/2].name
-	buildFixtureLibraries(t, dir, map[string]string{maaToolkitName: missing})
-
-	t.Cleanup(func() { _ = Shutdown() })
+	buildFixtureLibraries(t, dir, fixtures, map[string]string{maaToolkitName: missing})
+	installFixtureLibraries(t, fixtures)
 
 	err := Initialize(dir)
 	if err == nil {
@@ -120,8 +148,8 @@ func TestFixtureMissingSymbolRollsBackEarlierLibraries(t *testing.T) {
 	if symErr.SymbolName != missing {
 		t.Errorf("SymbolName = %q, want %q", symErr.SymbolName, missing)
 	}
-	if symErr.LibraryPath != libPath(dir, getMaaToolkitLibrary()) {
-		t.Errorf("LibraryPath = %q, want %q", symErr.LibraryPath, libPath(dir, getMaaToolkitLibrary()))
+	if symErr.LibraryPath != libPath(dir, fixtures[1].file) {
+		t.Errorf("LibraryPath = %q, want %q", symErr.LibraryPath, libPath(dir, fixtures[1].file))
 	}
 	if symErr.Requirement == "" {
 		t.Error("Requirement is empty")
