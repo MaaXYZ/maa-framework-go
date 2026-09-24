@@ -2,11 +2,8 @@ package native
 
 import (
 	"fmt"
-	"path/filepath"
 	"runtime"
 	"unsafe"
-
-	"github.com/ebitengine/purego"
 )
 
 var maaAgentServer uintptr
@@ -39,26 +36,6 @@ var agentServerEntries = []Entry{
 	{&MaaAgentServerDetach, "MaaAgentServerDetach"},
 }
 
-func initAgentServer(libDir string) error {
-	libName := getMaaAgentServerLibrary()
-	libPath := filepath.Join(libDir, libName)
-
-	handle, err := openLibrary(libPath)
-	if err != nil {
-		return &LibraryLoadError{
-			LibraryName: maaAgentServerName,
-			LibraryPath: libPath,
-			Err:         err,
-		}
-	}
-
-	maaAgentServer = handle
-
-	registerAgentServer()
-
-	return nil
-}
-
 func getMaaAgentServerLibrary() string {
 	switch runtime.GOOS {
 	case "darwin":
@@ -69,28 +46,5 @@ func getMaaAgentServerLibrary() string {
 		return "MaaAgentServer.dll"
 	default:
 		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
-	}
-}
-
-func registerAgentServer() {
-	for _, entry := range agentServerEntries {
-		purego.RegisterLibFunc(entry.ptrToFunc, maaAgentServer, entry.name)
-	}
-}
-
-func releaseAgentServer() error {
-	err := unloadLibrary(maaAgentServer)
-	if err != nil {
-		return err
-	}
-
-	unregisterAgentServer()
-
-	return nil
-}
-
-func unregisterAgentServer() {
-	for _, entry := range agentServerEntries {
-		clearFuncVar(entry.ptrToFunc)
 	}
 }

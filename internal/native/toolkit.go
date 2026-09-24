@@ -2,11 +2,8 @@ package native
 
 import (
 	"fmt"
-	"path/filepath"
 	"runtime"
 	"unsafe"
-
-	"github.com/ebitengine/purego"
 )
 
 var maaToolkit uintptr
@@ -122,26 +119,6 @@ var toolkitEntries = []Entry{
 	{&MaaToolkitMacOSRevealPermissionSettings, "MaaToolkitMacOSRevealPermissionSettings"},
 }
 
-func initToolkit(libDir string) error {
-	libName := getMaaToolkitLibrary()
-	libPath := filepath.Join(libDir, libName)
-
-	handle, err := openLibrary(libPath)
-	if err != nil {
-		return &LibraryLoadError{
-			LibraryName: maaToolkitName,
-			LibraryPath: libPath,
-			Err:         err,
-		}
-	}
-
-	maaToolkit = handle
-
-	registerToolkit()
-
-	return nil
-}
-
 func getMaaToolkitLibrary() string {
 	switch runtime.GOOS {
 	case "darwin":
@@ -152,28 +129,5 @@ func getMaaToolkitLibrary() string {
 		return "MaaToolkit.dll"
 	default:
 		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
-	}
-}
-
-func registerToolkit() {
-	for _, entry := range toolkitEntries {
-		purego.RegisterLibFunc(entry.ptrToFunc, maaToolkit, entry.name)
-	}
-}
-
-func releaseToolkit() error {
-	err := unloadLibrary(maaToolkit)
-	if err != nil {
-		return err
-	}
-
-	unregisterToolkit()
-
-	return nil
-}
-
-func unregisterToolkit() {
-	for _, entry := range toolkitEntries {
-		clearFuncVar(entry.ptrToFunc)
 	}
 }

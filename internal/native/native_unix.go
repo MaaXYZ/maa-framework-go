@@ -9,10 +9,17 @@ func handleLibDir(_ string) error {
 	return nil
 }
 
-func openLibrary(name string) (uintptr, error) {
+// platformOpenLibrary opens a dynamic library using the platform loader.
+func platformOpenLibrary(name string) (uintptr, error) {
 	return purego.Dlopen(name, purego.RTLD_NOW|purego.RTLD_GLOBAL)
 }
 
-func unloadLibrary(handle uintptr) error {
+// platformUnloadLibrary releases an open dynamic library handle.
+func platformUnloadLibrary(handle uintptr) error {
 	return purego.Dlclose(handle)
+}
+
+// platformLookupSymbol resolves a symbol from an open dynamic library handle.
+func platformLookupSymbol(handle uintptr, name string) (uintptr, error) {
+	return purego.Dlsym(handle, name)
 }
