@@ -164,9 +164,9 @@ func main() {
 
 ### Native object lifetime
 
-`NewTasker`, `NewResource`, and controller constructors return objects that own their native handles. `GetResource`, `GetController`, `Context.GetTasker`, and event callbacks return borrowed views; calling `Destroy` on one returns `ErrBorrowed`. Repeated `Destroy` calls on an owner are safe. After closing, methods that return an error report `ErrClosed`, and jobs expose it through `Error()`.
+`NewTasker`, `NewResource`, and controller constructors return objects that own their native handles. `GetResource`, `GetController`, `Context.GetTasker`, and event callbacks return borrowed views; calling `Destroy` on one returns `ErrBorrowed`. Repeated successful `Destroy` calls on an owner are safe. `Destroy` returns `ErrInUse` if a call is active; retry after that call finishes. After closing, methods that return an error report `ErrClosed`, and jobs expose it through `Error()`.
 
-Keep a bound resource and controller alive until the tasker is destroyed. Closing either one while it is bound returns `ErrBound`. An `AgentClient` also keeps its bound resource and registered event sources alive until the client is destroyed. Destroying an owner from its callback returns `ErrInCallback`. A callback `Context`, including a clone, expires when the callback returns.
+Keep every resource and controller bound to a tasker alive until the tasker is destroyed, including earlier bindings after rebinding. Closing one before then returns `ErrBound`. Rebinding a running tasker returns `ErrTaskerRunning`. An `AgentClient` also keeps its bound resource and registered event sources alive until the client is destroyed. Destroying an owner from its callback returns `ErrInCallback`. A callback `Context`, including a clone, expires when the callback returns.
 
 ## 📖 Examples
 
