@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,6 +46,11 @@ const (
 	agentServerDetachProcWait   = 15 * time.Second
 	agentServerDetachKillWait   = 5 * time.Second
 	agentServerDetachPollPeriod = 20 * time.Millisecond
+
+	// agentServerDetachParkWatch is how long the parent watches a parked helper
+	// before terminating it. A helper that returned from its Go test instead of
+	// parking exits within this window.
+	agentServerDetachParkWatch = 250 * time.Millisecond
 )
 
 // agentServerDetachReport records the Release guard outcome in the server
@@ -60,7 +66,10 @@ type agentServerDetachReport struct {
 // Server which is still serving a client must keep Release blocked. The server
 // child runs StartUp -> Detach -> Join -> Release and owns no native client or
 // resource handles. A separate client child connects with the public Go
-// wrappers and stays connected until after Release returns.
+// wrappers and stays connected until after Release returns. The server helper
+// parks once it has reported the outcome, and the parent asserts that report
+// before terminating it, because exiting with the detached native service
+// thread still running is not safe on Windows.
 func TestAgentServerDetachJoinKeepsReleaseBlocked(t *testing.T) {
 	switch os.Getenv(agentServerDetachRoleEnv) {
 	case agentServerDetachRoleServer:
@@ -80,17 +89,28 @@ func TestAgentServerDetachJoinKeepsReleaseBlocked(t *testing.T) {
 	server := startAgentServerDetachChild(t, agentServerDetachRoleServer, identifier, dir, serverLogPath)
 	client := startAgentServerDetachChild(t, agentServerDetachRoleClient, identifier, dir, clientLogPath)
 
-	serverErr := server.wait(t)
-	clientErr := client.wait(t)
-	if serverErr != nil {
-		t.Fatalf("server helper failed: %v\n%s", serverErr, readAgentServerDetachLog(serverLogPath))
-	}
-	if clientErr != nil {
-		t.Fatalf("client helper failed: %v\n%s", clientErr, readAgentServerDetachLog(clientLogPath))
-	}
+	// The server helper writes the report before it signals release completion,
+	// so that signal also proves the report file is complete.
+	waitAgentServerDetachRelease(t, filepath.Join(dir, agentServerDetachReleaseDonePath), server, client)
 
+	// Assert the guard from the report while the server helper is still parked.
 	report := readAgentServerDetachReport(t, filepath.Join(dir, agentServerDetachReportPath), serverLogPath)
 	assertAgentServerDetachReleaseBlocked(t, report)
+
+	// Release has returned and the report is assertable; let the client, which
+	// stayed connected through Release, disconnect and exit.
+	if clientErr := client.wait(t); clientErr != nil {
+		t.Fatalf("client helper failed: %v\n%s", clientErr, agentServerDetachLogs(server, client))
+	}
+
+	// The server helper must still be parked. Had the helper returned from its
+	// Go test, normal process teardown would have run with the detached native
+	// service thread still alive, which is the failure this guards against.
+	server.requireRunning(t)
+
+	// The parent owns termination; the kill status is expected and is not a
+	// helper failure.
+	server.terminate(t)
 }
 
 func assertAgentServerDetachReleaseBlocked(t *testing.T, report agentServerDetachReport) {
@@ -140,8 +160,8 @@ func runAgentServerDetachServerHelper(t *testing.T) {
 	AgentServerJoin()
 
 	// AgentServerShutDown after Detach would close ZMQ sockets the detached
-	// native thread is still using. Skip orderly shutdown; the helper
-	// process exits and the OS reclaims the thread.
+	// native thread is still using. Skip orderly shutdown; the helper parks
+	// below and the parent terminates the process instead.
 	releaseSignaled := false
 	signalReleaseDone := func() {
 		if releaseSignaled {
@@ -187,6 +207,22 @@ func runAgentServerDetachServerHelper(t *testing.T) {
 	signalReleaseDone()
 	t.Logf("Release after Detach and Join returned %v; unload attempted: %t",
 		err, unloadAttempted)
+
+	// Returning from this test would run normal process teardown while the
+	// detached native service thread still owns live ZeroMQ sockets. On Windows
+	// that teardown asserts with "Successful WSASTARTUP not yet performed", so
+	// park until the parent, which now has the report, terminates this helper.
+	parkAgentServerDetachServerHelper()
+}
+
+// parkAgentServerDetachServerHelper blocks the helper test forever without
+// returning from it. Sleeping keeps a timer armed so the Go runtime cannot
+// mistake the parked process for a deadlock; the parent terminates the process
+// instead of letting the test return.
+func parkAgentServerDetachServerHelper() {
+	for {
+		time.Sleep(time.Minute)
+	}
 }
 
 // runAgentServerDetachClientHelper connects to the detached Agent Server with
@@ -256,11 +292,15 @@ func readAgentServerDetachReport(t *testing.T, path, logPath string) agentServer
 	return report
 }
 
-// agentServerDetachChild tracks one helper process and its log path.
+// agentServerDetachChild tracks one helper process, its exit state, and its
+// log path.
 type agentServerDetachChild struct {
-	role   string
-	done   chan error
-	exited bool
+	role    string
+	logPath string
+	cmd     *exec.Cmd
+	done    chan error
+	exited  bool
+	exitErr error
 }
 
 func startAgentServerDetachChild(t *testing.T, role, identifier, dir, logPath string) *agentServerDetachChild {
@@ -286,8 +326,10 @@ func startAgentServerDetachChild(t *testing.T, role, identifier, dir, logPath st
 	require.NoError(t, logFile.Close())
 
 	child := &agentServerDetachChild{
-		role: role,
-		done: make(chan error, 1),
+		role:    role,
+		logPath: logPath,
+		cmd:     cmd,
+		done:    make(chan error, 1),
 	}
 	go func() {
 		defer cancel()
@@ -295,28 +337,149 @@ func startAgentServerDetachChild(t *testing.T, role, identifier, dir, logPath st
 	}()
 
 	t.Cleanup(func() {
-		if child.exited {
+		if child.killAndReap() {
 			return
 		}
-		_ = cmd.Process.Kill()
-		select {
-		case <-child.done:
-		case <-time.After(agentServerDetachKillWait):
-			t.Errorf("%s helper process did not exit after kill", role)
-		}
+		t.Errorf("%s helper process did not exit after kill", role)
 	})
 	return child
+}
+
+// recordExit stores the helper's wait result. Every receive from done must go
+// through this so later checks see a consistent exit state.
+func (c *agentServerDetachChild) recordExit(err error) {
+	c.exited = true
+	c.exitErr = err
+}
+
+// pollExit reports whether the helper has exited, draining a wait result that
+// is already available.
+func (c *agentServerDetachChild) pollExit() bool {
+	if !c.exited {
+		select {
+		case err := <-c.done:
+			c.recordExit(err)
+		default:
+		}
+	}
+	return c.exited
 }
 
 func (c *agentServerDetachChild) wait(t *testing.T) error {
 	t.Helper()
 
+	if c.pollExit() {
+		return c.exitErr
+	}
 	select {
 	case err := <-c.done:
-		c.exited = true
+		c.recordExit(err)
 		return err
 	case <-time.After(agentServerDetachProcWait):
 		return errors.New(c.role + " helper timed out")
+	}
+}
+
+// requireRunning fails when a helper that must stay parked has exited. The
+// helper may only leave that state through the parent's kill, so an exit means
+// normal process teardown ran while the detached native service thread was
+// still live.
+func (c *agentServerDetachChild) requireRunning(t *testing.T) {
+	t.Helper()
+
+	if !c.pollExit() {
+		// Watch briefly so a helper that returned from its Go test right after
+		// writing the report is still caught before the parent kills it.
+		select {
+		case err := <-c.done:
+			c.recordExit(err)
+		case <-time.After(agentServerDetachParkWatch):
+		}
+	}
+	if !c.exited {
+		return
+	}
+	t.Fatalf("%s helper exited instead of staying alive for the parent to terminate it: %v\n%s",
+		c.role, c.exitErr, readAgentServerDetachLog(c.logPath))
+}
+
+// terminate kills a parked helper and reaps it. The helper can only leave the
+// parked state through this kill, so the resulting nonzero exit status is
+// expected and deliberately ignored.
+func (c *agentServerDetachChild) terminate(t *testing.T) {
+	t.Helper()
+
+	if c.killAndReap() {
+		return
+	}
+	t.Errorf("%s helper did not exit after the parent killed it\n%s",
+		c.role, readAgentServerDetachLog(c.logPath))
+}
+
+// killAndReap stops the helper if it is still running and waits for it to be
+// reaped, reporting whether the helper is known to have exited.
+func (c *agentServerDetachChild) killAndReap() bool {
+	if c.pollExit() {
+		return true
+	}
+	if err := c.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+		return false
+	}
+	select {
+	case err := <-c.done:
+		c.recordExit(err)
+		return true
+	case <-time.After(agentServerDetachKillWait):
+		return false
+	}
+}
+
+// agentServerDetachLogs formats both helper logs for a parent failure message.
+func agentServerDetachLogs(server, client *agentServerDetachChild) string {
+	return fmt.Sprintf("server helper log:\n%s\nclient helper log:\n%s",
+		readAgentServerDetachLog(server.logPath), readAgentServerDetachLog(client.logPath))
+}
+
+// waitAgentServerDetachRelease waits for the server helper to signal that
+// Release returned. The report is written before that signal, so the signal
+// also proves the report file is complete. Either helper exiting before the
+// signal, or the timeout expiring, fails the parent with both logs.
+func waitAgentServerDetachRelease(t *testing.T, path string, server, client *agentServerDetachChild) {
+	t.Helper()
+
+	deadline := time.NewTimer(agentServerDetachFileWait)
+	defer deadline.Stop()
+	tick := time.NewTicker(agentServerDetachPollPeriod)
+	defer tick.Stop()
+	for {
+		if _, err := os.Stat(path); err == nil {
+			return
+		}
+		select {
+		case err := <-server.done:
+			server.recordExit(err)
+			// The signal may have appeared before the exit was observed; in
+			// that case the report assertion and the parked-helper check give
+			// the more precise diagnostics.
+			if _, statErr := os.Stat(path); statErr == nil {
+				return
+			}
+			t.Fatalf("server helper exited before signaling release completion: %v\n%s",
+				err, agentServerDetachLogs(server, client))
+		case err := <-client.done:
+			client.recordExit(err)
+			// The client exits as soon as the signal exists, so re-check the
+			// file before treating this as a failure.
+			if _, statErr := os.Stat(path); statErr == nil {
+				return
+			}
+			t.Fatalf("client helper exited before the server signaled release completion: %v\n%s",
+				err, agentServerDetachLogs(server, client))
+		case <-deadline.C:
+			t.Fatalf("timed out waiting for %s from the server helper\n%s",
+				filepath.Base(path), agentServerDetachLogs(server, client))
+		case <-tick.C:
+		}
 	}
 }
 
