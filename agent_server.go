@@ -107,8 +107,10 @@ func AgentServerAddContextSink(sink ContextEventSink) int64 {
 	)
 }
 
-// AgentServerStartUp starts the MAA Agent Server with the given identifier.
-// The identifier is used to match with AgentClient.
+// AgentServerStartUp starts the MAA Agent Server in a separate native thread.
+// It returns after starting the thread; call AgentServerJoin only when the
+// caller needs to wait for the service to end. The identifier is used to match
+// with AgentClient.
 func AgentServerStartUp(identifier string) error {
 	if !native.MaaAgentServerStartUp(identifier) {
 		return fmt.Errorf("failed to start agent server: %s", identifier)
@@ -119,9 +121,11 @@ func AgentServerStartUp(identifier string) error {
 	return nil
 }
 
-// AgentServerShutDown shuts down the MAA Agent Server.
-// After AgentServerDetach, the native call cannot wait for the service thread
-// and may race with its socket use. It does not make Release safe.
+// AgentServerShutDown requests that the MAA Agent Server stop. If its service
+// thread is still attached, the native call waits for the thread to exit before
+// closing its sockets. After AgentServerDetach, it cannot wait for the thread
+// and closing the sockets may race with their use. It does not make Release
+// safe after Detach.
 func AgentServerShutDown() {
 	native.MaaAgentServerShutDown()
 	if agentServerState.Load() != uint32(agentServerDetached) {
@@ -129,18 +133,22 @@ func AgentServerShutDown() {
 	}
 }
 
-// AgentServerJoin waits for an attached agent service thread to end.
-// After AgentServerDetach, the native call returns without waiting.
-// AgentServerShutDown must still be called before Release in the attached case.
+// AgentServerJoin waits for an attached agent service thread to end. It does
+// not request that the service stop, so it may block while the service runs.
+// After AgentServerDetach, it returns without waiting. Even after Join returns
+// for an attached thread, AgentServerShutDown must be called before Release.
 func AgentServerJoin() {
 	native.MaaAgentServerJoin()
 	agentServerState.CompareAndSwap(uint32(agentServerRunningAttached), uint32(agentServerJoined))
 }
 
-// AgentServerDetach detaches the service thread to run independently.
-// It allows the service to run in the background without blocking.
-// The current native API cannot confirm when a detached thread has exited,
-// so Release remains blocked after this call.
+// AgentServerDetach detaches the service thread started by AgentServerStartUp.
+// StartUp already runs the service in a separate thread; Detach gives up the
+// ability to wait for that thread to exit. Use it only when the service is
+// intended to last for the lifetime of the process and Release is not needed.
+// After Detach, AgentServerJoin cannot wait for the thread, and
+// AgentServerShutDown cannot confirm its exit. Release returns ErrLibraryInUse
+// for the rest of the process, even after Join or ShutDown.
 func AgentServerDetach() {
 	agentServerState.CompareAndSwap(uint32(agentServerRunningAttached), uint32(agentServerDetached))
 	native.MaaAgentServerDetach()

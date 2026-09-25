@@ -237,8 +237,9 @@ func IsInited() bool {
 // Release releases the dynamic library resources of the MAA framework and unregisters its related functions.
 // It returns ErrLibraryInUse while native objects remain alive or the Agent
 // Server has not been shut down. After AgentServerDetach, Release remains
-// blocked for the rest of the process because native thread exit cannot be
-// confirmed. Calls to Init and Release are serialized.
+// blocked for the rest of the process, even after AgentServerJoin or
+// AgentServerShutDown, because native thread exit cannot be confirmed.
+// Calls to Init and Release are serialized.
 // Other MAA-related functions must not run concurrently with Init or Release.
 // If unloading fails, IsInited becomes false; call Release again to retry
 // cleanup before calling Init.
