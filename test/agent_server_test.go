@@ -291,6 +291,10 @@ func runAgentServerHelper(t *testing.T) {
 	require.NoError(t, os.WriteFile(os.Getenv("MAA_AGENT_TEST_READY"), []byte("ready"), 0600))
 	maa.AgentServerJoin()
 	maa.AgentServerShutDown()
+	// Join returns only after the client disconnected, and ShutDown has now
+	// completed the native shutdown sequence, so Release must unload cleanly.
+	require.NoError(t, maa.Release(), "Release must succeed after the agent server is shut down")
+	require.False(t, maa.IsInited())
 	data, err := json.Marshal(report)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(os.Getenv("MAA_AGENT_TEST_REPORT"), data, 0600))

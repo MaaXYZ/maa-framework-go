@@ -19,6 +19,12 @@ import (
 // root test runtime; a dedicated child process keeps sibling tests unaffected.
 const lifecycleHelperEnv = "MAA_LIFECYCLE_TEST_HELPER"
 
+// lifecycleDetachHelperEnv marks a child invocation that runs the detached
+// Agent Server scenario. Detach leaves a terminal state that Release can never
+// clear, so the scenario needs its own process instead of joining the shared
+// lifecycle helper.
+const lifecycleDetachHelperEnv = "MAA_LIFECYCLE_DETACH_TEST_HELPER"
+
 // TestLifecycleInitReleaseBoundaries verifies the Init/Release contract from an
 // already-initialized process. TestMain initializes the framework in the child
 // before the scenario body starts, and every transition runs sequentially.
@@ -32,6 +38,24 @@ func TestLifecycleInitReleaseBoundaries(t *testing.T) {
 	cmd.Env = append(os.Environ(), lifecycleHelperEnv+"=1")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("lifecycle helper process failed: %v\n%s", err, output)
+	}
+}
+
+// TestLifecycleDetachedAgentServerKeepsReleaseBlocked verifies that Release
+// stays blocked after a detached Agent Server is shut down: the native API
+// cannot confirm when the detached thread has exited, so the guard is terminal
+// for the process. Native start/detach/shutdown calls are stubbed because a
+// real detached ShutDown may race with ZMQ cleanup.
+func TestLifecycleDetachedAgentServerKeepsReleaseBlocked(t *testing.T) {
+	if os.Getenv(lifecycleDetachHelperEnv) == "1" {
+		runLifecycleDetachHelper(t)
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=^TestLifecycleDetachedAgentServerKeepsReleaseBlocked$", "-test.count=1")
+	cmd.Env = append(os.Environ(), lifecycleDetachHelperEnv+"=1")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("lifecycle detach helper process failed: %v\n%s", err, output)
 	}
 }
 
@@ -84,18 +108,29 @@ func runLifecycleHelper(t *testing.T) {
 	require.True(t, IsInited())
 
 	// A running Agent Server also blocks Release until it is shut down. The
-	// native start/shutdown calls are stubbed so the child stays isolated.
-	oldStartUp, oldShutDown := native.MaaAgentServerStartUp, native.MaaAgentServerShutDown
+	// native start/join/shutdown calls are stubbed so the child stays isolated.
+	oldStartUp, oldJoin, oldShutDown := native.MaaAgentServerStartUp, native.MaaAgentServerJoin, native.MaaAgentServerShutDown
+	joinCalls := 0
 	native.MaaAgentServerStartUp = func(string) bool { return true }
+	native.MaaAgentServerJoin = func() { joinCalls++ }
 	native.MaaAgentServerShutDown = func() {}
 
 	require.NoError(t, AgentServerStartUp("lifecycle-test"))
 	require.ErrorIs(t, Release(), ErrLibraryInUse)
 	require.True(t, IsInited(), "failed Release must leave the framework initialized")
 
+	// A normal Join only confirms the service thread ended; the native
+	// shutdown sequence is still pending, so Release stays blocked.
+	AgentServerJoin()
+	require.Equal(t, 1, joinCalls)
+	require.ErrorIs(t, Release(), ErrLibraryInUse)
+	require.True(t, IsInited(), "failed Release must leave the framework initialized")
+
+	// An explicit ShutDown is required before Release can unload.
 	AgentServerShutDown()
 	// Restore the real symbols while the libraries are still loaded.
 	native.MaaAgentServerStartUp = oldStartUp
+	native.MaaAgentServerJoin = oldJoin
 	native.MaaAgentServerShutDown = oldShutDown
 
 	require.NoError(t, Release())
@@ -116,5 +151,49 @@ func runLifecycleHelper(t *testing.T) {
 	shutdownNativeLibraries = actualShutdown
 	require.NoError(t, Release())
 	require.False(t, IsInited())
+	require.Zero(t, liveNativeObjects.Load())
+}
+
+// runLifecycleDetachHelper drives StartUp -> Detach -> ShutDown -> Release in
+// the child process. TestMain has already initialized the framework. Detach is
+// terminal for the Release guard, so nothing after the failed Release runs in
+// this process.
+func runLifecycleDetachHelper(t *testing.T) {
+	t.Helper()
+
+	require.True(t, IsInited(), "TestMain did not leave the framework initialized")
+	require.Zero(t, liveNativeObjects.Load(), "TestMain leaked native objects")
+
+	// Stub the native symbols: a real detached ShutDown must never run here
+	// because the native API cannot join the detached thread.
+	oldStartUp, oldDetach, oldShutDown := native.MaaAgentServerStartUp, native.MaaAgentServerDetach, native.MaaAgentServerShutDown
+	native.MaaAgentServerStartUp = func(string) bool { return true }
+	native.MaaAgentServerDetach = func() {}
+	native.MaaAgentServerShutDown = func() {}
+	defer func() {
+		native.MaaAgentServerStartUp = oldStartUp
+		native.MaaAgentServerDetach = oldDetach
+		native.MaaAgentServerShutDown = oldShutDown
+	}()
+
+	// Intercept library unloading so a broken guard cannot dlclose code that a
+	// detached native thread may still be executing.
+	unloadAttempted := false
+	actualShutdown := shutdownNativeLibraries
+	shutdownNativeLibraries = func() error {
+		unloadAttempted = true
+		return nil
+	}
+	defer func() { shutdownNativeLibraries = actualShutdown }()
+
+	require.NoError(t, AgentServerStartUp("lifecycle-detach-test"))
+	AgentServerDetach()
+	AgentServerShutDown()
+
+	require.ErrorIs(t, Release(), ErrLibraryInUse,
+		"Release must stay blocked while the Agent Server state is detached")
+	require.False(t, unloadAttempted,
+		"shutdownNativeLibraries must not run while the Agent Server is detached")
+	require.True(t, IsInited(), "failed Release must leave the framework initialized")
 	require.Zero(t, liveNativeObjects.Load())
 }

@@ -8,7 +8,18 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 )
 
-var agentServerRunning atomic.Bool
+type agentServerPhase uint32
+
+const (
+	agentServerStopped agentServerPhase = iota
+	agentServerRunningAttached
+	agentServerJoined
+	agentServerDetached
+)
+
+// A detached native thread cannot be joined or observed through the current
+// MaaAgentServer API, so agentServerDetached is a terminal state for Release.
+var agentServerState atomic.Uint32
 
 // AgentServerRegisterCustomRecognition registers a custom recognition runner.
 // The name should match the custom_recognition field in Pipeline.
@@ -102,25 +113,35 @@ func AgentServerStartUp(identifier string) error {
 	if !native.MaaAgentServerStartUp(identifier) {
 		return fmt.Errorf("failed to start agent server: %s", identifier)
 	}
-	agentServerRunning.Store(true)
+	if agentServerState.Load() != uint32(agentServerDetached) {
+		agentServerState.Store(uint32(agentServerRunningAttached))
+	}
 	return nil
 }
 
 // AgentServerShutDown shuts down the MAA Agent Server.
+// After AgentServerDetach, the native call cannot wait for the service thread
+// and may race with its socket use. It does not make Release safe.
 func AgentServerShutDown() {
 	native.MaaAgentServerShutDown()
-	agentServerRunning.Store(false)
+	if agentServerState.Load() != uint32(agentServerDetached) {
+		agentServerState.Store(uint32(agentServerStopped))
+	}
 }
 
-// AgentServerJoin waits for the agent service to end.
-// It blocks the current goroutine until the service ends.
+// AgentServerJoin waits for an attached agent service thread to end.
+// After AgentServerDetach, the native call returns without waiting.
+// AgentServerShutDown must still be called before Release in the attached case.
 func AgentServerJoin() {
 	native.MaaAgentServerJoin()
-	agentServerRunning.Store(false)
+	agentServerState.CompareAndSwap(uint32(agentServerRunningAttached), uint32(agentServerJoined))
 }
 
 // AgentServerDetach detaches the service thread to run independently.
 // It allows the service to run in the background without blocking.
+// The current native API cannot confirm when a detached thread has exited,
+// so Release remains blocked after this call.
 func AgentServerDetach() {
+	agentServerState.CompareAndSwap(uint32(agentServerRunningAttached), uint32(agentServerDetached))
 	native.MaaAgentServerDetach()
 }
