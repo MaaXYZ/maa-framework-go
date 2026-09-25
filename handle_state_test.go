@@ -29,6 +29,7 @@ func TestHandleState_CloseAfterActiveCall(t *testing.T) {
 }
 
 func TestHandleState_ConcurrentCloseWaitsForCleanup(t *testing.T) {
+	before := liveNativeObjects.Load()
 	started := make(chan struct{})
 	release := make(chan struct{})
 	state := newHandleState(123, func(uintptr) {
@@ -40,14 +41,16 @@ func TestHandleState_ConcurrentCloseWaitsForCleanup(t *testing.T) {
 	<-started
 	second := make(chan error, 1)
 	go func() { second <- state.close() }()
+	require.Equal(t, before+1, liveNativeObjects.Load())
 	select {
 	case <-second:
 		t.Fatal("repeat close returned before native cleanup completed")
 	default:
 	}
 	close(release)
-	require.NoError(t, <-first)
 	require.NoError(t, <-second)
+	require.Equal(t, before, liveNativeObjects.Load())
+	require.NoError(t, <-first)
 }
 
 func TestHandleState_ConcurrentClose(t *testing.T) {

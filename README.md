@@ -98,6 +98,10 @@ This binding tracks the latest MaaFramework release, including prereleases; comp
 
 `Release` unloads the libraries only after all native objects are destroyed and the Agent Server is shut down; otherwise it returns `ErrLibraryInUse`.
 
+After `AgentServerDetach`, `Release` remains blocked for the rest of the process: the native API cannot confirm that the detached service thread has exited, even after `AgentServerJoin` or `AgentServerShutDown`. Keep the service thread attached if you need to release the libraries.
+
+Calls to `Init` and `Release` are serialized, but other MAA operations must not run concurrently with either. If unloading fails, `IsInited` becomes false; retry `Release` to finish cleanup before calling `Init` again.
+
 ## 🚀 Quick Start
 
 ```go

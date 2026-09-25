@@ -496,6 +496,67 @@ func TestShutdownWithoutInitialize(t *testing.T) {
 	}
 }
 
+func TestShutdownPartialFailureCanBeRetried(t *testing.T) {
+	dir := t.TempDir()
+	f := newFakePlatform()
+	installFake(t, f)
+	if err := Initialize(dir); err != nil {
+		t.Fatalf("Initialize: %v", err)
+	}
+
+	handles := []uintptr{maaFramework, maaToolkit, maaAgentServer, maaAgentClient}
+	failed := map[uintptr]bool{maaToolkit: true, maaAgentClient: true}
+	unloadLibrary = func(handle uintptr) error {
+		_ = f.close(handle)
+		if failed[handle] {
+			delete(failed, handle)
+			return errFakeClose
+		}
+		return nil
+	}
+	if err := Shutdown(); !errors.Is(err, errFakeClose) {
+		t.Fatalf("Shutdown = %v, want close failure", err)
+	}
+	if initialized {
+		t.Fatal("partial unload left initialization active")
+	}
+	if want := []uintptr{handles[3], handles[2], handles[1], handles[0]}; !reflect.DeepEqual(f.closed, want) {
+		t.Fatalf("close order = %v, want %v", f.closed, want)
+	}
+	if len(loadedLibs) != 2 || loadedLibs[0].handle != handles[1] || loadedLibs[1].handle != handles[3] {
+		t.Fatalf("retained libraries = %v, want toolkit and client in load order", loadedLibs)
+	}
+	if maaFramework != 0 || maaAgentServer != 0 || maaToolkit != handles[1] || maaAgentClient != handles[3] {
+		t.Fatal("partial unload did not preserve only the failed handles")
+	}
+	assertFuncVarsNil(t, frameworkEntries)
+	assertFuncVarsNil(t, agentServerEntries)
+	opened := len(f.opened)
+	if err := Initialize(dir); err == nil {
+		t.Fatal("Initialize succeeded before pending cleanup completed")
+	}
+	if len(f.opened) != opened {
+		t.Fatal("blocked Initialize opened more libraries")
+	}
+
+	f.closed = nil
+	if err := Shutdown(); err != nil {
+		t.Fatalf("retry Shutdown: %v", err)
+	}
+	if want := []uintptr{handles[3], handles[1]}; !reflect.DeepEqual(f.closed, want) {
+		t.Fatalf("retry close order = %v, want only retained handles %v", f.closed, want)
+	}
+	assertAllHandlesCleared(t)
+	assertFuncVarsNil(t, toolkitEntries)
+	assertFuncVarsNil(t, agentClientEntries)
+	if err := Initialize(dir); err != nil {
+		t.Fatalf("Initialize after cleanup: %v", err)
+	}
+	if MaaVersion == nil {
+		t.Fatal("MaaVersion was not registered after recovery")
+	}
+}
+
 func TestInitializeBlockedAfterRetainedHandlesFromFailedLoad(t *testing.T) {
 	dir := t.TempDir()
 	f := newFakePlatform()

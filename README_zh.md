@@ -98,6 +98,10 @@ go get github.com/MaaXYZ/maa-framework-go/v4
 
 仅当所有原生对象均已销毁且 Agent Server 已关闭后，`Release` 才会卸载库；否则返回 `ErrLibraryInUse`。
 
+调用 `AgentServerDetach` 后，`Release` 在进程剩余生命周期内都会被阻止：即使调用了 `AgentServerJoin` 或 `AgentServerShutDown`，原生 API 也无法确认已分离的服务线程是否退出。如果需要释放库，请保持服务线程未分离。
+
+`Init` 和 `Release` 的调用会串行执行，但其他 MAA 操作不得与二者并发执行。若卸载失败，`IsInited` 会变为 false；请重试 `Release` 完成清理后，再调用 `Init`。
+
 ## 🚀 快速开始
 
 ```go

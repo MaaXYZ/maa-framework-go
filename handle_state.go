@@ -209,8 +209,9 @@ func (s *handleState) runCleanup(handle uintptr, cleanup func(uintptr)) {
 	if cleanup == nil {
 		return
 	}
-	defer liveNativeObjects.Add(-1)
 	defer close(s.cleanupDone)
+	// Publish the released lifetime before waking concurrent Destroy callers.
+	defer liveNativeObjects.Add(-1)
 	cleanup(handle)
 }
 

@@ -36,7 +36,8 @@ type LibraryLoadError = native.LibraryLoadError
 type SymbolLookupError = native.SymbolLookupError
 
 // ErrLibraryInUse reports an attempt to release the libraries while native
-// objects remain alive or the Agent Server has not been shut down.
+// objects remain alive, the Agent Server has not been shut down, or its service
+// thread has been detached.
 var ErrLibraryInUse = errors.New("maa: cannot release libraries while native objects or the agent server are active")
 
 // initConfig contains configuration options for initializing the MAA framework.
@@ -235,7 +236,9 @@ func IsInited() bool {
 
 // Release releases the dynamic library resources of the MAA framework and unregisters its related functions.
 // It returns ErrLibraryInUse while native objects remain alive or the Agent
-// Server has not been shut down. Calls to Init and Release are serialized.
+// Server has not been shut down. After AgentServerDetach, Release remains
+// blocked for the rest of the process because native thread exit cannot be
+// confirmed. Calls to Init and Release are serialized.
 // Other MAA-related functions must not run concurrently with Init or Release.
 // If unloading fails, IsInited becomes false; call Release again to retry
 // cleanup before calling Init.
