@@ -2,10 +2,7 @@ package native
 
 import (
 	"fmt"
-	"path/filepath"
 	"runtime"
-
-	"github.com/ebitengine/purego"
 )
 
 var maaAgentClient uintptr
@@ -48,26 +45,6 @@ var agentClientEntries = []Entry{
 	{&MaaAgentClientGetCustomActionList, "MaaAgentClientGetCustomActionList"},
 }
 
-func initAgentClient(libDir string) error {
-	libName := getMaaAgentClientLibrary()
-	libPath := filepath.Join(libDir, libName)
-
-	handle, err := openLibrary(libPath)
-	if err != nil {
-		return &LibraryLoadError{
-			LibraryName: maaAgentClientName,
-			LibraryPath: libPath,
-			Err:         err,
-		}
-	}
-
-	maaAgentClient = handle
-
-	registerAgentClient()
-
-	return nil
-}
-
 func getMaaAgentClientLibrary() string {
 	switch runtime.GOOS {
 	case "darwin":
@@ -78,28 +55,5 @@ func getMaaAgentClientLibrary() string {
 		return "MaaAgentClient.dll"
 	default:
 		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
-	}
-}
-
-func registerAgentClient() {
-	for _, entry := range agentClientEntries {
-		purego.RegisterLibFunc(entry.ptrToFunc, maaAgentClient, entry.name)
-	}
-}
-
-func releaseAgentClient() error {
-	err := unloadLibrary(maaAgentClient)
-	if err != nil {
-		return err
-	}
-
-	unregisterAgentClient()
-
-	return nil
-}
-
-func unregisterAgentClient() {
-	for _, entry := range agentClientEntries {
-		clearFuncVar(entry.ptrToFunc)
 	}
 }

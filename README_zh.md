@@ -90,6 +90,18 @@ go get github.com/MaaXYZ/maa-framework-go/v4
 
 4. **系统库路径** - 将库文件安装到系统库目录
 
+### MaaFramework 兼容性
+
+本绑定跟踪最新的 MaaFramework 版本（包括预发布版），不保证兼容更早的版本。缺少库或符号通常意味着已安装的 MaaFramework 早于本绑定所跟踪的版本。
+
+`Init` 需要来自同一兼容版本的四个库：`MaaFramework`、`MaaToolkit`、`MaaAgentServer` 和 `MaaAgentClient`。缺少库或符号时，`Init` 会返回可诊断的错误，而不会遗留部分初始化状态。
+
+仅当所有原生对象均已销毁且 Agent Server 已关闭后，`Release` 才会卸载库；否则返回 `ErrLibraryInUse`。
+
+调用 `AgentServerDetach` 后，`Release` 在进程剩余生命周期内都会被阻止：即使调用了 `AgentServerJoin` 或 `AgentServerShutDown`，原生 API 也无法确认已分离的服务线程是否退出。如果需要释放库，请保持服务线程未分离。
+
+`Init` 和 `Release` 的调用会串行执行，但其他 MAA 操作不得与二者并发执行。若卸载失败，`IsInited` 会变为 false；请重试 `Release` 完成清理后，再调用 `Init`。
+
 ## 🚀 快速开始
 
 ```go

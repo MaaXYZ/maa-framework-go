@@ -2,11 +2,8 @@ package native
 
 import (
 	"fmt"
-	"path/filepath"
 	"runtime"
 	"unsafe"
-
-	"github.com/ebitengine/purego"
 )
 
 var maaFramework uintptr
@@ -548,26 +545,6 @@ var frameworkEntries = []Entry{
 	{&MaaGlobalLoadPlugin, "MaaGlobalLoadPlugin"},
 }
 
-func initFramework(libDir string) error {
-	libName := getMaaFrameworkLibrary()
-	libPath := filepath.Join(libDir, libName)
-
-	handle, err := openLibrary(libPath)
-	if err != nil {
-		return &LibraryLoadError{
-			LibraryName: maaFrameworkName,
-			LibraryPath: libPath,
-			Err:         err,
-		}
-	}
-
-	maaFramework = handle
-
-	registerFramework()
-
-	return nil
-}
-
 func getMaaFrameworkLibrary() string {
 	switch runtime.GOOS {
 	case "darwin":
@@ -578,28 +555,5 @@ func getMaaFrameworkLibrary() string {
 		return "MaaFramework.dll"
 	default:
 		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
-	}
-}
-
-func registerFramework() {
-	for _, entry := range frameworkEntries {
-		purego.RegisterLibFunc(entry.ptrToFunc, maaFramework, entry.name)
-	}
-}
-
-func releaseFramework() error {
-	err := unloadLibrary(maaFramework)
-	if err != nil {
-		return err
-	}
-
-	unregisterFramework()
-
-	return nil
-}
-
-func unregisterFramework() {
-	for _, entry := range frameworkEntries {
-		clearFuncVar(entry.ptrToFunc)
 	}
 }
