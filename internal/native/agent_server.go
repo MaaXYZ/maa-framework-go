@@ -40,7 +40,7 @@ func getMaaAgentServerLibrary() string {
 	switch runtime.GOOS {
 	case "darwin":
 		return "libMaaAgentServer.dylib"
-	case "linux":
+	case "linux", "android":
 		return "libMaaAgentServer.so"
 	case "windows":
 		return "MaaAgentServer.dll"
