@@ -44,12 +44,16 @@
 |---------|-------------|
 | 提交方法 | Tasker：`PostTask`, `PostRecognition`, `PostAction`, `PostStop`；Controller：`PostConnect`, `PostClick`, `PostSwipe`, `PostScreencap` 等全部 `Post*`；Resource：`PostBundle`, `PostOcrModel`, `PostPipeline`, `PostImage` |
 
-**提交错误语义**：所有 `Post*` 方法统一返回 `(Job, error)`。提交失败（如 JSON 序列化失败、对象已关闭）不会调用原生提交接口，而是返回一个终态失败的 Job 和非 nil 的 error：
+**提交错误语义**：所有 `Post*` 方法统一返回 `(Job, error)`。提交失败分为两类：
+- wrapper 预检失败（如 JSON 序列化失败、对象已关闭）：不会调用原生提交接口，直接返回一个终态失败的 Job 和非 nil 的 error
+- 原生提交接口返回 invalid ID：原生接口已被调用但拒绝了本次提交，Go 侧将其转换为同样的终态失败 Job 和 error
+
+两种失败的共同行为：
 - 返回的 `error` 非 nil 当且仅当提交失败
 - 忽略 error 的调用方在 `Status()` / `Wait()` 上得到失败终态，而不是一个永远 pending 的 Job
 - `Error()` 保留为镜像访问器，读取的是同一个提交错误
 
-Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `WaitFreezes` 的参数序列化失败同样返回错误且不提交。
+Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `WaitFreezes` 的参数序列化失败同样返回错误，此时不会提交到原生层。
 
 #### TaskJob
 
@@ -313,7 +317,7 @@ err := ctx.OverrideNext("Entry", []maa.NextItem{
 #### 任务创建错误处理
 
 ```go
-// 新 API：提交失败直接返回 error，且不会真正提交任务
+// 新 API：提交失败直接返回 error；wrapper 预检失败时不会提交到原生层
 taskJob, err := tasker.PostTask("entry", invalidOverride)
 if err != nil {
     // 处理任务提交错误（如 JSON 序列化失败）；taskJob 为终态失败的 Job
