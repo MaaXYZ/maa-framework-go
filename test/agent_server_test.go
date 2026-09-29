@@ -145,7 +145,9 @@ func TestAgentServer_CallbackRoundTrip(t *testing.T) {
 
 	ctrl, err = maa.NewBlankController()
 	require.NoError(t, err)
-	require.True(t, ctrl.PostConnect().Wait().Success())
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	require.True(t, connectJob.Wait().Success())
 	tasker, err = maa.NewTasker()
 	require.NoError(t, err)
 	require.NoError(t, tasker.BindResource(res))

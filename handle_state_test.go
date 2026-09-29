@@ -203,7 +203,9 @@ func TestTasker_BorrowedBindingsAndRebinding(t *testing.T) {
 	require.NoError(t, ctrl2.Destroy())
 	require.NoError(t, res2.Destroy())
 	require.NoError(t, ctrl2.Destroy())
-	require.ErrorIs(t, res2.PostBundle("unused").Error(), ErrClosed)
+	bundleJob, err := res2.PostBundle("unused")
+	require.ErrorIs(t, err, ErrClosed)
+	require.ErrorIs(t, bundleJob.Error(), ErrClosed)
 }
 
 func TestTasker_RejectsBindingsWhileRunning(t *testing.T) {

@@ -364,21 +364,27 @@ func requireRecognitionDetailMatchesCombinedRaw(t *testing.T, detail *Recognitio
 func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	require.True(t, ctrl.PostScreencap().Wait().Success())
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	require.True(t, screencapJob.Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
+	bundleJob, err := res.PostBundle(resDir)
+	require.NoError(t, err)
+	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
 
 	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomRecognition("TestRecognitionDetail_Custom", &testRecognitionDetailCustomRec{})
+	err = res.RegisterCustomRecognition("TestRecognitionDetail_Custom", &testRecognitionDetailCustomRec{})
 	require.NoError(t, err)
 
 	resultsCh := make(chan testRecognitionDetailResult, 1)

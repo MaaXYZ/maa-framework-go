@@ -41,7 +41,12 @@ func main() {
 		os.Exit(1)
 	}
 	defer ctrl.Destroy()
-	ctrl.PostConnect().Wait()
+	connectJob, err := ctrl.PostConnect()
+	if err != nil {
+		fmt.Println("Failed to post connect:", err)
+		os.Exit(1)
+	}
+	connectJob.Wait()
 	tasker.BindController(ctrl)
 
 	res, err := maa.NewResource()
@@ -50,7 +55,12 @@ func main() {
 		os.Exit(1)
 	}
 	defer res.Destroy()
-	res.PostBundle("./resource").Wait()
+	bundleJob, err := res.PostBundle("./resource")
+	if err != nil {
+		fmt.Println("Failed to post bundle:", err)
+		os.Exit(1)
+	}
+	bundleJob.Wait()
 	tasker.BindResource(res)
 	defer tasker.Destroy()
 	if !tasker.Initialized() {

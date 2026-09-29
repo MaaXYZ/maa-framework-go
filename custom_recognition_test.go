@@ -30,7 +30,9 @@ func TestCustomRecognition_MissResults(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := createBlankController(t)
 			defer ctrl.Destroy()
-			require.True(t, ctrl.PostConnect().Wait().Success())
+			connectJob, err := ctrl.PostConnect()
+			require.NoError(t, err)
+			require.True(t, connectJob.Wait().Success())
 
 			res := createResource(t)
 			defer res.Destroy()

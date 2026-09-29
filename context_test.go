@@ -28,7 +28,9 @@ func (t *testContextRunTaskAct) Run(ctx *Context, _ *CustomActionArg) bool {
 func TestContext_RunTask(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -38,7 +40,7 @@ func TestContext_RunTask(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_RunPipelineAct", &testContextRunTaskAct{t})
+	err = res.RegisterCustomAction("TestContext_RunPipelineAct", &testContextRunTaskAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -77,7 +79,9 @@ func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) boo
 func TestContext_RunRecognition(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -87,7 +91,7 @@ func TestContext_RunRecognition(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_RunRecognitionAct", &testContextRunRecognitionAct{t})
+	err = res.RegisterCustomAction("TestContext_RunRecognitionAct", &testContextRunRecognitionAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -128,7 +132,9 @@ func (a testContextRunActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
 func TestContext_RunAction(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -138,7 +144,7 @@ func TestContext_RunAction(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_RunActionAct", &testContextRunActionAct{t})
+	err = res.RegisterCustomAction("TestContext_RunActionAct", &testContextRunActionAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -187,7 +193,9 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 func TestContext_OverridePipeline(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -197,7 +205,7 @@ func TestContext_OverridePipeline(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_OverridePipelineAct", &testContextOverriderPipelineAct{t})
+	err = res.RegisterCustomAction("TestContext_OverridePipelineAct", &testContextOverriderPipelineAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -242,7 +250,9 @@ func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool 
 func TestContext_OverrideNext(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -252,7 +262,7 @@ func TestContext_OverrideNext(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_OverrideNextAct", &testContextOverrideNextAct{t})
+	err = res.RegisterCustomAction("TestContext_OverrideNextAct", &testContextOverrideNextAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -1341,7 +1351,9 @@ func TestContext_GetNode(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
-	connected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	connected := connectJob.Wait().Success()
 	require.True(t, connected)
 
 	res := createResource(t)
@@ -1379,7 +1391,9 @@ func (t *testContextGetTaskJobAct) Run(ctx *Context, _ *CustomActionArg) bool {
 func TestContext_GetTaskJob(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -1389,7 +1403,7 @@ func TestContext_GetTaskJob(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_GetTaskJobAct", &testContextGetTaskJobAct{t})
+	err = res.RegisterCustomAction("TestContext_GetTaskJobAct", &testContextGetTaskJobAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -1416,7 +1430,9 @@ func (t testContextGetTaskerAct) Run(ctx *Context, _ *CustomActionArg) bool {
 func TestContext_GetTasker(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -1426,7 +1442,7 @@ func TestContext_GetTasker(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextGetTaskerAct{t})
+	err = res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextGetTaskerAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -1453,7 +1469,9 @@ func (t testContextCloneAct) Run(ctx *Context, _ *CustomActionArg) bool {
 func TestContext_Clone(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -1463,7 +1481,7 @@ func TestContext_Clone(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextCloneAct{t})
+	err = res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextCloneAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -1505,9 +1523,13 @@ func (a *testContextRunRecognitionDirectAct) Run(ctx *Context, _ *CustomActionAr
 func TestContext_RunRecognitionDirect(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	require.True(t, ctrl.PostScreencap().Wait().Success())
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	require.True(t, screencapJob.Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -1517,7 +1539,7 @@ func TestContext_RunRecognitionDirect(t *testing.T) {
 	taskerBind(t, tasker, ctrl, res)
 
 	resultsCh := make(chan testContextRunRecognitionDirectResult, 1)
-	err := res.RegisterCustomAction("TestContext_RunRecognitionDirectAct", &testContextRunRecognitionDirectAct{resultsCh})
+	err = res.RegisterCustomAction("TestContext_RunRecognitionDirectAct", &testContextRunRecognitionDirectAct{resultsCh})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -1563,9 +1585,13 @@ func (a *testContextRunActionDirectAct) Run(ctx *Context, arg *CustomActionArg) 
 func TestContext_RunActionDirect(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	require.True(t, ctrl.PostScreencap().Wait().Success())
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	require.True(t, screencapJob.Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -1575,7 +1601,7 @@ func TestContext_RunActionDirect(t *testing.T) {
 	taskerBind(t, tasker, ctrl, res)
 
 	resultsCh := make(chan testContextRunActionDirectResult, 1)
-	err := res.RegisterCustomAction("TestContext_RunActionDirectAct", &testContextRunActionDirectAct{resultsCh})
+	err = res.RegisterCustomAction("TestContext_RunActionDirectAct", &testContextRunActionDirectAct{resultsCh})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()

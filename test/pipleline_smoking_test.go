@@ -14,7 +14,9 @@ func TestPipelineSmoking(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res, err := maa.NewResource()
@@ -22,7 +24,9 @@ func TestPipelineSmoking(t *testing.T) {
 	require.NotNil(t, res)
 	defer res.Destroy()
 	resDir := "./data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
+	bundleJob, err := res.PostBundle(resDir)
+	require.NoError(t, err)
+	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
 
 	tasker, err := maa.NewTasker()

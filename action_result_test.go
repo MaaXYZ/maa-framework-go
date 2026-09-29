@@ -295,9 +295,13 @@ func requireActionResultMatchesRaw(t *testing.T, detail *ActionDetail) {
 func TestActionDetail_ResultMatchesRaw(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	require.True(t, ctrl.PostScreencap().Wait().Success())
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	require.True(t, screencapJob.Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -307,7 +311,7 @@ func TestActionDetail_ResultMatchesRaw(t *testing.T) {
 	taskerBind(t, tasker, ctrl, res)
 
 	resultsCh := make(chan []testActionDetailResult, 1)
-	err := res.RegisterCustomAction("TestActionDetail_ResultMatchesRawAct", &testActionDetailFromActionAct{resultsCh})
+	err = res.RegisterCustomAction("TestActionDetail_ResultMatchesRawAct", &testActionDetailFromActionAct{resultsCh})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
