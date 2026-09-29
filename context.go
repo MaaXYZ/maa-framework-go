@@ -34,27 +34,27 @@ func isNilOverride(v any) bool {
 	}
 }
 
-func (ctx *Context) handleOverride(override ...any) string {
+func (ctx *Context) handleOverride(override ...any) (string, error) {
 	if len(override) == 0 {
-		return "{}"
+		return "{}", nil
 	}
 
 	overrideValue := override[0]
 	if isNilOverride(overrideValue) {
-		return "{}"
+		return "{}", nil
 	}
 
 	switch v := overrideValue.(type) {
 	case string:
-		return v
+		return v, nil
 	case []byte:
-		return string(v)
+		return string(v), nil
 	default:
 		jsonBytes, err := marshalJSON(v)
 		if err != nil {
-			return "{}"
+			return "", fmt.Errorf("failed to marshal override: %w", err)
 		}
-		return string(jsonBytes)
+		return string(jsonBytes), nil
 	}
 }
 
@@ -75,7 +75,8 @@ func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {
 // a JSON string or any data type that can be marshaled to JSON. The override
 // must be a JSON object (map). If the override value is nil, an empty JSON
 // object will be used. If multiple overrides are provided, only the first one
-// will be used.
+// will be used. If the override value cannot be marshaled to JSON, an error
+// is returned and the task is not run.
 //
 // Example 1:
 //
@@ -104,7 +105,11 @@ func (ctx *Context) RunTask(entry string, override ...any) (*TaskDetail, error) 
 	}
 	defer done()
 
-	return ctx.runTask(entry, ctx.handleOverride(override...))
+	overrideStr, err := ctx.handleOverride(override...)
+	if err != nil {
+		return nil, err
+	}
+	return ctx.runTask(entry, overrideStr)
 }
 
 func (ctx *Context) runRecognition(
@@ -134,7 +139,8 @@ func (ctx *Context) runRecognition(
 // a JSON string or any data type that can be marshaled to JSON. The override
 // must be a JSON object (map). If the override value is nil, an empty JSON
 // object will be used. If multiple overrides are provided, only the first one
-// will be used.
+// will be used. If the override value cannot be marshaled to JSON, an error
+// is returned and the recognition is not run.
 //
 // Example 1:
 //
@@ -167,7 +173,11 @@ func (ctx *Context) RunRecognition(
 	}
 	defer done()
 
-	return ctx.runRecognition(entry, ctx.handleOverride(override...), img)
+	overrideStr, err := ctx.handleOverride(override...)
+	if err != nil {
+		return nil, err
+	}
+	return ctx.runRecognition(entry, overrideStr, img)
 }
 
 func (ctx *Context) runAction(
@@ -202,7 +212,8 @@ func (ctx *Context) runAction(
 // a JSON string or any data type that can be marshaled to JSON. The override
 // must be a JSON object (map). If the override value is nil, an empty JSON
 // object will be used. If multiple overrides are provided, only the first one
-// will be used.
+// will be used. If the override value cannot be marshaled to JSON, an error
+// is returned and the action is not run.
 // recognitionDetail should be a JSON string for the previous recognition
 // detail (e.g., RecognitionDetail.DetailJson). Pass "" if not available.
 //
@@ -238,9 +249,13 @@ func (ctx *Context) RunAction(
 	}
 	defer done()
 
+	overrideStr, err := ctx.handleOverride(override...)
+	if err != nil {
+		return nil, err
+	}
 	return ctx.runAction(
 		entry,
-		ctx.handleOverride(override...),
+		overrideStr,
 		box,
 		recognitionDetail,
 	)
@@ -543,6 +558,7 @@ func (ctx *Context) getTaskerActive() *Tasker {
 // waitFreezesParam is optional; nil uses default params. duration and waitFreezesParam.Time are mutually exclusive;
 // one of them must be non-zero.
 // Returns nil if the screen stabilized within the timeout; returns an error on timeout or failure.
+// If waitFreezesParam cannot be marshaled to JSON, an error is returned and nothing is waited.
 func (ctx *Context) WaitFreezes(
 	duration time.Duration,
 	box *Rect,
@@ -562,11 +578,16 @@ func (ctx *Context) WaitFreezes(
 		boxHandle = rectBuf.Handle()
 	}
 
+	overrideStr, err := ctx.handleOverride(waitFreezesParam)
+	if err != nil {
+		return err
+	}
+
 	ok := native.MaaContextWaitFreezes(
 		ctx.handle,
 		uint64(duration.Milliseconds()),
 		boxHandle,
-		ctx.handleOverride(waitFreezesParam),
+		overrideStr,
 	)
 	if !ok {
 		return errors.New("wait freezes timeout or failed")

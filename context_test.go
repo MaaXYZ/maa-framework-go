@@ -287,6 +287,7 @@ func TestContext_handleOverride(t *testing.T) {
 		name     string
 		override []any
 		want     string
+		wantErr  bool
 	}{
 		{
 			name:     "no override",
@@ -324,17 +325,23 @@ func TestContext_handleOverride(t *testing.T) {
 			want:     `{"A":1}`,
 		},
 		{
-			name: "marshal error fallback",
+			name: "marshal error",
 			override: []any{map[string]any{
 				"f": func() {},
 			}},
-			want: "{}",
+			wantErr: true,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ctx.handleOverride(tc.override...)
+			got, err := ctx.handleOverride(tc.override...)
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Empty(t, got)
+				return
+			}
+			require.NoError(t, err)
 			assert.Equal(t, tc.want, got)
 		})
 	}
