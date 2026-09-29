@@ -59,12 +59,17 @@ func main() {
 
 	client.Connect()
 
-	tasker.PostTask("Test", map[string]any{
+	taskJob, err := tasker.PostTask("Test", map[string]any{
 		"Test": map[string]any{
 			"action":        "Custom",
 			"custom_action": "TestAgentServer",
 		},
-	}).Wait()
+	})
+	if err != nil {
+		fmt.Println("Failed to post task:", err)
+		os.Exit(1)
+	}
+	taskJob.Wait()
 
 	client.Disconnect()
 

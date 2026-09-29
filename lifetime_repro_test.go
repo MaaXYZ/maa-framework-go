@@ -34,7 +34,8 @@ func TestTasker_DestroyRejectsPendingJobDuringCallbackSetup(t *testing.T) {
 		return tasker.handle
 	}
 
-	job := tasker.PostTask("entry")
+	job, err := tasker.PostTask("entry")
+	require.NoError(t, err)
 	require.NoError(t, job.Error())
 	callback := make(chan *Context, 1)
 	go func() { callback <- newCallbackContext(123) }()

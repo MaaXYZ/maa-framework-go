@@ -59,7 +59,9 @@ func TestCustomRecognition_MissResults(t *testing.T) {
 				SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "MissWithDetail"})).
 				SetTimeout(0)
 			pipeline.AddNode(node)
-			tasker.PostTask(node.Name, pipeline).Wait()
+			taskJob, err := tasker.PostTask(node.Name, pipeline)
+			require.NoError(t, err)
+			taskJob.Wait()
 			require.True(t, called.Load(), "custom recognizer was not called")
 
 			select {

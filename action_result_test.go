@@ -315,8 +315,9 @@ func TestActionDetail_ResultMatchesRaw(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestActionDetail_ResultMatchesRawAct"}))
 	pipeline.AddNode(testNode)
 
-	got := tasker.PostTask(testNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 
 	select {

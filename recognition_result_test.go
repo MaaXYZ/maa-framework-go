@@ -391,8 +391,9 @@ func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestRecognitionDetail_ResultMatchesRawAct"}))
 	pipeline.AddNode(testNode)
 
-	got := tasker.PostTask(testNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 
 	select {

@@ -58,7 +58,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	detail, err := tasker.PostTask("Startup").Wait().GetDetail()
+	taskJob, err := tasker.PostTask("Startup")
+	if err != nil {
+		fmt.Println("Failed to post task:", err)
+		os.Exit(1)
+	}
+	detail, err := taskJob.Wait().GetDetail()
 	if err != nil {
 		fmt.Println("Failed to get task detail:", err)
 		os.Exit(1)

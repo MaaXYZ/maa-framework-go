@@ -84,7 +84,8 @@ func TestTasker_PostPipeline(t *testing.T) {
 		}))
 	pipeline.AddNode(testTasker_PostPipelineNode)
 
-	taskJob := tasker.PostTask(testTasker_PostPipelineNode.Name, pipeline)
+	taskJob, err := tasker.PostTask(testTasker_PostPipelineNode.Name, pipeline)
+	require.NoError(t, err)
 	got := taskJob.Wait().Success()
 	require.True(t, got)
 	detail, err := taskJob.GetDetail()
@@ -113,7 +114,8 @@ func TestTasker_GetTaskDetail_NodesAndGetNodeDetail(t *testing.T) {
 		}))
 	pipeline.AddNode(testNode)
 
-	taskJob := tasker.PostTask(testNode.Name, pipeline)
+	taskJob, err := tasker.PostTask(testNode.Name, pipeline)
+	require.NoError(t, err)
 	require.True(t, taskJob.Wait().Success())
 
 	detail, err := taskJob.GetDetail()
@@ -140,6 +142,7 @@ func TestTasker_handleOverride(t *testing.T) {
 		name     string
 		override []any
 		want     string
+		wantErr  bool
 	}{
 		{
 			name:     "no override",
@@ -177,28 +180,36 @@ func TestTasker_handleOverride(t *testing.T) {
 			want:     `{"A":1}`,
 		},
 		{
-			name: "marshal error fallback",
+			name: "marshal error is not posted",
 			override: []any{map[string]any{
 				"f": func() {},
 			}},
-			want: "{}",
+			wantErr: true,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			called := false
+			posted := false
 			var gotEntry, gotOverride string
-			postFunc := func(entry, override string) *TaskJob {
-				called = true
+			postFunc := func(entry, override string) (*TaskJob, error) {
+				posted = true
 				gotEntry = entry
 				gotOverride = override
-				return &TaskJob{}
+				return &TaskJob{}, nil
 			}
 
-			taskJob := tasker.handleOverride("Entry", postFunc, tc.override...)
+			taskJob, err := tasker.handleOverride("Entry", postFunc, tc.override...)
 			require.NotNil(t, taskJob)
-			require.True(t, called)
+			if tc.wantErr {
+				require.Error(t, err)
+				require.False(t, posted)
+				require.ErrorIs(t, taskJob.Error(), err)
+				require.True(t, taskJob.Failure())
+				return
+			}
+			require.NoError(t, err)
+			require.True(t, posted)
 			require.Equal(t, "Entry", gotEntry)
 			require.Equal(t, tc.want, gotOverride)
 		})
@@ -235,7 +246,9 @@ func TestTasker_PostStop(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := tasker.PostStop().Wait().Success()
+	stopJob, err := tasker.PostStop()
+	require.NoError(t, err)
+	ok := stopJob.Wait().Success()
 	require.True(t, ok)
 }
 
@@ -299,13 +312,16 @@ func TestTasker_GetLatestNode(t *testing.T) {
 	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
-	job := tasker.PostTask("Wilderness")
+	job, err := tasker.PostTask("Wilderness")
+	require.NoError(t, err)
 	require.NotNil(t, job)
 	time.Sleep(2 * time.Second)
 	detail, err := tasker.GetLatestNode("Wilderness")
 	require.NoError(t, err)
 	t.Log(detail)
-	ok := tasker.PostStop().Wait().Success()
+	stopJob, err := tasker.PostStop()
+	require.NoError(t, err)
+	ok := stopJob.Wait().Success()
 	require.True(t, ok)
 }
 
@@ -331,7 +347,8 @@ func TestTasker_OverridePipeline(t *testing.T) {
 	pipeline.AddNode(testNode)
 
 	// Start a task
-	taskJob := tasker.PostTask(testNode.Name, pipeline)
+	taskJob, err := tasker.PostTask(testNode.Name, pipeline)
+	require.NoError(t, err)
 
 	// Override the pipeline while task is running
 	overridePipeline := NewPipeline()

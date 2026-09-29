@@ -181,7 +181,7 @@ func (t *Tasker) Initialized() bool {
 	return native.MaaTaskerInited(t.handle)
 }
 
-func (t *Tasker) handleOverride(entry string, postFunc func(entry, override string) *TaskJob, override ...any) *TaskJob {
+func (t *Tasker) handleOverride(entry string, postFunc func(entry, override string) (*TaskJob, error), override ...any) (*TaskJob, error) {
 	if len(override) == 0 {
 		return postFunc(entry, "{}")
 	}
@@ -199,31 +199,37 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 	default:
 		jsonBytes, err := marshalJSON(v)
 		if err != nil {
-			return postFunc(entry, "{}")
+			return failTaskJob(fmt.Errorf("failed to marshal task override: %w", err))
 		}
 		return postFunc(entry, string(jsonBytes))
 	}
 }
 
-func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
+func (t *Tasker) postTask(entry, pipelineOverride string) (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
-		return newFailedTaskJob(useErr)
+		return failTaskJob(useErr)
 	}
 	defer done()
 
 	t.state.postMu.Lock()
 	id := native.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
 	t.state.postMu.Unlock()
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
+	if id == 0 {
+		return failTaskJob(errors.New("failed to post task"))
+	}
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState), nil
 }
 
 // PostTask posts a task to the tasker asynchronously.
 // The optional override can be a JSON string, []byte, or any JSON-marshalable value.
-func (t *Tasker) PostTask(entry string, override ...any) *TaskJob {
+// It returns an error and a terminal-failed job when the task cannot be
+// submitted, for example when the override cannot be marshaled or the tasker
+// is closed; the task is not posted to the native layer in that case.
+func (t *Tasker) PostTask(entry string, override ...any) (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
-		return newFailedTaskJob(useErr)
+		return failTaskJob(useErr)
 	}
 	defer done()
 
@@ -231,38 +237,47 @@ func (t *Tasker) PostTask(entry string, override ...any) *TaskJob {
 }
 
 // PostRecognition posts a recognition to the tasker asynchronously.
-func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionParam, img image.Image) *TaskJob {
+// It returns an error and a terminal-failed job when the recognition cannot
+// be submitted, for example when the image or recognition parameter is
+// invalid or the tasker is closed; the recognition is not posted to the
+// native layer in that case.
+func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionParam, img image.Image) (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
-		return newFailedTaskJob(useErr)
+		return failTaskJob(useErr)
 	}
 	defer done()
 
 	imgBuf := buffer.NewImageBuffer()
 	defer imgBuf.Destroy()
 	if err := imgBuf.Set(img); err != nil {
-		return newTaskJob(0, nil, nil, nil, nil,
-			fmt.Errorf("failed to set recognition image: %w", err))
+		return failTaskJob(fmt.Errorf("failed to set recognition image: %w", err))
 	}
 
 	recParamJSON, err := marshalJSON(recParam)
 	if err != nil {
-		return newTaskJob(0, nil, nil, nil, nil,
-			fmt.Errorf("failed to marshal recognition param: %w", err))
+		return failTaskJob(fmt.Errorf("failed to marshal recognition param: %w", err))
 	}
 
 	t.state.postMu.Lock()
 	id := native.MaaTaskerPostRecognition(t.handle, string(recType), string(recParamJSON), imgBuf.Handle())
 	t.state.postMu.Unlock()
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
+	if id == 0 {
+		return failTaskJob(errors.New("failed to post recognition"))
+	}
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState), nil
 }
 
 // PostAction posts an action to the tasker asynchronously.
 // The box and recoDetail are from the previous recognition.
-func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box Rect, recoDetail *RecognitionDetail) *TaskJob {
+// It returns an error and a terminal-failed job when the action cannot be
+// submitted, for example when the action or recognition detail parameter
+// cannot be marshaled or the tasker is closed; the action is not posted to
+// the native layer in that case.
+func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box Rect, recoDetail *RecognitionDetail) (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
-		return newFailedTaskJob(useErr)
+		return failTaskJob(useErr)
 	}
 	defer done()
 
@@ -272,20 +287,21 @@ func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box 
 
 	actParamJSON, err := marshalJSON(actionParam)
 	if err != nil {
-		return newTaskJob(0, nil, nil, nil, nil,
-			fmt.Errorf("failed to marshal action param: %w", err))
+		return failTaskJob(fmt.Errorf("failed to marshal action param: %w", err))
 	}
 
 	recoDetailJSON, err := marshalJSON(recoDetail)
 	if err != nil {
-		return newTaskJob(0, nil, nil, nil, nil,
-			fmt.Errorf("failed to marshal recognition detail: %w", err))
+		return failTaskJob(fmt.Errorf("failed to marshal recognition detail: %w", err))
 	}
 
 	t.state.postMu.Lock()
 	id := native.MaaTaskerPostAction(t.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
 	t.state.postMu.Unlock()
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
+	if id == 0 {
+		return failTaskJob(errors.New("failed to post action"))
+	}
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState), nil
 }
 
 // Stopping checks if the tasker is in the process of stopping (not yet fully stopped).
@@ -334,17 +350,22 @@ func (t *Tasker) Running() bool {
 
 // PostStop posts a stop signal to the tasker asynchronously.
 // It interrupts the currently running task and stops resource loading and controller operations.
-func (t *Tasker) PostStop() *TaskJob {
+// It returns an error and a terminal-failed job when the stop signal cannot
+// be submitted, for example when the tasker is closed.
+func (t *Tasker) PostStop() (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
-		return newFailedTaskJob(useErr)
+		return failTaskJob(useErr)
 	}
 	defer done()
 
 	t.state.postMu.Lock()
 	id := native.MaaTaskerPostStop(t.handle)
 	t.state.postMu.Unlock()
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
+	if id == 0 {
+		return failTaskJob(errors.New("failed to post stop"))
+	}
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState), nil
 }
 
 // GetResource returns the bound resource of the tasker.

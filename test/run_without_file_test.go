@@ -43,7 +43,9 @@ func TestRunWithoutFile(t *testing.T) {
 		}))
 	pipeline.AddNode(myTaskNode)
 
-	got := tasker.PostTask("MyTask", pipeline).Wait().Success()
+	taskJob, err := tasker.PostTask("MyTask", pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	select {
 	case callbackErr := <-resultsCh:
 		require.NoError(t, callbackErr)

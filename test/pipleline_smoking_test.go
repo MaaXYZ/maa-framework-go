@@ -37,6 +37,8 @@ func TestPipelineSmoking(t *testing.T) {
 	isInitialized := tasker.Initialized()
 	require.True(t, isInitialized)
 
-	got := tasker.PostTask("Wilderness").Wait().Success()
+	taskJob, err := tasker.PostTask("Wilderness")
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }

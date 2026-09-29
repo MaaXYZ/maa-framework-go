@@ -87,7 +87,9 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 				SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec"}))
 			pipeline.AddNode(node)
 
-			got := tasker.PostTask(node.Name, pipeline).Wait().Success()
+			taskJob, err := tasker.PostTask(node.Name, pipeline)
+			require.NoError(t, err)
+			got := taskJob.Wait().Success()
 			require.True(t, got)
 			require.NotZero(t, atomic.LoadInt32(&calls))
 		})
@@ -116,15 +118,17 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 		SetTimeout(0 * time.Second)
 	pipeline.AddNode(testResource_UnregisterCustomRecognitionNode)
 
-	got2 := tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline)
+	require.NoError(t, err)
+	got2 := taskJob.Wait().Success()
 	require.True(t, got2)
 
 	err = res.UnregisterCustomRecognition("TestRec")
 	require.NoError(t, err)
 
-	got4 := tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline)
+	require.NoError(t, err)
+	got4 := taskJob.Wait().Failure()
 	require.True(t, got4)
 }
 
@@ -157,21 +161,25 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec2"})).
 		SetTimeout(0 * time.Second)
 	pipeline2.AddNode(testResource_ClearCustomRecognitionNode2)
-	got3 := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1)
+	require.NoError(t, err)
+	got3 := taskJob.Wait().Success()
 	require.True(t, got3)
-	got4 := tasker.PostTask(testResource_ClearCustomRecognitionNode2.Name, pipeline2).
-		Wait().Success()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomRecognitionNode2.Name, pipeline2)
+	require.NoError(t, err)
+	got4 := taskJob.Wait().Success()
 	require.True(t, got4)
 
 	err = res.ClearCustomRecognition()
 	require.NoError(t, err)
 
-	got6 := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1)
+	require.NoError(t, err)
+	got6 := taskJob.Wait().Failure()
 	require.True(t, got6)
-	got7 := tasker.PostTask(testResource_ClearCustomRecognitionNode2.Name, pipeline2).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomRecognitionNode2.Name, pipeline2)
+	require.NoError(t, err)
+	got7 := taskJob.Wait().Failure()
 	require.True(t, got7)
 }
 
@@ -236,7 +244,9 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 				SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct"}))
 			pipeline.AddNode(node)
 
-			got := tasker.PostTask(node.Name, pipeline).Wait().Success()
+			taskJob, err := tasker.PostTask(node.Name, pipeline)
+			require.NoError(t, err)
+			got := taskJob.Wait().Success()
 			require.True(t, got)
 			require.NotZero(t, atomic.LoadInt32(&calls))
 		})
@@ -264,15 +274,17 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct"}))
 	pipeline.AddNode(testResource_UnregisterCustomActionNode)
 
-	got1 := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline)
+	require.NoError(t, err)
+	got1 := taskJob.Wait().Success()
 	require.True(t, got1)
 
 	err = res.UnregisterCustomAction("TestAct")
 	require.NoError(t, err)
 
-	got2 := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline)
+	require.NoError(t, err)
+	got2 := taskJob.Wait().Failure()
 	require.True(t, got2)
 }
 
@@ -304,21 +316,25 @@ func TestResource_ClearCustomAction(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct2"}))
 	pipeline2.AddNode(testResource_ClearCustomActionNode2)
 
-	got1 := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1)
+	require.NoError(t, err)
+	got1 := taskJob.Wait().Success()
 	require.True(t, got1)
-	got2 := tasker.PostTask(testResource_ClearCustomActionNode2.Name, pipeline2).
-		Wait().Success()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomActionNode2.Name, pipeline2)
+	require.NoError(t, err)
+	got2 := taskJob.Wait().Success()
 	require.True(t, got2)
 
 	err = res.ClearCustomAction()
 	require.NoError(t, err)
 
-	got3 := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1)
+	require.NoError(t, err)
+	got3 := taskJob.Wait().Failure()
 	require.True(t, got3)
-	got4 := tasker.PostTask(testResource_ClearCustomActionNode2.Name, pipeline2).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomActionNode2.Name, pipeline2)
+	require.NoError(t, err)
+	got4 := taskJob.Wait().Failure()
 	require.True(t, got4)
 }
 

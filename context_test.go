@@ -46,8 +46,9 @@ func TestContext_RunTask(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunPipelineAct"}))
 	pipeline.AddNode(testContext_RunPipelineNode)
 
-	got := tasker.PostTask(testContext_RunPipelineNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_RunPipelineNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -100,8 +101,9 @@ func TestContext_RunRecognition(t *testing.T) {
 	stopNode := NewNode("Stop")
 	pipeline.AddNode(stopNode)
 
-	got := tasker.PostTask(testContext_RunRecognitionNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_RunRecognitionNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -144,8 +146,9 @@ func TestContext_RunAction(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunActionAct"}))
 	pipeline.AddNode(testContext_RunActionNode)
 
-	got := tasker.PostTask(testContext_RunActionNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_RunActionNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -202,8 +205,9 @@ func TestContext_OverridePipeline(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_OverridePipelineAct"}))
 	pipeline.AddNode(testContext_OverridePipelineNode)
 
-	got := tasker.PostTask(testContext_OverridePipelineNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_OverridePipelineNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -256,8 +260,9 @@ func TestContext_OverrideNext(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_OverrideNextAct"}))
 	pipeline.AddNode(testContext_OverrideNextNode)
 
-	got := tasker.PostTask(testContext_OverrideNextNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_OverrideNextNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -1355,9 +1360,9 @@ func TestContext_GetNode(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetNodeAct"}))
 	pipeline.AddNode(launchNode)
 
-	got := tasker.PostTask(launchNode.Name, pipeline).
-		Wait().
-		Success()
+	taskJob, err := tasker.PostTask(launchNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -1392,8 +1397,9 @@ func TestContext_GetTaskJob(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskJobAct"}))
 	pipeline.AddNode(testContext_GetTaskJobNode)
 
-	got := tasker.PostTask(testContext_GetTaskJobNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_GetTaskJobNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -1428,8 +1434,9 @@ func TestContext_GetTasker(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
 	pipeline.AddNode(testContext_GetTaskerNode)
 
-	got := tasker.PostTask(testContext_GetTaskerNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_GetTaskerNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -1464,8 +1471,9 @@ func TestContext_Clone(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
 	pipeline.AddNode(testContext_CloneNode)
 
-	got := tasker.PostTask(testContext_CloneNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_CloneNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -1517,8 +1525,9 @@ func TestContext_RunRecognitionDirect(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunRecognitionDirectAct"}))
 	pipeline.AddNode(testContext_RunRecognitionDirectNode)
 
-	got := tasker.PostTask(testContext_RunRecognitionDirectNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_RunRecognitionDirectNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 	select {
 	case result := <-resultsCh:
@@ -1574,8 +1583,9 @@ func TestContext_RunActionDirect(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunActionDirectAct"}))
 	pipeline.AddNode(testContext_RunActionDirectNode)
 
-	got := tasker.PostTask(testContext_RunActionDirectNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_RunActionDirectNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 	select {
 	case result := <-resultsCh:

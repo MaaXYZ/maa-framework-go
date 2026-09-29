@@ -190,7 +190,9 @@ func TestTasker_BorrowedBindingsAndRebinding(t *testing.T) {
 	require.NoError(t, tasker.Destroy())
 	require.NoError(t, tasker.Destroy())
 	require.Nil(t, tasker.GetResource())
-	require.ErrorIs(t, tasker.PostTask("unused").Error(), ErrClosed)
+	taskJob, err := tasker.PostTask("unused")
+	require.ErrorIs(t, err, ErrClosed)
+	require.ErrorIs(t, taskJob.Error(), ErrClosed)
 	require.NoError(t, res1.Destroy())
 	require.NoError(t, ctrl1.Destroy())
 	_, err = borrowedRes.GetHash()
@@ -263,7 +265,7 @@ func TestTasker_PostAndBindDoNotInterleave(t *testing.T) {
 
 	posted := make(chan struct{})
 	go func() {
-		tasker.PostTask("entry")
+		_, _ = tasker.PostTask("entry")
 		close(posted)
 	}()
 	<-started
@@ -299,8 +301,10 @@ func TestTasker_DestroyFromMarshalReturnsInUse(t *testing.T) {
 	defer func() { native.MaaTaskerPostTask = oldPost }()
 
 	value := &destroyOnMarshal{tasker: tasker}
-	tasker.PostTask("entry", value)
+	taskJob, err := tasker.PostTask("entry", value)
 	require.ErrorIs(t, value.err, ErrInUse)
+	require.Error(t, err)
+	require.True(t, taskJob.Failure())
 	require.NoError(t, tasker.Destroy())
 }
 
