@@ -55,6 +55,8 @@
 
 Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `WaitFreezes` 的参数序列化失败同样返回错误，此时不会提交到原生层。
 
+**图像参数校验**：`Tasker.PostRecognition`、`Context.RunRecognition`、`Context.RunRecognitionDirect`、`Context.OverrideImage`、`Resource.OverrideImage` 现在会校验图像参数，图像为 nil 或宽高为 0 时返回错误，不会调用原生接口（旧版对空图静默清空 buffer，对 nil 图直接 panic）。
+
 #### TaskJob
 
 | 变更类型 | 受影响的方法 |
@@ -98,7 +100,8 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 | 设置方法 | `BindResource`, `BindController`, `ClearCache` |
 
 **补充说明**：`TaskDetail` 不再预取完整 `NodeDetail` 列表，现改为返回懒加载的 `Nodes []NodeRef`；可通过 `NodeRef.GetDetail()` 或 `Tasker.GetNodeDetail(nodeId)` 按需获取节点详情。
-**新增 WaitFreezes 查询**：`Tasker.GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error)` 可根据回调中的 `wf_id` 查询阶段、耗时、识别 ID 列表和 ROI；无详情时返回 `(nil, nil)`。
+**新增 WaitFreezes 查询**：`Tasker.GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error)` 可根据回调中的 `wf_id` 查询阶段、耗时、识别 ID 列表和 ROI。
+**详情查询错误语义**：`GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 在无对应详情时返回非 nil 的 error，不再返回 `(nil, nil)`。
 
 #### Resource
 
