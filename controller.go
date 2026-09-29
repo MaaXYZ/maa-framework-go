@@ -484,6 +484,8 @@ func (c *Controller) PostClick(x, y int32) (*Job, error) {
 }
 
 // PostClickV2 posts a click with contact and pressure.
+// For adb controller, contact means finger id (0 for first finger, 1 for second finger, etc).
+// For win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle).
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (c *Controller) PostClickV2(x, y, contact, pressure int32) (*Job, error) {
@@ -656,6 +658,9 @@ func (c *Controller) PostTouchUp(contact int32) (*Job, error) {
 }
 
 // PostRelativeMove posts a relative cursor move.
+// dx and dy are the horizontal and vertical move offsets.
+// This is currently only supported by Win32 controllers.
+// If the controller does not support relative move, the posted action will fail.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (c *Controller) PostRelativeMove(dx, dy int32) (*Job, error) {
@@ -741,6 +746,8 @@ func (c *Controller) PostScroll(dx, dy int32) (*Job, error) {
 }
 
 // PostInactive posts an inactive request to restore controller/window state.
+// For Win32 controllers this restores window position (removes topmost) and unblocks user input.
+// For other controllers this is a no-op that typically succeeds.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (c *Controller) PostInactive() (*Job, error) {

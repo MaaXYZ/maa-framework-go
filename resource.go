@@ -471,6 +471,7 @@ func (r *Resource) ClearCustomAction() error {
 }
 
 // PostBundle asynchronously loads resource paths and returns a Job.
+// This is an async operation that immediately returns a Job, which can be queried via status/wait.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (r *Resource) PostBundle(path string) (*Job, error) {
@@ -488,6 +489,7 @@ func (r *Resource) PostBundle(path string) (*Job, error) {
 }
 
 // PostOcrModel asynchronously loads an OCR model directory and returns a Job.
+// This is an async operation that immediately returns a Job, which can be queried via status/wait.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (r *Resource) PostOcrModel(path string) (*Job, error) {
@@ -505,6 +507,8 @@ func (r *Resource) PostOcrModel(path string) (*Job, error) {
 }
 
 // PostPipeline asynchronously loads a pipeline and returns a Job.
+// Supports loading a directory or a single json/jsonc file.
+// This is an async operation that immediately returns a Job, which can be queried via status/wait.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (r *Resource) PostPipeline(path string) (*Job, error) {
@@ -522,6 +526,8 @@ func (r *Resource) PostPipeline(path string) (*Job, error) {
 }
 
 // PostImage asynchronously loads image resources and returns a Job.
+// Supports loading a directory or a single image file.
+// This is an async operation that immediately returns a Job, which can be queried via status/wait.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (r *Resource) PostImage(path string) (*Job, error) {
