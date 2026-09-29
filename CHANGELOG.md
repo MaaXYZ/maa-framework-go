@@ -51,7 +51,7 @@
 两种失败的共同行为：
 - 返回的 `error` 非 nil 当且仅当提交失败
 - 忽略 error 的调用方在 `Status()` / `Wait()` 上得到失败终态，而不是一个永远 pending 的 Job
-- `Error()` 保留为镜像访问器，读取的是同一个提交错误
+- `Error()` 保留为镜像访问器：对提交失败的 Job 读取同一提交错误；成功提交的 Job 在拥有者关闭后也会返回 `ErrClosed`（Job 不再可用）
 
 Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `WaitFreezes` 的参数序列化失败同样返回错误，此时不会提交到原生层。
 
