@@ -117,10 +117,10 @@ func (ctx *Context) runRecognition(
 	img image.Image,
 ) (*RecognitionDetail, error) {
 	imgBuf := buffer.NewImageBuffer()
+	defer imgBuf.Destroy()
 	if err := imgBuf.Set(img); err != nil {
 		return nil, fmt.Errorf("failed to set recognition image: %w", err)
 	}
-	defer imgBuf.Destroy()
 
 	recId := native.MaaContextRunRecognition(ctx.handle, entry, override, imgBuf.Handle())
 	if recId == 0 {
@@ -282,10 +282,10 @@ func (ctx *Context) RunRecognitionDirect(
 	defer done()
 
 	imgBuf := buffer.NewImageBuffer()
+	defer imgBuf.Destroy()
 	if err := imgBuf.Set(img); err != nil {
 		return nil, fmt.Errorf("failed to set recognition image: %w", err)
 	}
-	defer imgBuf.Destroy()
 
 	recParamJSON, err := marshalJSON(recoParam)
 	if err != nil {
