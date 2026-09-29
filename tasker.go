@@ -499,7 +499,7 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 		draws.Handle(),
 	)
 	if !got {
-		return nil, errors.New("failed to get recognition detail")
+		return nil, fmt.Errorf("failed to get recognition detail for recId %d", recId)
 	}
 
 	rawImg := raw.Get()
@@ -582,7 +582,7 @@ func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	)
 
 	if !got {
-		return nil, errors.New("failed to get action detail")
+		return nil, fmt.Errorf("failed to get action detail for actionId %d", actionId)
 	}
 
 	detailJsonStr := detailJson.Get()
@@ -814,7 +814,7 @@ func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 		0,
 	)
 	if !got {
-		return nil, errors.New("failed to get wait freezes detail")
+		return nil, fmt.Errorf("failed to get wait freezes detail for wfId %d", wfId)
 	}
 
 	var recoIdList []int64
@@ -845,7 +845,7 @@ func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 		)
 	}
 	if !got {
-		return nil, errors.New("failed to get wait freezes detail")
+		return nil, fmt.Errorf("failed to get wait freezes detail for wfId %d", wfId)
 	}
 
 	return &WaitFreezesDetail{
