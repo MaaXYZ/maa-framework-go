@@ -188,9 +188,14 @@ func (ctx *Context) runAction(
 	box Rect,
 	recognitionDetail string,
 ) (*ActionDetail, error) {
-	rectBuf := buffer.NewRectBuffer()
-	rectBuf.Set(box)
+	rectBuf, err := buffer.NewRectBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create action rect buffer: %w", err)
+	}
 	defer rectBuf.Destroy()
+	if err := rectBuf.Set(box); err != nil {
+		return nil, fmt.Errorf("failed to set action rect: %w", err)
+	}
 
 	actId := native.MaaContextRunAction(
 		ctx.handle,
@@ -337,9 +342,14 @@ func (ctx *Context) RunActionDirect(
 	}
 	defer done()
 
-	rectBuf := buffer.NewRectBuffer()
-	rectBuf.Set(box)
+	rectBuf, err := buffer.NewRectBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create action rect buffer: %w", err)
+	}
 	defer rectBuf.Destroy()
+	if err := rectBuf.Set(box); err != nil {
+		return nil, fmt.Errorf("failed to set action rect: %w", err)
+	}
 
 	actParamJSON, err := marshalJSON(actionParam)
 	if err != nil {
@@ -581,9 +591,14 @@ func (ctx *Context) WaitFreezes(
 
 	var boxHandle uintptr
 	if box != nil {
-		rectBuf := buffer.NewRectBuffer()
-		rectBuf.Set(*box)
+		rectBuf, err := buffer.NewRectBuffer()
+		if err != nil {
+			return fmt.Errorf("failed to create rect buffer: %w", err)
+		}
 		defer rectBuf.Destroy()
+		if err := rectBuf.Set(*box); err != nil {
+			return fmt.Errorf("failed to set rect: %w", err)
+		}
 		boxHandle = rectBuf.Handle()
 	}
 

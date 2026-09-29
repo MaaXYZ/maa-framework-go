@@ -284,9 +284,14 @@ func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box 
 	}
 	defer done()
 
-	rectBuf := buffer.NewRectBuffer()
+	rectBuf, err := buffer.NewRectBuffer()
+	if err != nil {
+		return failTaskJob(fmt.Errorf("failed to create action rect buffer: %w", err))
+	}
 	defer rectBuf.Destroy()
-	rectBuf.Set(box)
+	if err := rectBuf.Set(box); err != nil {
+		return failTaskJob(fmt.Errorf("failed to set action rect: %w", err))
+	}
 
 	actParamJSON, err := marshalJSON(actionParam)
 	if err != nil {
@@ -482,7 +487,10 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	algorithm := buffer.NewStringBuffer()
 	defer algorithm.Destroy()
 	var hitByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
-	box := buffer.NewRectBuffer()
+	box, err := buffer.NewRectBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create rect buffer: %w", err)
+	}
 	defer box.Destroy()
 	detailJson := buffer.NewStringBuffer()
 	defer detailJson.Destroy()
@@ -571,7 +579,10 @@ func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	defer name.Destroy()
 	action := buffer.NewStringBuffer()
 	defer action.Destroy()
-	box := buffer.NewRectBuffer()
+	box, err := buffer.NewRectBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create rect buffer: %w", err)
+	}
 	defer box.Destroy()
 	var successByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
 	detailJson := buffer.NewStringBuffer()
@@ -802,7 +813,10 @@ func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 	defer phase.Destroy()
 	var successByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
 	var elapsedMs uint64
-	roi := buffer.NewRectBuffer()
+	roi, err := buffer.NewRectBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create rect buffer: %w", err)
+	}
 	defer roi.Destroy()
 
 	// First call to get the reco_id_list size

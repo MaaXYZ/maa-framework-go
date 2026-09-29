@@ -45,6 +45,38 @@ func TestTasker_PostRecognition_CreateBufferFailure(t *testing.T) {
 	require.ErrorIs(t, taskJob.Error(), err)
 }
 
+func TestTasker_PostAction_CreateRectBufferFailure(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldCreate := native.MaaRectCreate
+	defer func() { native.MaaRectCreate = oldCreate }()
+	native.MaaRectCreate = func() uintptr { return 0 }
+
+	taskJob, err := tasker.PostAction(ActionTypeClick, DoNothingParam{}, Rect{1, 2, 3, 4}, nil)
+	require.Error(t, err)
+	require.NotNil(t, taskJob)
+	require.True(t, taskJob.Failure())
+	require.True(t, taskJob.Done())
+	require.ErrorIs(t, taskJob.Error(), err)
+}
+
+func TestTasker_PostAction_SetRectFailure(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldSet := native.MaaRectSet
+	defer func() { native.MaaRectSet = oldSet }()
+	native.MaaRectSet = func(handle uintptr, x, y, w, h int32) bool { return false }
+
+	taskJob, err := tasker.PostAction(ActionTypeClick, DoNothingParam{}, Rect{1, 2, 3, 4}, nil)
+	require.Error(t, err)
+	require.NotNil(t, taskJob)
+	require.True(t, taskJob.Failure())
+	require.True(t, taskJob.Done())
+	require.ErrorIs(t, taskJob.Error(), err)
+}
+
 func TestTasker_BindResource(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()
