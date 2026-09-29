@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
 )
 
@@ -224,6 +225,41 @@ func TestTasker_handleOverride(t *testing.T) {
 			require.Equal(t, tc.want, gotOverride)
 		})
 	}
+}
+
+func TestTasker_DetailQueryFailures(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	_, err := tasker.GetRecognitionDetail(999)
+	require.Error(t, err)
+
+	_, err = tasker.GetActionDetail(999)
+	require.Error(t, err)
+
+	_, err = tasker.GetWaitFreezesDetail(999)
+	require.Error(t, err)
+}
+
+func TestTasker_GetNodeDetail_SkipsAbsentSubDetails(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetNodeDetail := native.MaaTaskerGetNodeDetail
+	defer func() { native.MaaTaskerGetNodeDetail = oldGetNodeDetail }()
+	native.MaaTaskerGetNodeDetail = func(_ uintptr, _ int64, _ uintptr, recId, actionId *int64, completed *bool) bool {
+		*recId = 0
+		*actionId = 0
+		*completed = true
+		return true
+	}
+
+	detail, err := tasker.GetNodeDetail(7)
+	require.NoError(t, err)
+	require.NotNil(t, detail)
+	require.Nil(t, detail.Recognition)
+	require.Nil(t, detail.Action)
+	require.True(t, detail.RunCompleted)
 }
 
 func TestTasker_Running(t *testing.T) {

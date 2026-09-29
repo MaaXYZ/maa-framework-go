@@ -465,6 +465,8 @@ type RecognitionDetail struct {
 }
 
 // GetRecognitionDetail queries recognition detail.
+// It returns an error when no detail is available for recId or the detail
+// cannot be decoded.
 func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -497,7 +499,7 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 		draws.Handle(),
 	)
 	if !got {
-		return nil, nil
+		return nil, errors.New("failed to get recognition detail")
 	}
 
 	rawImg := raw.Get()
@@ -552,7 +554,7 @@ type ActionDetail struct {
 // The returned detail mirrors MaaTaskerGetActionDetail in the C++ API: Box is
 // the recognition box passed to the action, Success is the controller return
 // value, and Result is the action-specific decoding of DetailJson.
-// It returns (nil, nil) when no detail is available for actionId.
+// It returns an error when no detail is available for actionId.
 func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -580,7 +582,7 @@ func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	)
 
 	if !got {
-		return nil, nil
+		return nil, errors.New("failed to get action detail")
 	}
 
 	detailJsonStr := detailJson.Get()
@@ -636,6 +638,7 @@ func (n NodeRef) GetDetail() (*NodeDetail, error) {
 }
 
 // GetNodeDetail queries node detail by node ID.
+// Recognition and Action are nil when the node has no recognition or action.
 func (t *Tasker) GetNodeDetail(nodeId int64) (*NodeDetail, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -659,14 +662,22 @@ func (t *Tasker) GetNodeDetail(nodeId int64) (*NodeDetail, error) {
 		return nil, errors.New("failed to get node detail")
 	}
 
-	recognitionDetail, err := t.GetRecognitionDetail(recId)
-	if err != nil {
-		return nil, err
+	// A node without recognition or action reports MaaInvalidId (0) for the
+	// corresponding sub-detail; skip those queries instead of failing.
+	var err error
+	var recognitionDetail *RecognitionDetail
+	if recId != 0 {
+		recognitionDetail, err = t.GetRecognitionDetail(recId)
+		if err != nil {
+			return nil, err
+		}
 	}
-
-	actionDetail, err := t.GetActionDetail(actionId)
-	if err != nil {
-		return nil, err
+	var actionDetail *ActionDetail
+	if actionId != 0 {
+		actionDetail, err = t.GetActionDetail(actionId)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &NodeDetail{
@@ -772,7 +783,7 @@ type WaitFreezesDetail struct {
 }
 
 // GetWaitFreezesDetail queries wait-freezes detail by wait-freezes ID.
-// Returns (nil, nil) when no detail is available for wfId.
+// It returns an error when no detail is available for wfId.
 func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -803,7 +814,7 @@ func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 		0,
 	)
 	if !got {
-		return nil, nil
+		return nil, errors.New("failed to get wait freezes detail")
 	}
 
 	var recoIdList []int64
