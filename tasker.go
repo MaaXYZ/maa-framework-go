@@ -489,14 +489,14 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	var hitByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
 	box, err := buffer.NewRectBuffer()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create rect buffer: %w", err)
+		return nil, fmt.Errorf("failed to create rect buffer for recId %d: %w", recId, err)
 	}
 	defer box.Destroy()
 	detailJson := buffer.NewStringBuffer()
 	defer detailJson.Destroy()
 	raw, err := buffer.NewImageBuffer()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create image buffer: %w", err)
+		return nil, fmt.Errorf("failed to create image buffer for recId %d: %w", recId, err)
 	}
 	defer raw.Destroy()
 	draws := buffer.NewImageListBuffer()
@@ -529,12 +529,12 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	if isCombinedRecognition(algorithmStr) {
 		combinedResults, err = parseCombinedResult(detailJsonBytes)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse recognition detail for recId %d: %w", recId, err)
 		}
 	} else {
 		results, err = parseRecognitionResults(algorithmStr, detailJsonBytes)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse recognition detail for recId %d: %w", recId, err)
 		}
 	}
 
@@ -581,7 +581,7 @@ func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	defer action.Destroy()
 	box, err := buffer.NewRectBuffer()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create rect buffer: %w", err)
+		return nil, fmt.Errorf("failed to create rect buffer for actionId %d: %w", actionId, err)
 	}
 	defer box.Destroy()
 	var successByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
@@ -604,7 +604,7 @@ func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	detailJsonStr := detailJson.Get()
 	result, err := parseActionResult(action.Get(), detailJsonStr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse action detail for actionId %d: %w", actionId, err)
 	}
 
 	return &ActionDetail{
@@ -675,7 +675,7 @@ func (t *Tasker) GetNodeDetail(nodeId int64) (*NodeDetail, error) {
 		(*bool)(unsafe.Pointer(&runCompletedByte)), // Convert uint8* to bool* for FFI call
 	)
 	if !got {
-		return nil, errors.New("failed to get node detail")
+		return nil, fmt.Errorf("failed to get node detail for nodeId %d", nodeId)
 	}
 
 	// A node without recognition or action reports MaaInvalidId (0) for the
@@ -685,14 +685,14 @@ func (t *Tasker) GetNodeDetail(nodeId int64) (*NodeDetail, error) {
 	if recId != 0 {
 		recognitionDetail, err = t.GetRecognitionDetail(recId)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get node detail for nodeId %d: %w", nodeId, err)
 		}
 	}
 	var actionDetail *ActionDetail
 	if actionId != 0 {
 		actionDetail, err = t.GetActionDetail(actionId)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get node detail for nodeId %d: %w", nodeId, err)
 		}
 	}
 
@@ -734,7 +734,7 @@ func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
 		nil,
 	)
 	if !got {
-		return nil, errors.New("failed to get task detail size")
+		return nil, fmt.Errorf("failed to get task detail size for taskId %d", taskId)
 	}
 	if size == 0 {
 		return &TaskDetail{
@@ -754,7 +754,7 @@ func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
 		(*int32)(&status),
 	)
 	if !got {
-		return nil, errors.New("failed to get task detail data")
+		return nil, fmt.Errorf("failed to get task detail data for taskId %d", taskId)
 	}
 
 	nodes := make([]NodeRef, size)
@@ -782,7 +782,7 @@ func (t *Tasker) GetLatestNode(taskName string) (*NodeDetail, error) {
 
 	got := native.MaaTaskerGetLatestNode(t.handle, taskName, &nodeId)
 	if !got {
-		return nil, errors.New("failed to get latest node")
+		return nil, fmt.Errorf("failed to get latest node for taskName %q", taskName)
 	}
 	return t.GetNodeDetail(nodeId)
 }
@@ -815,7 +815,7 @@ func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 	var elapsedMs uint64
 	roi, err := buffer.NewRectBuffer()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create rect buffer: %w", err)
+		return nil, fmt.Errorf("failed to create rect buffer for wfId %d: %w", wfId, err)
 	}
 	defer roi.Destroy()
 

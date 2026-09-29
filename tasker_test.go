@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/buffer"
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
 )
@@ -310,6 +311,97 @@ func TestTasker_GetNodeDetail_SkipsAbsentSubDetails(t *testing.T) {
 	require.Nil(t, detail.Recognition)
 	require.Nil(t, detail.Action)
 	require.True(t, detail.RunCompleted)
+}
+
+func TestTasker_GetNodeDetailNativeFailureIncludesNodeId(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetNodeDetail := native.MaaTaskerGetNodeDetail
+	defer func() { native.MaaTaskerGetNodeDetail = oldGetNodeDetail }()
+	native.MaaTaskerGetNodeDetail = func(_ uintptr, _ int64, _ uintptr, _ *int64, _ *int64, _ *bool) bool {
+		return false
+	}
+
+	_, err := tasker.GetNodeDetail(42)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "nodeId 42")
+}
+
+func TestTasker_GetTaskDetailNativeFailureIncludesTaskId(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetTaskDetail := native.MaaTaskerGetTaskDetail
+	defer func() { native.MaaTaskerGetTaskDetail = oldGetTaskDetail }()
+	native.MaaTaskerGetTaskDetail = func(_ uintptr, _ int64, _ uintptr, _ uintptr, _ *uint64, _ *int32) bool {
+		return false
+	}
+
+	_, err := tasker.GetTaskDetail(7)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "taskId 7")
+}
+
+func TestTasker_GetRecognitionDetailParseFailureIncludesRecId(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetRecognitionDetail := native.MaaTaskerGetRecognitionDetail
+	defer func() { native.MaaTaskerGetRecognitionDetail = oldGetRecognitionDetail }()
+	native.MaaTaskerGetRecognitionDetail = func(_ uintptr, _ int64, _ uintptr, algorithm uintptr, _ *bool, _ uintptr, detailJson uintptr, _ uintptr, _ uintptr) bool {
+		// "OCR" takes the non-combined parse path; the invalid JSON fails parsing.
+		buffer.NewStringBufferByHandle(algorithm).Set("OCR")
+		buffer.NewStringBufferByHandle(detailJson).Set("{invalid")
+		return true
+	}
+
+	_, err := tasker.GetRecognitionDetail(5)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "recId 5")
+}
+
+func TestTasker_GetActionDetailParseFailureIncludesActionId(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetActionDetail := native.MaaTaskerGetActionDetail
+	defer func() { native.MaaTaskerGetActionDetail = oldGetActionDetail }()
+	native.MaaTaskerGetActionDetail = func(_ uintptr, _ int64, _ uintptr, action uintptr, _ uintptr, _ *bool, detailJson uintptr) bool {
+		buffer.NewStringBufferByHandle(action).Set("Click")
+		buffer.NewStringBufferByHandle(detailJson).Set("{invalid")
+		return true
+	}
+
+	_, err := tasker.GetActionDetail(9)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "actionId 9")
+}
+
+func TestTasker_GetNodeDetailNestedFailureIncludesBothIds(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetNodeDetail := native.MaaTaskerGetNodeDetail
+	oldGetRecognitionDetail := native.MaaTaskerGetRecognitionDetail
+	defer func() {
+		native.MaaTaskerGetNodeDetail = oldGetNodeDetail
+		native.MaaTaskerGetRecognitionDetail = oldGetRecognitionDetail
+	}()
+	native.MaaTaskerGetNodeDetail = func(_ uintptr, _ int64, _ uintptr, recId, actionId *int64, completed *bool) bool {
+		*recId = 77
+		*actionId = 0
+		*completed = true
+		return true
+	}
+	native.MaaTaskerGetRecognitionDetail = func(_ uintptr, _ int64, _ uintptr, _ uintptr, _ *bool, _ uintptr, _ uintptr, _ uintptr, _ uintptr) bool {
+		return false
+	}
+
+	_, err := tasker.GetNodeDetail(42)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "nodeId 42")
+	require.ErrorContains(t, err, "recId 77")
 }
 
 func TestTasker_Running(t *testing.T) {
