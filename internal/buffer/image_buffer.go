@@ -22,14 +22,16 @@ const (
 	opaqueAlpha  byte  = 0xff
 )
 
-func NewImageBuffer() *ImageBuffer {
+// NewImageBuffer creates a new image buffer.
+// It returns an error when the underlying native buffer cannot be created.
+func NewImageBuffer() (*ImageBuffer, error) {
 	handle := native.MaaImageBufferCreate()
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create image buffer")
 	}
 	return &ImageBuffer{
 		handle: handle,
-	}
+	}, nil
 }
 
 func NewImageBufferByHandle(handle uintptr) *ImageBuffer {
@@ -125,7 +127,7 @@ func isNilImage(img image.Image) bool {
 
 // Set converts an image.Image to raw data and sets it in the buffer.
 // The buffer is left unchanged and an error is returned when img is nil,
-// has an empty dimension, or the underlying write fails.
+// has a non-positive dimension, or the underlying write fails.
 func (i *ImageBuffer) Set(img image.Image) error {
 	if isNilImage(img) {
 		return errors.New("image is nil")
@@ -134,8 +136,8 @@ func (i *ImageBuffer) Set(img image.Image) error {
 	bounds := img.Bounds()
 	width := bounds.Dx()
 	height := bounds.Dy()
-	if width == 0 || height == 0 {
-		return fmt.Errorf("image has empty bounds: %dx%d", width, height)
+	if width <= 0 || height <= 0 {
+		return fmt.Errorf("image has invalid bounds: %dx%d", width, height)
 	}
 
 	rawData := make([]byte, width*height*bytesPerBGR)

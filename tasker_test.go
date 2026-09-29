@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"image"
 	"testing"
 	"time"
 
@@ -25,6 +26,23 @@ func taskerBind(t *testing.T, tasker *Tasker, ctrl *Controller, res *Resource) {
 func TestNewTasker(t *testing.T) {
 	tasker := createTasker(t)
 	tasker.Destroy()
+}
+
+func TestTasker_PostRecognition_CreateBufferFailure(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldCreate := native.MaaImageBufferCreate
+	defer func() { native.MaaImageBufferCreate = oldCreate }()
+	native.MaaImageBufferCreate = func() uintptr { return 0 }
+
+	img := image.NewNRGBA(image.Rect(0, 0, 2, 2))
+	taskJob, err := tasker.PostRecognition(RecognitionTypeOCR, OCRParam{Expected: []string{"Hello"}}, img)
+	require.Error(t, err)
+	require.NotNil(t, taskJob)
+	require.True(t, taskJob.Failure())
+	require.True(t, taskJob.Done())
+	require.ErrorIs(t, taskJob.Error(), err)
 }
 
 func TestTasker_BindResource(t *testing.T) {

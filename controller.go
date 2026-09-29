@@ -849,7 +849,10 @@ func (c *Controller) CacheImageInto(dst *image.RGBA) (*image.RGBA, error) {
 	}
 	defer done()
 
-	imgBuffer := buffer.NewImageBuffer()
+	imgBuffer, err := buffer.NewImageBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create image buffer: %w", err)
+	}
 	defer imgBuffer.Destroy()
 
 	got := native.MaaControllerCachedImage(c.handle, imgBuffer.Handle())

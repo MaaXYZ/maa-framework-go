@@ -248,7 +248,10 @@ func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionPa
 	}
 	defer done()
 
-	imgBuf := buffer.NewImageBuffer()
+	imgBuf, err := buffer.NewImageBuffer()
+	if err != nil {
+		return failTaskJob(fmt.Errorf("failed to create recognition image buffer: %w", err))
+	}
 	defer imgBuf.Destroy()
 	if err := imgBuf.Set(img); err != nil {
 		return failTaskJob(fmt.Errorf("failed to set recognition image: %w", err))
@@ -483,7 +486,10 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	defer box.Destroy()
 	detailJson := buffer.NewStringBuffer()
 	defer detailJson.Destroy()
-	raw := buffer.NewImageBuffer()
+	raw, err := buffer.NewImageBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create image buffer: %w", err)
+	}
 	defer raw.Destroy()
 	draws := buffer.NewImageListBuffer()
 	defer draws.Destroy()
@@ -509,7 +515,6 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	detailJsonBytes := []byte(detailJsonStr)
 	algorithmStr := algorithm.Get()
 
-	var err error
 	var results *RecognitionResults
 	var combinedResults []*RecognitionDetail
 

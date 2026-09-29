@@ -268,8 +268,8 @@ func runAgentServerHelper(t *testing.T) {
 			img, err := tasker.GetController().CacheImage()
 			report.CachedImage = err == nil && img != nil && img.Bounds() == image.Rect(0, 0, 1280, 720)
 			if report.CachedImage {
-				imgBuffer := buffer.NewImageBuffer()
-				if imgBuffer != nil {
+				imgBuffer, err := buffer.NewImageBuffer()
+				if err == nil {
 					if err := imgBuffer.Set(img); err == nil {
 						copied := imgBuffer.Get()
 						report.BufferRoundTrip = copied != nil && copied.Bounds() == img.Bounds()

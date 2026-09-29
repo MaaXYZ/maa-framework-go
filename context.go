@@ -116,7 +116,10 @@ func (ctx *Context) runRecognition(
 	entry, override string,
 	img image.Image,
 ) (*RecognitionDetail, error) {
-	imgBuf := buffer.NewImageBuffer()
+	imgBuf, err := buffer.NewImageBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create recognition image buffer: %w", err)
+	}
 	defer imgBuf.Destroy()
 	if err := imgBuf.Set(img); err != nil {
 		return nil, fmt.Errorf("failed to set recognition image: %w", err)
@@ -281,7 +284,10 @@ func (ctx *Context) RunRecognitionDirect(
 	}
 	defer done()
 
-	imgBuf := buffer.NewImageBuffer()
+	imgBuf, err := buffer.NewImageBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create recognition image buffer: %w", err)
+	}
 	defer imgBuf.Destroy()
 	if err := imgBuf.Set(img); err != nil {
 		return nil, fmt.Errorf("failed to set recognition image: %w", err)
@@ -455,7 +461,10 @@ func (ctx *Context) OverrideImage(imageName string, image image.Image) error {
 	}
 	defer done()
 
-	img := buffer.NewImageBuffer()
+	img, err := buffer.NewImageBuffer()
+	if err != nil {
+		return err
+	}
 	defer img.Destroy()
 	if err := img.Set(image); err != nil {
 		return err

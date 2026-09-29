@@ -611,7 +611,10 @@ func (r *Resource) OverrideImage(imageName string, image image.Image) error {
 	}
 	defer done()
 
-	img := buffer.NewImageBuffer()
+	img, err := buffer.NewImageBuffer()
+	if err != nil {
+		return err
+	}
 	defer img.Destroy()
 	if err := img.Set(image); err != nil {
 		return err

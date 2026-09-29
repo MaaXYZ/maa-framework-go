@@ -197,8 +197,8 @@ func benchmarkDecodeBGRToNRGBA(b *testing.B, width, height int) {
 
 // benchmarkImageBufferGet measures end-to-end ImageBuffer.Get (current implementation).
 func benchmarkImageBufferGet(b *testing.B, width, height int) {
-	imageBuffer := NewImageBuffer()
-	if imageBuffer == nil {
+	imageBuffer, err := NewImageBuffer()
+	if err != nil {
 		b.Skip("failed to create image buffer")
 	}
 	defer imageBuffer.Destroy()
@@ -222,8 +222,8 @@ func benchmarkImageBufferGet(b *testing.B, width, height int) {
 // benchmarkImageBufferGetLegacy measures end-to-end behavior equivalent to the historical Get path.
 // Use this as "before" baseline when comparing current optimizations.
 func benchmarkImageBufferGetLegacy(b *testing.B, width, height int) {
-	imageBuffer := NewImageBuffer()
-	if imageBuffer == nil {
+	imageBuffer, err := NewImageBuffer()
+	if err != nil {
 		b.Skip("failed to create image buffer")
 	}
 	defer imageBuffer.Destroy()
@@ -250,8 +250,8 @@ func benchmarkImageBufferGetLegacy(b *testing.B, width, height int) {
 // benchmarkImageBufferGetReuseDst measures end-to-end GetInto with a reused destination buffer.
 // This reflects the recommended low-allocation usage pattern in hot loops.
 func benchmarkImageBufferGetReuseDst(b *testing.B, width, height int) {
-	imageBuffer := NewImageBuffer()
-	if imageBuffer == nil {
+	imageBuffer, err := NewImageBuffer()
+	if err != nil {
 		b.Skip("failed to create image buffer")
 	}
 	defer imageBuffer.Destroy()
@@ -275,8 +275,8 @@ func benchmarkImageBufferGetReuseDst(b *testing.B, width, height int) {
 }
 
 func benchmarkImageBufferSetWithSource(b *testing.B, src image.Image) {
-	imageBuffer := NewImageBuffer()
-	if imageBuffer == nil {
+	imageBuffer, err := NewImageBuffer()
+	if err != nil {
 		b.Skip("failed to create image buffer")
 	}
 	defer imageBuffer.Destroy()
@@ -303,8 +303,8 @@ func benchmarkImageBufferSetSubImage(b *testing.B, width, height int) {
 // benchmarkImageBufferSetLegacy measures end-to-end behavior equivalent to the historical Set path.
 // Use this as "before" baseline when comparing current Set optimizations.
 func benchmarkImageBufferSetLegacy(b *testing.B, width, height int) {
-	imageBuffer := NewImageBuffer()
-	if imageBuffer == nil {
+	imageBuffer, err := NewImageBuffer()
+	if err != nil {
 		b.Skip("failed to create image buffer")
 	}
 	defer imageBuffer.Destroy()
