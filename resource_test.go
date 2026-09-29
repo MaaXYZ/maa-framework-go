@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
 )
 
@@ -358,6 +359,38 @@ func TestResource_PostBundle(t *testing.T) {
 	require.NoError(t, err)
 	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
+}
+
+func TestResource_PostBundleNativeInvalidID(t *testing.T) {
+	res := createResource(t)
+	defer res.Destroy()
+
+	oldPost := native.MaaResourcePostBundle
+	native.MaaResourcePostBundle = func(uintptr, string) int64 { return 0 }
+	defer func() { native.MaaResourcePostBundle = oldPost }()
+
+	job, err := res.PostBundle("whatever")
+	require.Error(t, err)
+	require.NotNil(t, job)
+	require.True(t, job.Failure())
+	require.True(t, job.Done())
+	require.ErrorIs(t, job.Error(), err)
+}
+
+func TestResource_PostPipelineNativeInvalidID(t *testing.T) {
+	res := createResource(t)
+	defer res.Destroy()
+
+	oldPost := native.MaaResourcePostPipeline
+	native.MaaResourcePostPipeline = func(uintptr, string) int64 { return 0 }
+	defer func() { native.MaaResourcePostPipeline = oldPost }()
+
+	job, err := res.PostPipeline("whatever")
+	require.Error(t, err)
+	require.NotNil(t, job)
+	require.True(t, job.Failure())
+	require.True(t, job.Done())
+	require.ErrorIs(t, job.Error(), err)
 }
 
 func TestResource_OverrideNext(t *testing.T) {

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
 )
 
@@ -84,6 +85,38 @@ func TestController_PostConnect(t *testing.T) {
 	require.NoError(t, err)
 	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
+}
+
+func TestController_PostConnectNativeInvalidID(t *testing.T) {
+	ctrl := createBlankController(t)
+	defer ctrl.Destroy()
+
+	oldPost := native.MaaControllerPostConnection
+	native.MaaControllerPostConnection = func(uintptr) int64 { return 0 }
+	defer func() { native.MaaControllerPostConnection = oldPost }()
+
+	job, err := ctrl.PostConnect()
+	require.Error(t, err)
+	require.NotNil(t, job)
+	require.True(t, job.Failure())
+	require.True(t, job.Done())
+	require.ErrorIs(t, job.Error(), err)
+}
+
+func TestController_PostScreencapNativeInvalidID(t *testing.T) {
+	ctrl := createBlankController(t)
+	defer ctrl.Destroy()
+
+	oldPost := native.MaaControllerPostScreencap
+	native.MaaControllerPostScreencap = func(uintptr) int64 { return 0 }
+	defer func() { native.MaaControllerPostScreencap = oldPost }()
+
+	job, err := ctrl.PostScreencap()
+	require.Error(t, err)
+	require.NotNil(t, job)
+	require.True(t, job.Failure())
+	require.True(t, job.Done())
+	require.ErrorIs(t, job.Error(), err)
 }
 
 func TestController_Connected(t *testing.T) {
