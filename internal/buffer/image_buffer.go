@@ -1,8 +1,11 @@
 package buffer
 
 import (
+	"errors"
+	"fmt"
 	"image"
 	"image/draw"
+	"reflect"
 	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
@@ -105,19 +108,42 @@ func decodeBGRRowToRGBA(dst, src []byte) {
 	}
 }
 
+// isNilImage reports whether img is nil or a nil pointer stored in a
+// non-nil interface, which would panic on Bounds.
+func isNilImage(img image.Image) bool {
+	if img == nil {
+		return true
+	}
+	rv := reflect.ValueOf(img)
+	switch rv.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.Slice:
+		return rv.IsNil()
+	default:
+		return false
+	}
+}
+
 // Set converts an image.Image to raw data and sets it in the buffer.
-func (i *ImageBuffer) Set(img image.Image) bool {
+// The buffer is left unchanged and an error is returned when img is nil,
+// has an empty dimension, or the underlying write fails.
+func (i *ImageBuffer) Set(img image.Image) error {
+	if isNilImage(img) {
+		return errors.New("image is nil")
+	}
+
 	bounds := img.Bounds()
 	width := bounds.Dx()
 	height := bounds.Dy()
-
 	if width == 0 || height == 0 {
-		return i.Clear()
+		return fmt.Errorf("image has empty bounds: %dx%d", width, height)
 	}
 
 	rawData := make([]byte, width*height*bytesPerBGR)
 	encodeImageToBGR(img, bounds, width, height, rawData)
-	return i.setRawData(unsafe.Pointer(&rawData[0]), int32(width), int32(height), cvType8UC3)
+	if !i.setRawData(unsafe.Pointer(&rawData[0]), int32(width), int32(height), cvType8UC3) {
+		return errors.New("failed to set image raw data")
+	}
+	return nil
 }
 
 func encodeImageToBGR(img image.Image, bounds image.Rectangle, width, height int, dst []byte) {

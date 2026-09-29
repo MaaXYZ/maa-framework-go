@@ -204,8 +204,8 @@ func benchmarkImageBufferGet(b *testing.B, width, height int) {
 	defer imageBuffer.Destroy()
 
 	src := makeSourceImage(width, height)
-	if ok := imageBuffer.Set(src); !ok {
-		b.Fatal("failed to set source image")
+	if err := imageBuffer.Set(src); err != nil {
+		b.Fatal(err)
 	}
 
 	b.ReportAllocs()
@@ -229,8 +229,8 @@ func benchmarkImageBufferGetLegacy(b *testing.B, width, height int) {
 	defer imageBuffer.Destroy()
 
 	src := makeSourceImage(width, height)
-	if ok := imageBuffer.Set(src); !ok {
-		b.Fatal("failed to set source image")
+	if err := imageBuffer.Set(src); err != nil {
+		b.Fatal(err)
 	}
 
 	b.ReportAllocs()
@@ -257,8 +257,8 @@ func benchmarkImageBufferGetReuseDst(b *testing.B, width, height int) {
 	defer imageBuffer.Destroy()
 
 	src := makeSourceImage(width, height)
-	if ok := imageBuffer.Set(src); !ok {
-		b.Fatal("failed to set source image")
+	if err := imageBuffer.Set(src); err != nil {
+		b.Fatal(err)
 	}
 
 	dst := image.NewRGBA(image.Rect(0, 0, width, height))
@@ -284,11 +284,11 @@ func benchmarkImageBufferSetWithSource(b *testing.B, src image.Image) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ok := imageBuffer.Set(src)
-		if !ok {
-			b.Fatal("Set returned false")
+		err := imageBuffer.Set(src)
+		if err != nil {
+			b.Fatal(err)
 		}
-		benchmarkBoolSink = ok
+		benchmarkBoolSink = err == nil
 	}
 }
 

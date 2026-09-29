@@ -240,7 +240,10 @@ func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionPa
 
 	imgBuf := buffer.NewImageBuffer()
 	defer imgBuf.Destroy()
-	imgBuf.Set(img)
+	if err := imgBuf.Set(img); err != nil {
+		return newTaskJob(0, nil, nil, nil, nil,
+			fmt.Errorf("failed to set recognition image: %w", err))
+	}
 
 	recParamJSON, err := marshalJSON(recParam)
 	if err != nil {

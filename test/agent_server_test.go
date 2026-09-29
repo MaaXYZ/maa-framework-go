@@ -166,7 +166,9 @@ func TestAgentServer_CallbackRoundTrip(t *testing.T) {
 		SetPreDelay(0).
 		SetPostDelay(0)
 	pipeline := maa.NewPipeline().AddNode(node)
-	job := tasker.PostTask(agentTestNode, pipeline).Wait()
+	job, err := tasker.PostTask(agentTestNode, pipeline)
+	require.NoError(t, err)
+	job.Wait()
 	require.NoError(t, job.Error())
 	require.True(t, job.Success(), "task failed; server log:\n%s", readAgentLog(logPath))
 	detail, err := job.GetDetail()
@@ -266,9 +268,9 @@ func runAgentServerHelper(t *testing.T) {
 			if report.CachedImage {
 				imgBuffer := buffer.NewImageBuffer()
 				if imgBuffer != nil {
-					if imgBuffer.Set(img) {
-						copy := imgBuffer.Get()
-						report.BufferRoundTrip = copy != nil && copy.Bounds() == img.Bounds()
+					if err := imgBuffer.Set(img); err == nil {
+						copied := imgBuffer.Get()
+						report.BufferRoundTrip = copied != nil && copied.Bounds() == img.Bounds()
 					}
 					imgBuffer.Destroy()
 				}

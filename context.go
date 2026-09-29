@@ -2,6 +2,7 @@ package maa
 
 import (
 	"errors"
+	"fmt"
 	"image"
 	"reflect"
 	"time"
@@ -111,7 +112,9 @@ func (ctx *Context) runRecognition(
 	img image.Image,
 ) (*RecognitionDetail, error) {
 	imgBuf := buffer.NewImageBuffer()
-	imgBuf.Set(img)
+	if err := imgBuf.Set(img); err != nil {
+		return nil, fmt.Errorf("failed to set recognition image: %w", err)
+	}
 	defer imgBuf.Destroy()
 
 	recId := native.MaaContextRunRecognition(ctx.handle, entry, override, imgBuf.Handle())
@@ -264,7 +267,9 @@ func (ctx *Context) RunRecognitionDirect(
 	defer done()
 
 	imgBuf := buffer.NewImageBuffer()
-	imgBuf.Set(img)
+	if err := imgBuf.Set(img); err != nil {
+		return nil, fmt.Errorf("failed to set recognition image: %w", err)
+	}
 	defer imgBuf.Destroy()
 
 	recParamJSON, err := marshalJSON(recoParam)
@@ -437,7 +442,9 @@ func (ctx *Context) OverrideImage(imageName string, image image.Image) error {
 
 	img := buffer.NewImageBuffer()
 	defer img.Destroy()
-	img.Set(image)
+	if err := img.Set(image); err != nil {
+		return err
+	}
 	if !native.MaaContextOverrideImage(ctx.handle, imageName, img.Handle()) {
 		return errors.New("failed to override image")
 	}

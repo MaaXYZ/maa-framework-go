@@ -599,7 +599,9 @@ func (r *Resource) OverrideImage(imageName string, image image.Image) error {
 
 	img := buffer.NewImageBuffer()
 	defer img.Destroy()
-	img.Set(image)
+	if err := img.Set(image); err != nil {
+		return err
+	}
 	if native.MaaResourceOverrideImage(r.handle, imageName, img.Handle()) {
 		return nil
 	}
