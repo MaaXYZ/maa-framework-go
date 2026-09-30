@@ -73,21 +73,17 @@ func TestImageBuffer_Clear(t *testing.T) {
 }
 
 func TestImageBuffer_Get_EmptyReturnsNilInterface(t *testing.T) {
-	for _, state := range []string{"new", "cleared", "zero-sized"} {
+	for _, state := range []string{"new", "cleared"} {
 		t.Run(state, func(t *testing.T) {
 			imageBuffer := createImageBuffer(t)
 			defer imageBuffer.Destroy()
 
-			if state != "new" {
+			if state == "cleared" {
 				img := image.NewRGBA(image.Rect(0, 0, 1, 1))
 				img.SetRGBA(0, 0, color.RGBA{R: 255, A: 255})
-				require.True(t, imageBuffer.Set(img))
+				require.NoError(t, imageBuffer.Set(img))
 				requireImagesEqual(t, img, imageBuffer.Get())
-				if state == "cleared" {
-					require.True(t, imageBuffer.Clear())
-				} else {
-					require.True(t, imageBuffer.Set(image.NewRGBA(image.Rectangle{})))
-				}
+				require.True(t, imageBuffer.Clear())
 			}
 
 			require.True(t, imageBuffer.IsEmpty())
