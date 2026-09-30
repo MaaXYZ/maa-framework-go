@@ -123,7 +123,7 @@ func getMaaToolkitLibrary() string {
 	switch runtime.GOOS {
 	case "darwin":
 		return "libMaaToolkit.dylib"
-	case "linux":
+	case "linux", "android":
 		return "libMaaToolkit.so"
 	case "windows":
 		return "MaaToolkit.dll"
