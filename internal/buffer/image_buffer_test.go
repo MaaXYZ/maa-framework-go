@@ -1,14 +1,18 @@
 package buffer
 
 import (
-	"github.com/stretchr/testify/require"
 	"image"
 	"image/color"
 	"testing"
+	"unsafe"
+
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
+	"github.com/stretchr/testify/require"
 )
 
 func createImageBuffer(t *testing.T) *ImageBuffer {
-	imageBuffer := NewImageBuffer()
+	imageBuffer, err := NewImageBuffer()
+	require.NoError(t, err)
 	require.NotNil(t, imageBuffer)
 	return imageBuffer
 }
@@ -35,6 +39,16 @@ func requireImagesEqual(t *testing.T, expected, actual image.Image) {
 func TestNewImageBuffer(t *testing.T) {
 	imageBuffer := createImageBuffer(t)
 	imageBuffer.Destroy()
+}
+
+func TestNewImageBuffer_CreateFailure(t *testing.T) {
+	oldCreate := native.MaaImageBufferCreate
+	defer func() { native.MaaImageBufferCreate = oldCreate }()
+	native.MaaImageBufferCreate = func() uintptr { return 0 }
+
+	imageBuffer, err := NewImageBuffer()
+	require.Nil(t, imageBuffer)
+	require.Error(t, err)
 }
 
 func TestImageBuffer_Handle(t *testing.T) {
@@ -96,8 +110,8 @@ func TestImageBuffer_Set(t *testing.T) {
 	img1.SetNRGBA(0, 1, color.NRGBA{R: 0, G: 0, B: 255, A: 255})
 	img1.SetNRGBA(1, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
 
-	got := imageBuffer.Set(img1)
-	require.True(t, got)
+	err := imageBuffer.Set(img1)
+	require.NoError(t, err)
 
 	img2 := imageBuffer.Get()
 	require.NotNil(t, img2)
@@ -110,7 +124,7 @@ func TestImageBuffer_Set(t *testing.T) {
 		rgba.SetRGBA(0, 1, color.RGBA{R: 0, G: 0, B: 255, A: 255})
 		rgba.SetRGBA(1, 1, color.RGBA{R: 255, G: 255, B: 255, A: 255})
 
-		require.True(t, imageBuffer.Set(rgba))
+		require.NoError(t, imageBuffer.Set(rgba))
 		got := imageBuffer.Get()
 		require.NotNil(t, got)
 		requireImagesEqual(t, img1, got)
@@ -123,7 +137,7 @@ func TestImageBuffer_Set(t *testing.T) {
 		rgba.Pix[2] = 0
 		rgba.Pix[3] = 128
 
-		require.True(t, imageBuffer.Set(rgba))
+		require.NoError(t, imageBuffer.Set(rgba))
 		got := imageBuffer.Get()
 		require.NotNil(t, got)
 
@@ -139,7 +153,7 @@ func TestImageBuffer_Set(t *testing.T) {
 		rgba.Pix[2] = 0
 		rgba.Pix[3] = 2
 
-		require.True(t, imageBuffer.Set(rgba))
+		require.NoError(t, imageBuffer.Set(rgba))
 		got := imageBuffer.Get()
 		require.NotNil(t, got)
 
@@ -168,7 +182,7 @@ func TestImageBuffer_Set(t *testing.T) {
 			copy(dstRow, srcRow)
 		}
 
-		require.True(t, imageBuffer.Set(sub))
+		require.NoError(t, imageBuffer.Set(sub))
 		got := imageBuffer.Get()
 		require.NotNil(t, got)
 		requireImagesEqual(t, img1, got)
@@ -185,7 +199,7 @@ func TestImageBuffer_Set(t *testing.T) {
 			copy(dstRow, srcRow)
 		}
 
-		require.True(t, imageBuffer.Set(sub))
+		require.NoError(t, imageBuffer.Set(sub))
 		got := imageBuffer.Get()
 		require.NotNil(t, got)
 
@@ -199,15 +213,81 @@ func TestImageBuffer_Set(t *testing.T) {
 		}
 	})
 
-	t.Run("handles zero-sized image without panic", func(t *testing.T) {
+	t.Run("rejects zero-sized image", func(t *testing.T) {
 		empty := image.NewNRGBA(image.Rect(0, 0, 0, 0))
 
 		require.NotPanics(t, func() {
-			require.True(t, imageBuffer.Set(empty))
+			err := imageBuffer.Set(empty)
+			require.Error(t, err)
 		})
-		require.True(t, imageBuffer.IsEmpty())
-		require.Nil(t, imageBuffer.Get())
+		require.False(t, imageBuffer.IsEmpty())
+		requireImagesEqual(t, img1, imageBuffer.Get())
 	})
+
+	t.Run("rejects nil image", func(t *testing.T) {
+		require.NotPanics(t, func() {
+			err := imageBuffer.Set(nil)
+			require.Error(t, err)
+		})
+	})
+
+	t.Run("rejects typed nil image", func(t *testing.T) {
+		var typedNil *image.RGBA
+
+		require.NotPanics(t, func() {
+			err := imageBuffer.Set(typedNil)
+			require.Error(t, err)
+		})
+	})
+
+	t.Run("reports write failure", func(t *testing.T) {
+		oldSet := native.MaaImageBufferSetRawData
+		defer func() { native.MaaImageBufferSetRawData = oldSet }()
+		native.MaaImageBufferSetRawData = func(uintptr, unsafe.Pointer, int32, int32, int32) bool {
+			return false
+		}
+
+		err := imageBuffer.Set(img1)
+		require.Error(t, err)
+	})
+}
+
+// boundsStubImage is an image.Image whose Bounds can be inverted, simulating
+// a custom implementation that reports negative dimensions.
+type boundsStubImage struct {
+	bounds image.Rectangle
+}
+
+func (i boundsStubImage) ColorModel() color.Model { return color.NRGBAModel }
+func (i boundsStubImage) Bounds() image.Rectangle { return i.bounds }
+func (i boundsStubImage) At(int, int) color.Color { return color.NRGBA{} }
+
+func TestImageBuffer_SetNegativeBounds(t *testing.T) {
+	imageBuffer := createImageBuffer(t)
+	defer imageBuffer.Destroy()
+
+	cases := []struct {
+		name   string
+		bounds image.Rectangle
+	}{
+		// image.Rect canonicalizes swapped corners, so inverted rectangles
+		// must be built as literals to yield negative Dx/Dy.
+		{name: "both negative", bounds: image.Rectangle{Max: image.Point{X: -3, Y: -2}}},
+		{name: "negative width and zero height", bounds: image.Rectangle{Max: image.Point{X: -3}}},
+		{name: "zero width and negative height", bounds: image.Rectangle{Max: image.Point{Y: -2}}},
+		{name: "inverted min and max", bounds: image.Rectangle{Min: image.Point{X: 4, Y: 4}, Max: image.Point{X: 1, Y: 2}}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			img := boundsStubImage{bounds: tc.bounds}
+			require.NotPanics(t, func() {
+				err := imageBuffer.Set(img)
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "invalid bounds")
+			})
+		})
+	}
 }
 
 func TestRGBAIsOpaque_FastPathIgnoresTrailingRowsOutsideSubImage(t *testing.T) {
@@ -243,7 +323,7 @@ func TestImageBuffer_GetInto(t *testing.T) {
 	img1.SetRGBA(0, 1, color.RGBA{R: 0, G: 0, B: 255, A: 255})
 	img1.SetRGBA(1, 1, color.RGBA{R: 255, G: 255, B: 255, A: 255})
 
-	require.True(t, imageBuffer.Set(img1))
+	require.NoError(t, imageBuffer.Set(img1))
 
 	reused := image.NewRGBA(image.Rect(0, 0, width, height))
 	got1 := imageBuffer.GetInto(reused)
@@ -277,7 +357,7 @@ func TestImageBuffer_GetInto(t *testing.T) {
 	})
 
 	t.Run("reuses dst with larger stride and takes slow path", func(t *testing.T) {
-		require.True(t, imageBuffer.Set(img1))
+		require.NoError(t, imageBuffer.Set(img1))
 
 		parent := image.NewRGBA(image.Rect(0, 0, 4, 4))
 		sub := parent.SubImage(image.Rect(1, 1, 3, 3)).(*image.RGBA)

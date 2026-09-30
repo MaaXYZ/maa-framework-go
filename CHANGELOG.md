@@ -8,6 +8,7 @@
 - **设置方法**：`bool` → `error`
 - **查询方法**：`(T, bool)` → `(T, error)`
 - **运行方法**：`T` → `(T, error)`
+- **提交方法**：`*Job` / `*TaskJob` → `(*Job, error)` / `(*TaskJob, error)`
 
 ### 受影响的组件
 
@@ -37,6 +38,25 @@
 
 **补充说明**：`OverrideNext` 现改为接收 `[]NextItem`。
 
+#### Tasker / Controller / Resource
+
+| 变更类型 | 受影响的方法 |
+|---------|-------------|
+| 提交方法 | Tasker：`PostTask`, `PostRecognition`, `PostAction`, `PostStop`；Controller：`PostConnect`, `PostClick`, `PostSwipe`, `PostScreencap` 等全部 `Post*`；Resource：`PostBundle`, `PostOcrModel`, `PostPipeline`, `PostImage` |
+
+**提交错误语义**：所有 `Post*` 方法统一返回 `(Job, error)`。提交失败分为两类：
+- wrapper 预检失败（如 JSON 序列化失败、对象已关闭）：不会调用原生提交接口，直接返回一个终态失败的 Job 和非 nil 的 error
+- 原生提交接口返回 invalid ID：原生接口已被调用但拒绝了本次提交，Go 侧将其转换为同样的终态失败 Job 和 error
+
+两种失败的共同行为：
+- 返回的 `error` 非 nil 当且仅当提交失败
+- 忽略 error 的调用方在 `Status()` / `Wait()` 上得到失败终态，而不是一个永远 pending 的 Job
+- `Error()` 保留为镜像访问器：对提交失败的 Job 读取同一提交错误；成功提交的 Job 在拥有者关闭后也会返回 `ErrClosed`（Job 不再可用）
+
+Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `WaitFreezes` 的参数序列化失败同样返回错误，此时不会提交到原生层。
+
+**图像参数校验**：`Tasker.PostRecognition`、`Context.RunRecognition`、`Context.RunRecognitionDirect`、`Context.OverrideImage`、`Resource.OverrideImage` 现在会校验图像参数，图像为 nil 或宽高为 0 时返回错误，不会调用原生接口（旧版对空图静默清空 buffer，对 nil 图直接 panic）。
+
 #### TaskJob
 
 | 变更类型 | 受影响的方法 |
@@ -45,7 +65,7 @@
 | 设置方法 | `OverridePipeline` |
 | 新增方法 | `Error() error` |
 
-**错误处理增强**：当任务创建过程中发生错误（如 JSON 序列化失败）时，`TaskJob` 会保存该错误而非静默忽略。此时：
+**错误处理增强**：当任务提交过程中发生错误（如 JSON 序列化失败）时，`PostTask` 会返回终态失败的 `TaskJob` 和对应的 error。此时：
 - `Status()` 返回 `StatusFailure`
 - `Error()` 返回具体的错误信息
 - `Wait()` 会跳过等待直接返回
@@ -80,7 +100,8 @@
 | 设置方法 | `BindResource`, `BindController`, `ClearCache` |
 
 **补充说明**：`TaskDetail` 不再预取完整 `NodeDetail` 列表，现改为返回懒加载的 `Nodes []NodeRef`；可通过 `NodeRef.GetDetail()` 或 `Tasker.GetNodeDetail(nodeId)` 按需获取节点详情。
-**新增 WaitFreezes 查询**：`Tasker.GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error)` 可根据回调中的 `wf_id` 查询阶段、耗时、识别 ID 列表和 ROI；无详情时返回 `(nil, nil)`。
+**新增 WaitFreezes 查询**：`Tasker.GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error)` 可根据回调中的 `wf_id` 查询阶段、耗时、识别 ID 列表和 ROI。
+**详情查询错误语义**：`GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 在无对应详情时返回非 nil 的 error，不再返回 `(nil, nil)`。
 
 #### Resource
 
@@ -299,10 +320,10 @@ err := ctx.OverrideNext("Entry", []maa.NextItem{
 #### 任务创建错误处理
 
 ```go
-// 新增：检查任务创建阶段的错误
-job := tasker.PostTask("entry", invalidOverride)
-if err := job.Error(); err != nil {
-    // 处理任务创建错误（如 JSON 序列化失败）
+// 新 API：提交失败直接返回 error；wrapper 预检失败时不会提交到原生层
+taskJob, err := tasker.PostTask("entry", invalidOverride)
+if err != nil {
+    // 处理任务提交错误（如 JSON 序列化失败）；taskJob 为终态失败的 Job
 }
 ```
 
@@ -400,7 +421,7 @@ if best != nil {
 - `NewReplayController(recordingPath string) (*Controller, error)`
 - `NewRecordController(inner *Controller, recordingPath string) (*Controller, error)`
 - OCR 颜色过滤：`OCRParam.ColorFilter` 字段 & `WithOCRColorFilter` 选项函数，指定 ColorMatch 节点名对图像进行颜色二值化后再送入 OCR 识别（适配 [MaaFramework#1145](https://github.com/MaaXYZ/MaaFramework/pull/1145)）
-- Controller inactive：`Controller.PostInactive() *Job` 与 `CustomController.Inactive() bool`，用于在任务结束后恢复窗口/输入状态（适配 [MaaFramework#1155](https://github.com/MaaXYZ/MaaFramework/pull/1155)；Win32 控制器会恢复窗口与解除输入阻塞，其他控制器为 no-op）
+- Controller inactive：`Controller.PostInactive() (*Job, error)` 与 `CustomController.Inactive() bool`，用于在任务结束后恢复窗口/输入状态（适配 [MaaFramework#1155](https://github.com/MaaXYZ/MaaFramework/pull/1155)；Win32 控制器会恢复窗口与解除输入阻塞，其他控制器为 no-op）
 - Screencap Action：新增 `ActionTypeScreencap` / `ActScreencap(ScreencapParam)`，支持在流水线动作中保存当前截图（适配 [MaaFramework#1165](https://github.com/MaaXYZ/MaaFramework/pull/1165)）
 - Win32 截图方式：`ScreencapMethod` 新增 `ScreencapAll`、`ScreencapForeground`、`ScreencapBackground`，并支持对应字符串解析/序列化
 - `Controller.SetMouseLockFollow(enabled bool) error`
@@ -409,7 +430,7 @@ if best != nil {
 - `CustomController` 接口新增 `GetInfo() (string, bool)` 方法，自定义控制器可提供额外信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - `ControllerActionDetail` 新增 `Info map[string]any` 字段，控制器动作事件回调中包含控制器信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
 - WlRoots Controller：新增 NewWlRootsController(wlrSocketPath string) (*Controller, error)，支持通过 Wayland socket 创建 WlRoots 控制器（适配 [MaaFramework#1131](https://github.com/MaaXYZ/MaaFramework/pull/1131)）
-- Controller relative move：新增 `Controller.PostRelativeMove(dx, dy int32) *Job`，支持提交相对光标移动事件（适配 [MaaFramework#1189](https://github.com/MaaXYZ/MaaFramework/pull/1189)）
+- Controller relative move：新增 `Controller.PostRelativeMove(dx, dy int32) (*Job, error)`，支持提交相对光标移动事件（适配 [MaaFramework#1189](https://github.com/MaaXYZ/MaaFramework/pull/1189)）
 - `CustomController.RelativeMove(dx, dy int32) bool` 与 `CustomController.Shell(cmd string, timeout int64) (string, bool)`，补齐自定义控制器的相对移动与 shell 能力
 - `MacOSPermission`、`MacOSCheckPermission`、`MacOSRequestPermission`、`MacOSRevealPermissionSettings`，用于检查或申请 macOS Screen Recording / Accessibility 权限
 

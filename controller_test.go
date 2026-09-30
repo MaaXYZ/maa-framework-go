@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
 )
 
@@ -80,14 +81,50 @@ func TestController_SetScreenshotUseRawSize(t *testing.T) {
 func TestController_PostConnect(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
+}
+
+func TestController_PostConnectNativeInvalidID(t *testing.T) {
+	ctrl := createBlankController(t)
+	defer ctrl.Destroy()
+
+	oldPost := native.MaaControllerPostConnection
+	native.MaaControllerPostConnection = func(uintptr) int64 { return 0 }
+	defer func() { native.MaaControllerPostConnection = oldPost }()
+
+	job, err := ctrl.PostConnect()
+	require.Error(t, err)
+	require.NotNil(t, job)
+	require.True(t, job.Failure())
+	require.True(t, job.Done())
+	require.ErrorIs(t, job.Error(), err)
+}
+
+func TestController_PostScreencapNativeInvalidID(t *testing.T) {
+	ctrl := createBlankController(t)
+	defer ctrl.Destroy()
+
+	oldPost := native.MaaControllerPostScreencap
+	native.MaaControllerPostScreencap = func(uintptr) int64 { return 0 }
+	defer func() { native.MaaControllerPostScreencap = oldPost }()
+
+	job, err := ctrl.PostScreencap()
+	require.Error(t, err)
+	require.NotNil(t, job)
+	require.True(t, job.Failure())
+	require.True(t, job.Done())
+	require.ErrorIs(t, job.Error(), err)
 }
 
 func TestController_Connected(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 	connected := ctrl.Connected()
 	require.True(t, connected)
@@ -96,134 +133,198 @@ func TestController_Connected(t *testing.T) {
 func TestController_PostClick(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	clicked := ctrl.PostClick(100, 200).Wait().Success()
+	clickJob, err := ctrl.PostClick(100, 200)
+	require.NoError(t, err)
+	clicked := clickJob.Wait().Success()
 	require.True(t, clicked)
 }
 
 func TestController_PostSwipe(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	swiped := ctrl.PostSwipe(100, 200, 400, 300, 2*time.Second).Wait().Success()
+	swipeJob, err := ctrl.PostSwipe(100, 200, 400, 300, 2*time.Second)
+	require.NoError(t, err)
+	swiped := swipeJob.Wait().Success()
 	require.True(t, swiped)
 }
 
 func TestController_PostClickKey(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	pressed := ctrl.PostClickKey(4).Wait().Success()
+	clickKeyJob, err := ctrl.PostClickKey(4)
+	require.NoError(t, err)
+	pressed := clickKeyJob.Wait().Success()
 	require.True(t, pressed)
 }
 
 func TestController_PostInputText(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	inputted := ctrl.PostInputText("Hello World").Wait().Success()
+	inputTextJob, err := ctrl.PostInputText("Hello World")
+	require.NoError(t, err)
+	inputted := inputTextJob.Wait().Success()
 	require.True(t, inputted)
 }
 
 func TestController_PostStartApp(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	started := ctrl.PostStartApp("com.android.settings").Wait().Success()
+	startAppJob, err := ctrl.PostStartApp("com.android.settings")
+	require.NoError(t, err)
+	started := startAppJob.Wait().Success()
 	require.True(t, started)
 }
 
 func TestController_PostStopApp(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	stopped := ctrl.PostStopApp("com.android.settings").Wait().Success()
+	stopAppJob, err := ctrl.PostStopApp("com.android.settings")
+	require.NoError(t, err)
+	stopped := stopAppJob.Wait().Success()
 	require.True(t, stopped)
 }
 
 func TestController_PostTouchDown(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	downed := ctrl.PostTouchDown(0, 100, 200, 1000).Wait().Success()
+	touchDownJob, err := ctrl.PostTouchDown(0, 100, 200, 1000)
+	require.NoError(t, err)
+	downed := touchDownJob.Wait().Success()
 	require.True(t, downed)
 }
 
 func TestController_PostTouchMove(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	downed := ctrl.PostTouchDown(0, 100, 200, 1000).Wait().Success()
+	touchDownJob, err := ctrl.PostTouchDown(0, 100, 200, 1000)
+	require.NoError(t, err)
+	downed := touchDownJob.Wait().Success()
 	require.True(t, downed)
-	moved := ctrl.PostTouchMove(0, 200, 300, 1000).Wait().Success()
+	touchMoveJob, err := ctrl.PostTouchMove(0, 200, 300, 1000)
+	require.NoError(t, err)
+	moved := touchMoveJob.Wait().Success()
 	require.True(t, moved)
 }
 
 func TestController_PostTouchUp(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	downed := ctrl.PostTouchDown(0, 100, 200, 1000).Wait().Success()
+	touchDownJob, err := ctrl.PostTouchDown(0, 100, 200, 1000)
+	require.NoError(t, err)
+	downed := touchDownJob.Wait().Success()
 	require.True(t, downed)
-	moved := ctrl.PostTouchMove(0, 200, 300, 1000).Wait().Success()
+	touchMoveJob, err := ctrl.PostTouchMove(0, 200, 300, 1000)
+	require.NoError(t, err)
+	moved := touchMoveJob.Wait().Success()
 	require.True(t, moved)
-	upped := ctrl.PostTouchUp(0).Wait().Success()
+	touchUpJob, err := ctrl.PostTouchUp(0)
+	require.NoError(t, err)
+	upped := touchUpJob.Wait().Success()
 	require.True(t, upped)
 }
 
 func TestController_PostKeyDown(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	downed := ctrl.PostKeyDown(4).Wait().Success()
+	keyDownJob, err := ctrl.PostKeyDown(4)
+	require.NoError(t, err)
+	downed := keyDownJob.Wait().Success()
 	require.True(t, downed)
 }
 
 func TestController_PostKeyUp(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	downed := ctrl.PostKeyDown(4).Wait().Success()
+	keyDownJob, err := ctrl.PostKeyDown(4)
+	require.NoError(t, err)
+	downed := keyDownJob.Wait().Success()
 	require.True(t, downed)
-	upped := ctrl.PostKeyUp(4).Wait().Success()
+	keyUpJob, err := ctrl.PostKeyUp(4)
+	require.NoError(t, err)
+	upped := keyUpJob.Wait().Success()
 	require.True(t, upped)
 }
 
 func TestController_PostScreencap(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	screencaped := ctrl.PostScreencap().Wait().Success()
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	screencaped := screencapJob.Wait().Success()
 	require.True(t, screencaped)
 }
 
 func TestController_PostInactive(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	inactiveOk := ctrl.PostInactive().Wait().Success()
+	inactiveJob, err := ctrl.PostInactive()
+	require.NoError(t, err)
+	inactiveOk := inactiveJob.Wait().Success()
 	require.True(t, inactiveOk)
 }
 
 func TestController_CacheImage(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	screencaped := ctrl.PostScreencap().Wait().Success()
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	screencaped := screencapJob.Wait().Success()
 	require.True(t, screencaped)
 	img, err := ctrl.CacheImage()
 	require.NoError(t, err)
@@ -233,9 +334,13 @@ func TestController_CacheImage(t *testing.T) {
 func TestController_CacheImageInto(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	screencaped := ctrl.PostScreencap().Wait().Success()
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	screencaped := screencapJob.Wait().Success()
 	require.True(t, screencaped)
 
 	img1, err := ctrl.CacheImageInto(nil)
@@ -258,7 +363,9 @@ func TestController_CacheImageInto(t *testing.T) {
 func TestController_GetUUID(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 	uuid, err := ctrl.GetUUID()
 	require.NoError(t, err)
@@ -268,7 +375,9 @@ func TestController_GetUUID(t *testing.T) {
 func TestController_GetInfo(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 	info, err := ctrl.GetInfo()
 	require.NoError(t, err)

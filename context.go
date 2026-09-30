@@ -2,6 +2,7 @@ package maa
 
 import (
 	"errors"
+	"fmt"
 	"image"
 	"reflect"
 	"time"
@@ -33,27 +34,27 @@ func isNilOverride(v any) bool {
 	}
 }
 
-func (ctx *Context) handleOverride(override ...any) string {
+func (ctx *Context) handleOverride(override ...any) (string, error) {
 	if len(override) == 0 {
-		return "{}"
+		return "{}", nil
 	}
 
 	overrideValue := override[0]
 	if isNilOverride(overrideValue) {
-		return "{}"
+		return "{}", nil
 	}
 
 	switch v := overrideValue.(type) {
 	case string:
-		return v
+		return v, nil
 	case []byte:
-		return string(v)
+		return string(v), nil
 	default:
 		jsonBytes, err := marshalJSON(v)
 		if err != nil {
-			return "{}"
+			return "", fmt.Errorf("failed to marshal override: %w", err)
 		}
-		return string(jsonBytes)
+		return string(jsonBytes), nil
 	}
 }
 
@@ -74,7 +75,8 @@ func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {
 // a JSON string or any data type that can be marshaled to JSON. The override
 // must be a JSON object (map). If the override value is nil, an empty JSON
 // object will be used. If multiple overrides are provided, only the first one
-// will be used.
+// will be used. If the override value cannot be marshaled to JSON, an error
+// is returned and the task is not run.
 //
 // Example 1:
 //
@@ -103,16 +105,25 @@ func (ctx *Context) RunTask(entry string, override ...any) (*TaskDetail, error) 
 	}
 	defer done()
 
-	return ctx.runTask(entry, ctx.handleOverride(override...))
+	overrideStr, err := ctx.handleOverride(override...)
+	if err != nil {
+		return nil, err
+	}
+	return ctx.runTask(entry, overrideStr)
 }
 
 func (ctx *Context) runRecognition(
 	entry, override string,
 	img image.Image,
 ) (*RecognitionDetail, error) {
-	imgBuf := buffer.NewImageBuffer()
-	imgBuf.Set(img)
+	imgBuf, err := buffer.NewImageBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create recognition image buffer: %w", err)
+	}
 	defer imgBuf.Destroy()
+	if err := imgBuf.Set(img); err != nil {
+		return nil, fmt.Errorf("failed to set recognition image: %w", err)
+	}
 
 	recId := native.MaaContextRunRecognition(ctx.handle, entry, override, imgBuf.Handle())
 	if recId == 0 {
@@ -131,7 +142,8 @@ func (ctx *Context) runRecognition(
 // a JSON string or any data type that can be marshaled to JSON. The override
 // must be a JSON object (map). If the override value is nil, an empty JSON
 // object will be used. If multiple overrides are provided, only the first one
-// will be used.
+// will be used. If the override value cannot be marshaled to JSON, an error
+// is returned and the recognition is not run.
 //
 // Example 1:
 //
@@ -164,7 +176,11 @@ func (ctx *Context) RunRecognition(
 	}
 	defer done()
 
-	return ctx.runRecognition(entry, ctx.handleOverride(override...), img)
+	overrideStr, err := ctx.handleOverride(override...)
+	if err != nil {
+		return nil, err
+	}
+	return ctx.runRecognition(entry, overrideStr, img)
 }
 
 func (ctx *Context) runAction(
@@ -172,9 +188,14 @@ func (ctx *Context) runAction(
 	box Rect,
 	recognitionDetail string,
 ) (*ActionDetail, error) {
-	rectBuf := buffer.NewRectBuffer()
-	rectBuf.Set(box)
+	rectBuf, err := buffer.NewRectBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create action rect buffer: %w", err)
+	}
 	defer rectBuf.Destroy()
+	if err := rectBuf.Set(box); err != nil {
+		return nil, fmt.Errorf("failed to set action rect: %w", err)
+	}
 
 	actId := native.MaaContextRunAction(
 		ctx.handle,
@@ -199,7 +220,8 @@ func (ctx *Context) runAction(
 // a JSON string or any data type that can be marshaled to JSON. The override
 // must be a JSON object (map). If the override value is nil, an empty JSON
 // object will be used. If multiple overrides are provided, only the first one
-// will be used.
+// will be used. If the override value cannot be marshaled to JSON, an error
+// is returned and the action is not run.
 // recognitionDetail should be a JSON string for the previous recognition
 // detail (e.g., RecognitionDetail.DetailJson). Pass "" if not available.
 //
@@ -235,9 +257,13 @@ func (ctx *Context) RunAction(
 	}
 	defer done()
 
+	overrideStr, err := ctx.handleOverride(override...)
+	if err != nil {
+		return nil, err
+	}
 	return ctx.runAction(
 		entry,
-		ctx.handleOverride(override...),
+		overrideStr,
 		box,
 		recognitionDetail,
 	)
@@ -263,9 +289,14 @@ func (ctx *Context) RunRecognitionDirect(
 	}
 	defer done()
 
-	imgBuf := buffer.NewImageBuffer()
-	imgBuf.Set(img)
+	imgBuf, err := buffer.NewImageBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create recognition image buffer: %w", err)
+	}
 	defer imgBuf.Destroy()
+	if err := imgBuf.Set(img); err != nil {
+		return nil, fmt.Errorf("failed to set recognition image: %w", err)
+	}
 
 	recParamJSON, err := marshalJSON(recoParam)
 	if err != nil {
@@ -311,9 +342,14 @@ func (ctx *Context) RunActionDirect(
 	}
 	defer done()
 
-	rectBuf := buffer.NewRectBuffer()
-	rectBuf.Set(box)
+	rectBuf, err := buffer.NewRectBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create action rect buffer: %w", err)
+	}
 	defer rectBuf.Destroy()
+	if err := rectBuf.Set(box); err != nil {
+		return nil, fmt.Errorf("failed to set action rect: %w", err)
+	}
 
 	actParamJSON, err := marshalJSON(actionParam)
 	if err != nil {
@@ -435,9 +471,14 @@ func (ctx *Context) OverrideImage(imageName string, image image.Image) error {
 	}
 	defer done()
 
-	img := buffer.NewImageBuffer()
+	img, err := buffer.NewImageBuffer()
+	if err != nil {
+		return err
+	}
 	defer img.Destroy()
-	img.Set(image)
+	if err := img.Set(image); err != nil {
+		return err
+	}
 	if !native.MaaContextOverrideImage(ctx.handle, imageName, img.Handle()) {
 		return errors.New("failed to override image")
 	}
@@ -536,6 +577,7 @@ func (ctx *Context) getTaskerActive() *Tasker {
 // waitFreezesParam is optional; nil uses default params. duration and waitFreezesParam.Time are mutually exclusive;
 // one of them must be non-zero.
 // Returns nil if the screen stabilized within the timeout; returns an error on timeout or failure.
+// If waitFreezesParam cannot be marshaled to JSON, an error is returned and nothing is waited.
 func (ctx *Context) WaitFreezes(
 	duration time.Duration,
 	box *Rect,
@@ -549,17 +591,27 @@ func (ctx *Context) WaitFreezes(
 
 	var boxHandle uintptr
 	if box != nil {
-		rectBuf := buffer.NewRectBuffer()
-		rectBuf.Set(*box)
+		rectBuf, err := buffer.NewRectBuffer()
+		if err != nil {
+			return fmt.Errorf("failed to create rect buffer: %w", err)
+		}
 		defer rectBuf.Destroy()
+		if err := rectBuf.Set(*box); err != nil {
+			return fmt.Errorf("failed to set rect: %w", err)
+		}
 		boxHandle = rectBuf.Handle()
+	}
+
+	overrideStr, err := ctx.handleOverride(waitFreezesParam)
+	if err != nil {
+		return err
 	}
 
 	ok := native.MaaContextWaitFreezes(
 		ctx.handle,
 		uint64(duration.Milliseconds()),
 		boxHandle,
-		ctx.handleOverride(waitFreezesParam),
+		overrideStr,
 	)
 	if !ok {
 		return errors.New("wait freezes timeout or failed")

@@ -181,7 +181,7 @@ func (t *Tasker) Initialized() bool {
 	return native.MaaTaskerInited(t.handle)
 }
 
-func (t *Tasker) handleOverride(entry string, postFunc func(entry, override string) *TaskJob, override ...any) *TaskJob {
+func (t *Tasker) handleOverride(entry string, postFunc func(entry, override string) (*TaskJob, error), override ...any) (*TaskJob, error) {
 	if len(override) == 0 {
 		return postFunc(entry, "{}")
 	}
@@ -199,31 +199,37 @@ func (t *Tasker) handleOverride(entry string, postFunc func(entry, override stri
 	default:
 		jsonBytes, err := marshalJSON(v)
 		if err != nil {
-			return postFunc(entry, "{}")
+			return failTaskJob(fmt.Errorf("failed to marshal task override: %w", err))
 		}
 		return postFunc(entry, string(jsonBytes))
 	}
 }
 
-func (t *Tasker) postTask(entry, pipelineOverride string) *TaskJob {
+func (t *Tasker) postTask(entry, pipelineOverride string) (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
-		return newFailedTaskJob(useErr)
+		return failTaskJob(useErr)
 	}
 	defer done()
 
 	t.state.postMu.Lock()
 	id := native.MaaTaskerPostTask(t.handle, entry, pipelineOverride)
 	t.state.postMu.Unlock()
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
+	if id == 0 {
+		return failTaskJob(errors.New("failed to post task"))
+	}
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState), nil
 }
 
 // PostTask posts a task to the tasker asynchronously.
 // The optional override can be a JSON string, []byte, or any JSON-marshalable value.
-func (t *Tasker) PostTask(entry string, override ...any) *TaskJob {
+// It returns an error and a terminal-failed job when the task cannot be
+// submitted, for example when the override cannot be marshaled or the tasker
+// is closed; the task is not posted to the native layer in that case.
+func (t *Tasker) PostTask(entry string, override ...any) (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
-		return newFailedTaskJob(useErr)
+		return failTaskJob(useErr)
 	}
 	defer done()
 
@@ -231,58 +237,79 @@ func (t *Tasker) PostTask(entry string, override ...any) *TaskJob {
 }
 
 // PostRecognition posts a recognition to the tasker asynchronously.
-func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionParam, img image.Image) *TaskJob {
+// It returns an error and a terminal-failed job when the recognition cannot
+// be submitted, for example when the image or recognition parameter is
+// invalid or the tasker is closed; the recognition is not posted to the
+// native layer in that case.
+func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionParam, img image.Image) (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
-		return newFailedTaskJob(useErr)
+		return failTaskJob(useErr)
 	}
 	defer done()
 
-	imgBuf := buffer.NewImageBuffer()
+	imgBuf, err := buffer.NewImageBuffer()
+	if err != nil {
+		return failTaskJob(fmt.Errorf("failed to create recognition image buffer: %w", err))
+	}
 	defer imgBuf.Destroy()
-	imgBuf.Set(img)
+	if err := imgBuf.Set(img); err != nil {
+		return failTaskJob(fmt.Errorf("failed to set recognition image: %w", err))
+	}
 
 	recParamJSON, err := marshalJSON(recParam)
 	if err != nil {
-		return newTaskJob(0, nil, nil, nil, nil,
-			fmt.Errorf("failed to marshal recognition param: %w", err))
+		return failTaskJob(fmt.Errorf("failed to marshal recognition param: %w", err))
 	}
 
 	t.state.postMu.Lock()
 	id := native.MaaTaskerPostRecognition(t.handle, string(recType), string(recParamJSON), imgBuf.Handle())
 	t.state.postMu.Unlock()
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
+	if id == 0 {
+		return failTaskJob(errors.New("failed to post recognition"))
+	}
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState), nil
 }
 
 // PostAction posts an action to the tasker asynchronously.
 // The box and recoDetail are from the previous recognition.
-func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box Rect, recoDetail *RecognitionDetail) *TaskJob {
+// It returns an error and a terminal-failed job when the action cannot be
+// submitted, for example when the action or recognition detail parameter
+// cannot be marshaled or the tasker is closed; the action is not posted to
+// the native layer in that case.
+func (t *Tasker) PostAction(actionType ActionType, actionParam ActionParam, box Rect, recoDetail *RecognitionDetail) (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
-		return newFailedTaskJob(useErr)
+		return failTaskJob(useErr)
 	}
 	defer done()
 
-	rectBuf := buffer.NewRectBuffer()
+	rectBuf, err := buffer.NewRectBuffer()
+	if err != nil {
+		return failTaskJob(fmt.Errorf("failed to create action rect buffer: %w", err))
+	}
 	defer rectBuf.Destroy()
-	rectBuf.Set(box)
+	if err := rectBuf.Set(box); err != nil {
+		return failTaskJob(fmt.Errorf("failed to set action rect: %w", err))
+	}
 
 	actParamJSON, err := marshalJSON(actionParam)
 	if err != nil {
-		return newTaskJob(0, nil, nil, nil, nil,
-			fmt.Errorf("failed to marshal action param: %w", err))
+		return failTaskJob(fmt.Errorf("failed to marshal action param: %w", err))
 	}
 
 	recoDetailJSON, err := marshalJSON(recoDetail)
 	if err != nil {
-		return newTaskJob(0, nil, nil, nil, nil,
-			fmt.Errorf("failed to marshal recognition detail: %w", err))
+		return failTaskJob(fmt.Errorf("failed to marshal recognition detail: %w", err))
 	}
 
 	t.state.postMu.Lock()
 	id := native.MaaTaskerPostAction(t.handle, string(actionType), string(actParamJSON), rectBuf.Handle(), string(recoDetailJSON))
 	t.state.postMu.Unlock()
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
+	if id == 0 {
+		return failTaskJob(errors.New("failed to post action"))
+	}
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState), nil
 }
 
 // Stopping checks if the tasker is in the process of stopping (not yet fully stopped).
@@ -331,17 +358,22 @@ func (t *Tasker) Running() bool {
 
 // PostStop posts a stop signal to the tasker asynchronously.
 // It interrupts the currently running task and stops resource loading and controller operations.
-func (t *Tasker) PostStop() *TaskJob {
+// It returns an error and a terminal-failed job when the stop signal cannot
+// be submitted, for example when the tasker is closed.
+func (t *Tasker) PostStop() (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
-		return newFailedTaskJob(useErr)
+		return failTaskJob(useErr)
 	}
 	defer done()
 
 	t.state.postMu.Lock()
 	id := native.MaaTaskerPostStop(t.handle)
 	t.state.postMu.Unlock()
-	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState)
+	if id == 0 {
+		return failTaskJob(errors.New("failed to post stop"))
+	}
+	return newTaskJob(id, t.status, t.wait, t.GetTaskDetail, t.overridePipeline, nil, t.state.handleState), nil
 }
 
 // GetResource returns the bound resource of the tasker.
@@ -441,6 +473,8 @@ type RecognitionDetail struct {
 }
 
 // GetRecognitionDetail queries recognition detail.
+// It returns an error when no detail is available for recId or the detail
+// cannot be decoded.
 func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -453,11 +487,17 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	algorithm := buffer.NewStringBuffer()
 	defer algorithm.Destroy()
 	var hitByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
-	box := buffer.NewRectBuffer()
+	box, err := buffer.NewRectBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create rect buffer for recId %d: %w", recId, err)
+	}
 	defer box.Destroy()
 	detailJson := buffer.NewStringBuffer()
 	defer detailJson.Destroy()
-	raw := buffer.NewImageBuffer()
+	raw, err := buffer.NewImageBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create image buffer for recId %d: %w", recId, err)
+	}
 	defer raw.Destroy()
 	draws := buffer.NewImageListBuffer()
 	defer draws.Destroy()
@@ -473,7 +513,7 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 		draws.Handle(),
 	)
 	if !got {
-		return nil, nil
+		return nil, fmt.Errorf("failed to get recognition detail for recId %d", recId)
 	}
 
 	rawImg := raw.Get()
@@ -483,19 +523,18 @@ func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	detailJsonBytes := []byte(detailJsonStr)
 	algorithmStr := algorithm.Get()
 
-	var err error
 	var results *RecognitionResults
 	var combinedResults []*RecognitionDetail
 
 	if isCombinedRecognition(algorithmStr) {
 		combinedResults, err = parseCombinedResult(detailJsonBytes)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse recognition detail for recId %d: %w", recId, err)
 		}
 	} else {
 		results, err = parseRecognitionResults(algorithmStr, detailJsonBytes)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse recognition detail for recId %d: %w", recId, err)
 		}
 	}
 
@@ -528,7 +567,7 @@ type ActionDetail struct {
 // The returned detail mirrors MaaTaskerGetActionDetail in the C++ API: Box is
 // the recognition box passed to the action, Success is the controller return
 // value, and Result is the action-specific decoding of DetailJson.
-// It returns (nil, nil) when no detail is available for actionId.
+// It returns an error when no detail is available for actionId.
 func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -540,7 +579,10 @@ func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	defer name.Destroy()
 	action := buffer.NewStringBuffer()
 	defer action.Destroy()
-	box := buffer.NewRectBuffer()
+	box, err := buffer.NewRectBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create rect buffer for actionId %d: %w", actionId, err)
+	}
 	defer box.Destroy()
 	var successByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
 	detailJson := buffer.NewStringBuffer()
@@ -556,13 +598,13 @@ func (t *Tasker) GetActionDetail(actionId int64) (*ActionDetail, error) {
 	)
 
 	if !got {
-		return nil, nil
+		return nil, fmt.Errorf("failed to get action detail for actionId %d", actionId)
 	}
 
 	detailJsonStr := detailJson.Get()
 	result, err := parseActionResult(action.Get(), detailJsonStr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse action detail for actionId %d: %w", actionId, err)
 	}
 
 	return &ActionDetail{
@@ -612,6 +654,7 @@ func (n NodeRef) GetDetail() (*NodeDetail, error) {
 }
 
 // GetNodeDetail queries node detail by node ID.
+// Recognition and Action are nil when the node has no recognition or action.
 func (t *Tasker) GetNodeDetail(nodeId int64) (*NodeDetail, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -632,17 +675,25 @@ func (t *Tasker) GetNodeDetail(nodeId int64) (*NodeDetail, error) {
 		(*bool)(unsafe.Pointer(&runCompletedByte)), // Convert uint8* to bool* for FFI call
 	)
 	if !got {
-		return nil, errors.New("failed to get node detail")
+		return nil, fmt.Errorf("failed to get node detail for nodeId %d", nodeId)
 	}
 
-	recognitionDetail, err := t.GetRecognitionDetail(recId)
-	if err != nil {
-		return nil, err
+	// A node without recognition or action reports MaaInvalidId (0) for the
+	// corresponding sub-detail; skip those queries instead of failing.
+	var err error
+	var recognitionDetail *RecognitionDetail
+	if recId != 0 {
+		recognitionDetail, err = t.GetRecognitionDetail(recId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get node detail for nodeId %d: %w", nodeId, err)
+		}
 	}
-
-	actionDetail, err := t.GetActionDetail(actionId)
-	if err != nil {
-		return nil, err
+	var actionDetail *ActionDetail
+	if actionId != 0 {
+		actionDetail, err = t.GetActionDetail(actionId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get node detail for nodeId %d: %w", nodeId, err)
+		}
 	}
 
 	return &NodeDetail{
@@ -683,7 +734,7 @@ func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
 		nil,
 	)
 	if !got {
-		return nil, errors.New("failed to get task detail size")
+		return nil, fmt.Errorf("failed to get task detail size for taskId %d", taskId)
 	}
 	if size == 0 {
 		return &TaskDetail{
@@ -703,7 +754,7 @@ func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
 		(*int32)(&status),
 	)
 	if !got {
-		return nil, errors.New("failed to get task detail data")
+		return nil, fmt.Errorf("failed to get task detail data for taskId %d", taskId)
 	}
 
 	nodes := make([]NodeRef, size)
@@ -731,7 +782,7 @@ func (t *Tasker) GetLatestNode(taskName string) (*NodeDetail, error) {
 
 	got := native.MaaTaskerGetLatestNode(t.handle, taskName, &nodeId)
 	if !got {
-		return nil, errors.New("failed to get latest node")
+		return nil, fmt.Errorf("failed to get latest node for taskName %q", taskName)
 	}
 	return t.GetNodeDetail(nodeId)
 }
@@ -748,7 +799,7 @@ type WaitFreezesDetail struct {
 }
 
 // GetWaitFreezesDetail queries wait-freezes detail by wait-freezes ID.
-// Returns (nil, nil) when no detail is available for wfId.
+// It returns an error when no detail is available for wfId.
 func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -762,7 +813,10 @@ func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 	defer phase.Destroy()
 	var successByte uint8 // Use uint8 instead of bool for C ABI compatibility on macOS
 	var elapsedMs uint64
-	roi := buffer.NewRectBuffer()
+	roi, err := buffer.NewRectBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create rect buffer for wfId %d: %w", wfId, err)
+	}
 	defer roi.Destroy()
 
 	// First call to get the reco_id_list size
@@ -779,7 +833,7 @@ func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 		0,
 	)
 	if !got {
-		return nil, nil
+		return nil, fmt.Errorf("failed to get wait freezes detail for wfId %d", wfId)
 	}
 
 	var recoIdList []int64
@@ -810,7 +864,7 @@ func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 		)
 	}
 	if !got {
-		return nil, errors.New("failed to get wait freezes detail")
+		return nil, fmt.Errorf("failed to get wait freezes detail for wfId %d", wfId)
 	}
 
 	return &WaitFreezesDetail{

@@ -34,7 +34,8 @@ func TestTasker_DestroyRejectsPendingJobDuringCallbackSetup(t *testing.T) {
 		return tasker.handle
 	}
 
-	job := tasker.PostTask("entry")
+	job, err := tasker.PostTask("entry")
+	require.NoError(t, err)
 	require.NoError(t, job.Error())
 	callback := make(chan *Context, 1)
 	go func() { callback <- newCallbackContext(123) }()
@@ -69,7 +70,8 @@ func TestResource_DestroyRejectsPendingJob(t *testing.T) {
 	native.MaaResourcePostBundle = func(uintptr, string) int64 { return 43 }
 	native.MaaResourceStatus = func(uintptr, int64) int32 { return status.Load() }
 
-	job := res.PostBundle("unused")
+	job, err := res.PostBundle("unused")
+	require.NoError(t, err)
 	require.NoError(t, job.Error())
 	firstClose := res.Destroy()
 	status.Store(int32(StatusSuccess))
@@ -92,7 +94,8 @@ func TestController_DestroyRejectsRunningJob(t *testing.T) {
 	native.MaaControllerPostConnection = func(uintptr) int64 { return 44 }
 	native.MaaControllerStatus = func(uintptr, int64) int32 { return status.Load() }
 
-	job := ctrl.PostConnect()
+	job, err := ctrl.PostConnect()
+	require.NoError(t, err)
 	require.NoError(t, job.Error())
 	firstClose := ctrl.Destroy()
 	status.Store(int32(StatusFailure))

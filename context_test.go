@@ -28,7 +28,9 @@ func (t *testContextRunTaskAct) Run(ctx *Context, _ *CustomActionArg) bool {
 func TestContext_RunTask(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -38,7 +40,7 @@ func TestContext_RunTask(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_RunPipelineAct", &testContextRunTaskAct{t})
+	err = res.RegisterCustomAction("TestContext_RunPipelineAct", &testContextRunTaskAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -46,8 +48,9 @@ func TestContext_RunTask(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunPipelineAct"}))
 	pipeline.AddNode(testContext_RunPipelineNode)
 
-	got := tasker.PostTask(testContext_RunPipelineNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_RunPipelineNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -76,7 +79,9 @@ func (t *testContextRunRecognitionAct) Run(ctx *Context, _ *CustomActionArg) boo
 func TestContext_RunRecognition(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -86,7 +91,7 @@ func TestContext_RunRecognition(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_RunRecognitionAct", &testContextRunRecognitionAct{t})
+	err = res.RegisterCustomAction("TestContext_RunRecognitionAct", &testContextRunRecognitionAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -100,8 +105,9 @@ func TestContext_RunRecognition(t *testing.T) {
 	stopNode := NewNode("Stop")
 	pipeline.AddNode(stopNode)
 
-	got := tasker.PostTask(testContext_RunRecognitionNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_RunRecognitionNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -126,7 +132,9 @@ func (a testContextRunActionAct) Run(ctx *Context, arg *CustomActionArg) bool {
 func TestContext_RunAction(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -136,7 +144,7 @@ func TestContext_RunAction(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_RunActionAct", &testContextRunActionAct{t})
+	err = res.RegisterCustomAction("TestContext_RunActionAct", &testContextRunActionAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -144,8 +152,9 @@ func TestContext_RunAction(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunActionAct"}))
 	pipeline.AddNode(testContext_RunActionNode)
 
-	got := tasker.PostTask(testContext_RunActionNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_RunActionNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -184,7 +193,9 @@ func (t *testContextOverriderPipelineAct) Run(ctx *Context, _ *CustomActionArg) 
 func TestContext_OverridePipeline(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -194,7 +205,7 @@ func TestContext_OverridePipeline(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_OverridePipelineAct", &testContextOverriderPipelineAct{t})
+	err = res.RegisterCustomAction("TestContext_OverridePipelineAct", &testContextOverriderPipelineAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -202,8 +213,9 @@ func TestContext_OverridePipeline(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_OverridePipelineAct"}))
 	pipeline.AddNode(testContext_OverridePipelineNode)
 
-	got := tasker.PostTask(testContext_OverridePipelineNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_OverridePipelineNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -238,7 +250,9 @@ func (t *testContextOverrideNextAct) Run(ctx *Context, _ *CustomActionArg) bool 
 func TestContext_OverrideNext(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -248,7 +262,7 @@ func TestContext_OverrideNext(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_OverrideNextAct", &testContextOverrideNextAct{t})
+	err = res.RegisterCustomAction("TestContext_OverrideNextAct", &testContextOverrideNextAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -256,8 +270,9 @@ func TestContext_OverrideNext(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_OverrideNextAct"}))
 	pipeline.AddNode(testContext_OverrideNextNode)
 
-	got := tasker.PostTask(testContext_OverrideNextNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_OverrideNextNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -272,6 +287,7 @@ func TestContext_handleOverride(t *testing.T) {
 		name     string
 		override []any
 		want     string
+		wantErr  bool
 	}{
 		{
 			name:     "no override",
@@ -309,17 +325,23 @@ func TestContext_handleOverride(t *testing.T) {
 			want:     `{"A":1}`,
 		},
 		{
-			name: "marshal error fallback",
+			name: "marshal error",
 			override: []any{map[string]any{
 				"f": func() {},
 			}},
-			want: "{}",
+			wantErr: true,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ctx.handleOverride(tc.override...)
+			got, err := ctx.handleOverride(tc.override...)
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Empty(t, got)
+				return
+			}
+			require.NoError(t, err)
 			assert.Equal(t, tc.want, got)
 		})
 	}
@@ -1336,7 +1358,9 @@ func TestContext_GetNode(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 	defer ctrl.Destroy()
-	connected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	connected := connectJob.Wait().Success()
 	require.True(t, connected)
 
 	res := createResource(t)
@@ -1355,9 +1379,9 @@ func TestContext_GetNode(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetNodeAct"}))
 	pipeline.AddNode(launchNode)
 
-	got := tasker.PostTask(launchNode.Name, pipeline).
-		Wait().
-		Success()
+	taskJob, err := tasker.PostTask(launchNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -1374,7 +1398,9 @@ func (t *testContextGetTaskJobAct) Run(ctx *Context, _ *CustomActionArg) bool {
 func TestContext_GetTaskJob(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -1384,7 +1410,7 @@ func TestContext_GetTaskJob(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_GetTaskJobAct", &testContextGetTaskJobAct{t})
+	err = res.RegisterCustomAction("TestContext_GetTaskJobAct", &testContextGetTaskJobAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -1392,8 +1418,9 @@ func TestContext_GetTaskJob(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskJobAct"}))
 	pipeline.AddNode(testContext_GetTaskJobNode)
 
-	got := tasker.PostTask(testContext_GetTaskJobNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_GetTaskJobNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -1410,7 +1437,9 @@ func (t testContextGetTaskerAct) Run(ctx *Context, _ *CustomActionArg) bool {
 func TestContext_GetTasker(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -1420,7 +1449,7 @@ func TestContext_GetTasker(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextGetTaskerAct{t})
+	err = res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextGetTaskerAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -1428,8 +1457,9 @@ func TestContext_GetTasker(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
 	pipeline.AddNode(testContext_GetTaskerNode)
 
-	got := tasker.PostTask(testContext_GetTaskerNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_GetTaskerNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -1446,7 +1476,9 @@ func (t testContextCloneAct) Run(ctx *Context, _ *CustomActionArg) bool {
 func TestContext_Clone(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -1456,7 +1488,7 @@ func TestContext_Clone(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextCloneAct{t})
+	err = res.RegisterCustomAction("TestContext_GetTaskerAct", &testContextCloneAct{t})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -1464,8 +1496,9 @@ func TestContext_Clone(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_GetTaskerAct"}))
 	pipeline.AddNode(testContext_CloneNode)
 
-	got := tasker.PostTask(testContext_CloneNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_CloneNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 }
 
@@ -1497,9 +1530,13 @@ func (a *testContextRunRecognitionDirectAct) Run(ctx *Context, _ *CustomActionAr
 func TestContext_RunRecognitionDirect(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	require.True(t, ctrl.PostScreencap().Wait().Success())
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	require.True(t, screencapJob.Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -1509,7 +1546,7 @@ func TestContext_RunRecognitionDirect(t *testing.T) {
 	taskerBind(t, tasker, ctrl, res)
 
 	resultsCh := make(chan testContextRunRecognitionDirectResult, 1)
-	err := res.RegisterCustomAction("TestContext_RunRecognitionDirectAct", &testContextRunRecognitionDirectAct{resultsCh})
+	err = res.RegisterCustomAction("TestContext_RunRecognitionDirectAct", &testContextRunRecognitionDirectAct{resultsCh})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -1517,8 +1554,9 @@ func TestContext_RunRecognitionDirect(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunRecognitionDirectAct"}))
 	pipeline.AddNode(testContext_RunRecognitionDirectNode)
 
-	got := tasker.PostTask(testContext_RunRecognitionDirectNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_RunRecognitionDirectNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 	select {
 	case result := <-resultsCh:
@@ -1554,9 +1592,13 @@ func (a *testContextRunActionDirectAct) Run(ctx *Context, arg *CustomActionArg) 
 func TestContext_RunActionDirect(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	require.True(t, ctrl.PostScreencap().Wait().Success())
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	require.True(t, screencapJob.Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -1566,7 +1608,7 @@ func TestContext_RunActionDirect(t *testing.T) {
 	taskerBind(t, tasker, ctrl, res)
 
 	resultsCh := make(chan testContextRunActionDirectResult, 1)
-	err := res.RegisterCustomAction("TestContext_RunActionDirectAct", &testContextRunActionDirectAct{resultsCh})
+	err = res.RegisterCustomAction("TestContext_RunActionDirectAct", &testContextRunActionDirectAct{resultsCh})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -1574,8 +1616,9 @@ func TestContext_RunActionDirect(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_RunActionDirectAct"}))
 	pipeline.AddNode(testContext_RunActionDirectNode)
 
-	got := tasker.PostTask(testContext_RunActionDirectNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testContext_RunActionDirectNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 	select {
 	case result := <-resultsCh:

@@ -450,239 +450,336 @@ func (c *Controller) SetMouseLockFollow(enabled bool) error {
 }
 
 // PostConnect posts a connection.
-func (c *Controller) PostConnect() *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostConnect() (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostConnection(c.handle)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post connect"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostClick posts a click.
-func (c *Controller) PostClick(x, y int32) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostClick(x, y int32) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostClick(c.handle, x, y)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post click"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostClickV2 posts a click with contact and pressure.
 // For adb controller, contact means finger id (0 for first finger, 1 for second finger, etc).
 // For win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle).
-func (c *Controller) PostClickV2(x, y, contact, pressure int32) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostClickV2(x, y, contact, pressure int32) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostClickV2(c.handle, x, y, contact, pressure)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post click v2"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostSwipe posts a swipe.
-func (c *Controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostSwipe(c.handle, x1, y1, x2, y2, int32(duration.Milliseconds()))
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post swipe"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostSwipeV2 posts a swipe with contact and pressure.
 // For adb controller, contact means finger id (0 for first finger, 1 for second finger, etc).
 // For win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle).
-func (c *Controller) PostSwipeV2(x1, y1, x2, y2 int32, duration time.Duration, contact, pressure int32) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostSwipeV2(x1, y1, x2, y2 int32, duration time.Duration, contact, pressure int32) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostSwipeV2(c.handle, x1, y1, x2, y2, int32(duration.Milliseconds()), contact, pressure)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post swipe v2"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostClickKey posts a click key.
-func (c *Controller) PostClickKey(keycode int32) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostClickKey(keycode int32) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostClickKey(c.handle, keycode)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post click key"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostInputText posts an input text.
-func (c *Controller) PostInputText(text string) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostInputText(text string) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostInputText(c.handle, text)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post input text"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostStartApp posts a start app.
-func (c *Controller) PostStartApp(intent string) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostStartApp(intent string) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostStartApp(c.handle, intent)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post start app"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostStopApp posts a stop app.
-func (c *Controller) PostStopApp(intent string) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostStopApp(intent string) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostStopApp(c.handle, intent)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post stop app"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostTouchDown posts a touch-down.
-func (c *Controller) PostTouchDown(contact, x, y, pressure int32) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostTouchDown(contact, x, y, pressure int32) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostTouchDown(c.handle, contact, x, y, pressure)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post touch down"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostTouchMove posts a touch-move.
-func (c *Controller) PostTouchMove(contact, x, y, pressure int32) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostTouchMove(contact, x, y, pressure int32) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostTouchMove(c.handle, contact, x, y, pressure)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post touch move"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostTouchUp posts a touch-up.
-func (c *Controller) PostTouchUp(contact int32) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostTouchUp(contact int32) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostTouchUp(c.handle, contact)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post touch up"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostRelativeMove posts a relative cursor move.
 // dx and dy are the horizontal and vertical move offsets.
 // This is currently only supported by Win32 controllers.
 // If the controller does not support relative move, the posted action will fail.
-func (c *Controller) PostRelativeMove(dx, dy int32) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostRelativeMove(dx, dy int32) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostRelativeMove(c.handle, dx, dy)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post relative move"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
-func (c *Controller) PostKeyDown(keycode int32) *Job {
+// PostKeyDown posts a key-down.
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostKeyDown(keycode int32) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostKeyDown(c.handle, keycode)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post key down"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
-func (c *Controller) PostKeyUp(keycode int32) *Job {
+// PostKeyUp posts a key-up.
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostKeyUp(keycode int32) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostKeyUp(c.handle, keycode)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post key up"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostScreencap posts a screencap.
-func (c *Controller) PostScreencap() *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostScreencap() (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostScreencap(c.handle)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post screencap"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostScroll posts a scroll.
-func (c *Controller) PostScroll(dx, dy int32) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostScroll(dx, dy int32) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostScroll(c.handle, dx, dy)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post scroll"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostInactive posts an inactive request to restore controller/window state.
 // For Win32 controllers this restores window position (removes topmost) and unblocks user input.
 // For other controllers this is a no-op that typically succeeds.
-func (c *Controller) PostInactive() *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostInactive() (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostInactive(c.handle)
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post inactive"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // PostShell posts a adb shell command.
 // This is only valid for ADB controllers. If the controller is not an ADB controller, the action will fail.
-func (c *Controller) PostShell(cmd string, timeout time.Duration) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (c *Controller) PostShell(cmd string, timeout time.Duration) (*Job, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaControllerPostShell(c.handle, cmd, timeout.Milliseconds())
-	return newJob(id, c.status, c.wait, c.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post shell"))
+	}
+	return newJob(id, c.status, c.wait, c.state), nil
 }
 
 // GetShellOutput gets the output of the last shell command.
@@ -759,7 +856,10 @@ func (c *Controller) CacheImageInto(dst *image.RGBA) (*image.RGBA, error) {
 	}
 	defer done()
 
-	imgBuffer := buffer.NewImageBuffer()
+	imgBuffer, err := buffer.NewImageBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create image buffer: %w", err)
+	}
 	defer imgBuffer.Destroy()
 
 	got := native.MaaControllerCachedImage(c.handle, imgBuffer.Handle())
