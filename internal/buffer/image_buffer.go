@@ -52,8 +52,13 @@ func (i *ImageBuffer) Clear() bool {
 }
 
 // Get retrieves the image from raw data stored in the buffer.
+// It returns a nil interface when the buffer has no raw image data.
 func (i *ImageBuffer) Get() image.Image {
-	return i.GetInto(nil)
+	img := i.GetInto(nil)
+	if img == nil {
+		return nil
+	}
+	return img
 }
 
 // GetInto retrieves the image from raw data stored in the buffer and writes into dst when possible.
