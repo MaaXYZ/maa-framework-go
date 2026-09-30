@@ -36,6 +36,9 @@
 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 的 Go 语言绑定。MaaFramework 是一个基于图像识别的跨平台自动化测试框架。
 
 > **🚀 无需 Cgo！** 基于 [purego](https://github.com/ebitengine/purego) 的纯 Go 实现。
+>
+> Android 例外：purego 在 Android 上要借助 cgo 加载动态库，需要 `CGO_ENABLED=1` 并以 NDK 的 clang 作为 `CC`，例如
+> `GOOS=android GOARCH=arm64 CGO_ENABLED=1 CC=<ndk>/toolchains/llvm/prebuilt/<host>/bin/clang CGO_CFLAGS=--target=aarch64-linux-android24 CGO_LDFLAGS=--target=aarch64-linux-android24 go build`
 
 ## ✨ 特性
 
