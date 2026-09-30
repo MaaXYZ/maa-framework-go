@@ -175,6 +175,11 @@ const (
 	//
 	// value: int, eg: 3; val_size: sizeof(int)
 	MaaCtrlOption_ScreenshotResizeMethod MaaCtrlOption = 6
+
+	// MaaCtrlOption_ScreenshotTargetExpand scales screenshots uniformly to cover a reference size.
+	// Mutually exclusive with long-side and short-side targets; ignored when raw size is enabled.
+	// value: int32_t[2] = {width, height}; val_size: sizeof(int32_t) * 2
+	MaaCtrlOption_ScreenshotTargetExpand MaaCtrlOption = 8
 )
 
 type MaaGamepadType uint64

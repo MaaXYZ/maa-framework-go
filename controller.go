@@ -316,6 +316,7 @@ const (
 	screenshotOptionShortSide
 	screenshotOptionRawSize
 	screenshotOptionResizeMethod
+	screenshotOptionExpand
 )
 
 type screenshotOptionConfig struct {
@@ -324,6 +325,7 @@ type screenshotOptionConfig struct {
 	targetShortSide int32
 	useRawSize      bool
 	resizeMethod    int32
+	targetExpand    [2]int32
 }
 
 // ScreenshotResizeMethod is the interpolation method used when resizing screenshots.
@@ -343,7 +345,7 @@ const (
 type ScreenshotOption func(*screenshotOptionConfig)
 
 // WithScreenshotTargetLongSide sets screenshot target long side.
-// Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
+// The short side is scaled proportionally. Setting this replaces short-side and expand targets.
 //
 // eg: 1280
 func WithScreenshotTargetLongSide(targetLongSide int32) ScreenshotOption {
@@ -354,13 +356,25 @@ func WithScreenshotTargetLongSide(targetLongSide int32) ScreenshotOption {
 }
 
 // WithScreenshotTargetShortSide sets screenshot target short side.
-// Only one of long and short side can be set, and the other is automatically scaled according to the aspect ratio.
+// The long side is scaled proportionally. Setting this replaces long-side and expand targets.
 //
 // eg: 720
 func WithScreenshotTargetShortSide(targetShortSide int32) ScreenshotOption {
 	return func(cfg *screenshotOptionConfig) {
 		cfg.kind = screenshotOptionShortSide
 		cfg.targetShortSide = targetShortSide
+	}
+}
+
+// WithScreenshotTargetExpand scales screenshots uniformly to cover the reference width and height.
+// The scale is max(width/rawWidth, height/rawHeight), preserving the source aspect ratio
+// without cropping or stretching. Both output dimensions are at least the reference size.
+// Width and height must be positive. Setting this replaces long-side and short-side targets.
+// The target is ignored while WithScreenshotUseRawSize(true) is active.
+func WithScreenshotTargetExpand(width, height int32) ScreenshotOption {
+	return func(cfg *screenshotOptionConfig) {
+		cfg.kind = screenshotOptionExpand
+		cfg.targetExpand = [2]int32{width, height}
 	}
 }
 
@@ -426,6 +440,12 @@ func (c *Controller) SetScreenshot(opts ...ScreenshotOption) error {
 			native.MaaCtrlOption_ScreenshotResizeMethod,
 			unsafe.Pointer(&cfg.resizeMethod),
 			unsafe.Sizeof(cfg.resizeMethod),
+		)
+	case screenshotOptionExpand:
+		return c.setOption(
+			native.MaaCtrlOption_ScreenshotTargetExpand,
+			unsafe.Pointer(&cfg.targetExpand[0]),
+			unsafe.Sizeof(cfg.targetExpand),
 		)
 	default:
 		return fmt.Errorf("unknown screenshot option kind: %v", cfg.kind)
