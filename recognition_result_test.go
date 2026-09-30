@@ -149,7 +149,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			param: &NeuralNetworkClassifyParam{
 				Labels:   []string{"cat", "dog", "mouse"},
 				Model:    "classify/classifier.onnx",
-				Expected: []int{0, 2},
+				Expected: ClassSelectors{ClassIndex(0), ClassIndex(2)},
 				OrderBy:  NeuralNetworkClassifyOrderByScore,
 				Index:    0,
 			},
@@ -159,7 +159,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			typ:  RecognitionTypeNeuralNetworkDetect,
 			param: &NeuralNetworkDetectParam{
 				Model:    "ocr/det.onnx",
-				Expected: []int{0},
+				Expected: ClassSelectors{ClassIndex(0)},
 				OrderBy:  NeuralNetworkDetectOrderByArea,
 				Index:    0,
 			},
