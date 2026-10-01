@@ -1,12 +1,18 @@
 package maa
 
-import "errors"
+import (
+	"errors"
+	"sync"
+	"sync/atomic"
+)
 
 // Job represents an asynchronous job with status tracking capabilities.
 // It provides methods to check the job status and wait for completion.
+// Wait and status queries may be called concurrently. A Job must not be copied.
 type Job struct {
 	id          int64
-	finalStatus Status
+	finalStatus atomic.Int32
+	waitMu      sync.Mutex
 	statusFunc  func(id int64) Status
 	waitFunc    func(id int64) Status
 	err         error
@@ -27,7 +33,9 @@ func newJob(id int64, statusFunc func(id int64) Status, waitFunc func(id int64) 
 }
 
 func newFailedJob(err error) *Job {
-	return &Job{err: err, finalStatus: StatusFailure}
+	job := &Job{err: err}
+	job.finalStatus.Store(int32(StatusFailure))
+	return job
 }
 
 // failJob pairs a terminal-failed job with its submission error so callers
@@ -49,8 +57,8 @@ func (j *Job) Error() error {
 
 // Status returns the current status of the job.
 func (j *Job) Status() Status {
-	if !j.finalStatus.Invalid() {
-		return j.finalStatus
+	if status := Status(j.finalStatus.Load()); !status.Invalid() {
+		return status
 	}
 	if j.Error() != nil {
 		return StatusFailure
@@ -97,11 +105,13 @@ func (j *Job) Done() bool {
 
 // Wait blocks until the job completes and returns the job instance.
 func (j *Job) Wait() *Job {
+	j.waitMu.Lock()
+	defer j.waitMu.Unlock()
 	if j.Error() != nil {
 		return j
 	}
-	if j.finalStatus.Invalid() {
-		j.finalStatus = j.trackStatus(j.waitFunc(j.id))
+	if Status(j.finalStatus.Load()).Invalid() {
+		j.finalStatus.Store(int32(j.trackStatus(j.waitFunc(j.id))))
 	}
 	return j
 }
@@ -119,6 +129,7 @@ func failTaskJob(err error) (*TaskJob, error) {
 
 // TaskJob extends Job with task-specific functionality.
 // It provides additional methods to retrieve task details.
+// Wait and status queries may be called concurrently. A TaskJob must not be copied.
 type TaskJob struct {
 	job                  *Job
 	getTaskDetailFunc    func(id int64) (*TaskDetail, error)
