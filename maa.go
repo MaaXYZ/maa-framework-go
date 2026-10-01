@@ -133,6 +133,7 @@ func WithPluginPaths(path ...string) InitOption {
 }
 
 // WithJSONEncoder returns an InitOption that sets a custom JSON encoder.
+// The encoder must satisfy the compatibility requirements documented by [JSONEncoder].
 func WithJSONEncoder(encoder JSONEncoder) InitOption {
 	if encoder == nil {
 		panic("json encoder cannot be nil")
