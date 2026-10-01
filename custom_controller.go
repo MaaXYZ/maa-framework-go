@@ -39,6 +39,15 @@ func bindCustomControllerCallbacks(id uint64, owner *handleState) {
 }
 
 func acquireCustomControllerCallback(id uint64) (CustomController, func(), bool) {
+	return acquireCustomControllerCallbackScope(id, false)
+}
+
+// Only KeyUp and TouchUp may run while the native destructor releases inputs.
+func acquireCustomControllerCleanupCallback(id uint64) (CustomController, func(), bool) {
+	return acquireCustomControllerCallbackScope(id, true)
+}
+
+func acquireCustomControllerCallbackScope(id uint64, allowCleanup bool) (CustomController, func(), bool) {
 	customControllerCallbacksAgentsMutex.RLock()
 	callback, exists := customControllerCallbacksAgents[id]
 	customControllerCallbacksAgentsMutex.RUnlock()
@@ -49,7 +58,7 @@ func acquireCustomControllerCallback(id uint64) (CustomController, func(), bool)
 		// Native creation may query the controller before its owner exists.
 		return callback.controller, func() {}, true
 	}
-	done, err := callback.owner.beginControllerCallback()
+	done, err := callback.owner.beginCallbackScope(allowCleanup)
 	if err != nil {
 		return nil, nil, false
 	}
@@ -365,7 +374,7 @@ func _TouchUpAgent(contact int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	ctrl, done, exists := acquireCustomControllerCallback(id)
+	ctrl, done, exists := acquireCustomControllerCleanupCallback(id)
 
 	if !exists {
 		return uintptr(0)
@@ -437,7 +446,7 @@ func _KeyUp(keycode int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	ctrl, done, exists := acquireCustomControllerCallback(id)
+	ctrl, done, exists := acquireCustomControllerCleanupCallback(id)
 
 	if !exists {
 		return uintptr(0)

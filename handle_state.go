@@ -91,18 +91,14 @@ func (s *handleState) beginCallback() (func(), error) {
 	return s.beginCallbackScope(false)
 }
 
-// Custom controllers may be called synchronously by the native destructor to
-// release pressed keys and touches. Those callbacks expire with cleanup.
-func (s *handleState) beginControllerCallback() (func(), error) {
-	return s.beginCallbackScope(true)
-}
-
+// allowCleanup is reserved for custom KeyUp and TouchUp calls from the native
+// destructor. Cleanup closes that admission gate before draining callbacks.
 func (s *handleState) beginCallbackScope(allowCleanup bool) (func(), error) {
 	if s == nil {
 		return nil, ErrClosed
 	}
 	s.mu.Lock()
-	if s.closed && !(allowCleanup && s.cleaning) || !s.closed && s.handle == 0 {
+	if (s.closed && !(allowCleanup && s.cleaning)) || (!s.closed && s.handle == 0) {
 		s.mu.Unlock()
 		return nil, ErrClosed
 	}
@@ -249,6 +245,11 @@ func (s *handleState) runCleanup(handle uintptr, cleanup func(uintptr)) {
 	defer func() {
 		s.mu.Lock()
 		s.cleaning = false
+		// Reject further cleanup callbacks before waiting for admitted ones.
+		// Keep the native library lifetime until their deferred work finishes.
+		for s.active != 0 {
+			s.cond.Wait()
+		}
 		s.mu.Unlock()
 		// Publish the released lifetime before waking concurrent Destroy callers.
 		liveNativeObjects.Add(-1)

@@ -122,12 +122,19 @@ func TestTasker_StopMarksBoundOwnersUncertain(t *testing.T) {
 
 type cleanupCallbackController struct {
 	BlankController
-	keyUp func() bool
-	click func() bool
+	keyUp   func() bool
+	touchUp func() bool
+	click   func() bool
 }
 
 func (c *cleanupCallbackController) KeyUp(int32) bool        { return c.keyUp() }
 func (c *cleanupCallbackController) Click(int32, int32) bool { return c.click() }
+func (c *cleanupCallbackController) TouchUp(contact int32) bool {
+	if c.touchUp != nil {
+		return c.touchUp()
+	}
+	return c.BlankController.TouchUp(contact)
+}
 
 func TestCustomController_CallbackLifetimeAndCleanup(t *testing.T) {
 	var id uintptr
@@ -161,6 +168,140 @@ func TestCustomController_CallbackLifetimeAndCleanup(t *testing.T) {
 	require.EqualValues(t, 1, cleanupCalls.Load())
 	_KeyUp(1, id)
 	require.EqualValues(t, 1, cleanupCalls.Load(), "no callbacks after successful destruction")
+	require.NoError(t, owner.Destroy())
+}
+
+func TestCustomController_CleanupRejectsOrdinaryCallbacks(t *testing.T) {
+	var id uintptr
+	replaceNativeForTest(t, &native.MaaCustomControllerCreate, func(_ unsafe.Pointer, arg uintptr) uintptr { id = arg; return 876546 })
+	var owner *Controller
+	var clickCalls, keyUpCalls, touchUpCalls int
+	var keyUpDestroyErr, touchUpDestroyErr error
+	impl := &cleanupCallbackController{
+		click: func() bool { clickCalls++; return true },
+		keyUp: func() bool {
+			keyUpCalls++
+			keyUpDestroyErr = owner.Destroy()
+			return true
+		},
+		touchUp: func() bool {
+			touchUpCalls++
+			touchUpDestroyErr = owner.Destroy()
+			return true
+		},
+	}
+	var clickResult, keyUpResult, touchUpResult uintptr
+	replaceNativeForTest(t, &native.MaaControllerDestroy, func(uintptr) {
+		clickResult = _ClickAgent(0, 0, id)
+		keyUpResult = _KeyUp(1, id)
+		touchUpResult = _TouchUpAgent(0, id)
+	})
+	var err error
+	owner, err = NewCustomController(impl)
+	require.NoError(t, err)
+	require.NoError(t, owner.Destroy())
+	require.Zero(t, clickResult)
+	require.Zero(t, clickCalls, "ordinary callbacks must not run during cleanup")
+	require.EqualValues(t, 1, keyUpResult)
+	require.EqualValues(t, 1, touchUpResult)
+	require.ErrorIs(t, keyUpDestroyErr, ErrInCallback)
+	require.ErrorIs(t, touchUpDestroyErr, ErrInCallback)
+	require.Zero(t, _KeyUp(1, id))
+	require.Zero(t, _TouchUpAgent(0, id))
+	require.Equal(t, 1, keyUpCalls)
+	require.Equal(t, 1, touchUpCalls)
+}
+
+func TestCustomController_CleanupDrainsAdmittedCallbacks(t *testing.T) {
+	var id uintptr
+	replaceNativeForTest(t, &native.MaaCustomControllerCreate, func(_ unsafe.Pointer, arg uintptr) uintptr { id = arg; return 876547 })
+	keyUpEntered, touchUpEntered := make(chan struct{}), make(chan struct{})
+	releaseKeyUp, releaseTouchUp := make(chan struct{}), make(chan struct{})
+	unblockKeyUp, unblockTouchUp := jobConcurrencyRelease(releaseKeyUp), jobConcurrencyRelease(releaseTouchUp)
+	defer unblockKeyUp()
+	defer unblockTouchUp()
+	impl := &cleanupCallbackController{
+		keyUp:   func() bool { close(keyUpEntered); <-releaseKeyUp; return true },
+		touchUp: func() bool { close(touchUpEntered); <-releaseTouchUp; return true },
+	}
+	keyUpDone, touchUpDone := make(chan uintptr, 1), make(chan uintptr, 1)
+	keyUpExited, touchUpExited := make(chan struct{}), make(chan struct{})
+	replaceNativeForTest(t, &native.MaaControllerDestroy, func(uintptr) {
+		go func() {
+			defer close(keyUpExited)
+			keyUpDone <- _KeyUp(1, id)
+		}()
+		go func() {
+			defer close(touchUpExited)
+			touchUpDone <- _TouchUpAgent(0, id)
+		}()
+		select {
+		case <-keyUpEntered:
+		case <-keyUpExited:
+		}
+		select {
+		case <-touchUpEntered:
+		case <-touchUpExited:
+		}
+		// Return with both callbacks admitted and still running.
+	})
+	liveBefore := liveNativeObjects.Load()
+	owner, err := NewCustomController(impl)
+	require.NoError(t, err)
+	destroyDone := make(chan error, 1)
+	destroyExited := make(chan struct{})
+	go func() {
+		defer close(destroyExited)
+		destroyDone <- owner.Destroy()
+	}()
+	t.Cleanup(func() {
+		unblockKeyUp()
+		unblockTouchUp()
+		jobConcurrencyAwait(t, keyUpExited)
+		jobConcurrencyAwait(t, touchUpExited)
+		jobConcurrencyAwait(t, destroyExited)
+	})
+	jobConcurrencyAwait(t, keyUpEntered)
+	jobConcurrencyAwait(t, touchUpEntered)
+	require.Eventually(t, func() bool {
+		owner.state.mu.Lock()
+		defer owner.state.mu.Unlock()
+		return !owner.state.cleaning
+	}, jobConcurrencyTimeout, jobReapInterval/10, "cleanup must close callback admission before draining")
+	// A callback that already copied its registry entry must also be rejected.
+	done, err := owner.state.beginCallbackScope(true)
+	if done != nil {
+		done()
+	}
+	require.ErrorIs(t, err, ErrClosed)
+	assertCleanupPending := func() {
+		t.Helper()
+		select {
+		case <-owner.state.cleanupDone:
+			t.Fatal("cleanup completed while an admitted callback was running")
+		default:
+		}
+		select {
+		case err := <-destroyDone:
+			t.Fatalf("Destroy returned before callbacks finished: %v", err)
+		default:
+		}
+		require.Equal(t, liveBefore+1, liveNativeObjects.Load())
+	}
+	assertCleanupPending()
+	unblockKeyUp()
+	require.EqualValues(t, 1, jobConcurrencyAwait(t, keyUpDone))
+	assertCleanupPending()
+	unblockTouchUp()
+	require.EqualValues(t, 1, jobConcurrencyAwait(t, touchUpDone))
+	require.NoError(t, jobConcurrencyAwait(t, destroyDone))
+	jobConcurrencyAwait(t, owner.state.cleanupDone)
+	require.Equal(t, liveBefore, liveNativeObjects.Load())
+	owner.state.mu.Lock()
+	active, callbacks := owner.state.active, owner.state.callbacks
+	owner.state.mu.Unlock()
+	require.Zero(t, active)
+	require.Zero(t, callbacks)
 	require.NoError(t, owner.Destroy())
 }
 
