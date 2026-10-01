@@ -8,8 +8,9 @@ import (
 )
 
 type eventCallback struct {
-	id   uint64
-	sink any
+	id    uint64
+	sink  any
+	owner *handleState
 }
 
 var (
@@ -18,14 +19,18 @@ var (
 	eventCallbacksMutex    sync.RWMutex
 )
 
-func registerEventCallback(sink any) uint64 {
+func registerEventCallback(sink any, owner ...*handleState) uint64 {
 	id := atomic.AddUint64(&lastestEventCallbackID, 1)
 
-	eventCallbacksMutex.Lock()
-	eventCallbacks[id] = eventCallback{
+	cb := eventCallback{
 		id:   id,
 		sink: sink,
 	}
+	if len(owner) != 0 {
+		cb.owner = owner[0]
+	}
+	eventCallbacksMutex.Lock()
+	eventCallbacks[id] = cb
 	eventCallbacksMutex.Unlock()
 
 	return id
@@ -411,6 +416,13 @@ func _MaaEventCallbackAgent(handle uintptr, message, detailsJson *byte, transArg
 
 	if !exists || cb.sink == nil {
 		return 0
+	}
+	if cb.owner != nil {
+		done, err := cb.owner.beginCallback()
+		if err != nil {
+			return 0
+		}
+		defer done()
 	}
 
 	cb.handleRaw(

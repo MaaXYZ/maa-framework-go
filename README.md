@@ -199,6 +199,20 @@ func main() {
 
 Keep every resource and controller bound to a tasker alive until the tasker is destroyed, including earlier bindings after rebinding. Closing one before then returns `ErrBound`. Rebinding a running tasker returns `ErrTaskerRunning`. An `AgentClient` also keeps its bound resource and registered event sources alive until the client is destroyed. Destroying an owner from its callback returns `ErrInCallback`. A callback `Context`, including a clone, expires when the callback returns.
 
+### Concurrency and callbacks
+
+`Job` and `TaskJob` support concurrent `Wait`, status queries and predicates, and `Error`. Multiple waiters share the completed result, while status queries remain available during a wait. Do not copy these objects. `Tasker.GetResource` and `GetController` may run alongside binding changes; each returns a borrowed view of the binding observed during that call.
+
+Other operations require caller coordination: serialize options, resource and pipeline changes, calls through a `Context`, and AgentClient/AgentServer lifecycle operations. Mutable configuration objects such as `Pipeline` and `Node` also require caller synchronization. Handle lifetime checks do not make all native operations thread-safe.
+
+Change event sinks and custom recognition/action registrations only when the instance and all associated taskers are idle. Stop new submissions and let their work and callbacks finish before adding, replacing, removing, or clearing registrations. Configuration transactions on the same instance are serialized, including through borrowed views, but must not overlap native execution. Do not change registrations from a callback. `AddSink` and `AddContextSink` return 0 on registration failure; removing an already-removed sink is a no-op. Unregistering an unknown custom recognition or action returns an error.
+
+Configure AgentServer before `AgentServerStartUp`. During service execution or after join or detach, custom registration and startup return `ErrInUse`, and adding a sink returns 0. Without prior detach, `AgentServerShutDown` permanently closes the server, even when called before startup: later startup and custom registration return `ErrClosed`, and adding a sink returns 0. The native communication context cannot be reset, so `Release` followed by `Init` does not restore startup or configuration. After an attached server shuts down, `Release` is allowed and repeated shutdown calls are no-ops. Configuration and startup are serialized; callers must serialize startup, shutdown, join, and detach with each other. After detach, shutdown cannot establish idleness and `Release` remains unavailable.
+
+Callbacks execute synchronously on native calling threads and may overlap. Synchronize shared state in your handlers, and never wait for work that needs the current callback to return. Do not call AgentServer lifecycle methods from its callbacks. A successful `Destroy` returns after native cleanup and prevents subsequent user callbacks; active callbacks cause `ErrInCallback`. Custom controller `KeyUp` and `TouchUp` callbacks may run during native destruction, before `Destroy` returns.
+
+After `PostStop`, an earlier job's `Wait` can return because its ID was invalidated while native work is still executing. It is not proof that all callbacks have ended. `Destroy` retains this uncertainty until the worker is idle. For a controller it may post an inactive action, invoke the custom `Inactive` handler, and return `ErrInUse` until the action completes. Retry destruction after active work and callbacks finish.
+
 ## 📖 Examples
 
 For more examples, see the [examples](examples) directory:

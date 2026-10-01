@@ -3,12 +3,24 @@ package maa
 import "github.com/MaaXYZ/maa-framework-go/v4/internal/jsoncodec"
 
 // JSONEncoder defines how values are serialized into JSON.
+//
+// Custom encoders must honor the encoding/json semantics used by this package,
+// including json.Marshaler, "omitempty", and the "omitzero" option added in Go 1.24.
+// Support for "omitzero" includes calling IsZero() methods. For this package's
+// slice fields tagged "omitzero", nil must be omitted while non-nil empty slices
+// must be encoded as [].
+//
+// These rules preserve pipeline defaults and inheritance. Emitting null instead
+// of omitting a zero field may cause MaaFramework to reject the configuration.
 type JSONEncoder func(v any) ([]byte, error)
 
 // JSONDecoder defines how JSON is deserialized into values.
 type JSONDecoder func(data []byte, v any) error
 
 // SetJSONEncoder sets the global JSON encoder used by this package.
+//
+// The encoder must satisfy the compatibility requirements documented by
+// [JSONEncoder], including support for "omitzero" and IsZero() methods.
 func SetJSONEncoder(encoder JSONEncoder) {
 	jsoncodec.SetEncoder(jsoncodec.Encoder(encoder))
 }

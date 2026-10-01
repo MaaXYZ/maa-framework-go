@@ -24,6 +24,8 @@ func initControllerStore(handle uintptr) {
 	store.CtrlStore.Unlock()
 }
 
+// Controller is an owned or borrowed native controller. Handle lifetime is
+// guarded across calls; callers must coordinate configuration and execution.
 type Controller struct {
 	handle uintptr
 	state  *handleState
@@ -35,17 +37,30 @@ func newOwnedController(handle uintptr) *Controller {
 	state = newHandleState(handle, func(handle uintptr) {
 		store.CtrlStore.Lock()
 		value := store.CtrlStore.Get(handle)
-		unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
 		for _, cbID := range value.SinkIDToEventCallbackID {
 			unregisterEventCallback(cbID)
 		}
 		store.CtrlStore.Del(handle)
 		store.CtrlStore.Unlock()
 		native.MaaControllerDestroy(handle)
+		unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
 		controllerStates.CompareAndDelete(handle, state)
 	})
 	state.jobStatus = func(handle uintptr, id int64) Status {
 		return Status(native.MaaControllerStatus(handle, id))
+	}
+	state.idleProbe = func(handle uintptr) bool {
+		// Stop can invalidate action IDs before their worker returns. Observe a
+		// new inactive action to prove completion without waiting under mu.
+		if state.closeBarrierID == 0 {
+			state.closeBarrierID = native.MaaControllerPostInactive(handle)
+			return false
+		}
+		status := Status(native.MaaControllerStatus(handle, state.closeBarrierID))
+		if status.Invalid() {
+			state.closeBarrierID = 0
+		}
+		return status.Done()
 	}
 	controllerStates.Store(handle, state)
 	return &Controller{handle: handle, state: state, owned: true}
@@ -265,6 +280,7 @@ func NewCustomController(
 		uintptr(ctrlID),
 	)
 	if handle == 0 {
+		unregisterCustomControllerCallbacks(ctrlID)
 		return nil, errors.New("failed to create Custom controller")
 	}
 
@@ -274,7 +290,9 @@ func NewCustomController(
 		v.CustomControllerCallbacksID = ctrlID
 	})
 
-	return newOwnedController(handle), nil
+	owner := newOwnedController(handle)
+	bindCustomControllerCallbacks(ctrlID, owner.state)
+	return owner, nil
 }
 
 // NOTE: MaaDbgController (MaaDbgControllerCreate) is intentionally NOT implemented in the Go binding.
@@ -287,6 +305,9 @@ func NewCustomController(
 // Destroy closes the controller once. It returns ErrBound while a tasker uses
 // it or an AgentClient retains it, ErrInUse while a call or job is active, and
 // ErrBorrowed when called on a getter or callback view.
+// After a stop invalidates action IDs, Destroy may post an inactive action and
+// return ErrInUse until it completes; retry afterward. Native destruction may
+// call custom KeyUp/TouchUp methods before Destroy returns successfully.
 func (c *Controller) Destroy() error {
 	if c == nil || !c.owned {
 		return ErrBorrowed
@@ -947,6 +968,8 @@ func (c *Controller) GetInfo() (string, error) {
 
 // AddSink adds a event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
+// The instance and associated taskers must be idle. Do not call this from a callback.
+// It returns 0 if registration fails or the object is closed.
 func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -956,13 +979,20 @@ func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 	if c.state.external {
 		return 0
 	}
+	c.state.registrationMu.Lock()
+	defer c.state.registrationMu.Unlock()
 
-	id := registerEventCallback(sink)
+	id := registerEventCallback(sink, c.state)
 	sinkId := native.MaaControllerAddSink(
 		c.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
+
+	if sinkId == 0 {
+		unregisterEventCallback(id)
+		return 0
+	}
 
 	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
 		v.SinkIDToEventCallbackID[sinkId] = id
@@ -972,6 +1002,7 @@ func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 }
 
 // RemoveSink removes a event callback sink by sink ID.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (c *Controller) RemoveSink(sinkId int64) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -981,6 +1012,8 @@ func (c *Controller) RemoveSink(sinkId int64) {
 	if c.state.external {
 		return
 	}
+	c.state.registrationMu.Lock()
+	defer c.state.registrationMu.Unlock()
 
 	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
 		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
@@ -991,6 +1024,7 @@ func (c *Controller) RemoveSink(sinkId int64) {
 }
 
 // ClearSinks clears all event callback sinks.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (c *Controller) ClearSinks() {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -1000,6 +1034,8 @@ func (c *Controller) ClearSinks() {
 	if c.state.external {
 		return
 	}
+	c.state.registrationMu.Lock()
+	defer c.state.registrationMu.Unlock()
 
 	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
 		for _, id := range v.SinkIDToEventCallbackID {

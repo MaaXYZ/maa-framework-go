@@ -58,6 +58,9 @@ func NewResource() (*Resource, error) {
 	state.jobStatus = func(handle uintptr, id int64) Status {
 		return Status(native.MaaResourceStatus(handle, id))
 	}
+	// Clear refuses a running loader. Only probe when immediately closing, since
+	// a successful probe also clears resource contents.
+	state.idleProbe = func(handle uintptr) bool { return native.MaaResourceClear(handle) }
 	resourceStates.Store(handle, state)
 	return &Resource{handle: handle, state: state, owned: true}, nil
 }
@@ -230,6 +233,7 @@ func (r *Resource) UseAutoExecutionProvider() error {
 // Use UnregisterCustomRecognition or ClearCustomRecognition to remove
 // registrations. Use GetCustomRecognitionList to inspect the currently
 // registered names.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognitionRunner) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -239,6 +243,8 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 	if r.state.external {
 		return ErrBorrowed
 	}
+	r.state.registrationMu.Lock()
+	defer r.state.registrationMu.Unlock()
 
 	id := registerCustomRecognition(recognition)
 
@@ -271,6 +277,7 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 }
 
 // UnregisterCustomRecognition unregisters a custom recognition runner from the resource.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) UnregisterCustomRecognition(name string) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -280,6 +287,8 @@ func (r *Resource) UnregisterCustomRecognition(name string) error {
 	if r.state.external {
 		return ErrBorrowed
 	}
+	r.state.registrationMu.Lock()
+	defer r.state.registrationMu.Unlock()
 
 	var (
 		found bool
@@ -306,6 +315,7 @@ func (r *Resource) UnregisterCustomRecognition(name string) error {
 }
 
 // ClearCustomRecognition clears all custom recognitions runner registered from the resource.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) ClearCustomRecognition() error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -315,6 +325,8 @@ func (r *Resource) ClearCustomRecognition() error {
 	if r.state.external {
 		return ErrBorrowed
 	}
+	r.state.registrationMu.Lock()
+	defer r.state.registrationMu.Unlock()
 
 	if !native.MaaResourceClearCustomRecognition(r.handle) {
 		return errors.New("failed to clear custom recognition")
@@ -367,6 +379,7 @@ func (r *Resource) ClearCustomRecognition() error {
 //
 // Use UnregisterCustomAction or ClearCustomAction to remove registrations.
 // Use GetCustomActionList to inspect the currently registered names.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -376,6 +389,8 @@ func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) 
 	if r.state.external {
 		return ErrBorrowed
 	}
+	r.state.registrationMu.Lock()
+	defer r.state.registrationMu.Unlock()
 
 	id := registerCustomAction(action)
 
@@ -408,6 +423,7 @@ func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) 
 }
 
 // UnregisterCustomAction unregisters a custom action runner from the resource.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) UnregisterCustomAction(name string) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -417,6 +433,8 @@ func (r *Resource) UnregisterCustomAction(name string) error {
 	if r.state.external {
 		return ErrBorrowed
 	}
+	r.state.registrationMu.Lock()
+	defer r.state.registrationMu.Unlock()
 
 	var (
 		found bool
@@ -443,6 +461,7 @@ func (r *Resource) UnregisterCustomAction(name string) error {
 }
 
 // ClearCustomAction clears all custom actions runners registered from the resource.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) ClearCustomAction() error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -452,6 +471,8 @@ func (r *Resource) ClearCustomAction() error {
 	if r.state.external {
 		return ErrBorrowed
 	}
+	r.state.registrationMu.Lock()
+	defer r.state.registrationMu.Unlock()
 
 	if !native.MaaResourceClearCustomAction(r.handle) {
 		return errors.New("failed to clear custom action")
@@ -934,6 +955,8 @@ func (r *Resource) GetDefaultActionParam(actionType ActionType) (ActionParam, er
 
 // AddSink adds a event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
+// The instance and associated taskers must be idle. Do not call this from a callback.
+// It returns 0 if registration fails or the object is closed.
 func (r *Resource) AddSink(sink ResourceEventSink) int64 {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -943,13 +966,20 @@ func (r *Resource) AddSink(sink ResourceEventSink) int64 {
 	if r.state.external {
 		return 0
 	}
+	r.state.registrationMu.Lock()
+	defer r.state.registrationMu.Unlock()
 
-	id := registerEventCallback(sink)
+	id := registerEventCallback(sink, r.state)
 	sinkId := native.MaaResourceAddSink(
 		r.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
+
+	if sinkId == 0 {
+		unregisterEventCallback(id)
+		return 0
+	}
 
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
 		v.SinkIDToEventCallbackID[sinkId] = id
@@ -959,6 +989,7 @@ func (r *Resource) AddSink(sink ResourceEventSink) int64 {
 }
 
 // RemoveSink removes a event callback sink by sink ID.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) RemoveSink(sinkId int64) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -968,6 +999,8 @@ func (r *Resource) RemoveSink(sinkId int64) {
 	if r.state.external {
 		return
 	}
+	r.state.registrationMu.Lock()
+	defer r.state.registrationMu.Unlock()
 
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
 		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
@@ -978,6 +1011,7 @@ func (r *Resource) RemoveSink(sinkId int64) {
 }
 
 // ClearSinks clears all event callback sinks.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) ClearSinks() {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -987,6 +1021,8 @@ func (r *Resource) ClearSinks() {
 	if r.state.external {
 		return
 	}
+	r.state.registrationMu.Lock()
+	defer r.state.registrationMu.Unlock()
 
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
 		for _, id := range v.SinkIDToEventCallbackID {

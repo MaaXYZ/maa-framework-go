@@ -360,6 +360,8 @@ func (t *Tasker) Running() bool {
 // It interrupts the currently running task and stops resource loading and controller operations.
 // It returns an error and a terminal-failed job when the stop signal cannot
 // be submitted, for example when the tasker is closed.
+// A stop can invalidate earlier job IDs before their native calls finish.
+// Do not treat an earlier Job.Wait return as proof that all callbacks ended.
 func (t *Tasker) PostStop() (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -368,6 +370,15 @@ func (t *Tasker) PostStop() (*TaskJob, error) {
 	defer done()
 
 	t.state.postMu.Lock()
+	t.state.bindingsMu.Lock()
+	resource, controller := t.state.resource, t.state.controller
+	t.state.bindingsMu.Unlock()
+	if resource != nil {
+		resource.state.markJobsUncertain()
+	}
+	if controller != nil {
+		controller.state.markJobsUncertain()
+	}
 	id := native.MaaTaskerPostStop(t.handle)
 	t.state.postMu.Unlock()
 	if id == 0 {
@@ -377,6 +388,8 @@ func (t *Tasker) PostStop() (*TaskJob, error) {
 }
 
 // GetResource returns the bound resource of the tasker.
+// It may run concurrently with binding changes and returns a borrowed view of
+// the binding observed during this call.
 func (t *Tasker) GetResource() *Resource {
 	_, done, err := t.state.begin()
 	if err != nil {
@@ -395,6 +408,8 @@ func (t *Tasker) GetResource() *Resource {
 }
 
 // GetController returns the bound controller of the tasker.
+// It may run concurrently with binding changes and returns a borrowed view of
+// the binding observed during this call.
 func (t *Tasker) GetController() *Controller {
 	_, done, err := t.state.begin()
 	if err != nil {
@@ -879,6 +894,8 @@ func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 }
 
 // AddSink adds an event listener and returns the sink ID for later removal.
+// The instance and associated taskers must be idle. Do not call this from a callback.
+// It returns 0 if registration fails or the object is closed.
 func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -888,13 +905,20 @@ func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
 	if t.state.external {
 		return 0
 	}
+	t.state.registrationMu.Lock()
+	defer t.state.registrationMu.Unlock()
 
-	id := registerEventCallback(sink)
+	id := registerEventCallback(sink, t.state.handleState)
 	sinkId := native.MaaTaskerAddSink(
 		t.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
+
+	if sinkId == 0 {
+		unregisterEventCallback(id)
+		return 0
+	}
 
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		v.SinkIDToEventCallbackID[sinkId] = id
@@ -904,6 +928,7 @@ func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
 }
 
 // RemoveSink removes an event listener by sink ID.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (t *Tasker) RemoveSink(sinkId int64) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -913,6 +938,8 @@ func (t *Tasker) RemoveSink(sinkId int64) {
 	if t.state.external {
 		return
 	}
+	t.state.registrationMu.Lock()
+	defer t.state.registrationMu.Unlock()
 
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
@@ -923,6 +950,7 @@ func (t *Tasker) RemoveSink(sinkId int64) {
 }
 
 // ClearSinks clears all instance event listeners.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (t *Tasker) ClearSinks() {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -932,6 +960,8 @@ func (t *Tasker) ClearSinks() {
 	if t.state.external {
 		return
 	}
+	t.state.registrationMu.Lock()
+	defer t.state.registrationMu.Unlock()
 
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		for _, id := range v.SinkIDToEventCallbackID {
@@ -944,6 +974,8 @@ func (t *Tasker) ClearSinks() {
 }
 
 // AddContextSink adds a context event listener and returns the sink ID for later removal.
+// The instance and associated taskers must be idle. Do not call this from a callback.
+// It returns 0 if registration fails or the object is closed.
 func (t *Tasker) AddContextSink(sink ContextEventSink) int64 {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -953,13 +985,20 @@ func (t *Tasker) AddContextSink(sink ContextEventSink) int64 {
 	if t.state.external {
 		return 0
 	}
+	t.state.registrationMu.Lock()
+	defer t.state.registrationMu.Unlock()
 
-	id := registerEventCallback(sink)
+	id := registerEventCallback(sink, t.state.handleState)
 	sinkId := native.MaaTaskerAddContextSink(
 		t.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
+
+	if sinkId == 0 {
+		unregisterEventCallback(id)
+		return 0
+	}
 
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		v.ContextSinkIDToEventCallbackID[sinkId] = id
@@ -969,6 +1008,7 @@ func (t *Tasker) AddContextSink(sink ContextEventSink) int64 {
 }
 
 // RemoveContextSink removes a context event listener by sink ID.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (t *Tasker) RemoveContextSink(sinkId int64) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -978,6 +1018,8 @@ func (t *Tasker) RemoveContextSink(sinkId int64) {
 	if t.state.external {
 		return
 	}
+	t.state.registrationMu.Lock()
+	defer t.state.registrationMu.Unlock()
 
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		unregisterEventCallback(v.ContextSinkIDToEventCallbackID[sinkId])
@@ -988,6 +1030,7 @@ func (t *Tasker) RemoveContextSink(sinkId int64) {
 }
 
 // ClearContextSinks clears all context event listeners.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (t *Tasker) ClearContextSinks() {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -997,6 +1040,8 @@ func (t *Tasker) ClearContextSinks() {
 	if t.state.external {
 		return
 	}
+	t.state.registrationMu.Lock()
+	defer t.state.registrationMu.Unlock()
 
 	store.TaskerStore.Update(t.handle, func(v *store.TaskerStoreValue) {
 		for _, id := range v.ContextSinkIDToEventCallbackID {

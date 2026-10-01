@@ -425,7 +425,9 @@ func TestTasker_Running(t *testing.T) {
 
 func TestTasker_PostStop(t *testing.T) {
 	ctrl := createBlankController(t)
-	defer ctrl.Destroy()
+	defer func() {
+		require.Eventually(t, func() bool { return ctrl.Destroy() == nil }, 5*time.Second, 10*time.Millisecond)
+	}()
 	connectJob, err := ctrl.PostConnect()
 	require.NoError(t, err)
 	isConnected := connectJob.Wait().Success()
@@ -493,7 +495,9 @@ func TestTasker_ClearCache(t *testing.T) {
 
 func TestTasker_GetLatestNode(t *testing.T) {
 	ctrl := createBlankController(t)
-	defer ctrl.Destroy()
+	defer func() {
+		require.Eventually(t, func() bool { return ctrl.Destroy() == nil }, 5*time.Second, 10*time.Millisecond)
+	}()
 	connectJob, err := ctrl.PostConnect()
 	require.NoError(t, err)
 	isConnected := connectJob.Wait().Success()

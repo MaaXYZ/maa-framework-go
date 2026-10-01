@@ -11,18 +11,58 @@ import (
 
 var (
 	customControllerCallbacksID          uint64
-	customControllerCallbacksAgents      = make(map[uint64]CustomController)
+	customControllerCallbacksAgents      = make(map[uint64]customControllerCallback)
 	customControllerCallbacksAgentsMutex sync.RWMutex
 )
+
+type customControllerCallback struct {
+	controller CustomController
+	owner      *handleState
+}
 
 func registerCustomControllerCallbacks(ctrl CustomController) uint64 {
 	id := atomic.AddUint64(&customControllerCallbacksID, 1)
 
 	customControllerCallbacksAgentsMutex.Lock()
-	customControllerCallbacksAgents[id] = ctrl
+	customControllerCallbacksAgents[id] = customControllerCallback{controller: ctrl}
 	customControllerCallbacksAgentsMutex.Unlock()
 
 	return id
+}
+
+func bindCustomControllerCallbacks(id uint64, owner *handleState) {
+	customControllerCallbacksAgentsMutex.Lock()
+	callback := customControllerCallbacksAgents[id]
+	callback.owner = owner
+	customControllerCallbacksAgents[id] = callback
+	customControllerCallbacksAgentsMutex.Unlock()
+}
+
+func acquireCustomControllerCallback(id uint64) (CustomController, func(), bool) {
+	return acquireCustomControllerCallbackScope(id, false)
+}
+
+// Only KeyUp and TouchUp may run while the native destructor releases inputs.
+func acquireCustomControllerCleanupCallback(id uint64) (CustomController, func(), bool) {
+	return acquireCustomControllerCallbackScope(id, true)
+}
+
+func acquireCustomControllerCallbackScope(id uint64, allowCleanup bool) (CustomController, func(), bool) {
+	customControllerCallbacksAgentsMutex.RLock()
+	callback, exists := customControllerCallbacksAgents[id]
+	customControllerCallbacksAgentsMutex.RUnlock()
+	if !exists || callback.controller == nil {
+		return nil, nil, false
+	}
+	if callback.owner == nil {
+		// Native creation may query the controller before its owner exists.
+		return callback.controller, func() {}, true
+	}
+	done, err := callback.owner.beginCallbackScope(allowCleanup)
+	if err != nil {
+		return nil, nil, false
+	}
+	return callback.controller, done, true
 }
 
 func unregisterCustomControllerCallbacks(id uint64) {
@@ -45,6 +85,8 @@ const (
 // Connect, RequestUUID, StartApp, StopApp,
 // Screencap, Click, Swipe, TouchDown, TouchMove, TouchUp,
 // ClickKey, InputText, KeyDown, KeyUp, Scroll, RelativeMove, Shell and Inactive.
+// Methods can be called concurrently from native threads; implementations must
+// synchronize shared state. KeyUp and TouchUp can be called during destruction.
 type CustomController interface {
 	Connect() bool
 	Connected() bool
@@ -130,13 +172,12 @@ func _ConnectAgent(handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.Connect() {
 		return uintptr(1)
@@ -149,13 +190,12 @@ func _ConnectedAgent(handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.Connected() {
 		return uintptr(1)
@@ -168,13 +208,12 @@ func _RequestUUIDAgent(handleArg uintptr, uuidBuffer uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	uuid, ok := ctrl.RequestUUID()
 	if ok {
@@ -190,13 +229,12 @@ func _GetFeatureAgent(handleArg uintptr) ControllerFeature {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return ControllerFeatureNone
 	}
+	defer done()
 
 	return ctrl.GetFeature()
 }
@@ -206,13 +244,12 @@ func _StartAppAgent(intent *byte, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.StartApp(cStringToString(intent)) {
 		return uintptr(1)
@@ -225,13 +262,12 @@ func _StopAppAgent(intent *byte, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.StopApp(cStringToString(intent)) {
 		return uintptr(1)
@@ -244,13 +280,12 @@ func _ScreencapAgent(handleArg uintptr, imgBuffer uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	img, captured := ctrl.Screencap()
 	if captured {
@@ -267,13 +302,12 @@ func _ClickAgent(x, y int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.Click(x, y) {
 		return uintptr(1)
@@ -286,13 +320,12 @@ func _SwipeAgent(x1, y1, x2, y2, duration int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.Swipe(x1, y1, x2, y2, duration) {
 		return uintptr(1)
@@ -305,13 +338,12 @@ func _TouchDownAgent(contact, x, y, pressure int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.TouchDown(contact, x, y, pressure) {
 		return uintptr(1)
@@ -324,13 +356,12 @@ func _TouchMoveAgent(contact, x, y, pressure int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.TouchMove(contact, x, y, pressure) {
 		return uintptr(1)
@@ -343,13 +374,12 @@ func _TouchUpAgent(contact int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCleanupCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.TouchUp(contact) {
 		return uintptr(1)
@@ -362,13 +392,12 @@ func _ClickKey(key int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.ClickKey(key) {
 		return uintptr(1)
@@ -381,13 +410,12 @@ func _InputText(text *byte, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.InputText(cStringToString(text)) {
 		return uintptr(1)
@@ -400,13 +428,12 @@ func _KeyDown(keycode int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.KeyDown(keycode) {
 		return uintptr(1)
@@ -419,13 +446,12 @@ func _KeyUp(keycode int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCleanupCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.KeyUp(keycode) {
 		return uintptr(1)
@@ -438,13 +464,12 @@ func _ScrollAgent(dx, dy int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.Scroll(dx, dy) {
 		return uintptr(1)
@@ -457,13 +482,12 @@ func _RelativeMoveAgent(dx, dy int32, handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	if ctrl.RelativeMove(dx, dy) {
 		return uintptr(1)
@@ -476,13 +500,12 @@ func _ShellAgent(cmd *byte, timeout int64, handleArg uintptr, outputBuffer uintp
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	output, ok := ctrl.Shell(cStringToString(cmd), timeout)
 	if ok {
@@ -498,15 +521,14 @@ func _InactiveAgent(handleArg uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
 	// For Win32 controllers, this restores window position (removes topmost) and unblocks user input.
 	// For other controllers, this is a no-op that always succeeds.
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(1)
 	}
+	defer done()
 
 	if ctrl.Inactive() {
 		return uintptr(1)
@@ -519,13 +541,12 @@ func _GetInfoAgent(handleArg uintptr, infoBuffer uintptr) uintptr {
 	// and will not actually dereference this pointer.
 	id := uint64(handleArg)
 
-	customControllerCallbacksAgentsMutex.RLock()
-	ctrl, exists := customControllerCallbacksAgents[id]
-	customControllerCallbacksAgentsMutex.RUnlock()
+	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	if !exists || ctrl == nil {
+	if !exists {
 		return uintptr(0)
 	}
+	defer done()
 
 	info, ok := ctrl.GetInfo()
 	if ok {
