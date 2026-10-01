@@ -15,6 +15,7 @@ import (
 // and exposes task, recognition, action, and pipeline operations.
 // A Context received in a callback, including a Clone, is valid only until
 // that callback returns. Keep results rather than retaining the Context.
+// Callers must serialize operations through the same Context.
 type Context struct {
 	handle uintptr
 	state  *contextState

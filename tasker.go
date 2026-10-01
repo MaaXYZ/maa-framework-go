@@ -388,6 +388,8 @@ func (t *Tasker) PostStop() (*TaskJob, error) {
 }
 
 // GetResource returns the bound resource of the tasker.
+// It may run concurrently with binding changes and returns a borrowed view of
+// the binding observed during this call.
 func (t *Tasker) GetResource() *Resource {
 	_, done, err := t.state.begin()
 	if err != nil {
@@ -406,6 +408,8 @@ func (t *Tasker) GetResource() *Resource {
 }
 
 // GetController returns the bound controller of the tasker.
+// It may run concurrently with binding changes and returns a borrowed view of
+// the binding observed during this call.
 func (t *Tasker) GetController() *Controller {
 	_, done, err := t.state.begin()
 	if err != nil {

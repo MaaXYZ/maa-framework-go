@@ -76,6 +76,8 @@ const (
 // Connect, RequestUUID, StartApp, StopApp,
 // Screencap, Click, Swipe, TouchDown, TouchMove, TouchUp,
 // ClickKey, InputText, KeyDown, KeyUp, Scroll, RelativeMove, Shell and Inactive.
+// Methods can be called concurrently from native threads; implementations must
+// synchronize shared state. KeyUp and TouchUp can be called during destruction.
 type CustomController interface {
 	Connect() bool
 	Connected() bool

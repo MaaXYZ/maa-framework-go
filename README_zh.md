@@ -199,6 +199,20 @@ func main() {
 
 在 tasker 销毁之前，请保持所有曾绑定的 Resource 和 Controller 存活，包括重新绑定后替换下来的对象。提前关闭会返回 `ErrBound`。运行中的 tasker 重新绑定会返回 `ErrTaskerRunning`。`AgentClient` 同样会保持其绑定的 Resource 与已注册的事件源存活，直到该 client 被销毁。在回调中销毁其所属对象会返回 `ErrInCallback`。回调的 `Context`（包括克隆）会在回调返回时失效。
 
+### 并发与回调
+
+`Job` 和 `TaskJob` 支持并发调用 `Wait`、状态查询及判断方法和 `Error`。多个等待者共享完成后的结果，等待期间仍可查询状态。不要复制这些对象。`Tasker.GetResource` 和 `GetController` 可以与绑定变更并发执行；每次返回的借用视图对应本次调用期间观察到的绑定。
+
+其他操作需要调用方协调：请串行执行选项设置、资源与 pipeline 修改、同一 `Context` 上的调用，以及 AgentClient / AgentServer 的生命周期操作。`Pipeline`、`Node` 等可变配置对象也需要调用方同步访问。句柄生命周期检查不代表所有原生操作都具备线程安全保证。
+
+事件 sink 和自定义识别、动作的注册变更，只能在实例及所有关联 tasker 静止时执行。添加、替换、注销或清空注册之前，请停止新提交，并等待相关工作和回调结束。同一实例的配置事务会串行执行，借用视图也使用同一把锁，但这些事务不得与原生执行重叠。不要在回调中变更注册。`AddSink` 和 `AddContextSink` 注册失败返回 0；重复移除已注销的 sink 不执行任何有效变更。注销不存在的自定义识别或动作会返回错误。
+
+请在 `AgentServerStartUp` 之前，或未 detach 的服务完成 `AgentServerShutDown` 之后配置 AgentServer。其他阶段，自定义注册返回 `ErrInUse`，添加 sink 返回 0。配置与启动会串行执行；启动、关闭、join 和 detach 之间仍需由调用方串行协调。detach 后，关闭无法确认服务已静止，因此不能继续配置。成功的注册会保留供未 detach 的服务重启使用。
+
+回调在原生调用线程上同步执行，多个回调可能重叠。处理函数中的共享状态需要同步保护，也不要等待必须由当前回调返回后才能完成的工作。不要在 AgentServer 回调中调用其生命周期方法。`Destroy` 成功返回时，原生清理已经完成，之后不会再调用用户回调；回调仍在执行时，销毁返回 `ErrInCallback`。自定义 Controller 的 `KeyUp` 和 `TouchUp` 回调可能在原生析构期间执行，此时 `Destroy` 尚未返回。
+
+`PostStop` 之后，旧 Job 的 `Wait` 可能因 ID 失效而返回，此时原生工作仍在执行，不能据此认定所有回调已经结束。`Destroy` 会保留这一未确认状态，直到 worker 静止。对于 Controller，它可能提交一个 inactive 动作、调用自定义 `Inactive` 处理函数，并在动作完成之前返回 `ErrInUse`。请在工作和回调结束后重试销毁。
+
 ## 📖 示例
 
 更多示例请查看 [examples](examples) 目录：

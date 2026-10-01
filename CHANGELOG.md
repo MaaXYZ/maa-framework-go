@@ -57,6 +57,16 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 
 **图像参数校验**：`Tasker.PostRecognition`、`Context.RunRecognition`、`Context.RunRecognitionDirect`、`Context.OverrideImage`、`Resource.OverrideImage` 现在会校验图像参数，图像为 nil 或宽高为 0 时返回错误，不会调用原生接口（旧版对空图静默清空 buffer，对 nil 图直接 panic）。
 
+**并发与回调约定**：
+
+- `Job` / `TaskJob` 的等待与状态查询可以并发执行，多个等待者共享完成结果；对象不可复制。Tasker 绑定 getter 可与绑定变更并发调用。
+- sink 与自定义识别、动作的注册变更必须在实例及关联 tasker 静止时执行，不得在回调中变更。配置事务会串行化，原生注册失败会回滚 Go 回调；`Add*Sink` 失败仍返回 0。
+- 自定义 Controller 的回调保留至原生析构完成，析构期间的 `KeyUp` / `TouchUp` 可正常执行。`Destroy` 成功返回后不再调用用户回调；回调内销毁返回 `ErrInCallback`。
+- stop 使旧 Job ID 失效时，`Wait` 返回不代表原生工作已经结束。Controller 销毁可能提交 inactive 动作并暂时返回 `ErrInUse`，需等待后重试。
+- AgentServer 只允许在启动前或未 detach 的服务关闭后配置；活动阶段的自定义注册返回 `ErrInUse`，添加 sink 返回 0。成功的同名注册会替换旧 Go 回调，失败则保留旧注册。生命周期操作需由调用方串行协调。
+
+完整使用边界见 [并发与回调](README_zh.md#并发与回调)。
+
 #### TaskJob
 
 | 变更类型 | 受影响的方法 |

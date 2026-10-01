@@ -138,6 +138,9 @@ func addAgentServerSink(sink any, add func(native.MaaEventCallback, uintptr) int
 // It returns after starting the thread; call AgentServerJoin only when the
 // caller needs to wait for the service to end. The identifier is used to match
 // with AgentClient.
+// Callers must serialize server lifecycle operations and must not call them
+// from server callbacks. StartUp returns ErrInUse until the prior service has
+// been shut down; a detached service cannot be reconfigured or restarted.
 func AgentServerStartUp(identifier string) error {
 	unlock, err := lockAgentServerConfiguration()
 	if err != nil {

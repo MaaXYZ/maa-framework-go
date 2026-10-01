@@ -24,6 +24,8 @@ func initControllerStore(handle uintptr) {
 	store.CtrlStore.Unlock()
 }
 
+// Controller is an owned or borrowed native controller. Handle lifetime is
+// guarded across calls; callers must coordinate configuration and execution.
 type Controller struct {
 	handle uintptr
 	state  *handleState
