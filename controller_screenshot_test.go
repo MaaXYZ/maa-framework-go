@@ -23,13 +23,17 @@ func createScreenshotController(t *testing.T, width, height int) *Controller {
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, ctrl.Destroy()) })
-	require.True(t, ctrl.PostConnect().Wait().Success())
+	job, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	require.True(t, job.Wait().Success())
 	return ctrl
 }
 
 func requireScreenshotSize(t *testing.T, ctrl *Controller, width, height int) {
 	t.Helper()
-	require.True(t, ctrl.PostScreencap().Wait().Success())
+	job, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	require.True(t, job.Wait().Success())
 	img, err := ctrl.CacheImage()
 	require.NoError(t, err)
 	require.NotNil(t, img)
