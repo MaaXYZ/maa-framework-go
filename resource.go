@@ -472,56 +472,76 @@ func (r *Resource) ClearCustomAction() error {
 
 // PostBundle asynchronously loads resource paths and returns a Job.
 // This is an async operation that immediately returns a Job, which can be queried via status/wait.
-func (r *Resource) PostBundle(path string) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (r *Resource) PostBundle(path string) (*Job, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaResourcePostBundle(r.handle, path)
-	return newJob(id, r.status, r.wait, r.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post bundle"))
+	}
+	return newJob(id, r.status, r.wait, r.state), nil
 }
 
 // PostOcrModel asynchronously loads an OCR model directory and returns a Job.
 // This is an async operation that immediately returns a Job, which can be queried via status/wait.
-func (r *Resource) PostOcrModel(path string) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (r *Resource) PostOcrModel(path string) (*Job, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaResourcePostOcrModel(r.handle, path)
-	return newJob(id, r.status, r.wait, r.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post ocr model"))
+	}
+	return newJob(id, r.status, r.wait, r.state), nil
 }
 
 // PostPipeline asynchronously loads a pipeline and returns a Job.
 // Supports loading a directory or a single json/jsonc file.
 // This is an async operation that immediately returns a Job, which can be queried via status/wait.
-func (r *Resource) PostPipeline(path string) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (r *Resource) PostPipeline(path string) (*Job, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaResourcePostPipeline(r.handle, path)
-	return newJob(id, r.status, r.wait, r.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post pipeline"))
+	}
+	return newJob(id, r.status, r.wait, r.state), nil
 }
 
 // PostImage asynchronously loads image resources and returns a Job.
 // Supports loading a directory or a single image file.
 // This is an async operation that immediately returns a Job, which can be queried via status/wait.
-func (r *Resource) PostImage(path string) *Job {
+// It returns an error and a terminal-failed job when the request cannot
+// be submitted, for example when the underlying object is closed.
+func (r *Resource) PostImage(path string) (*Job, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
-		return newFailedJob(useErr)
+		return failJob(useErr)
 	}
 	defer done()
 
 	id := native.MaaResourcePostImage(r.handle, path)
-	return newJob(id, r.status, r.wait, r.state)
+	if id == 0 {
+		return failJob(errors.New("failed to post image"))
+	}
+	return newJob(id, r.status, r.wait, r.state), nil
 }
 
 func (r *Resource) overridePipeline(override string) error {
@@ -597,9 +617,14 @@ func (r *Resource) OverrideImage(imageName string, image image.Image) error {
 	}
 	defer done()
 
-	img := buffer.NewImageBuffer()
+	img, err := buffer.NewImageBuffer()
+	if err != nil {
+		return err
+	}
 	defer img.Destroy()
-	img.Set(image)
+	if err := img.Set(image); err != nil {
+		return err
+	}
 	if native.MaaResourceOverrideImage(r.handle, imageName, img.Handle()) {
 		return nil
 	}

@@ -1,6 +1,8 @@
 package buffer
 
 import (
+	"errors"
+
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/rect"
 )
@@ -9,14 +11,16 @@ type RectBuffer struct {
 	handle uintptr
 }
 
-func NewRectBuffer() *RectBuffer {
+// NewRectBuffer creates a new rect buffer.
+// It returns an error when the underlying native buffer cannot be created.
+func NewRectBuffer() (*RectBuffer, error) {
 	handle := native.MaaRectCreate()
 	if handle == 0 {
-		return nil
+		return nil, errors.New("failed to create rect buffer")
 	}
 	return &RectBuffer{
 		handle: handle,
-	}
+	}, nil
 }
 
 func NewRectBufferByHandle(handle uintptr) *RectBuffer {
@@ -53,6 +57,11 @@ func (r *RectBuffer) GetH() int32 {
 	return native.MaaRectGetH(r.handle)
 }
 
-func (r *RectBuffer) Set(rect rect.Rect) bool {
-	return native.MaaRectSet(r.handle, int32(rect.X()), int32(rect.Y()), int32(rect.Width()), int32(rect.Height()))
+// Set writes rect into the buffer.
+// It returns an error when the underlying native write fails.
+func (r *RectBuffer) Set(rect rect.Rect) error {
+	if !native.MaaRectSet(r.handle, int32(rect.X()), int32(rect.Y()), int32(rect.Width()), int32(rect.Height())) {
+		return errors.New("failed to set rect")
+	}
+	return nil
 }

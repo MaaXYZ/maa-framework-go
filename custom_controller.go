@@ -255,7 +255,7 @@ func _ScreencapAgent(handleArg uintptr, imgBuffer uintptr) uintptr {
 	img, captured := ctrl.Screencap()
 	if captured {
 		imgImgBuffer := buffer.NewImageBufferByHandle(imgBuffer)
-		if ok := imgImgBuffer.Set(img); ok {
+		if err := imgImgBuffer.Set(img); err == nil {
 			return uintptr(1)
 		}
 	}

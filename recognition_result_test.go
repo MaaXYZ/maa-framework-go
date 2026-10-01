@@ -149,7 +149,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			param: &NeuralNetworkClassifyParam{
 				Labels:   []string{"cat", "dog", "mouse"},
 				Model:    "classify/classifier.onnx",
-				Expected: []int{0, 2},
+				Expected: ClassSelectors{ClassIndex(0), ClassIndex(2)},
 				OrderBy:  NeuralNetworkClassifyOrderByScore,
 				Index:    0,
 			},
@@ -159,7 +159,7 @@ func recognitionDetailTestCases() []recognitionDetailTestCase {
 			typ:  RecognitionTypeNeuralNetworkDetect,
 			param: &NeuralNetworkDetectParam{
 				Model:    "ocr/det.onnx",
-				Expected: []int{0},
+				Expected: ClassSelectors{ClassIndex(0)},
 				OrderBy:  NeuralNetworkDetectOrderByArea,
 				Index:    0,
 			},
@@ -364,21 +364,27 @@ func requireRecognitionDetailMatchesCombinedRaw(t *testing.T, detail *Recognitio
 func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	require.True(t, ctrl.PostScreencap().Wait().Success())
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	require.True(t, screencapJob.Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
+	bundleJob, err := res.PostBundle(resDir)
+	require.NoError(t, err)
+	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
 
 	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomRecognition("TestRecognitionDetail_Custom", &testRecognitionDetailCustomRec{})
+	err = res.RegisterCustomRecognition("TestRecognitionDetail_Custom", &testRecognitionDetailCustomRec{})
 	require.NoError(t, err)
 
 	resultsCh := make(chan testRecognitionDetailResult, 1)
@@ -391,8 +397,9 @@ func TestRecognitionDetail_ResultMatchesRaw(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestRecognitionDetail_ResultMatchesRawAct"}))
 	pipeline.AddNode(testNode)
 
-	got := tasker.PostTask(testNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
 	require.True(t, got)
 
 	select {

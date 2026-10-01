@@ -365,12 +365,13 @@ type NeuralNetworkClassifyParam struct {
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
-	// Labels specifies the class names for debugging and logging. Fills "Unknown" if not provided.
+	// Labels specifies class names for label selection, debugging, and logging. Fills "Unknown" if not provided.
 	Labels []string `json:"labels,omitempty"`
 	// Model specifies the model folder path relative to model/classify directory. Required. Only ONNX models supported.
 	Model string `json:"model,omitempty"`
-	// Expected specifies the expected class indices. Required.
-	Expected []int `json:"expected,omitempty"`
+	// Expected selects class indices or labels, preserving their order.
+	// Nil inherits the existing/default selection; an empty list matches all classes.
+	Expected ClassSelectors `json:"expected,omitzero"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Random | Expected.
 	OrderBy NeuralNetworkClassifyOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
@@ -409,12 +410,13 @@ type NeuralNetworkDetectParam struct {
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
-	// Labels specifies the class names for debugging and logging. Auto-reads from model metadata if not provided.
+	// Labels specifies class names for label selection, debugging, and logging. Auto-reads from model metadata if not provided.
 	Labels []string `json:"labels,omitempty"`
 	// Model specifies the model folder path relative to model/detect directory. Required. Supports YOLOv8/YOLOv11 ONNX models.
 	Model string `json:"model,omitempty"`
-	// Expected specifies the expected class indices. Required.
-	Expected []int `json:"expected,omitempty"`
+	// Expected selects class indices or labels, preserving their order.
+	// Nil inherits the existing/default selection; an empty list matches all classes.
+	Expected ClassSelectors `json:"expected,omitzero"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Area | Random | Expected
 	OrderBy NeuralNetworkDetectOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.

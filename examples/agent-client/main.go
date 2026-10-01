@@ -35,7 +35,12 @@ func main() {
 	}
 	defer ctrl.Destroy()
 
-	ctrl.PostConnect().Wait()
+	connectJob, err := ctrl.PostConnect()
+	if err != nil {
+		fmt.Println("Failed to post connect:", err)
+		os.Exit(1)
+	}
+	connectJob.Wait()
 
 	if err := tasker.BindController(ctrl); err != nil {
 		fmt.Println("Failed to bind controller to MAA Tasker")
@@ -59,12 +64,17 @@ func main() {
 
 	client.Connect()
 
-	tasker.PostTask("Test", map[string]any{
+	taskJob, err := tasker.PostTask("Test", map[string]any{
 		"Test": map[string]any{
 			"action":        "Custom",
 			"custom_action": "TestAgentServer",
 		},
-	}).Wait()
+	})
+	if err != nil {
+		fmt.Println("Failed to post task:", err)
+		os.Exit(1)
+	}
+	taskJob.Wait()
 
 	client.Disconnect()
 

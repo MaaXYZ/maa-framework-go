@@ -197,15 +197,15 @@ func benchmarkDecodeBGRToNRGBA(b *testing.B, width, height int) {
 
 // benchmarkImageBufferGet measures end-to-end ImageBuffer.Get (current implementation).
 func benchmarkImageBufferGet(b *testing.B, width, height int) {
-	imageBuffer := NewImageBuffer()
-	if imageBuffer == nil {
+	imageBuffer, err := NewImageBuffer()
+	if err != nil {
 		b.Skip("failed to create image buffer")
 	}
 	defer imageBuffer.Destroy()
 
 	src := makeSourceImage(width, height)
-	if ok := imageBuffer.Set(src); !ok {
-		b.Fatal("failed to set source image")
+	if err := imageBuffer.Set(src); err != nil {
+		b.Fatal(err)
 	}
 
 	b.ReportAllocs()
@@ -222,15 +222,15 @@ func benchmarkImageBufferGet(b *testing.B, width, height int) {
 // benchmarkImageBufferGetLegacy measures end-to-end behavior equivalent to the historical Get path.
 // Use this as "before" baseline when comparing current optimizations.
 func benchmarkImageBufferGetLegacy(b *testing.B, width, height int) {
-	imageBuffer := NewImageBuffer()
-	if imageBuffer == nil {
+	imageBuffer, err := NewImageBuffer()
+	if err != nil {
 		b.Skip("failed to create image buffer")
 	}
 	defer imageBuffer.Destroy()
 
 	src := makeSourceImage(width, height)
-	if ok := imageBuffer.Set(src); !ok {
-		b.Fatal("failed to set source image")
+	if err := imageBuffer.Set(src); err != nil {
+		b.Fatal(err)
 	}
 
 	b.ReportAllocs()
@@ -250,15 +250,15 @@ func benchmarkImageBufferGetLegacy(b *testing.B, width, height int) {
 // benchmarkImageBufferGetReuseDst measures end-to-end GetInto with a reused destination buffer.
 // This reflects the recommended low-allocation usage pattern in hot loops.
 func benchmarkImageBufferGetReuseDst(b *testing.B, width, height int) {
-	imageBuffer := NewImageBuffer()
-	if imageBuffer == nil {
+	imageBuffer, err := NewImageBuffer()
+	if err != nil {
 		b.Skip("failed to create image buffer")
 	}
 	defer imageBuffer.Destroy()
 
 	src := makeSourceImage(width, height)
-	if ok := imageBuffer.Set(src); !ok {
-		b.Fatal("failed to set source image")
+	if err := imageBuffer.Set(src); err != nil {
+		b.Fatal(err)
 	}
 
 	dst := image.NewRGBA(image.Rect(0, 0, width, height))
@@ -275,8 +275,8 @@ func benchmarkImageBufferGetReuseDst(b *testing.B, width, height int) {
 }
 
 func benchmarkImageBufferSetWithSource(b *testing.B, src image.Image) {
-	imageBuffer := NewImageBuffer()
-	if imageBuffer == nil {
+	imageBuffer, err := NewImageBuffer()
+	if err != nil {
 		b.Skip("failed to create image buffer")
 	}
 	defer imageBuffer.Destroy()
@@ -284,11 +284,11 @@ func benchmarkImageBufferSetWithSource(b *testing.B, src image.Image) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ok := imageBuffer.Set(src)
-		if !ok {
-			b.Fatal("Set returned false")
+		err := imageBuffer.Set(src)
+		if err != nil {
+			b.Fatal(err)
 		}
-		benchmarkBoolSink = ok
+		benchmarkBoolSink = err == nil
 	}
 }
 
@@ -303,8 +303,8 @@ func benchmarkImageBufferSetSubImage(b *testing.B, width, height int) {
 // benchmarkImageBufferSetLegacy measures end-to-end behavior equivalent to the historical Set path.
 // Use this as "before" baseline when comparing current Set optimizations.
 func benchmarkImageBufferSetLegacy(b *testing.B, width, height int) {
-	imageBuffer := NewImageBuffer()
-	if imageBuffer == nil {
+	imageBuffer, err := NewImageBuffer()
+	if err != nil {
 		b.Skip("failed to create image buffer")
 	}
 	defer imageBuffer.Destroy()

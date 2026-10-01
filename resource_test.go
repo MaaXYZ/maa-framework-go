@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
 )
 
@@ -68,7 +69,9 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := createBlankController(t)
 			defer ctrl.Destroy()
-			isConnected := ctrl.PostConnect().Wait().Success()
+			connectJob, err := ctrl.PostConnect()
+			require.NoError(t, err)
+			isConnected := connectJob.Wait().Success()
 			require.True(t, isConnected)
 
 			res := createResource(t)
@@ -79,7 +82,7 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 			taskerBind(t, tasker, ctrl, res)
 
 			var calls int32
-			err := res.RegisterCustomRecognition("TestRec", tc.newRunner(&calls))
+			err = res.RegisterCustomRecognition("TestRec", tc.newRunner(&calls))
 			require.NoError(t, err)
 
 			pipeline := NewPipeline()
@@ -87,7 +90,9 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 				SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec"}))
 			pipeline.AddNode(node)
 
-			got := tasker.PostTask(node.Name, pipeline).Wait().Success()
+			taskJob, err := tasker.PostTask(node.Name, pipeline)
+			require.NoError(t, err)
+			got := taskJob.Wait().Success()
 			require.True(t, got)
 			require.NotZero(t, atomic.LoadInt32(&calls))
 		})
@@ -97,7 +102,9 @@ func TestResource_RegisterCustomRecognition(t *testing.T) {
 func TestResource_UnregisterCustomRecognition(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -107,7 +114,7 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomRecognition("TestRec", &testResourceTestRec{})
+	err = res.RegisterCustomRecognition("TestRec", &testResourceTestRec{})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -116,22 +123,26 @@ func TestResource_UnregisterCustomRecognition(t *testing.T) {
 		SetTimeout(0 * time.Second)
 	pipeline.AddNode(testResource_UnregisterCustomRecognitionNode)
 
-	got2 := tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline)
+	require.NoError(t, err)
+	got2 := taskJob.Wait().Success()
 	require.True(t, got2)
 
 	err = res.UnregisterCustomRecognition("TestRec")
 	require.NoError(t, err)
 
-	got4 := tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_UnregisterCustomRecognitionNode.Name, pipeline)
+	require.NoError(t, err)
+	got4 := taskJob.Wait().Failure()
 	require.True(t, got4)
 }
 
 func TestResource_ClearCustomRecognition(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -141,7 +152,7 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomRecognition("TestRec1", &testResourceTestRec{})
+	err = res.RegisterCustomRecognition("TestRec1", &testResourceTestRec{})
 	require.NoError(t, err)
 	err = res.RegisterCustomRecognition("TestRec2", &testResourceTestRec{})
 	require.NoError(t, err)
@@ -157,21 +168,25 @@ func TestResource_ClearCustomRecognition(t *testing.T) {
 		SetRecognition(RecCustom(CustomRecognitionParam{CustomRecognition: "TestRec2"})).
 		SetTimeout(0 * time.Second)
 	pipeline2.AddNode(testResource_ClearCustomRecognitionNode2)
-	got3 := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1)
+	require.NoError(t, err)
+	got3 := taskJob.Wait().Success()
 	require.True(t, got3)
-	got4 := tasker.PostTask(testResource_ClearCustomRecognitionNode2.Name, pipeline2).
-		Wait().Success()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomRecognitionNode2.Name, pipeline2)
+	require.NoError(t, err)
+	got4 := taskJob.Wait().Success()
 	require.True(t, got4)
 
 	err = res.ClearCustomRecognition()
 	require.NoError(t, err)
 
-	got6 := tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomRecognitionNode1.Name, pipeline1)
+	require.NoError(t, err)
+	got6 := taskJob.Wait().Failure()
 	require.True(t, got6)
-	got7 := tasker.PostTask(testResource_ClearCustomRecognitionNode2.Name, pipeline2).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomRecognitionNode2.Name, pipeline2)
+	require.NoError(t, err)
+	got7 := taskJob.Wait().Failure()
 	require.True(t, got7)
 }
 
@@ -217,7 +232,9 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := createBlankController(t)
 			defer ctrl.Destroy()
-			isConnected := ctrl.PostConnect().Wait().Success()
+			connectJob, err := ctrl.PostConnect()
+			require.NoError(t, err)
+			isConnected := connectJob.Wait().Success()
 			require.True(t, isConnected)
 
 			res := createResource(t)
@@ -228,7 +245,7 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 			taskerBind(t, tasker, ctrl, res)
 
 			var calls int32
-			err := res.RegisterCustomAction("TestAct", tc.newRunner(&calls))
+			err = res.RegisterCustomAction("TestAct", tc.newRunner(&calls))
 			require.NoError(t, err)
 
 			pipeline := NewPipeline()
@@ -236,7 +253,9 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 				SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct"}))
 			pipeline.AddNode(node)
 
-			got := tasker.PostTask(node.Name, pipeline).Wait().Success()
+			taskJob, err := tasker.PostTask(node.Name, pipeline)
+			require.NoError(t, err)
+			got := taskJob.Wait().Success()
 			require.True(t, got)
 			require.NotZero(t, atomic.LoadInt32(&calls))
 		})
@@ -246,7 +265,9 @@ func TestResource_RegisterCustomAction(t *testing.T) {
 func TestResource_UnregisterCustomAction(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -256,7 +277,7 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestAct", &testResourceTestAct{})
+	err = res.RegisterCustomAction("TestAct", &testResourceTestAct{})
 	require.NoError(t, err)
 
 	pipeline := NewPipeline()
@@ -264,22 +285,26 @@ func TestResource_UnregisterCustomAction(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct"}))
 	pipeline.AddNode(testResource_UnregisterCustomActionNode)
 
-	got1 := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline)
+	require.NoError(t, err)
+	got1 := taskJob.Wait().Success()
 	require.True(t, got1)
 
 	err = res.UnregisterCustomAction("TestAct")
 	require.NoError(t, err)
 
-	got2 := tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_UnregisterCustomActionNode.Name, pipeline)
+	require.NoError(t, err)
+	got2 := taskJob.Wait().Failure()
 	require.True(t, got2)
 }
 
 func TestResource_ClearCustomAction(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -289,7 +314,7 @@ func TestResource_ClearCustomAction(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := res.RegisterCustomAction("TestAct1", &testResourceTestAct{})
+	err = res.RegisterCustomAction("TestAct1", &testResourceTestAct{})
 	require.NoError(t, err)
 	err = res.RegisterCustomAction("TestAct2", &testResourceTestAct{})
 	require.NoError(t, err)
@@ -304,21 +329,25 @@ func TestResource_ClearCustomAction(t *testing.T) {
 		SetAction(ActCustom(CustomActionParam{CustomAction: "TestAct2"}))
 	pipeline2.AddNode(testResource_ClearCustomActionNode2)
 
-	got1 := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1).
-		Wait().Success()
+	taskJob, err := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1)
+	require.NoError(t, err)
+	got1 := taskJob.Wait().Success()
 	require.True(t, got1)
-	got2 := tasker.PostTask(testResource_ClearCustomActionNode2.Name, pipeline2).
-		Wait().Success()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomActionNode2.Name, pipeline2)
+	require.NoError(t, err)
+	got2 := taskJob.Wait().Success()
 	require.True(t, got2)
 
 	err = res.ClearCustomAction()
 	require.NoError(t, err)
 
-	got3 := tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomActionNode1.Name, pipeline1)
+	require.NoError(t, err)
+	got3 := taskJob.Wait().Failure()
 	require.True(t, got3)
-	got4 := tasker.PostTask(testResource_ClearCustomActionNode2.Name, pipeline2).
-		Wait().Failure()
+	taskJob, err = tasker.PostTask(testResource_ClearCustomActionNode2.Name, pipeline2)
+	require.NoError(t, err)
+	got4 := taskJob.Wait().Failure()
 	require.True(t, got4)
 }
 
@@ -326,15 +355,51 @@ func TestResource_PostBundle(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
+	bundleJob, err := res.PostBundle(resDir)
+	require.NoError(t, err)
+	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
+}
+
+func TestResource_PostBundleNativeInvalidID(t *testing.T) {
+	res := createResource(t)
+	defer res.Destroy()
+
+	oldPost := native.MaaResourcePostBundle
+	native.MaaResourcePostBundle = func(uintptr, string) int64 { return 0 }
+	defer func() { native.MaaResourcePostBundle = oldPost }()
+
+	job, err := res.PostBundle("whatever")
+	require.Error(t, err)
+	require.NotNil(t, job)
+	require.True(t, job.Failure())
+	require.True(t, job.Done())
+	require.ErrorIs(t, job.Error(), err)
+}
+
+func TestResource_PostPipelineNativeInvalidID(t *testing.T) {
+	res := createResource(t)
+	defer res.Destroy()
+
+	oldPost := native.MaaResourcePostPipeline
+	native.MaaResourcePostPipeline = func(uintptr, string) int64 { return 0 }
+	defer func() { native.MaaResourcePostPipeline = oldPost }()
+
+	job, err := res.PostPipeline("whatever")
+	require.Error(t, err)
+	require.NotNil(t, job)
+	require.True(t, job.Failure())
+	require.True(t, job.Done())
+	require.ErrorIs(t, job.Error(), err)
 }
 
 func TestResource_OverrideNext(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
+	bundleJob, err := res.PostBundle(resDir)
+	require.NoError(t, err)
+	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
 
 	override := []NextItem{
@@ -342,7 +407,7 @@ func TestResource_OverrideNext(t *testing.T) {
 		{Name: "Sub_BackButton", JumpBack: true},
 		{Name: "HomeFlag", Anchor: true},
 	}
-	err := res.OverrideNext("StartUp", override)
+	err = res.OverrideNext("StartUp", override)
 	require.NoError(t, err)
 
 	node, err := res.GetNode("StartUp")
@@ -377,9 +442,11 @@ func TestResource_Clear(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
+	bundleJob, err := res.PostBundle(resDir)
+	require.NoError(t, err)
+	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
-	err := res.Clear()
+	err = res.Clear()
 	require.NoError(t, err)
 }
 
@@ -387,7 +454,9 @@ func TestResource_Loaded(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
+	bundleJob, err := res.PostBundle(resDir)
+	require.NoError(t, err)
+	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
 	loaded := res.Loaded()
 	require.True(t, loaded)
@@ -397,7 +466,9 @@ func TestResource_GetHash(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
+	bundleJob, err := res.PostBundle(resDir)
+	require.NoError(t, err)
+	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
 	hash, err := res.GetHash()
 	require.NoError(t, err)
@@ -408,7 +479,9 @@ func TestResource_GetNodeList(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
+	bundleJob, err := res.PostBundle(resDir)
+	require.NoError(t, err)
+	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
 	taskList, err := res.GetNodeList()
 	require.NoError(t, err)
@@ -419,7 +492,9 @@ func TestResource_GetNode(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
+	bundleJob, err := res.PostBundle(resDir)
+	require.NoError(t, err)
+	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
 
 	node, err := res.GetNode("StartGame")

@@ -30,6 +30,12 @@ func newFailedJob(err error) *Job {
 	return &Job{err: err, finalStatus: StatusFailure}
 }
 
+// failJob pairs a terminal-failed job with its submission error so callers
+// that check the error and callers that ignore it observe the same failure.
+func failJob(err error) (*Job, error) {
+	return newFailedJob(err), err
+}
+
 // Error reports why the job could not be submitted or used.
 func (j *Job) Error() error {
 	if j.err != nil {
@@ -102,6 +108,13 @@ func (j *Job) Wait() *Job {
 
 func newFailedTaskJob(err error) *TaskJob {
 	return newTaskJob(0, nil, nil, nil, nil, err)
+}
+
+// failTaskJob pairs a terminal-failed task job with its submission error so
+// callers that check the error and callers that ignore it observe the same
+// failure.
+func failTaskJob(err error) (*TaskJob, error) {
+	return newFailedTaskJob(err), err
 }
 
 // TaskJob extends Job with task-specific functionality.

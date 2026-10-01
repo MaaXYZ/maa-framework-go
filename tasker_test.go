@@ -1,9 +1,12 @@
 package maa
 
 import (
+	"image"
 	"testing"
 	"time"
 
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/buffer"
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,6 +27,55 @@ func taskerBind(t *testing.T, tasker *Tasker, ctrl *Controller, res *Resource) {
 func TestNewTasker(t *testing.T) {
 	tasker := createTasker(t)
 	tasker.Destroy()
+}
+
+func TestTasker_PostRecognition_CreateBufferFailure(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldCreate := native.MaaImageBufferCreate
+	defer func() { native.MaaImageBufferCreate = oldCreate }()
+	native.MaaImageBufferCreate = func() uintptr { return 0 }
+
+	img := image.NewNRGBA(image.Rect(0, 0, 2, 2))
+	taskJob, err := tasker.PostRecognition(RecognitionTypeOCR, OCRParam{Expected: []string{"Hello"}}, img)
+	require.Error(t, err)
+	require.NotNil(t, taskJob)
+	require.True(t, taskJob.Failure())
+	require.True(t, taskJob.Done())
+	require.ErrorIs(t, taskJob.Error(), err)
+}
+
+func TestTasker_PostAction_CreateRectBufferFailure(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldCreate := native.MaaRectCreate
+	defer func() { native.MaaRectCreate = oldCreate }()
+	native.MaaRectCreate = func() uintptr { return 0 }
+
+	taskJob, err := tasker.PostAction(ActionTypeClick, DoNothingParam{}, Rect{1, 2, 3, 4}, nil)
+	require.Error(t, err)
+	require.NotNil(t, taskJob)
+	require.True(t, taskJob.Failure())
+	require.True(t, taskJob.Done())
+	require.ErrorIs(t, taskJob.Error(), err)
+}
+
+func TestTasker_PostAction_SetRectFailure(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldSet := native.MaaRectSet
+	defer func() { native.MaaRectSet = oldSet }()
+	native.MaaRectSet = func(handle uintptr, x, y, w, h int32) bool { return false }
+
+	taskJob, err := tasker.PostAction(ActionTypeClick, DoNothingParam{}, Rect{1, 2, 3, 4}, nil)
+	require.Error(t, err)
+	require.NotNil(t, taskJob)
+	require.True(t, taskJob.Failure())
+	require.True(t, taskJob.Done())
+	require.ErrorIs(t, taskJob.Error(), err)
 }
 
 func TestTasker_BindResource(t *testing.T) {
@@ -49,7 +101,9 @@ func TestTasker_BindController(t *testing.T) {
 func TestTasker_Initialized(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	connected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	connected := connectJob.Wait().Success()
 	require.True(t, connected)
 
 	res := createResource(t)
@@ -66,9 +120,13 @@ func TestTasker_Initialized(t *testing.T) {
 func TestTasker_PostPipeline(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	require.True(t, ctrl.PostScreencap().Wait().Success())
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	require.True(t, screencapJob.Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -84,7 +142,8 @@ func TestTasker_PostPipeline(t *testing.T) {
 		}))
 	pipeline.AddNode(testTasker_PostPipelineNode)
 
-	taskJob := tasker.PostTask(testTasker_PostPipelineNode.Name, pipeline)
+	taskJob, err := tasker.PostTask(testTasker_PostPipelineNode.Name, pipeline)
+	require.NoError(t, err)
 	got := taskJob.Wait().Success()
 	require.True(t, got)
 	detail, err := taskJob.GetDetail()
@@ -95,9 +154,13 @@ func TestTasker_PostPipeline(t *testing.T) {
 func TestTasker_GetTaskDetail_NodesAndGetNodeDetail(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	require.True(t, ctrl.PostScreencap().Wait().Success())
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	require.True(t, screencapJob.Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -113,7 +176,8 @@ func TestTasker_GetTaskDetail_NodesAndGetNodeDetail(t *testing.T) {
 		}))
 	pipeline.AddNode(testNode)
 
-	taskJob := tasker.PostTask(testNode.Name, pipeline)
+	taskJob, err := tasker.PostTask(testNode.Name, pipeline)
+	require.NoError(t, err)
 	require.True(t, taskJob.Wait().Success())
 
 	detail, err := taskJob.GetDetail()
@@ -140,6 +204,7 @@ func TestTasker_handleOverride(t *testing.T) {
 		name     string
 		override []any
 		want     string
+		wantErr  bool
 	}{
 		{
 			name:     "no override",
@@ -177,38 +242,174 @@ func TestTasker_handleOverride(t *testing.T) {
 			want:     `{"A":1}`,
 		},
 		{
-			name: "marshal error fallback",
+			name: "marshal error is not posted",
 			override: []any{map[string]any{
 				"f": func() {},
 			}},
-			want: "{}",
+			wantErr: true,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			called := false
+			posted := false
 			var gotEntry, gotOverride string
-			postFunc := func(entry, override string) *TaskJob {
-				called = true
+			postFunc := func(entry, override string) (*TaskJob, error) {
+				posted = true
 				gotEntry = entry
 				gotOverride = override
-				return &TaskJob{}
+				return &TaskJob{}, nil
 			}
 
-			taskJob := tasker.handleOverride("Entry", postFunc, tc.override...)
+			taskJob, err := tasker.handleOverride("Entry", postFunc, tc.override...)
 			require.NotNil(t, taskJob)
-			require.True(t, called)
+			if tc.wantErr {
+				require.Error(t, err)
+				require.False(t, posted)
+				require.ErrorIs(t, taskJob.Error(), err)
+				require.True(t, taskJob.Failure())
+				return
+			}
+			require.NoError(t, err)
+			require.True(t, posted)
 			require.Equal(t, "Entry", gotEntry)
 			require.Equal(t, tc.want, gotOverride)
 		})
 	}
 }
 
+func TestTasker_DetailQueryFailures(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	_, err := tasker.GetRecognitionDetail(999)
+	require.Error(t, err)
+
+	_, err = tasker.GetActionDetail(999)
+	require.Error(t, err)
+
+	_, err = tasker.GetWaitFreezesDetail(999)
+	require.Error(t, err)
+}
+
+func TestTasker_GetNodeDetail_SkipsAbsentSubDetails(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetNodeDetail := native.MaaTaskerGetNodeDetail
+	defer func() { native.MaaTaskerGetNodeDetail = oldGetNodeDetail }()
+	native.MaaTaskerGetNodeDetail = func(_ uintptr, _ int64, _ uintptr, recId, actionId *int64, completed *bool) bool {
+		*recId = 0
+		*actionId = 0
+		*completed = true
+		return true
+	}
+
+	detail, err := tasker.GetNodeDetail(7)
+	require.NoError(t, err)
+	require.NotNil(t, detail)
+	require.Nil(t, detail.Recognition)
+	require.Nil(t, detail.Action)
+	require.True(t, detail.RunCompleted)
+}
+
+func TestTasker_GetNodeDetailNativeFailureIncludesNodeId(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetNodeDetail := native.MaaTaskerGetNodeDetail
+	defer func() { native.MaaTaskerGetNodeDetail = oldGetNodeDetail }()
+	native.MaaTaskerGetNodeDetail = func(_ uintptr, _ int64, _ uintptr, _ *int64, _ *int64, _ *bool) bool {
+		return false
+	}
+
+	_, err := tasker.GetNodeDetail(42)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "nodeId 42")
+}
+
+func TestTasker_GetTaskDetailNativeFailureIncludesTaskId(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetTaskDetail := native.MaaTaskerGetTaskDetail
+	defer func() { native.MaaTaskerGetTaskDetail = oldGetTaskDetail }()
+	native.MaaTaskerGetTaskDetail = func(_ uintptr, _ int64, _ uintptr, _ uintptr, _ *uint64, _ *int32) bool {
+		return false
+	}
+
+	_, err := tasker.GetTaskDetail(7)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "taskId 7")
+}
+
+func TestTasker_GetRecognitionDetailParseFailureIncludesRecId(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetRecognitionDetail := native.MaaTaskerGetRecognitionDetail
+	defer func() { native.MaaTaskerGetRecognitionDetail = oldGetRecognitionDetail }()
+	native.MaaTaskerGetRecognitionDetail = func(_ uintptr, _ int64, _ uintptr, algorithm uintptr, _ *bool, _ uintptr, detailJson uintptr, _ uintptr, _ uintptr) bool {
+		// "OCR" takes the non-combined parse path; the invalid JSON fails parsing.
+		buffer.NewStringBufferByHandle(algorithm).Set("OCR")
+		buffer.NewStringBufferByHandle(detailJson).Set("{invalid")
+		return true
+	}
+
+	_, err := tasker.GetRecognitionDetail(5)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "recId 5")
+}
+
+func TestTasker_GetActionDetailParseFailureIncludesActionId(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetActionDetail := native.MaaTaskerGetActionDetail
+	defer func() { native.MaaTaskerGetActionDetail = oldGetActionDetail }()
+	native.MaaTaskerGetActionDetail = func(_ uintptr, _ int64, _ uintptr, action uintptr, _ uintptr, _ *bool, detailJson uintptr) bool {
+		buffer.NewStringBufferByHandle(action).Set("Click")
+		buffer.NewStringBufferByHandle(detailJson).Set("{invalid")
+		return true
+	}
+
+	_, err := tasker.GetActionDetail(9)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "actionId 9")
+}
+
+func TestTasker_GetNodeDetailNestedFailureIncludesBothIds(t *testing.T) {
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+
+	oldGetNodeDetail := native.MaaTaskerGetNodeDetail
+	oldGetRecognitionDetail := native.MaaTaskerGetRecognitionDetail
+	defer func() {
+		native.MaaTaskerGetNodeDetail = oldGetNodeDetail
+		native.MaaTaskerGetRecognitionDetail = oldGetRecognitionDetail
+	}()
+	native.MaaTaskerGetNodeDetail = func(_ uintptr, _ int64, _ uintptr, recId, actionId *int64, completed *bool) bool {
+		*recId = 77
+		*actionId = 0
+		*completed = true
+		return true
+	}
+	native.MaaTaskerGetRecognitionDetail = func(_ uintptr, _ int64, _ uintptr, _ uintptr, _ *bool, _ uintptr, _ uintptr, _ uintptr, _ uintptr) bool {
+		return false
+	}
+
+	_, err := tasker.GetNodeDetail(42)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "nodeId 42")
+	require.ErrorContains(t, err, "recId 77")
+}
+
 func TestTasker_Running(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -225,7 +426,9 @@ func TestTasker_Running(t *testing.T) {
 func TestTasker_PostStop(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -235,7 +438,9 @@ func TestTasker_PostStop(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	ok := tasker.PostStop().Wait().Success()
+	stopJob, err := tasker.PostStop()
+	require.NoError(t, err)
+	ok := stopJob.Wait().Success()
 	require.True(t, ok)
 }
 
@@ -270,7 +475,9 @@ func TestTasker_GetController(t *testing.T) {
 func TestTasker_ClearCache(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
@@ -280,41 +487,52 @@ func TestTasker_ClearCache(t *testing.T) {
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
 
-	err := tasker.ClearCache()
+	err = tasker.ClearCache()
 	require.NoError(t, err)
 }
 
 func TestTasker_GetLatestNode(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
 	defer res.Destroy()
 	resDir := "./test/data_set/PipelineSmoking/resource"
-	isPathSet := res.PostBundle(resDir).Wait().Success()
+	bundleJob, err := res.PostBundle(resDir)
+	require.NoError(t, err)
+	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
 
 	tasker := createTasker(t)
 	defer tasker.Destroy()
 	taskerBind(t, tasker, ctrl, res)
-	job := tasker.PostTask("Wilderness")
+	job, err := tasker.PostTask("Wilderness")
+	require.NoError(t, err)
 	require.NotNil(t, job)
 	time.Sleep(2 * time.Second)
 	detail, err := tasker.GetLatestNode("Wilderness")
 	require.NoError(t, err)
 	t.Log(detail)
-	ok := tasker.PostStop().Wait().Success()
+	stopJob, err := tasker.PostStop()
+	require.NoError(t, err)
+	ok := stopJob.Wait().Success()
 	require.True(t, ok)
 }
 
 func TestTasker_OverridePipeline(t *testing.T) {
 	ctrl := createBlankController(t)
 	defer ctrl.Destroy()
-	isConnected := ctrl.PostConnect().Wait().Success()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
-	require.True(t, ctrl.PostScreencap().Wait().Success())
+	screencapJob, err := ctrl.PostScreencap()
+	require.NoError(t, err)
+	require.True(t, screencapJob.Wait().Success())
 
 	res := createResource(t)
 	defer res.Destroy()
@@ -331,7 +549,8 @@ func TestTasker_OverridePipeline(t *testing.T) {
 	pipeline.AddNode(testNode)
 
 	// Start a task
-	taskJob := tasker.PostTask(testNode.Name, pipeline)
+	taskJob, err := tasker.PostTask(testNode.Name, pipeline)
+	require.NoError(t, err)
 
 	// Override the pipeline while task is running
 	overridePipeline := NewPipeline()
