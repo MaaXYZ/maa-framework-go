@@ -694,7 +694,7 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkClassifyRecognition(ctx *Co
 	param := nodeData.Recognition.Param.(*NeuralNetworkClassifyParam)
 	assert.Equal(a.t, []string{"Cat", "Dog", "Mouse"}, param.Labels)
 	assert.Equal(a.t, "classifier.onnx", param.Model)
-	assert.Equal(a.t, []int{0, 2}, param.Expected)
+	assert.Equal(a.t, ClassSelectors{ClassIndex(0), ClassIndex(2)}, param.Expected)
 }
 
 func (a *testContextGetNodeDataAct) testNeuralNetworkDetectRecognition(ctx *Context) {
@@ -724,7 +724,7 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkDetectRecognition(ctx *Cont
 	param := nodeData.Recognition.Param.(*NeuralNetworkDetectParam)
 	assert.Equal(a.t, []string{"person", "car", "bicycle"}, param.Labels)
 	assert.Equal(a.t, "yolov8.onnx", param.Model)
-	assert.Equal(a.t, []int{0, 1}, param.Expected)
+	assert.Equal(a.t, ClassSelectors{ClassIndex(0), ClassIndex(1)}, param.Expected)
 	assert.Equal(a.t, NeuralNetworkDetectOrderByArea, param.OrderBy)
 	assert.Equal(a.t, -1, param.Index)
 }
