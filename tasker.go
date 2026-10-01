@@ -360,6 +360,8 @@ func (t *Tasker) Running() bool {
 // It interrupts the currently running task and stops resource loading and controller operations.
 // It returns an error and a terminal-failed job when the stop signal cannot
 // be submitted, for example when the tasker is closed.
+// A stop can invalidate earlier job IDs before their native calls finish.
+// Do not treat an earlier Job.Wait return as proof that all callbacks ended.
 func (t *Tasker) PostStop() (*TaskJob, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -368,6 +370,15 @@ func (t *Tasker) PostStop() (*TaskJob, error) {
 	defer done()
 
 	t.state.postMu.Lock()
+	t.state.bindingsMu.Lock()
+	resource, controller := t.state.resource, t.state.controller
+	t.state.bindingsMu.Unlock()
+	if resource != nil {
+		resource.state.markJobsUncertain()
+	}
+	if controller != nil {
+		controller.state.markJobsUncertain()
+	}
 	id := native.MaaTaskerPostStop(t.handle)
 	t.state.postMu.Unlock()
 	if id == 0 {

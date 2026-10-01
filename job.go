@@ -67,7 +67,7 @@ func (j *Job) Status() Status {
 }
 
 func (j *Job) trackStatus(status Status) Status {
-	if j.owner != nil && (status.Done() || status.Invalid()) {
+	if j.owner != nil && status.Done() {
 		j.owner.untrackJob(j.id)
 	}
 	return status

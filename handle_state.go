@@ -36,11 +36,15 @@ type handleState struct {
 	callbacks      int
 	bindings       int
 	closed         bool
+	cleaning       bool
 	external       bool
 	cleanup        func(uintptr)
 	cleanupDone    chan struct{}
 	jobStatus      func(uintptr, int64) Status
 	jobRunning     func(uintptr) bool
+	idleProbe      func(uintptr) bool
+	jobsUncertain  bool
+	closeBarrierID int64
 	jobs           map[int64]struct{}
 	reapingJobs    bool
 }
@@ -84,11 +88,21 @@ func (s *handleState) begin() (uintptr, func(), error) {
 }
 
 func (s *handleState) beginCallback() (func(), error) {
+	return s.beginCallbackScope(false)
+}
+
+// Custom controllers may be called synchronously by the native destructor to
+// release pressed keys and touches. Those callbacks expire with cleanup.
+func (s *handleState) beginControllerCallback() (func(), error) {
+	return s.beginCallbackScope(true)
+}
+
+func (s *handleState) beginCallbackScope(allowCleanup bool) (func(), error) {
 	if s == nil {
 		return nil, ErrClosed
 	}
 	s.mu.Lock()
-	if s.closed || s.handle == 0 {
+	if s.closed && !(allowCleanup && s.cleaning) || !s.closed && s.handle == 0 {
 		s.mu.Unlock()
 		return nil, ErrClosed
 	}
@@ -173,11 +187,24 @@ func (s *handleState) untrackJob(id int64) {
 	s.mu.Unlock()
 }
 
+// A cleared native job ID does not prove its worker has returned. Keep that
+// uncertainty until a close probe confirms the owner is idle.
+func (s *handleState) markJobsUncertain() {
+	s.mu.Lock()
+	s.jobsUncertain = true
+	s.closeBarrierID = 0
+	s.mu.Unlock()
+}
+
 func (s *handleState) pruneCompletedJobsLocked() bool {
 	active := false
 	for id := range s.jobs {
 		status := s.jobStatus(s.handle, id)
 		if status.Done() || status.Invalid() {
+			if status.Invalid() {
+				s.jobsUncertain = true
+				s.closeBarrierID = 0
+			}
 			delete(s.jobs, id)
 		} else {
 			active = true
@@ -187,12 +214,21 @@ func (s *handleState) pruneCompletedJobsLocked() bool {
 }
 
 // jobsActiveLocked checks native completion while close still excludes new
-// calls. Only terminal or invalid jobs can be removed from the tracking set.
+// calls. Invalid IDs retain uncertainty until native idleness is confirmed.
 func (s *handleState) jobsActiveLocked() bool {
 	if s.jobRunning != nil && s.jobRunning(s.handle) {
 		return true
 	}
-	return s.pruneCompletedJobsLocked()
+	if s.pruneCompletedJobsLocked() {
+		return true
+	}
+	if s.jobsUncertain {
+		if s.jobRunning == nil && (s.idleProbe == nil || !s.idleProbe(s.handle)) {
+			return true
+		}
+		s.jobsUncertain = false
+	}
+	return false
 }
 
 func (s *handleState) end() {
@@ -210,9 +246,14 @@ func (s *handleState) runCleanup(handle uintptr, cleanup func(uintptr)) {
 	if cleanup == nil {
 		return
 	}
-	defer close(s.cleanupDone)
-	// Publish the released lifetime before waking concurrent Destroy callers.
-	defer liveNativeObjects.Add(-1)
+	defer func() {
+		s.mu.Lock()
+		s.cleaning = false
+		s.mu.Unlock()
+		// Publish the released lifetime before waking concurrent Destroy callers.
+		liveNativeObjects.Add(-1)
+		close(s.cleanupDone)
+	}()
 	cleanup(handle)
 }
 
@@ -233,6 +274,7 @@ func (s *handleState) takeCleanupLocked() (uintptr, func(uintptr)) {
 	handle, cleanup := s.handle, s.cleanup
 	s.handle = 0
 	s.cleanup = nil
+	s.cleaning = true
 	return handle, cleanup
 }
 
@@ -241,6 +283,10 @@ func (s *handleState) close() error {
 		return nil
 	}
 	s.mu.Lock()
+	if s.callbacks != 0 {
+		s.mu.Unlock()
+		return ErrInCallback
+	}
 	if s.closed {
 		done := s.cleanupDone
 		s.mu.Unlock()
@@ -248,10 +294,6 @@ func (s *handleState) close() error {
 			<-done
 		}
 		return nil
-	}
-	if s.callbacks != 0 {
-		s.mu.Unlock()
-		return ErrInCallback
 	}
 	if s.bindings != 0 {
 		s.mu.Unlock()

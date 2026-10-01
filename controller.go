@@ -35,17 +35,30 @@ func newOwnedController(handle uintptr) *Controller {
 	state = newHandleState(handle, func(handle uintptr) {
 		store.CtrlStore.Lock()
 		value := store.CtrlStore.Get(handle)
-		unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
 		for _, cbID := range value.SinkIDToEventCallbackID {
 			unregisterEventCallback(cbID)
 		}
 		store.CtrlStore.Del(handle)
 		store.CtrlStore.Unlock()
 		native.MaaControllerDestroy(handle)
+		unregisterCustomControllerCallbacks(value.CustomControllerCallbacksID)
 		controllerStates.CompareAndDelete(handle, state)
 	})
 	state.jobStatus = func(handle uintptr, id int64) Status {
 		return Status(native.MaaControllerStatus(handle, id))
+	}
+	state.idleProbe = func(handle uintptr) bool {
+		// Stop can invalidate action IDs before their worker returns. Observe a
+		// new inactive action to prove completion without waiting under mu.
+		if state.closeBarrierID == 0 {
+			state.closeBarrierID = native.MaaControllerPostInactive(handle)
+			return false
+		}
+		status := Status(native.MaaControllerStatus(handle, state.closeBarrierID))
+		if status.Invalid() {
+			state.closeBarrierID = 0
+		}
+		return status.Done()
 	}
 	controllerStates.Store(handle, state)
 	return &Controller{handle: handle, state: state, owned: true}
@@ -275,7 +288,9 @@ func NewCustomController(
 		v.CustomControllerCallbacksID = ctrlID
 	})
 
-	return newOwnedController(handle), nil
+	owner := newOwnedController(handle)
+	bindCustomControllerCallbacks(ctrlID, owner.state)
+	return owner, nil
 }
 
 // NOTE: MaaDbgController (MaaDbgControllerCreate) is intentionally NOT implemented in the Go binding.
@@ -288,6 +303,9 @@ func NewCustomController(
 // Destroy closes the controller once. It returns ErrBound while a tasker uses
 // it or an AgentClient retains it, ErrInUse while a call or job is active, and
 // ErrBorrowed when called on a getter or callback view.
+// After a stop invalidates action IDs, Destroy may post an inactive action and
+// return ErrInUse until it completes; retry afterward. Native destruction may
+// call custom KeyUp/TouchUp methods before Destroy returns successfully.
 func (c *Controller) Destroy() error {
 	if c == nil || !c.owned {
 		return ErrBorrowed

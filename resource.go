@@ -58,6 +58,9 @@ func NewResource() (*Resource, error) {
 	state.jobStatus = func(handle uintptr, id int64) Status {
 		return Status(native.MaaResourceStatus(handle, id))
 	}
+	// Clear refuses a running loader. Only probe when immediately closing, since
+	// a successful probe also clears resource contents.
+	state.idleProbe = func(handle uintptr) bool { return native.MaaResourceClear(handle) }
 	resourceStates.Store(handle, state)
 	return &Resource{handle: handle, state: state, owned: true}, nil
 }
