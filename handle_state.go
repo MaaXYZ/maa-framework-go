@@ -28,20 +28,21 @@ var ErrTaskerRunning = errors.New("maa: tasker is running")
 // handleState keeps a native handle alive while calls use it. Successful
 // close runs cleanup once before returning.
 type handleState struct {
-	mu          sync.Mutex
-	cond        *sync.Cond
-	handle      uintptr
-	active      int
-	callbacks   int
-	bindings    int
-	closed      bool
-	external    bool
-	cleanup     func(uintptr)
-	cleanupDone chan struct{}
-	jobStatus   func(uintptr, int64) Status
-	jobRunning  func(uintptr) bool
-	jobs        map[int64]struct{}
-	reapingJobs bool
+	mu             sync.Mutex
+	registrationMu sync.Mutex
+	cond           *sync.Cond
+	handle         uintptr
+	active         int
+	callbacks      int
+	bindings       int
+	closed         bool
+	external       bool
+	cleanup        func(uintptr)
+	cleanupDone    chan struct{}
+	jobStatus      func(uintptr, int64) Status
+	jobRunning     func(uintptr) bool
+	jobs           map[int64]struct{}
+	reapingJobs    bool
 }
 
 const jobReapInterval = 250 * time.Millisecond

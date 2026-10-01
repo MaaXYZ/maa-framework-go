@@ -265,6 +265,7 @@ func NewCustomController(
 		uintptr(ctrlID),
 	)
 	if handle == 0 {
+		unregisterCustomControllerCallbacks(ctrlID)
 		return nil, errors.New("failed to create Custom controller")
 	}
 
@@ -927,6 +928,8 @@ func (c *Controller) GetInfo() (string, error) {
 
 // AddSink adds a event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
+// The instance and associated taskers must be idle. Do not call this from a callback.
+// It returns 0 if registration fails or the object is closed.
 func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -936,13 +939,20 @@ func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 	if c.state.external {
 		return 0
 	}
+	c.state.registrationMu.Lock()
+	defer c.state.registrationMu.Unlock()
 
-	id := registerEventCallback(sink)
+	id := registerEventCallback(sink, c.state)
 	sinkId := native.MaaControllerAddSink(
 		c.handle,
 		_MaaEventCallbackAgent,
 		uintptr(id),
 	)
+
+	if sinkId == 0 {
+		unregisterEventCallback(id)
+		return 0
+	}
 
 	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
 		v.SinkIDToEventCallbackID[sinkId] = id
@@ -952,6 +962,7 @@ func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 }
 
 // RemoveSink removes a event callback sink by sink ID.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (c *Controller) RemoveSink(sinkId int64) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -961,6 +972,8 @@ func (c *Controller) RemoveSink(sinkId int64) {
 	if c.state.external {
 		return
 	}
+	c.state.registrationMu.Lock()
+	defer c.state.registrationMu.Unlock()
 
 	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
 		unregisterEventCallback(v.SinkIDToEventCallbackID[sinkId])
@@ -971,6 +984,7 @@ func (c *Controller) RemoveSink(sinkId int64) {
 }
 
 // ClearSinks clears all event callback sinks.
+// The instance and associated taskers must be idle. Do not call this from a callback.
 func (c *Controller) ClearSinks() {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -980,6 +994,8 @@ func (c *Controller) ClearSinks() {
 	if c.state.external {
 		return
 	}
+	c.state.registrationMu.Lock()
+	defer c.state.registrationMu.Unlock()
 
 	store.CtrlStore.Update(c.handle, func(v *store.CtrlStoreValue) {
 		for _, id := range v.SinkIDToEventCallbackID {

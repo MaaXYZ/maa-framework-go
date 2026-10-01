@@ -2,8 +2,8 @@ package maa
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
-	"unsafe"
 
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 )
@@ -21,9 +21,31 @@ const (
 // MaaAgentServer API, so agentServerDetached is a terminal state for Release.
 var agentServerState atomic.Uint32
 
+var (
+	agentServerConfigurationMu sync.Mutex
+	agentServerRecognitionIDs  = make(map[string]uint64)
+	agentServerActionIDs       = make(map[string]uint64)
+)
+
+func lockAgentServerConfiguration() (func(), error) {
+	agentServerConfigurationMu.Lock()
+	if agentServerState.Load() != uint32(agentServerStopped) {
+		agentServerConfigurationMu.Unlock()
+		return nil, ErrInUse
+	}
+	return agentServerConfigurationMu.Unlock, nil
+}
+
 // AgentServerRegisterCustomRecognition registers a custom recognition runner.
 // The name should match the custom_recognition field in Pipeline.
+// Configure before StartUp or after an attached server has shut down; otherwise it returns ErrInUse.
 func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognitionRunner) error {
+	unlock, err := lockAgentServerConfiguration()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	id := registerCustomRecognition(recognition)
 
 	ok := native.MaaAgentServerRegisterCustomRecognition(
@@ -31,18 +53,29 @@ func AgentServerRegisterCustomRecognition(name string, recognition CustomRecogni
 		_MaaCustomRecognitionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
 	if !ok {
 		unregisterCustomRecognition(id)
 		return fmt.Errorf("failed to register custom recognition: %s", name)
 	}
+	if oldID := agentServerRecognitionIDs[name]; oldID != 0 {
+		unregisterCustomRecognition(oldID)
+	}
+	agentServerRecognitionIDs[name] = id
 	return nil
 }
 
 // AgentServerRegisterCustomAction registers a custom action runner.
 // The name should match the custom_action field in Pipeline.
+// Configure before StartUp or after an attached server has shut down; otherwise it returns ErrInUse.
 func AgentServerRegisterCustomAction(name string, action CustomActionRunner) error {
+	unlock, err := lockAgentServerConfiguration()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	id := registerCustomAction(action)
 
 	ok := native.MaaAgentServerRegisterCustomAction(
@@ -50,61 +83,55 @@ func AgentServerRegisterCustomAction(name string, action CustomActionRunner) err
 		_MaaCustomActionCallbackAgent,
 		// Here, we are simply passing the uint64 value as a pointer
 		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
+		uintptr(id),
 	)
 	if !ok {
 		unregisterCustomAction(id)
 		return fmt.Errorf("failed to register custom action: %s", name)
 	}
+	if oldID := agentServerActionIDs[name]; oldID != 0 {
+		unregisterCustomAction(oldID)
+	}
+	agentServerActionIDs[name] = id
 	return nil
 }
 
 // AgentServerAddResourceSink adds a resource event callback sink and returns the sink ID.
+// Configure before StartUp or after an attached server has shut down. It returns 0 on failure.
 func AgentServerAddResourceSink(sink ResourceEventSink) int64 {
-	id := registerEventCallback(sink)
-
-	return native.MaaAgentServerAddResourceSink(
-		_MaaEventCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
-	)
+	return addAgentServerSink(sink, native.MaaAgentServerAddResourceSink)
 }
 
 // AgentServerAddControllerSink adds a controller event callback sink and returns the sink ID.
+// Configure before StartUp or after an attached server has shut down. It returns 0 on failure.
 func AgentServerAddControllerSink(sink ControllerEventSink) int64 {
-	id := registerEventCallback(sink)
-
-	return native.MaaAgentServerAddControllerSink(
-		_MaaEventCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
-	)
+	return addAgentServerSink(sink, native.MaaAgentServerAddControllerSink)
 }
 
 // AgentServerAddTaskerSink adds a tasker event callback sink and returns the sink ID.
+// Configure before StartUp or after an attached server has shut down. It returns 0 on failure.
 func AgentServerAddTaskerSink(sink TaskerEventSink) int64 {
-	id := registerEventCallback(sink)
-
-	return native.MaaAgentServerAddTaskerSink(
-		_MaaEventCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
-	)
+	return addAgentServerSink(sink, native.MaaAgentServerAddTaskerSink)
 }
 
 // AgentServerAddContextSink adds a context event callback sink and returns the sink ID.
+// Configure before StartUp or after an attached server has shut down. It returns 0 on failure.
 func AgentServerAddContextSink(sink ContextEventSink) int64 {
-	id := registerEventCallback(sink)
+	return addAgentServerSink(sink, native.MaaAgentServerAddContextSink)
+}
 
-	return native.MaaAgentServerAddContextSink(
-		_MaaEventCallbackAgent,
-		// Here, we are simply passing the uint64 value as a pointer
-		// and will not actually dereference this pointer.
-		unsafe.Pointer(uintptr(id)),
-	)
+func addAgentServerSink(sink any, add func(native.MaaEventCallback, uintptr) int64) int64 {
+	unlock, err := lockAgentServerConfiguration()
+	if err != nil {
+		return 0
+	}
+	defer unlock()
+	id := registerEventCallback(sink)
+	sinkID := add(_MaaEventCallbackAgent, uintptr(id))
+	if sinkID == 0 {
+		unregisterEventCallback(id)
+	}
+	return sinkID
 }
 
 // AgentServerStartUp starts the MAA Agent Server in a separate native thread.
@@ -112,6 +139,12 @@ func AgentServerAddContextSink(sink ContextEventSink) int64 {
 // caller needs to wait for the service to end. The identifier is used to match
 // with AgentClient.
 func AgentServerStartUp(identifier string) error {
+	unlock, err := lockAgentServerConfiguration()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	if !native.MaaAgentServerStartUp(identifier) {
 		return fmt.Errorf("failed to start agent server: %s", identifier)
 	}

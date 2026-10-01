@@ -3,7 +3,6 @@ package native
 import (
 	"fmt"
 	"runtime"
-	"unsafe"
 )
 
 var maaAgentServer uintptr
@@ -11,12 +10,12 @@ var maaAgentServer uintptr
 const maaAgentServerName = "MaaAgentServer"
 
 var (
-	MaaAgentServerRegisterCustomRecognition func(name string, recognition MaaCustomRecognitionCallback, transArg unsafe.Pointer) bool
-	MaaAgentServerRegisterCustomAction      func(name string, action MaaCustomActionCallback, transArg unsafe.Pointer) bool
-	MaaAgentServerAddResourceSink           func(sink MaaEventCallback, transArg unsafe.Pointer) int64
-	MaaAgentServerAddControllerSink         func(sink MaaEventCallback, transArg unsafe.Pointer) int64
-	MaaAgentServerAddTaskerSink             func(sink MaaEventCallback, transArg unsafe.Pointer) int64
-	MaaAgentServerAddContextSink            func(sink MaaEventCallback, transArg unsafe.Pointer) int64
+	MaaAgentServerRegisterCustomRecognition func(name string, recognition MaaCustomRecognitionCallback, transArg uintptr) bool
+	MaaAgentServerRegisterCustomAction      func(name string, action MaaCustomActionCallback, transArg uintptr) bool
+	MaaAgentServerAddResourceSink           func(sink MaaEventCallback, transArg uintptr) int64
+	MaaAgentServerAddControllerSink         func(sink MaaEventCallback, transArg uintptr) int64
+	MaaAgentServerAddTaskerSink             func(sink MaaEventCallback, transArg uintptr) int64
+	MaaAgentServerAddContextSink            func(sink MaaEventCallback, transArg uintptr) int64
 	MaaAgentServerStartUp                   func(identifier string) bool
 	MaaAgentServerShutDown                  func()
 	MaaAgentServerJoin                      func()
