@@ -295,6 +295,12 @@ func runAgentServerHelper(t *testing.T) {
 	require.NoError(t, os.WriteFile(os.Getenv("MAA_AGENT_TEST_READY"), []byte("ready"), 0600))
 	maa.AgentServerJoin()
 	maa.AgentServerShutDown()
+	// The native context is now closed. A second native startup would abort,
+	// so the Go lifecycle guard must reject it before calling native code.
+	require.ErrorIs(t, maa.AgentServerStartUp("restart"), maa.ErrClosed)
+	require.ErrorIs(t, maa.AgentServerRegisterCustomAction("after-shutdown", nil), maa.ErrClosed)
+	require.Zero(t, maa.AgentServerAddContextSink(nil))
+	maa.AgentServerShutDown()
 	// Join returns only after the client disconnected, and ShutDown has now
 	// completed the native shutdown sequence, so Release must unload cleanly.
 	require.NoError(t, maa.Release(), "Release must succeed after the agent server is shut down")

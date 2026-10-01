@@ -239,6 +239,61 @@ func TestAgentServer_ConfigurationBoundary(t *testing.T) {
 	require.ErrorIs(t, AgentServerStartUp("again"), ErrInUse)
 }
 
+func TestAgentServer_ShutDownIsTerminal(t *testing.T) {
+	originalPhase := agentServerState.Load()
+	t.Cleanup(func() { agentServerState.Store(originalPhase) })
+	for _, tc := range []struct {
+		name  string
+		phase agentServerPhase
+	}{
+		{"BeforeStartUp", agentServerStopped},
+		{"RunningAttached", agentServerRunningAttached},
+		{"Joined", agentServerJoined},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			agentServerState.Store(uint32(tc.phase))
+			shutdownCalls, startupCalls, configurationCalls := 0, 0, 0
+			replaceNativeForTest(t, &native.MaaAgentServerShutDown, func() { shutdownCalls++ })
+			replaceNativeForTest(t, &native.MaaAgentServerStartUp, func(string) bool { startupCalls++; return true })
+			replaceNativeForTest(t, &native.MaaAgentServerRegisterCustomAction, func(string, native.MaaCustomActionCallback, uintptr) bool {
+				configurationCalls++
+				return false
+			})
+			replaceNativeForTest(t, &native.MaaAgentServerRegisterCustomRecognition, func(string, native.MaaCustomRecognitionCallback, uintptr) bool {
+				configurationCalls++
+				return false
+			})
+			for _, target := range []*func(native.MaaEventCallback, uintptr) int64{
+				&native.MaaAgentServerAddResourceSink,
+				&native.MaaAgentServerAddControllerSink,
+				&native.MaaAgentServerAddTaskerSink,
+				&native.MaaAgentServerAddContextSink,
+			} {
+				replaceNativeForTest(t, target, func(native.MaaEventCallback, uintptr) int64 {
+					configurationCalls++
+					return 0
+				})
+			}
+
+			AgentServerShutDown()
+			require.EqualValues(t, agentServerClosed, agentServerState.Load())
+			require.ErrorIs(t, AgentServerStartUp("restart"), ErrClosed)
+			require.Zero(t, startupCalls, "must not enter the native startup path after shutdown")
+			require.ErrorIs(t, AgentServerRegisterCustomAction("closed", nil), ErrClosed)
+			require.ErrorIs(t, AgentServerRegisterCustomRecognition("closed", nil), ErrClosed)
+			before := eventCallbackCount()
+			require.Zero(t, AgentServerAddResourceSink(nil))
+			require.Zero(t, AgentServerAddControllerSink(nil))
+			require.Zero(t, AgentServerAddTaskerSink(nil))
+			require.Zero(t, AgentServerAddContextSink(nil))
+			require.Equal(t, before, eventCallbackCount())
+			require.Zero(t, configurationCalls, "closed configuration must not call native functions")
+			AgentServerShutDown()
+			require.Equal(t, 1, shutdownCalls, "repeated shutdown must not call native functions")
+		})
+	}
+}
+
 func TestEventCallback_ClosedOwnerRejectsLateDispatch(t *testing.T) {
 	state := newExternalHandleState(789)
 	calls := 0

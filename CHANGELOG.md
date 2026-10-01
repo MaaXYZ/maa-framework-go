@@ -63,7 +63,7 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 - sink 与自定义识别、动作的注册变更必须在实例及关联 tasker 静止时执行，不得在回调中变更。配置事务会串行化，原生注册失败会回滚 Go 回调；`Add*Sink` 失败仍返回 0。
 - 自定义 Controller 的回调保留至原生析构完成，析构期间的 `KeyUp` / `TouchUp` 可正常执行。`Destroy` 成功返回后不再调用用户回调；回调内销毁返回 `ErrInCallback`。
 - stop 使旧 Job ID 失效时，`Wait` 返回不代表原生工作已经结束。Controller 销毁可能提交 inactive 动作并暂时返回 `ErrInUse`，需等待后重试。
-- AgentServer 只允许在启动前或未 detach 的服务关闭后配置；活动阶段的自定义注册返回 `ErrInUse`，添加 sink 返回 0。成功的同名注册会替换旧 Go 回调，失败则保留旧注册。生命周期操作需由调用方串行协调。
+- AgentServer 只允许在启动前配置；活动阶段的自定义注册和再次启动返回 `ErrInUse`，添加 sink 返回 0。未 detach 的服务关闭后不支持重启：启动和自定义注册返回 `ErrClosed`，添加 sink 返回 0，`Release` 后再次 `Init` 也不会恢复服务，但仍可 `Release`，重复关闭不再调用原生接口。成功的同名注册会替换旧 Go 回调，失败则保留旧注册。生命周期操作需由调用方串行协调。
 
 完整使用边界见 [并发与回调](README_zh.md#并发与回调)。
 

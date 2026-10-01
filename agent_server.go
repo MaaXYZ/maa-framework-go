@@ -15,10 +15,13 @@ const (
 	agentServerRunningAttached
 	agentServerJoined
 	agentServerDetached
+	agentServerClosed
 )
 
 // A detached native thread cannot be joined or observed through the current
 // MaaAgentServer API, so agentServerDetached is a terminal state for Release.
+// ShutDown closes the native singleton's context without a reset API, so
+// agentServerClosed is terminal for startup and configuration, even across Init.
 var agentServerState atomic.Uint32
 
 var (
@@ -29,6 +32,10 @@ var (
 
 func lockAgentServerConfiguration() (func(), error) {
 	agentServerConfigurationMu.Lock()
+	if agentServerState.Load() == uint32(agentServerClosed) {
+		agentServerConfigurationMu.Unlock()
+		return nil, ErrClosed
+	}
 	if agentServerState.Load() != uint32(agentServerStopped) {
 		agentServerConfigurationMu.Unlock()
 		return nil, ErrInUse
@@ -38,7 +45,8 @@ func lockAgentServerConfiguration() (func(), error) {
 
 // AgentServerRegisterCustomRecognition registers a custom recognition runner.
 // The name should match the custom_recognition field in Pipeline.
-// Configure before StartUp or after an attached server has shut down; otherwise it returns ErrInUse.
+// Configure before StartUp. It returns ErrInUse while the server is active,
+// joined, or detached, and ErrClosed after an attached server has shut down.
 func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognitionRunner) error {
 	unlock, err := lockAgentServerConfiguration()
 	if err != nil {
@@ -68,7 +76,8 @@ func AgentServerRegisterCustomRecognition(name string, recognition CustomRecogni
 
 // AgentServerRegisterCustomAction registers a custom action runner.
 // The name should match the custom_action field in Pipeline.
-// Configure before StartUp or after an attached server has shut down; otherwise it returns ErrInUse.
+// Configure before StartUp. It returns ErrInUse while the server is active,
+// joined, or detached, and ErrClosed after an attached server has shut down.
 func AgentServerRegisterCustomAction(name string, action CustomActionRunner) error {
 	unlock, err := lockAgentServerConfiguration()
 	if err != nil {
@@ -97,25 +106,25 @@ func AgentServerRegisterCustomAction(name string, action CustomActionRunner) err
 }
 
 // AgentServerAddResourceSink adds a resource event callback sink and returns the sink ID.
-// Configure before StartUp or after an attached server has shut down. It returns 0 on failure.
+// Configure before StartUp. It returns 0 on failure, including after ShutDown.
 func AgentServerAddResourceSink(sink ResourceEventSink) int64 {
 	return addAgentServerSink(sink, native.MaaAgentServerAddResourceSink)
 }
 
 // AgentServerAddControllerSink adds a controller event callback sink and returns the sink ID.
-// Configure before StartUp or after an attached server has shut down. It returns 0 on failure.
+// Configure before StartUp. It returns 0 on failure, including after ShutDown.
 func AgentServerAddControllerSink(sink ControllerEventSink) int64 {
 	return addAgentServerSink(sink, native.MaaAgentServerAddControllerSink)
 }
 
 // AgentServerAddTaskerSink adds a tasker event callback sink and returns the sink ID.
-// Configure before StartUp or after an attached server has shut down. It returns 0 on failure.
+// Configure before StartUp. It returns 0 on failure, including after ShutDown.
 func AgentServerAddTaskerSink(sink TaskerEventSink) int64 {
 	return addAgentServerSink(sink, native.MaaAgentServerAddTaskerSink)
 }
 
 // AgentServerAddContextSink adds a context event callback sink and returns the sink ID.
-// Configure before StartUp or after an attached server has shut down. It returns 0 on failure.
+// Configure before StartUp. It returns 0 on failure, including after ShutDown.
 func AgentServerAddContextSink(sink ContextEventSink) int64 {
 	return addAgentServerSink(sink, native.MaaAgentServerAddContextSink)
 }
@@ -139,8 +148,10 @@ func addAgentServerSink(sink any, add func(native.MaaEventCallback, uintptr) int
 // caller needs to wait for the service to end. The identifier is used to match
 // with AgentClient.
 // Callers must serialize server lifecycle operations and must not call them
-// from server callbacks. StartUp returns ErrInUse until the prior service has
-// been shut down; a detached service cannot be reconfigured or restarted.
+// from server callbacks. After an attached server's ShutDown, StartUp returns
+// ErrClosed for the rest of the process, even after Release and Init, because
+// the native singleton's communication context cannot be reset. It returns
+// ErrInUse while the server is running, joined, or detached.
 func AgentServerStartUp(identifier string) error {
 	unlock, err := lockAgentServerConfiguration()
 	if err != nil {
@@ -162,10 +173,15 @@ func AgentServerStartUp(identifier string) error {
 // closing its sockets. After AgentServerDetach, it cannot wait for the thread
 // and closing the sockets may race with their use. It does not make Release
 // safe after Detach.
+// Without prior Detach, ShutDown permanently prevents startup and
+// configuration, even if called before StartUp; repeated calls are no-ops.
 func AgentServerShutDown() {
+	if agentServerState.Load() == uint32(agentServerClosed) {
+		return
+	}
 	native.MaaAgentServerShutDown()
 	if agentServerState.Load() != uint32(agentServerDetached) {
-		agentServerState.Store(uint32(agentServerStopped))
+		agentServerState.Store(uint32(agentServerClosed))
 	}
 }
 

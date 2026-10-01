@@ -248,7 +248,8 @@ func Release() error {
 	lifecycleMu.Lock()
 	defer lifecycleMu.Unlock()
 
-	if liveNativeObjects.Load() != 0 || agentServerState.Load() != uint32(agentServerStopped) {
+	phase := agentServerPhase(agentServerState.Load())
+	if liveNativeObjects.Load() != 0 || phase != agentServerStopped && phase != agentServerClosed {
 		return ErrLibraryInUse
 	}
 

@@ -135,16 +135,21 @@ func runLifecycleHelper(t *testing.T) {
 
 	require.NoError(t, Release())
 	require.False(t, IsInited())
+	require.ErrorIs(t, AgentServerStartUp("after-release"), ErrClosed)
+	AgentServerShutDown() // Native symbols are cleared; repeated shutdown is a no-op.
 
 	// A shutdown failure must not leave IsInited reporting that the native
 	// functions are usable: Shutdown may already have unloaded some libraries.
 	require.NoError(t, Init(WithStdoutLevel(LoggingLevelOff)))
 	require.True(t, IsInited())
+	require.ErrorIs(t, AgentServerStartUp("after-init"), ErrClosed)
+	require.ErrorIs(t, AgentServerRegisterCustomAction("after-init", nil), ErrClosed)
 	shutdownErr := errors.New("injected shutdown failure")
 	actualShutdown := shutdownNativeLibraries
 	shutdownNativeLibraries = func() error { return shutdownErr }
 	require.ErrorIs(t, Release(), shutdownErr)
 	require.False(t, IsInited())
+	require.ErrorIs(t, AgentServerStartUp("after-failed-release"), ErrClosed)
 
 	// Release still retries cleanup even when the package is no longer marked
 	// initialized. The injected failure left the real libraries open.
