@@ -74,13 +74,20 @@ func TestController_ScreenshotTargetExpand_ModeSwitching(t *testing.T) {
 		{"raw size", []ScreenshotOption{WithScreenshotUseRawSize(true)}, image.Pt(400, 200)},
 		{"expand ignored while raw", []ScreenshotOption{WithScreenshotTargetExpand(80, 20)}, image.Pt(400, 200)},
 		{"restore expand", []ScreenshotOption{WithScreenshotUseRawSize(false)}, image.Pt(80, 40)},
-		{"last expand wins", []ScreenshotOption{WithScreenshotTargetLongSide(200), WithScreenshotTargetExpand(128, 72)}, image.Pt(144, 72)},
-		{"last long side wins", []ScreenshotOption{WithScreenshotTargetExpand(128, 72), WithScreenshotTargetLongSide(200)}, image.Pt(200, 100)},
 	} {
 		t.Run(step.name, func(t *testing.T) {
 			require.NoError(t, ctrl.SetScreenshot(step.opts...))
 			requireScreenshotSize(t, ctrl, step.want.X, step.want.Y)
 		})
+	}
+
+	// Conflicting targets are rejected instead of letting the last one win.
+	for _, opts := range [][]ScreenshotOption{
+		{WithScreenshotTargetLongSide(200), WithScreenshotTargetExpand(128, 72)},
+		{WithScreenshotTargetExpand(128, 72), WithScreenshotTargetLongSide(200)},
+	} {
+		require.ErrorContains(t, ctrl.SetScreenshot(opts...), "conflicting screenshot targets")
+		requireScreenshotSize(t, ctrl, 80, 40)
 	}
 }
 

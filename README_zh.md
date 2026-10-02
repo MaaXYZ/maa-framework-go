@@ -193,6 +193,27 @@ func main() {
 
 ```
 
+### 截图配置
+
+`Controller.SetScreenshot` 可以在一次调用中组合多个设置，参数顺序不影响结果。目标尺寸从 `WithScreenshotTargetLongSide`、`WithScreenshotTargetShortSide`、`WithScreenshotTargetExpand` 中选择一个；通过 `WithScreenshotResizeMethod` 指定插值方法。如果此前启用了原始尺寸模式，可以同时传入 `WithScreenshotUseRawSize(false)` 恢复缩放：
+
+```go
+if err := ctrl.SetScreenshot(
+	maa.WithScreenshotUseRawSize(false),
+	maa.WithScreenshotTargetLongSide(1280),
+	maa.WithScreenshotResizeMethod(maa.ScreenshotResizeMethodLinear),
+); err != nil {
+	fmt.Println(err)
+	return
+}
+```
+
+尺寸必须为正数，插值方法必须为五个 `ScreenshotResizeMethod` 常量之一（0 到 4）。同一次调用中，不同尺寸目标互斥，`WithScreenshotUseRawSize(true)` 与任何尺寸目标互斥；同一设置重复指定也会被拒绝，即使值相同。与此前版本相比，多选项调用现在会应用全部选项，不再静默地只应用最后一个。非法或冲突的参数会在任何原生设置修改之前返回错误。`nil` 选项会被忽略，无参数调用不改变设置。
+
+每次调用只更新明确提供的设置。分次调用时，新尺寸目标替换旧目标，但不会关闭原始尺寸模式。原始尺寸模式会保留目标和插值方法，关闭该模式后恢复使用这些设置缩放。原始尺寸模式下也可以配置插值方法。
+
+校验通过后，设置按目标尺寸、插值方法、原始尺寸模式的顺序应用。原生 setter 失败时，错误会指出对应设置；此前成功的修改保留，后续 setter 不再调用。请按下文约定协调配置与其他控制器操作。
+
 ### 原生对象生命周期
 
 `NewTasker`、`NewResource` 以及控制器构造函数返回的对象拥有其原生句柄。`GetResource`、`GetController`、`Context.GetTasker` 以及事件回调返回的是借用视图；对其调用 `Destroy` 会返回 `ErrBorrowed`。对所有者重复成功调用 `Destroy` 是安全的。如果仍有调用或异步 Job 执行，`Destroy` 会返回 `ErrInUse`，即使返回的 Job 已被丢弃；请在其结束后重试。如果需要取得 Job 的结果，请在销毁所有者之前调用 `Wait`。对象关闭后，会返回错误的方法将报告 `ErrClosed`，Job 则通过 `Error()` 暴露该错误。

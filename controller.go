@@ -349,6 +349,49 @@ type screenshotOptionConfig struct {
 	targetExpand    [2]int32
 }
 
+func (kind screenshotOptionKind) String() string {
+	switch kind {
+	case screenshotOptionLongSide:
+		return "target long side"
+	case screenshotOptionShortSide:
+		return "target short side"
+	case screenshotOptionRawSize:
+		return "use raw size"
+	case screenshotOptionResizeMethod:
+		return "resize method"
+	case screenshotOptionExpand:
+		return "target expand"
+	default:
+		return fmt.Sprintf("unknown (%d)", kind)
+	}
+}
+
+func (cfg screenshotOptionConfig) validate() error {
+	switch cfg.kind {
+	case screenshotOptionUnset, screenshotOptionRawSize:
+		return nil
+	case screenshotOptionLongSide:
+		if cfg.targetLongSide <= 0 {
+			return fmt.Errorf("invalid screenshot target long side: %d (must be positive)", cfg.targetLongSide)
+		}
+	case screenshotOptionShortSide:
+		if cfg.targetShortSide <= 0 {
+			return fmt.Errorf("invalid screenshot target short side: %d (must be positive)", cfg.targetShortSide)
+		}
+	case screenshotOptionExpand:
+		if cfg.targetExpand[0] <= 0 || cfg.targetExpand[1] <= 0 {
+			return fmt.Errorf("invalid screenshot target expand: %dx%d (both dimensions must be positive)", cfg.targetExpand[0], cfg.targetExpand[1])
+		}
+	case screenshotOptionResizeMethod:
+		if cfg.resizeMethod < int32(ScreenshotResizeMethodNearestNeighbor) || cfg.resizeMethod > int32(ScreenshotResizeMethodLanczos4) {
+			return fmt.Errorf("invalid screenshot resize method: %d (must be between 0 and 4)", cfg.resizeMethod)
+		}
+	default:
+		return fmt.Errorf("unknown screenshot option kind: %d", cfg.kind)
+	}
+	return nil
+}
+
 // ScreenshotResizeMethod is the interpolation method used when resizing screenshots.
 // Values correspond to cv::InterpolationFlags.
 type ScreenshotResizeMethod int32
@@ -362,11 +405,13 @@ const (
 )
 
 // ScreenshotOption configures how the screenshot is resized.
-// If multiple options are provided, only the last one is applied.
+// Options for different settings can be combined; see Controller.SetScreenshot
+// for validation and conflict rules.
 type ScreenshotOption func(*screenshotOptionConfig)
 
 // WithScreenshotTargetLongSide sets screenshot target long side.
 // The short side is scaled proportionally. Setting this replaces short-side and expand targets.
+// The target must be positive. It does not disable raw-size mode.
 //
 // eg: 1280
 func WithScreenshotTargetLongSide(targetLongSide int32) ScreenshotOption {
@@ -378,6 +423,7 @@ func WithScreenshotTargetLongSide(targetLongSide int32) ScreenshotOption {
 
 // WithScreenshotTargetShortSide sets screenshot target short side.
 // The long side is scaled proportionally. Setting this replaces long-side and expand targets.
+// The target must be positive. It does not disable raw-size mode.
 //
 // eg: 720
 func WithScreenshotTargetShortSide(targetShortSide int32) ScreenshotOption {
@@ -391,7 +437,8 @@ func WithScreenshotTargetShortSide(targetShortSide int32) ScreenshotOption {
 // The scale is max(width/rawWidth, height/rawHeight), preserving the source aspect ratio
 // without cropping or stretching. Both output dimensions are at least the reference size.
 // Width and height must be positive. Setting this replaces long-side and short-side targets.
-// The target is ignored while WithScreenshotUseRawSize(true) is active.
+// It does not disable raw-size mode; the target is retained for later use while
+// raw-size mode is active.
 func WithScreenshotTargetExpand(width, height int32) ScreenshotOption {
 	return func(cfg *screenshotOptionConfig) {
 		cfg.kind = screenshotOptionExpand
@@ -400,6 +447,9 @@ func WithScreenshotTargetExpand(width, height int32) ScreenshotOption {
 }
 
 // WithScreenshotUseRawSize sets whether the screenshot uses the raw size without scaling.
+// Enabling raw-size mode retains the target and interpolation method; disabling
+// it resumes scaling with those settings. Combine false with a target option to
+// set a new target and resume scaling in one call.
 func WithScreenshotUseRawSize(enabled bool) ScreenshotOption {
 	return func(cfg *screenshotOptionConfig) {
 		cfg.kind = screenshotOptionRawSize
@@ -409,6 +459,8 @@ func WithScreenshotUseRawSize(enabled bool) ScreenshotOption {
 
 // WithScreenshotResizeMethod sets the interpolation method used when resizing screenshots.
 // Defaults to ScreenshotResizeMethodArea (cv::INTER_AREA).
+// Only values from ScreenshotResizeMethodNearestNeighbor through
+// ScreenshotResizeMethodLanczos4 are supported (0 through 4).
 func WithScreenshotResizeMethod(method ScreenshotResizeMethod) ScreenshotOption {
 	return func(cfg *screenshotOptionConfig) {
 		cfg.kind = screenshotOptionResizeMethod
@@ -416,8 +468,17 @@ func WithScreenshotResizeMethod(method ScreenshotResizeMethod) ScreenshotOption 
 	}
 }
 
-// SetScreenshot applies screenshot options to controller instance.
-// Only the last option is applied when multiple options are provided.
+// SetScreenshot updates the supplied screenshot settings on the controller.
+// A target, interpolation method, and WithScreenshotUseRawSize(false) can be
+// combined in any order. Long-side, short-side, and expand targets are mutually
+// exclusive within one call, as are a target and WithScreenshotUseRawSize(true).
+// Repeated settings are rejected even when their values are identical. Nil
+// options are ignored; an empty call leaves the settings unchanged.
+//
+// All options are validated before any native setting is changed. Valid options
+// are applied in the order target, interpolation method, then raw-size mode.
+// If a native setter fails, earlier changes remain applied and later setters are
+// skipped. Callers must serialize configuration with other controller operations.
 func (c *Controller) SetScreenshot(opts ...ScreenshotOption) error {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -425,19 +486,56 @@ func (c *Controller) SetScreenshot(opts ...ScreenshotOption) error {
 	}
 	defer done()
 
-	cfg := screenshotOptionConfig{
-		kind: screenshotOptionUnset,
+	var settings [screenshotOptionExpand + 1]screenshotOptionConfig
+	targetKind := screenshotOptionUnset
+	for i, opt := range opts {
+		if opt == nil {
+			continue
+		}
+		var cfg screenshotOptionConfig
+		opt(&cfg)
+		if err := cfg.validate(); err != nil {
+			return fmt.Errorf("screenshot option %d: %w", i+1, err)
+		}
+		if cfg.kind == screenshotOptionUnset {
+			continue
+		}
+		if settings[cfg.kind].kind != screenshotOptionUnset {
+			return fmt.Errorf("duplicate screenshot option: %s", cfg.kind)
+		}
+		switch cfg.kind {
+		case screenshotOptionLongSide, screenshotOptionShortSide, screenshotOptionExpand:
+			if targetKind != screenshotOptionUnset {
+				return fmt.Errorf("conflicting screenshot targets: %s and %s", targetKind, cfg.kind)
+			}
+			targetKind = cfg.kind
+		}
+		settings[cfg.kind] = cfg
+	}
+	if settings[screenshotOptionRawSize].useRawSize && targetKind != screenshotOptionUnset {
+		return fmt.Errorf("conflicting screenshot options: use raw size true and %s", targetKind)
 	}
 
-	for _, opt := range opts {
-		if opt != nil {
-			opt(&cfg)
+	for _, kind := range [...]screenshotOptionKind{
+		screenshotOptionLongSide,
+		screenshotOptionShortSide,
+		screenshotOptionExpand,
+		screenshotOptionResizeMethod,
+		screenshotOptionRawSize,
+	} {
+		cfg := settings[kind]
+		if cfg.kind == screenshotOptionUnset {
+			continue
+		}
+		if err := c.setScreenshotOption(cfg); err != nil {
+			return fmt.Errorf("failed to set screenshot %s: %w", kind, err)
 		}
 	}
+	return nil
+}
 
+func (c *Controller) setScreenshotOption(cfg screenshotOptionConfig) error {
 	switch cfg.kind {
-	case screenshotOptionUnset:
-		return nil
 	case screenshotOptionLongSide:
 		return c.setOption(
 			native.MaaCtrlOption_ScreenshotTargetLongSide,
