@@ -548,6 +548,10 @@ func (g *pipelineGo) codecFields(receiver, codec string, fn *ast.FuncDecl) (pipe
 			problem = err
 			return false
 		}
+		if wireType := pipelineTypeName(expr); wireType != "" && g.hasCodec(wireType, localTypes) {
+			problem = fmt.Errorf("unsupported wire type %s with a custom JSON codec", wireType)
+			return false
+		}
 		fields, err := g.rawFields(expr, localTypes, map[string]bool{})
 		if err != nil {
 			problem = err

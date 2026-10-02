@@ -335,3 +335,31 @@ func TestPipelineInheritedCodecs(t *testing.T) {
 		})
 	}
 }
+
+func TestPipelineCodecBearingWireTypes(t *testing.T) {
+	const wire = `
+type ClickWire struct { Target string ` + "`json:\"target\"`" + ` }
+func (p ClickWire) MarshalJSON() ([]byte,error) {
+ return json.Marshal(struct { Wrong int ` + "`json:\"wrong\"`" + ` }{})
+}
+`
+	tests := []struct{ name, body, want string }{
+		{"direct codec bearing wire", "return json.Marshal(ClickWire(p))", "unsupported wire type ClickWire with a custom JSON codec"},
+		{"local alias retains wire codec", "type DTO = ClickWire; return json.Marshal(DTO(p))", "unsupported wire type DTO with a custom JSON codec"},
+		{"defined wire type strips codec", "type DTO ClickWire; return json.Marshal(DTO(p))", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := pipelineFixtureGo + wire + "\nfunc (p ClickParam) MarshalJSON() ([]byte,error) { " + tt.body + " }\n"
+			dir, path := writePipelineFixture(t, pipelineFixtureSchema(), source)
+			issues, _, err := checkPipelineCoverage(dir, path, nil)
+			if tt.want == "" {
+				if err != nil || len(issues) != 0 {
+					t.Fatalf("got %v / %v", issues, err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("got %v; want %q", err, tt.want)
+			}
+		})
+	}
+}
