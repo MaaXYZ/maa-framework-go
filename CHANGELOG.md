@@ -92,7 +92,7 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 **移除方法**：`SetScreenshotTargetLongSide`, `SetScreenshotTargetShortSide`, `SetScreenshotUseRawSize`
 **移除构造函数**：`NewCarouselImageController` 已移除。若仅需空操作控制器，请使用 `NewBlankController()`；若需基于录制数据回放，请使用 `NewReplayController(recordingPath)`，录制入口为 `NewRecordController(inner, recordingPath)`。
 **新增**：`SetScreenshot(opts ...ScreenshotOption) error` 与配套选项函数；新增 `WithScreenshotResizeMethod(...)` / `ScreenshotResizeMethod*` 常量，以及 `SetMouseLockFollow(enabled bool) error`
-**截图选项组合与校验**：`SetScreenshot` 现在应用全部可组合的选项，不再只应用最后一个。长边、短边、Expand 目标在同次调用中互斥，原始尺寸 `true` 与尺寸目标互斥，同一设置重复指定也返回错误；尺寸须为正数，插值只允许 0 到 4。参数错误在任何原生修改之前返回；原生 setter 失败时保留此前成功的修改并跳过后续设置。分次调用仍保留原始尺寸模式下的目标与插值，关闭该模式后恢复缩放。示例及完整规则见 [截图配置](README_zh.md#截图配置)。
+**截图选项组合与校验**：`SetScreenshot` 现在应用全部可组合的选项，不再只应用最后一个。长边、短边、Expand 目标在同次调用中互斥，原始尺寸 `true` 与尺寸目标互斥，同一设置重复指定也返回错误；尺寸须为正数，插值只允许 0 到 4。参数错误在任何原生修改之前返回；原生 setter 失败时保留此前成功的修改并跳过后续设置。分次调用仍保留原始尺寸模式下的目标与插值，关闭该模式后恢复缩放。示例及完整规则见 [Controller.SetScreenshot](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#Controller.SetScreenshot)。
 **新增控制器构造函数**：`NewMacOSController(...)`、`NewAndroidNativeController(...)`、`NewReplayController(...)`、`NewRecordController(...)`
 **接口变更**：
 - `CustomController` 接口新增 `RelativeMove(dx, dy int32) bool`、`Shell(cmd string, timeout int64) (string, bool)`、`GetInfo() (string, bool)` 必须实现方法。已有实现若无需支持，可返回 no-op 成功值

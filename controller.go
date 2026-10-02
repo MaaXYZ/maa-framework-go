@@ -472,8 +472,14 @@ func WithScreenshotResizeMethod(method ScreenshotResizeMethod) ScreenshotOption 
 // A target, interpolation method, and WithScreenshotUseRawSize(false) can be
 // combined in any order. Long-side, short-side, and expand targets are mutually
 // exclusive within one call, as are a target and WithScreenshotUseRawSize(true).
+// Target dimensions must be positive, and the interpolation method must be one
+// of the five ScreenshotResizeMethod constants (0 through 4).
 // Repeated settings are rejected even when their values are identical. Nil
 // options are ignored; an empty call leaves the settings unchanged.
+//
+// Omitted settings are retained. Across separate calls, a new target replaces
+// the previous target without disabling raw-size mode. Disabling raw-size mode
+// resumes resizing with the retained target and interpolation method.
 //
 // Rejecting raw-size true with a target is a Go API guard against ambiguous
 // screenshot-size intent: the target would be inactive in raw-size mode. The
@@ -486,6 +492,16 @@ func WithScreenshotResizeMethod(method ScreenshotResizeMethod) ScreenshotOption 
 // are applied in the order target, interpolation method, then raw-size mode.
 // If a native setter fails, earlier changes remain applied and later setters are
 // skipped. Callers must serialize configuration with other controller operations.
+//
+// For example, to resume resizing with a 1280-pixel long side and linear interpolation:
+//
+//	if err := ctrl.SetScreenshot(
+//		WithScreenshotUseRawSize(false),
+//		WithScreenshotTargetLongSide(1280),
+//		WithScreenshotResizeMethod(ScreenshotResizeMethodLinear),
+//	); err != nil {
+//		return err
+//	}
 func (c *Controller) SetScreenshot(opts ...ScreenshotOption) error {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {

@@ -193,29 +193,6 @@ func main() {
 }
 ```
 
-### Screenshot configuration
-
-`Controller.SetScreenshot` combines the supplied settings in one call, regardless of argument order. Choose one target: `WithScreenshotTargetLongSide`, `WithScreenshotTargetShortSide`, or `WithScreenshotTargetExpand`. Add `WithScreenshotResizeMethod` to select interpolation, and `WithScreenshotUseRawSize(false)` to resume resizing if raw-size mode was enabled:
-
-```go
-if err := ctrl.SetScreenshot(
-	maa.WithScreenshotUseRawSize(false),
-	maa.WithScreenshotTargetLongSide(1280),
-	maa.WithScreenshotResizeMethod(maa.ScreenshotResizeMethodLinear),
-); err != nil {
-	fmt.Println(err)
-	return
-}
-```
-
-Dimensions must be positive, and interpolation must be one of the five `ScreenshotResizeMethod` constants (0 through 4). Within one call, different targets conflict, `WithScreenshotUseRawSize(true)` conflicts with any target, and repeated settings are rejected even if their values match. Unlike earlier versions, multiple options are all applied instead of silently applying only the last one. Invalid or conflicting options return an error before any native setting changes. Nil options are ignored, and an empty call leaves the settings unchanged.
-
-Only supplied settings are updated. Across separate calls, a new target replaces the previous target without disabling raw-size mode. Raw-size mode retains the target and interpolation method; disabling it resumes resizing with those settings. Interpolation can be configured while raw-size mode is enabled.
-
-Rejecting raw-size `true` together with a target is a Go API guard against ambiguous screenshot-size intent: the target would be inactive in raw-size mode. MaaFramework itself can retain such a target. Set it in a separate call to prepare for later resizing, or combine it with `WithScreenshotUseRawSize(false)` to resume resizing with it. Interpolation is an independent preference, so it can accompany either raw-size value.
-
-After validation, settings are applied in the order target, interpolation method, then raw-size mode. If a native setter fails, the error identifies the setting; earlier changes remain applied and later setters are skipped. Coordinate configuration with other controller operations as described below.
-
 ### Native object lifetime
 
 `NewTasker`, `NewResource`, and controller constructors return objects that own their native handles. `GetResource`, `GetController`, `Context.GetTasker`, and event callbacks return borrowed views; calling `Destroy` on one returns `ErrBorrowed`. Repeated successful `Destroy` calls on an owner are safe. `Destroy` returns `ErrInUse` if a call or asynchronous job is active, even if the returned Job was discarded; retry after it finishes. Call `Wait` before destroying the owner if you need the job's outcome. After closing, methods that return an error report `ErrClosed`, and jobs expose it through `Error()`.
