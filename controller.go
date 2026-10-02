@@ -475,6 +475,13 @@ func WithScreenshotResizeMethod(method ScreenshotResizeMethod) ScreenshotOption 
 // Repeated settings are rejected even when their values are identical. Nil
 // options are ignored; an empty call leaves the settings unchanged.
 //
+// Rejecting raw-size true with a target is a Go API guard against ambiguous
+// screenshot-size intent: the target would be inactive in raw-size mode. The
+// native API can retain a target while raw-size mode is enabled; set it in a
+// separate call to prepare for later resizing, or combine it with
+// WithScreenshotUseRawSize(false) to resume resizing with it. Interpolation is
+// an independent preference and can accompany either raw-size value.
+//
 // All options are validated before any native setting is changed. Valid options
 // are applied in the order target, interpolation method, then raw-size mode.
 // If a native setter fails, earlier changes remain applied and later setters are

@@ -212,6 +212,8 @@ Dimensions must be positive, and interpolation must be one of the five `Screensh
 
 Only supplied settings are updated. Across separate calls, a new target replaces the previous target without disabling raw-size mode. Raw-size mode retains the target and interpolation method; disabling it resumes resizing with those settings. Interpolation can be configured while raw-size mode is enabled.
 
+Rejecting raw-size `true` together with a target is a Go API guard against ambiguous screenshot-size intent: the target would be inactive in raw-size mode. MaaFramework itself can retain such a target. Set it in a separate call to prepare for later resizing, or combine it with `WithScreenshotUseRawSize(false)` to resume resizing with it. Interpolation is an independent preference, so it can accompany either raw-size value.
+
 After validation, settings are applied in the order target, interpolation method, then raw-size mode. If a native setter fails, the error identifies the setting; earlier changes remain applied and later setters are skipped. Coordinate configuration with other controller operations as described below.
 
 ### Native object lifetime
