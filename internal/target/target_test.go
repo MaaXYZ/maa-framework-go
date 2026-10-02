@@ -71,6 +71,11 @@ func TestTarget_UnmarshalJSON(t *testing.T) {
 			Expect: NewRect(rect.Rect{100, 100, 100, 100}),
 		},
 		{
+			Name:   "Point",
+			JSON:   "[100, 200]",
+			Expect: NewRect(rect.Rect{100, 200, 1, 1}),
+		},
+		{
 			Name:   "Unknown",
 			JSON:   "null",
 			Expect: Target{},
@@ -85,4 +90,20 @@ func TestTarget_UnmarshalJSON(t *testing.T) {
 			require.Equal(t, tc.Expect, got)
 		})
 	}
+}
+
+func TestTarget_UnmarshalJSON_InvalidPreservesValue(t *testing.T) {
+	for _, input := range []string{"false", "[]", "[1]", "[1,2,3]", "[1,2,3,4,5]", "[1,null]", "[1,2.5]", "{}", "123"} {
+		t.Run(input, func(t *testing.T) {
+			original := NewString("[Anchor]Previous")
+			got := original
+			require.Error(t, json.Unmarshal([]byte(input), &got))
+			require.Equal(t, original, got)
+		})
+	}
+}
+
+func TestTarget_MarshalJSON_RejectsFalse(t *testing.T) {
+	_, err := json.Marshal(NewBool(false))
+	require.Error(t, err)
 }

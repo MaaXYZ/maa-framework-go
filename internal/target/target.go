@@ -1,8 +1,8 @@
 package target
 
 import (
+	"bytes"
 	"errors"
-	"strconv"
 
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/jsoncodec"
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/rect"
@@ -79,27 +79,30 @@ func (t Target) MarshalJSON() ([]byte, error) {
 
 	switch t.tp {
 	case targetBool:
-		return jsoncodec.Marshal(t.val.(bool))
+		if !t.val.(bool) {
+			return nil, errors.New("pipeline target must be true, a string, or a point/rectangle")
+		}
+		return jsoncodec.Marshal(true)
 	case targetString:
 		return jsoncodec.Marshal(t.val.(string))
 	case targetRect:
 		return jsoncodec.Marshal(t.val.(rect.Rect))
 	default:
-		return nil, errors.New("unknown target type: " + strconv.Itoa(int(t.tp)))
+		return nil, errors.New("unknown target type")
 	}
 }
 
 func (t *Target) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
 	if string(data) == "null" {
 		t.tp = targetNone
 		t.val = nil
 		return nil
 	}
 
-	var b bool
-	if err := jsoncodec.Unmarshal(data, &b); err == nil {
+	if string(data) == "true" {
 		t.tp = targetBool
-		t.val = b
+		t.val = true
 		return nil
 	}
 
@@ -110,12 +113,23 @@ func (t *Target) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	var r rect.Rect
-	if err := jsoncodec.Unmarshal(data, &r); err == nil {
-		t.tp = targetRect
-		t.val = r
+	var coordinates []*int
+	if err := jsoncodec.Unmarshal(data, &coordinates); err == nil {
+		if len(coordinates) != 2 && len(coordinates) != 4 {
+			return errors.New("pipeline target requires exactly 2 or 4 integer coordinates")
+		}
+		for _, coordinate := range coordinates {
+			if coordinate == nil {
+				return errors.New("pipeline target coordinates must be integers")
+			}
+		}
+		r := rect.Rect{*coordinates[0], *coordinates[1], 1, 1}
+		if len(coordinates) == 4 {
+			r[2], r[3] = *coordinates[2], *coordinates[3]
+		}
+		*t = NewRect(r)
 		return nil
 	}
 
-	return errors.New("unsupported target type: " + strconv.Itoa(int(t.tp)))
+	return errors.New("pipeline target must be true, a string, or a point/rectangle")
 }
