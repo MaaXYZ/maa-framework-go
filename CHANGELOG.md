@@ -233,7 +233,7 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 - `Target` 的二维坐标 `[x, y]` 规范化为 `[x, y, 1, 1]`；`false`、坐标数量或类型不合法的 target 会被拒绝。
 - `Click`、`LongPress`、`Swipe` 和 `MultiSwipe` 补齐可区分继承与显式零值的 `pressure`；`ShellParam.ShellTimeout` 使用 `*time.Duration` 配置，JSON 编码为毫秒，支持显式 `0` 及 `-time.Millisecond` 无限等待。
 - `TouchMoveParam` 与 `KeyUpParam` 对齐共享的 `auto_up` JSON 字段，但该字段仅在 `TouchDown` / `KeyDown` 执行时生效。
-- `DirectHitParam` 支持 `ROI` 与 `ROIOffset`；`NNDetectParam` 支持 `Threshold`；新增 `TemplateMatchMethodSQDIFF_NORMED`（值 `1`）。
+- `DirectHitParam` 支持 `ROI` 与 `ROIOffset`；`NeuralNetworkDetectParam` 支持 `Threshold`；新增 `TemplateMatchMethodSQDIFF_NORMED`（值 `1`）。
 - And/Or 的内联识别使用嵌套的 `recognition` 字段：`{ "sub_name": "...", "recognition": { "type": "...", "param": { ... } } }`。
 - 未知 Action/Recognition 类型的参数可通过 [`RawActionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawActionParam) / [`RawRecognitionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawRecognitionParam) 保留原始 JSON，用于读取和回写；这只是 Go 侧的透传能力，不代表 MaaFramework 原生库支持该未知类型。
 - `tools/api-check` 可根据同一发行版的 pipeline schema 检查 v2 类型、解码分支和字段覆盖，CI 可据此及时发现协议漂移。
@@ -464,4 +464,3 @@ if best != nil {
 ## Performance
 
 - ImageBuffer RGBA 路径优化：`Set` 对 `*image.RGBA` 走直通转换路径，减少高频图像写入时的额外转换与分配开销
-
