@@ -108,12 +108,19 @@ const (
 )
 
 // DirectHitParam defines parameters for direct hit recognition.
-// DirectHit performs no actual recognition and always succeeds.
-type DirectHitParam struct{}
+// It performs no image matching and uses the first resolved ROI as its result box.
+// Recognition fails if the ROI cannot be resolved, for example an unavailable node reference.
+type DirectHitParam struct {
+	// ROI specifies the region to return. The zero value inherits the existing ROI or defaults to the whole image.
+	ROI Target `json:"roi,omitzero"`
+	// ROIOffset specifies an offset applied to the ROI.
+	ROIOffset Rect `json:"roi_offset,omitempty"`
+}
 
 func (n DirectHitParam) isRecognitionParam() {}
 
-// RecDirectHit creates a DirectHit recognition that always succeeds without actual recognition.
+// RecDirectHit creates a DirectHit recognition with the default ROI, without image matching.
+// To choose an ROI, set the returned recognition's Param to a DirectHitParam.
 func RecDirectHit() *Recognition {
 	return &Recognition{
 		Type:  RecognitionTypeDirectHit,
@@ -135,6 +142,7 @@ const (
 type TemplateMatchMethod int
 
 const (
+	TemplateMatchMethodSQDIFF_NORMED          TemplateMatchMethod = 1     // Normalized squared difference
 	TemplateMatchMethodSQDIFF_NORMED_Inverted TemplateMatchMethod = 10001 // Normalized squared difference (Inverted)
 	TemplateMatchMethodCCORR_NORMED           TemplateMatchMethod = 3     // Normalized cross correlation
 	TemplateMatchMethodCCOEFF_NORMED          TemplateMatchMethod = 5     // Normalized correlation coefficient (default, most accurate)
@@ -154,7 +162,8 @@ type TemplateMatchParam struct {
 	OrderBy TemplateMatchOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
 	Index int `json:"index,omitempty"`
-	// Method specifies the matching algorithm. 1: SQDIFF_NORMED, 3: CCORR_NORMED, 5: CCOEFF_NORMED. Default: 5.
+	// Method specifies the matching algorithm: 1 (SQDIFF_NORMED), 3 (CCORR_NORMED),
+	// 5 (CCOEFF_NORMED, default), or 10001 (inverted SQDIFF_NORMED).
 	Method TemplateMatchMethod `json:"method,omitempty"`
 	// GreenMask enables green color masking for transparent areas.
 	GreenMask bool `json:"green_mask,omitempty"`
@@ -417,6 +426,11 @@ type NeuralNetworkDetectParam struct {
 	// Expected selects class indices or labels, preserving their order.
 	// Nil inherits the existing/default selection; an empty list matches all classes.
 	Expected ClassSelectors `json:"expected,omitzero"`
+	// Threshold specifies confidence thresholds in [0, 1], in Expected order.
+	// Nil or an empty list inherits the existing thresholds or defaults to 0.3.
+	// A single threshold applies to all expected classes; otherwise lengths must match.
+	// A nonempty list containing 0 sends zero explicitly.
+	Threshold []float64 `json:"threshold,omitempty"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Area | Random | Expected
 	OrderBy NeuralNetworkDetectOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
@@ -431,6 +445,7 @@ func RecNeuralNetworkDetect(p NeuralNetworkDetectParam) *Recognition {
 	param := p
 	param.Labels = slices.Clone(p.Labels)
 	param.Expected = slices.Clone(p.Expected)
+	param.Threshold = slices.Clone(p.Threshold)
 	return &Recognition{
 		Type:  RecognitionTypeNeuralNetworkDetect,
 		Param: &param,
@@ -438,12 +453,13 @@ func RecNeuralNetworkDetect(p NeuralNetworkDetectParam) *Recognition {
 }
 
 // SubRecognitionItem is one element of And all_of / Or any_of.
-// It is either a node name (string reference) or an inline recognition (object with type, param, sub_name).
+// It is either a node name (string reference) or a v2 inline recognition with a recognition object and optional sub_name.
 // GetNodeData from C++ outputs: all_of/any_of as array of string | object; this type supports both.
 type SubRecognitionItem struct {
 	// NodeName is set when the JSON value is a string (reference to another node by name).
 	NodeName string
 	// Inline is set when the JSON value is an object (inline recognition with type, param, sub_name).
+	// The v2 JSON envelope nests type and param under recognition.
 	Inline *InlineSubRecognition
 }
 
@@ -501,11 +517,20 @@ func Inline(rec *Recognition, name ...string) SubRecognitionItem {
 	return SubRecognitionItem{Inline: newInlineSub(subName, rec)}
 }
 
-// InlineSubRecognition is an inline sub-recognition element (object form in all_of/any_of).
-// It has sub_name plus type and param; used for both And and Or.
+// InlineSubRecognition is a v2 inline sub-recognition in all_of/any_of.
+// JSON uses {"sub_name": "...", "recognition": {"type": "...", "param": {...}}}.
+// SubName is retained by both And and Or; only And uses it to resolve later sub-recognition ROIs.
 type InlineSubRecognition struct {
 	SubName string `json:"sub_name,omitempty"`
 	Recognition
+}
+
+// MarshalJSON encodes the v2 recognition envelope used by MaaFramework.
+func (n InlineSubRecognition) MarshalJSON() ([]byte, error) {
+	return marshalJSON(struct {
+		SubName     string      `json:"sub_name,omitempty"`
+		Recognition Recognition `json:"recognition"`
+	}{SubName: n.SubName, Recognition: n.Recognition})
 }
 
 func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {

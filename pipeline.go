@@ -1,4 +1,6 @@
 // Package maa provides Go bindings for the MaaFramework.
+// Typed pipeline builders use pipeline v2 JSON with nested action and recognition
+// objects. They do not decode the legacy flat pipeline format.
 // For pipeline protocol details, see:
 // https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md
 

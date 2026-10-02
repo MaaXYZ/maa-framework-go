@@ -138,6 +138,9 @@ type ClickParam struct {
 	TargetOffset Rect `json:"target_offset,omitempty"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
+	// Pressure specifies touch pressure; its range depends on the controller.
+	// Nil inherits the existing value or the framework default of 1; a pointer to 0 sends zero explicitly.
+	Pressure *int `json:"pressure,omitempty"`
 }
 
 func (n ClickParam) isActionParam() {}
@@ -159,6 +162,9 @@ type LongPressParam struct {
 	Duration time.Duration `json:"-"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
+	// Pressure specifies touch pressure; nil inherits the existing value or the framework default of 1.
+	// A pointer to 0 sends zero explicitly.
+	Pressure *int `json:"pressure,omitempty"`
 }
 
 func (n LongPressParam) isActionParam() {}
@@ -211,6 +217,9 @@ type SwipeParam struct {
 	OnlyHover bool `json:"only_hover,omitempty"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
+	// Pressure specifies touch pressure; nil inherits the existing value or the framework default of 1.
+	// A pointer to 0 sends zero explicitly.
+	Pressure *int `json:"pressure,omitempty"`
 }
 
 func (n SwipeParam) isActionParam() {}
@@ -273,6 +282,9 @@ type MultiSwipeItem struct {
 	OnlyHover bool `json:"only_hover,omitempty"`
 	// Contact specifies the touch point identifier. Adb: finger index. Win32: mouse button. Default uses array index if 0.
 	Contact int `json:"contact,omitempty"`
+	// Pressure specifies touch pressure; nil uses the default Swipe pressure, initially 1.
+	// A pointer to 0 sends zero explicitly.
+	Pressure *int `json:"pressure,omitempty"`
 }
 
 func (p MultiSwipeItem) MarshalJSON() ([]byte, error) {
@@ -330,6 +342,7 @@ func cloneNodeMultiSwipeItems(swipes []MultiSwipeItem) []MultiSwipeItem {
 			EndHold:     slices.Clone(swipes[i].EndHold),
 			OnlyHover:   swipes[i].OnlyHover,
 			Contact:     swipes[i].Contact,
+			Pressure:    swipes[i].Pressure,
 		}
 	}
 	return out
@@ -371,6 +384,9 @@ func ActTouchDown(p TouchDownParam) *Action {
 
 // TouchMoveParam defines parameters for touch move action.
 type TouchMoveParam struct {
+	// AutoUp retains the framework's shared touch parameter for JSON round trips.
+	// It only affects TouchDown; TouchMove does not use it. Nil leaves it unspecified.
+	AutoUp *bool `json:"auto_up,omitempty"`
 	// Target specifies the touch target position.
 	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
@@ -479,6 +495,9 @@ func ActKeyDown(key int) *Action {
 
 // KeyUpParam defines parameters for key up action.
 type KeyUpParam struct {
+	// AutoUp retains the framework's shared key parameter for JSON round trips.
+	// It only affects KeyDown; KeyUp does not use it. Nil leaves it unspecified.
+	AutoUp *bool `json:"auto_up,omitempty"`
 	// Key specifies the virtual key code to release. Required.
 	Key int `json:"key,omitempty"`
 }
@@ -599,12 +618,56 @@ func ActCommand(p CommandParam) *Action {
 
 // ShellParam defines parameters for shell command execution action.
 type ShellParam struct {
+	// Cmd specifies the command to run through the ADB controller.
 	Cmd string `json:"cmd,omitempty"`
+	// ShellTimeout limits command execution, serialized as integer milliseconds.
+	// Nil inherits the existing timeout or the framework default of 20 seconds.
+	// A pointer to zero sends zero explicitly; -time.Millisecond means wait indefinitely.
+	ShellTimeout *time.Duration `json:"-"`
 }
 
 func (n ShellParam) isActionParam() {}
 
+// MarshalJSON encodes the shell timeout in milliseconds, preserving an explicit zero.
+func (p ShellParam) MarshalJSON() ([]byte, error) {
+	type NoMethod ShellParam
+	var timeout *int64
+	if p.ShellTimeout != nil {
+		ms := p.ShellTimeout.Milliseconds()
+		timeout = &ms
+	}
+	return marshalJSON(struct {
+		NoMethod
+		ShellTimeout *int64 `json:"shell_timeout,omitempty"`
+	}{NoMethod: NoMethod(p), ShellTimeout: timeout})
+}
+
+// UnmarshalJSON decodes the shell timeout from integer milliseconds.
+// It rejects timeout values outside the range of time.Duration.
+func (p *ShellParam) UnmarshalJSON(data []byte) error {
+	type NoMethod ShellParam
+	raw := struct {
+		NoMethod
+		ShellTimeout *int64 `json:"shell_timeout,omitempty"`
+	}{}
+	if err := unmarshalJSON(data, &raw); err != nil {
+		return err
+	}
+	decoded := ShellParam(raw.NoMethod)
+	if raw.ShellTimeout != nil {
+		const maxMilliseconds = int64((1<<63 - 1) / int64(time.Millisecond))
+		if *raw.ShellTimeout > maxMilliseconds || *raw.ShellTimeout < -maxMilliseconds {
+			return errors.New("shell_timeout exceeds time.Duration range")
+		}
+		duration := time.Duration(*raw.ShellTimeout) * time.Millisecond
+		decoded.ShellTimeout = &duration
+	}
+	*p = decoded
+	return nil
+}
+
 // ActShell creates a Shell action with the given command.
+// To specify a timeout, set the returned action's Param to a ShellParam with ShellTimeout.
 // This is only valid for ADB controllers. If the controller is not an ADB controller, the action will fail.
 // The output of the command can be obtained in the action detail by MaaTaskerGetActionDetail.
 func ActShell(cmd string) *Action {
