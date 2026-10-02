@@ -21,7 +21,7 @@ func TestPipelineV2InlineSubRecognitionUsesNestedWrapper(t *testing.T) {
 	encoded, err := json.Marshal(and)
 	require.NoError(t, err)
 	require.JSONEq(t,
-		`{"type":"And","param":{"all_of":[{"sub_name":"direct","recognition":{"type":"DirectHit","param":{"roi_offset":[0,0,0,0]}}}]}}`,
+		`{"type":"And","param":{"all_of":[{"sub_name":"direct","recognition":{"type":"DirectHit","param":{}}}]}}`,
 		string(encoded),
 	)
 
@@ -38,7 +38,7 @@ func TestPipelineV2InlineSubRecognitionUsesNestedWrapper(t *testing.T) {
 	orEncoded, err := json.Marshal(or)
 	require.NoError(t, err)
 	require.JSONEq(t,
-		`{"type":"Or","param":{"any_of":[{"sub_name":"direct","recognition":{"type":"DirectHit","param":{"roi_offset":[0,0,0,0]}}}]}}`,
+		`{"type":"Or","param":{"any_of":[{"sub_name":"direct","recognition":{"type":"DirectHit","param":{}}}]}}`,
 		string(orEncoded),
 	)
 }
@@ -49,7 +49,7 @@ func TestPipelineV2DirectHitROIJSON(t *testing.T) {
 		Type: RecognitionTypeDirectHit,
 		Param: &DirectHitParam{
 			ROI:       NewTargetRect(rect),
-			ROIOffset: Rect{1, 2, 3, 4},
+			ROIOffset: &Rect{1, 2, 3, 4},
 		},
 	}
 
@@ -64,7 +64,7 @@ func TestPipelineV2DirectHitROIJSON(t *testing.T) {
 	gotROI, err := param.ROI.AsRect()
 	require.NoError(t, err)
 	require.Equal(t, rect, gotROI)
-	require.Equal(t, Rect{1, 2, 3, 4}, param.ROIOffset)
+	require.Equal(t, &Rect{1, 2, 3, 4}, param.ROIOffset)
 }
 
 func TestPipelineV2NeuralNetworkDetectThresholdJSON(t *testing.T) {
@@ -235,7 +235,7 @@ func TestPipelineV2NativeAndOrInlineRoundTrip(t *testing.T) {
 				Type: RecognitionTypeDirectHit,
 				Param: &DirectHitParam{
 					ROI:       NewTargetRect(Rect{10, 20, 30, 40}),
-					ROIOffset: Rect{1, 2, 3, 4},
+					ROIOffset: &Rect{1, 2, 3, 4},
 				},
 			}, "direct")),
 		),
@@ -268,7 +268,7 @@ func TestPipelineV2NativeAndOrInlineRoundTrip(t *testing.T) {
 				gotROI, err := direct.ROI.AsRect()
 				require.NoError(t, err)
 				require.Equal(t, Rect{10, 20, 30, 40}, gotROI)
-				require.Equal(t, Rect{1, 2, 3, 4}, direct.ROIOffset)
+				require.Equal(t, &Rect{1, 2, 3, 4}, direct.ROIOffset)
 			case RecognitionTypeOr:
 				param, ok := node.Recognition.Param.(*OrRecognitionParam)
 				require.True(t, ok)

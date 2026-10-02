@@ -129,7 +129,8 @@ type DirectHitParam struct {
 	// ROI specifies the region to return. The zero value inherits the existing ROI or defaults to the whole image.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies an offset applied to the ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	// Nil inherits the existing/default offset; a pointer to a zero Rect clears it explicitly.
+	ROIOffset *Rect `json:"roi_offset,omitempty"`
 }
 
 func (n DirectHitParam) isRecognitionParam() {}
