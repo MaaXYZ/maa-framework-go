@@ -10,13 +10,15 @@ import (
 
 func Run() int {
 	var (
-		configPath    string
-		headerDirFlag string
-		cliBlacklist  stringSliceFlag
+		configPath         string
+		headerDirFlag      string
+		pipelineSchemaFlag string
+		cliBlacklist       stringSliceFlag
 	)
 
 	flag.StringVar(&configPath, "config", "", "Path to YAML config file")
 	flag.StringVar(&headerDirFlag, "header-dir", "", "Directory of C headers")
+	flag.StringVar(&pipelineSchemaFlag, "pipeline-schema", "", "Release pipeline JSON schema (enables v2 coverage)")
 	flag.Var(&cliBlacklist, "blacklist", "Function name blacklist (repeatable)")
 	flag.Parse()
 
@@ -34,6 +36,9 @@ func Run() int {
 
 	if strings.TrimSpace(headerDirFlag) != "" {
 		cfg.HeaderDir = strings.TrimSpace(headerDirFlag)
+	}
+	if strings.TrimSpace(pipelineSchemaFlag) != "" {
+		cfg.PipelineSchema = strings.TrimSpace(pipelineSchemaFlag)
 	}
 	resolvedHeaderDir := resolveHeaderDir(repoRoot, cfg.HeaderDir)
 	controllerHeaderPath := filepath.Join(resolvedHeaderDir, controllerHeaderRel)
@@ -91,6 +96,23 @@ func Run() int {
 	issues = append(issues, nativeIssues...)
 	issues = append(issues, controllerIssues...)
 	issues = append(issues, methodIssues...)
+	if cfg.PipelineSchema != "" {
+		path := resolveFromRepoRoot(repoRoot, cfg.PipelineSchema)
+		pipelineIssues, exclusions, err := checkPipelineCoverage(repoRoot, path, cfg.PipelineExclusions)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to check pipeline v2 coverage: %v\n", err)
+			return 2
+		}
+		report = append(report, "pipeline_schema: "+path, "pipeline_scope: v2 types and field names", fmt.Sprintf("pipeline_exclusions: %d", len(exclusions)))
+		report = append(report, exclusions...)
+		issues = append(issues, pipelineIssues...)
+	} else {
+		if len(cfg.PipelineExclusions) != 0 {
+			fmt.Fprintln(os.Stderr, "pipeline_exclusions requires pipeline_schema")
+			return 2
+		}
+		report = append(report, "pipeline_schema: <disabled>")
+	}
 
 	return printReport(report, issues)
 }

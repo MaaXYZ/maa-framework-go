@@ -70,6 +70,12 @@ func mergeConfig(dst *Config, src Config) {
 	if len(src.Blacklist) > 0 {
 		dst.Blacklist = append(dst.Blacklist, src.Blacklist...)
 	}
+	if strings.TrimSpace(src.PipelineSchema) != "" {
+		dst.PipelineSchema = strings.TrimSpace(src.PipelineSchema)
+	}
+	if src.PipelineExclusions != nil {
+		dst.PipelineExclusions = src.PipelineExclusions
+	}
 }
 
 func mergeBlacklist(configBlacklist []string, cliBlacklist []string) map[string]struct{} {
