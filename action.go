@@ -1,20 +1,27 @@
 package maa
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"slices"
 	"time"
 )
 
-// Action defines the action configuration for a node.
+// Action defines a node's action using the pipeline v2 type/param object format.
+// Known types decode to their typed parameters. Unrecognized type names retain
+// their parameter JSON as *RawActionParam; this does not establish native support.
+// Unknown fields outside param, and unmodeled fields of known parameters, are not retained.
 type Action struct {
 	// Type specifies the action type.
 	Type ActionType `json:"type,omitempty"`
 	// Param specifies the action parameters.
+	// A nil Param omits param when encoding. For unknown types, an explicit JSON null is retained.
 	Param ActionParam `json:"param,omitempty"`
 }
 
+// UnmarshalJSON decodes a pipeline v2 action. Errors in known parameter types
+// are returned without falling back to raw JSON. On error the action is unchanged.
 func (na *Action) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Type  ActionType      `json:"type,omitempty"`
@@ -24,14 +31,20 @@ func (na *Action) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	na.Type = raw.Type
-
-	if len(raw.Param) == 0 || string(raw.Param) == "null" {
-		return nil
+	param, err := decodeActionParam(raw.Type, raw.Param)
+	if err != nil {
+		return err
 	}
+	*na = Action{Type: raw.Type, Param: param}
+	return nil
+}
 
+func decodeActionParam(actionType ActionType, data []byte) (ActionParam, error) {
+	if len(data) == 0 {
+		return nil, nil
+	}
 	var param ActionParam
-	switch na.Type {
+	switch actionType {
 	case ActionTypeDoNothing, "":
 		param = &DoNothingParam{}
 	case ActionTypeClick:
@@ -75,17 +88,20 @@ func (na *Action) UnmarshalJSON(data []byte) error {
 	case ActionTypeCustom:
 		param = &CustomActionParam{}
 	default:
-		return errors.New("unsupported action type: " + string(na.Type))
+		param = new(RawActionParam)
 	}
 
-	if err := unmarshalJSON(raw.Param, param); err != nil {
-		return err
+	if _, raw := param.(*RawActionParam); !raw && bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		return nil, nil
 	}
-	na.Param = param
-	return nil
+	if err := unmarshalJSON(data, param); err != nil {
+		return nil, err
+	}
+	return param, nil
 }
 
-// ActionType defines the available action types.
+// ActionType names a pipeline v2 action. Constants identify the types modeled by
+// this package; other names may be used with RawActionParam if the native library supports them.
 type ActionType string
 
 const (
@@ -112,7 +128,7 @@ const (
 	ActionTypeCustom       ActionType = "Custom"
 )
 
-// ActionParam is the interface for action parameters.
+// ActionParam is the interface for typed action parameters and RawActionParam.
 type ActionParam interface {
 	isActionParam()
 }

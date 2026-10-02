@@ -7,14 +7,20 @@ import (
 	"slices"
 )
 
-// Recognition defines the recognition configuration for a node.
+// Recognition defines a node's recognition using the pipeline v2 type/param object format.
+// Known types decode to their typed parameters. Unrecognized type names retain
+// their parameter JSON as *RawRecognitionParam; this does not establish native support.
+// Unknown fields outside param, and unmodeled fields of known parameters, are not retained.
 type Recognition struct {
 	// Type specifies the recognition algorithm type.
 	Type RecognitionType `json:"type,omitempty"`
 	// Param specifies the recognition parameters.
+	// A nil Param omits param when encoding. For unknown types, an explicit JSON null is retained.
 	Param RecognitionParam `json:"param,omitempty"`
 }
 
+// UnmarshalJSON decodes a pipeline v2 recognition. Errors in known parameter types
+// are returned without falling back to raw JSON. On error the recognition is unchanged.
 func (nr *Recognition) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Type  RecognitionType `json:"type,omitempty"`
@@ -24,14 +30,20 @@ func (nr *Recognition) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	nr.Type = raw.Type
-
-	if len(raw.Param) == 0 || string(raw.Param) == "null" {
-		return nil
+	param, err := decodeRecognitionParam(raw.Type, raw.Param)
+	if err != nil {
+		return err
 	}
+	*nr = Recognition{Type: raw.Type, Param: param}
+	return nil
+}
 
+func decodeRecognitionParam(recognitionType RecognitionType, data []byte) (RecognitionParam, error) {
+	if len(data) == 0 {
+		return nil, nil
+	}
 	var param RecognitionParam
-	switch nr.Type {
+	switch recognitionType {
 	case RecognitionTypeDirectHit, "":
 		param = &DirectHitParam{}
 	case RecognitionTypeTemplateMatch:
@@ -53,14 +65,16 @@ func (nr *Recognition) UnmarshalJSON(data []byte) error {
 	case RecognitionTypeCustom:
 		param = &CustomRecognitionParam{}
 	default:
-		return errors.New("unsupported recognition type: " + string(nr.Type))
+		param = new(RawRecognitionParam)
 	}
 
-	if err := unmarshalJSON(raw.Param, param); err != nil {
-		return err
+	if _, raw := param.(*RawRecognitionParam); !raw && bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		return nil, nil
 	}
-	nr.Param = param
-	return nil
+	if err := unmarshalJSON(data, param); err != nil {
+		return nil, err
+	}
+	return param, nil
 }
 
 // SetBoxIndex sets which sub-recognition result's box to use as the final box.
@@ -72,7 +86,8 @@ func (nr *Recognition) SetBoxIndex(idx int) *Recognition {
 	return nr
 }
 
-// RecognitionType defines the available recognition algorithm types.
+// RecognitionType names a pipeline v2 recognition. Constants identify the types
+// modeled by this package; other names may be used with RawRecognitionParam if the native library supports them.
 type RecognitionType string
 
 const (
@@ -88,7 +103,7 @@ const (
 	RecognitionTypeCustom                RecognitionType = "Custom"
 )
 
-// RecognitionParam is the interface for recognition parameters.
+// RecognitionParam is the interface for typed recognition parameters and RawRecognitionParam.
 type RecognitionParam interface {
 	isRecognitionParam()
 }
