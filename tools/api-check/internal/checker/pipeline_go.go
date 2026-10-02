@@ -281,10 +281,13 @@ func (g *pipelineGo) fields(name string) (pipelineFieldSet, error) {
 	if g.aliases[name] && g.hasCodec(name, nil) {
 		return nil, fmt.Errorf("Go %s: unsupported alias inheriting a custom JSON codec", name)
 	}
-	base, err := g.rawFields(g.types[name], nil, map[string]bool{name: true})
+	defaults, err := g.rawFields(g.types[name], nil, map[string]bool{name: true})
 	if err != nil {
 		return nil, fmt.Errorf("Go %s: %w", name, err)
 	}
+	encoded, decoded := defaults, defaults
+	encodingSource, encodingTarget := "JSON", "default JSON encoding"
+	decodingSource, decodingTarget := "JSON", "default JSON decoding"
 	for _, codec := range []string{"MarshalJSON", "UnmarshalJSON"} {
 		method := g.methods[name][codec]
 		if method == nil {
@@ -294,37 +297,27 @@ func (g *pipelineGo) fields(name string) (pipelineFieldSet, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Both directions are checked separately below: a field in a public
-		// struct alone does not establish coverage if a custom codec hides it.
 		if codec == "MarshalJSON" {
-			base = fields
-			continue
-		}
-		if g.methods[name]["MarshalJSON"] != nil {
-			for field := range base {
-				if _, ok := fields[field]; !ok {
-					return nil, fmt.Errorf("Go %s: MarshalJSON field %s absent from UnmarshalJSON wire DTO", name, field)
-				}
-			}
-			for field := range fields {
-				if _, ok := base[field]; !ok {
-					return nil, fmt.Errorf("Go %s: UnmarshalJSON field %s absent from MarshalJSON wire DTO", name, field)
-				}
-			}
+			encoded = fields
+			encodingSource, encodingTarget = "MarshalJSON", "MarshalJSON wire DTO"
 		} else {
-			for field := range base {
-				if _, ok := fields[field]; !ok {
-					return nil, fmt.Errorf("Go %s: JSON field %s absent from UnmarshalJSON wire DTO", name, field)
-				}
-			}
-			for field := range fields {
-				if _, ok := base[field]; !ok {
-					return nil, fmt.Errorf("Go %s: UnmarshalJSON field %s absent from default JSON encoding", name, field)
-				}
-			}
+			decoded = fields
+			decodingSource, decodingTarget = "UnmarshalJSON", "UnmarshalJSON wire DTO"
 		}
 	}
-	return base, nil
+	// A codec replaces only its own direction. The other direction still uses
+	// the default struct fields unless it has a codec of its own.
+	for _, field := range sortedPipelineKeys(encoded) {
+		if _, ok := decoded[field]; !ok {
+			return nil, fmt.Errorf("Go %s: %s field %s absent from %s", name, encodingSource, field, decodingTarget)
+		}
+	}
+	for _, field := range sortedPipelineKeys(decoded) {
+		if _, ok := encoded[field]; !ok {
+			return nil, fmt.Errorf("Go %s: %s field %s absent from %s", name, decodingSource, field, encodingTarget)
+		}
+	}
+	return encoded, nil
 }
 
 func (g *pipelineGo) rawFields(expr ast.Expr, local map[string]pipelineLocalType, stack map[string]bool) (pipelineFieldSet, error) {

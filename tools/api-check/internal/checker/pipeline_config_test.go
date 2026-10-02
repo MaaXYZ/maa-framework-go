@@ -164,3 +164,28 @@ func TestPipelineCLIUnsupportedMarshal(t *testing.T) {
 		})
 	}
 }
+
+func TestPipelineCLIMarshalOnlyMismatch(t *testing.T) {
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, schema := writePipelineRunFixture(t)
+	start := strings.Index(pipelineFixtureGo, "func (w *WaitFreezesParam) UnmarshalJSON")
+	source := pipelineFixtureGo[:start]
+	if err := os.WriteFile(filepath.Join(dir, "pipeline.go"), []byte(source), 0600); err != nil {
+		t.Fatal(err)
+	}
+	args, err := json.Marshal([]string{"--pipeline-schema", schema})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(binary, "-test.run=^TestPipelineRunHelper$")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "MAA_PIPELINE_RUN_HELPER=1", "MAA_PIPELINE_RUN_ARGS="+string(args))
+	output, err := cmd.CombinedOutput()
+	exit, ok := err.(*exec.ExitError)
+	if !ok || exit.ExitCode() != 2 || !strings.Contains(string(output), "MarshalJSON field time absent from default JSON decoding") {
+		t.Fatalf("got %v; output:\n%s", err, output)
+	}
+}

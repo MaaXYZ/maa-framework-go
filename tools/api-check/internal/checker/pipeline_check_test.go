@@ -264,6 +264,41 @@ func TestPipelineUnsupportedCodec(t *testing.T) {
 	}
 }
 
+func TestPipelineCodecDirections(t *testing.T) {
+	const marshalTime = "func (w WaitFreezesParam) MarshalJSON() ([]byte,error) { return json.Marshal(struct { Time int `json:\"time\"` }{}) }\n"
+	const marshalEmpty = "func (w WaitFreezesParam) MarshalJSON() ([]byte,error) { return json.Marshal(struct{}{}) }\n"
+	const unmarshalTime = "func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error { var raw struct { Time int `json:\"time\"` }; return json.Unmarshal(data, &raw) }\n"
+	const unmarshalEmpty = "func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error { var raw struct{}; return json.Unmarshal(data, &raw) }\n"
+	start := strings.Index(pipelineFixtureGo, "func (w WaitFreezesParam) MarshalJSON()")
+	base := pipelineFixtureGo[:start]
+	tests := []struct{ name, defaultTag, codecs, want string }{
+		{"default directions match", "time", "", ""},
+		{"marshal only missing default decoding field", "-", marshalTime, "MarshalJSON field time absent from default JSON decoding"},
+		{"marshal only hides public field", "time", marshalEmpty, "JSON field time absent from MarshalJSON wire DTO"},
+		{"marshal only matches default decoding", "time", marshalTime, ""},
+		{"unmarshal only missing default encoding field", "-", unmarshalTime, "UnmarshalJSON field time absent from default JSON encoding"},
+		{"unmarshal only hides public field", "time", unmarshalEmpty, "JSON field time absent from UnmarshalJSON wire DTO"},
+		{"unmarshal only matches default encoding", "time", unmarshalTime, ""},
+		{"both codecs match without default field", "-", marshalTime + unmarshalTime, ""},
+		{"both codecs missing decoding field", "-", marshalTime + unmarshalEmpty, "MarshalJSON field time absent from UnmarshalJSON wire DTO"},
+		{"both codecs missing encoding field", "-", marshalEmpty + unmarshalTime, "UnmarshalJSON field time absent from MarshalJSON wire DTO"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := strings.Replace(base, "Time int `json:\"-\"`", "Time int `json:\""+tt.defaultTag+"\"`", 1) + tt.codecs
+			dir, path := writePipelineFixture(t, pipelineFixtureSchema(), source)
+			issues, _, err := checkPipelineCoverage(dir, path, nil)
+			if tt.want == "" {
+				if err != nil || len(issues) != 0 {
+					t.Fatalf("got %v / %v", issues, err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("got %v; want %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestPipelineCustomIntrinsicFields(t *testing.T) {
 	s := pipelineFixtureSchema()
 	fixtureDefs(s)["CustomActionSchema"] = schemaObject{"$ref": "./custom.action.schema.json"}
