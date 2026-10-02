@@ -446,6 +446,7 @@ type NeuralNetworkDetectParam struct {
 	// Nil or an empty list inherits the existing thresholds or defaults to 0.3.
 	// A single threshold applies to all expected classes; otherwise lengths must match.
 	// A nonempty list containing 0 sends zero explicitly.
+	// JSON input may be a number or an array; encoding always uses an array.
 	Threshold []float64 `json:"threshold,omitempty"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Area | Random | Expected
 	OrderBy NeuralNetworkDetectOrderBy `json:"order_by,omitempty"`
@@ -454,6 +455,71 @@ type NeuralNetworkDetectParam struct {
 }
 
 func (n NeuralNetworkDetectParam) isRecognitionParam() {}
+
+// UnmarshalJSON normalizes a scalar threshold to a one-element list.
+// Invalid parameter values leave the receiver unchanged.
+func (p *NeuralNetworkDetectParam) UnmarshalJSON(data []byte) error {
+	raw := struct {
+		ROI       Target                        `json:"roi,omitzero"`
+		ROIOffset Rect                          `json:"roi_offset,omitempty"`
+		Labels    []string                      `json:"labels,omitempty"`
+		Model     string                        `json:"model,omitempty"`
+		Expected  ClassSelectors                `json:"expected,omitzero"`
+		Threshold neuralNetworkDetectThresholds `json:"threshold,omitempty"`
+		OrderBy   NeuralNetworkDetectOrderBy    `json:"order_by,omitempty"`
+		Index     int                           `json:"index,omitempty"`
+	}{
+		ROI:       p.ROI,
+		ROIOffset: p.ROIOffset,
+		Labels:    slices.Clone(p.Labels),
+		Model:     p.Model,
+		Expected:  slices.Clone(p.Expected),
+		Threshold: neuralNetworkDetectThresholds(slices.Clone(p.Threshold)),
+		OrderBy:   p.OrderBy,
+		Index:     p.Index,
+	}
+	if err := unmarshalJSON(data, &raw); err != nil {
+		return err
+	}
+	*p = NeuralNetworkDetectParam{
+		ROI:       raw.ROI,
+		ROIOffset: raw.ROIOffset,
+		Labels:    raw.Labels,
+		Model:     raw.Model,
+		Expected:  raw.Expected,
+		Threshold: []float64(raw.Threshold),
+		OrderBy:   raw.OrderBy,
+		Index:     raw.Index,
+	}
+	return nil
+}
+
+type neuralNetworkDetectThresholds []float64
+
+func (t *neuralNetworkDetectThresholds) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	var values []*float64
+	if len(data) > 0 && data[0] == '[' {
+		if err := unmarshalJSON(data, &values); err != nil {
+			return err
+		}
+	} else {
+		var value *float64
+		if err := unmarshalJSON(data, &value); err != nil {
+			return err
+		}
+		values = []*float64{value}
+	}
+	thresholds := make(neuralNetworkDetectThresholds, len(values))
+	for i, value := range values {
+		if value == nil {
+			return errors.New("neural network detection threshold must contain only numbers")
+		}
+		thresholds[i] = *value
+	}
+	*t = thresholds
+	return nil
+}
 
 // RecNeuralNetworkDetect creates a NeuralNetworkDetect recognition with the given parameters.
 // This detects objects at arbitrary positions using deep learning models like YOLO.
