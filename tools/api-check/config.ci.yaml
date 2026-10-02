@@ -1,4 +1,8 @@
 header_dir: deps/include
+pipeline_schema: deps/tools/pipeline.schema.json
+pipeline_exclusions:
+  action.KeyDown.param.key_code: "Legacy alias; Go emits canonical key, as does normalized native output."
+  action.KeyUp.param.key_code: "Legacy alias; Go emits canonical key, as does normalized native output."
 blacklist:
   - MaaDbgControllerCreate
   - MaaImageBufferGetEncoded
