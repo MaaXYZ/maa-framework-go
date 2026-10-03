@@ -730,6 +730,7 @@ type TaskDetail struct {
 }
 
 // GetTaskDetail queries task detail by task ID.
+// Entry and Status are available even when the task has no recorded nodes.
 func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -740,26 +741,27 @@ func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
 	entry := buffer.NewStringBuffer()
 	defer entry.Destroy()
 	var size uint64
+	var status Status
 	got := native.MaaTaskerGetTaskDetail(
 		t.handle,
 		taskId,
-		0,
+		entry.Handle(),
 		0,
 		&size,
-		nil,
+		(*int32)(&status),
 	)
 	if !got {
 		return nil, fmt.Errorf("failed to get task detail size for taskId %d", taskId)
 	}
 	if size == 0 {
 		return &TaskDetail{
-			ID:    taskId,
-			Entry: entry.Get(),
-			Nodes: nil,
+			ID:     taskId,
+			Entry:  entry.Get(),
+			Nodes:  nil,
+			Status: status,
 		}, nil
 	}
 	nodeIdList := make([]int64, size)
-	var status Status
 	got = native.MaaTaskerGetTaskDetail(
 		t.handle,
 		taskId,
@@ -773,7 +775,7 @@ func (t *Tasker) GetTaskDetail(taskId int64) (*TaskDetail, error) {
 	}
 
 	nodes := make([]NodeRef, size)
-	for i, nodeId := range nodeIdList {
+	for i, nodeId := range nodeIdList[:size] {
 		nodes[i] = newNodeRef(t, nodeId)
 	}
 
