@@ -18,10 +18,11 @@ var pipelineIgnoredDefs = map[string]bool{
 type schemaObject map[string]any
 
 type pipelineSchema struct {
-	defs   schemaObject
-	node   map[string]bool
-	types  map[string]map[string]map[string]bool
-	nested map[string]map[string]bool
+	defs      schemaObject
+	node      map[string]bool
+	envelopes map[string]map[string]bool
+	types     map[string]map[string]map[string]bool
+	nested    map[string]map[string]bool
 }
 
 func readPipelineSchema(path string) (*pipelineSchema, error) {
@@ -37,12 +38,12 @@ func readPipelineSchema(path string) (*pipelineSchema, error) {
 	if !ok {
 		return nil, fmt.Errorf("schema %s: missing object $defs", path)
 	}
-	s := &pipelineSchema{defs: defs, types: map[string]map[string]map[string]bool{}, nested: map[string]map[string]bool{}}
+	s := &pipelineSchema{defs: defs, envelopes: map[string]map[string]bool{}, types: map[string]map[string]map[string]bool{}, nested: map[string]map[string]bool{}}
 	node, err := s.definition("Node")
 	if err != nil {
 		return nil, err
 	}
-	if err := checkPipelineNodeShape(node); err != nil {
+	if err := s.checkNodeShape(node); err != nil {
 		return nil, err
 	}
 	// Node's allOf includes both v1 and v2 formats. Its intrinsic properties are
@@ -77,31 +78,57 @@ func readPipelineSchema(path string) (*pipelineSchema, error) {
 		}
 		s.nested[name] = fields
 	}
+	// The inline sub-recognition inventory is optional: older schemas predate it
+	// and only its absence is tolerated.
+	if _, exists := s.defs["SubRecognitionInline"]; exists {
+		def, err := s.definition("SubRecognitionInline")
+		if err != nil {
+			return nil, err
+		}
+		fields, err := s.fields(def, "SubRecognitionInline", map[string]bool{"SubRecognitionInline": true})
+		if err != nil {
+			return nil, err
+		}
+		s.nested["SubRecognitionInline"] = fields
+	}
 	return s, nil
 }
 
-func checkPipelineNodeShape(node schemaObject) error {
+var pipelineNodeAllOfRefs = map[string]bool{
+	"#/$defs/jsonComments":      true,
+	"#/$defs/RecognitionFormat": true,
+	"#/$defs/ActionFormat":      true,
+}
+
+func (s *pipelineSchema) checkNodeShape(node schemaObject) error {
 	if value, ok := node["type"]; ok && value != "object" {
 		return fmt.Errorf("schema Node: expected object type")
 	}
 	if value, exists := node["allOf"]; exists {
 		parts, ok := value.([]any)
-		if !ok {
-			return fmt.Errorf("schema Node: allOf is not an array")
+		if !ok || len(parts) == 0 {
+			return fmt.Errorf("schema Node: allOf is not a nonempty array")
 		}
+		seen := map[string]bool{}
 		for _, part := range parts {
 			p, ok := object(part)
 			if !ok || len(p) != 1 {
 				return fmt.Errorf("schema Node: unsupported allOf branch")
 			}
-			switch p["$ref"] {
-			case "#/$defs/jsonComments", "#/$defs/RecognitionFormat", "#/$defs/ActionFormat":
-			default:
+			ref, ok := p["$ref"].(string)
+			if !ok || !pipelineNodeAllOfRefs[ref] {
 				return fmt.Errorf("schema Node: unsupported allOf reference %v", p["$ref"])
+			}
+			if seen[ref] {
+				return fmt.Errorf("schema Node: duplicate allOf reference %s", ref)
+			}
+			seen[ref] = true
+			if _, err := s.definition(strings.TrimPrefix(ref, "#/$defs/")); err != nil {
+				return fmt.Errorf("schema Node: unresolvable allOf reference %s: %w", ref, err)
 			}
 		}
 	}
-	for _, key := range []string{"$ref", "$dynamicRef", "anyOf", "oneOf", "if", "then", "else", "not", "dependentSchemas"} {
+	for _, key := range []string{"$ref", "$dynamicRef", "$recursiveRef", "anyOf", "oneOf", "if", "then", "else", "not", "dependentSchemas", "patternProperties"} {
 		if _, exists := node[key]; exists {
 			return fmt.Errorf("schema Node: unsupported field extraction keyword %s", key)
 		}
@@ -223,6 +250,129 @@ func (s *pipelineSchema) fields(m schemaObject, path string, stack map[string]bo
 	return out, nil
 }
 
+var pipelineEnvelopeKeywords = map[string]bool{
+	"type": true, "properties": true, "allOf": true, "anyOf": true,
+	"unevaluatedProperties": true, "title": true, "description": true,
+	"markdownDescription": true, "$comment": true,
+}
+
+var pipelineBranchKeywords = map[string]bool{
+	"properties": true, "dependentSchemas": true, "title": true,
+	"description": true, "markdownDescription": true, "$comment": true,
+}
+
+// checkEnvelopeShape rejects envelope alternatives that the field extraction
+// cannot follow. The only accepted allOf entries are the ignored metadata
+// extensions, which add no typed fields.
+func (s *pipelineSchema) checkEnvelopeShape(prefix, kind string, wrapper schemaObject) error {
+	for _, key := range sortedPipelineKeys(wrapper) {
+		if !pipelineEnvelopeKeywords[key] {
+			return fmt.Errorf("schema %sV2.%s: unsupported envelope keyword %s", prefix, kind, key)
+		}
+	}
+	value, exists := wrapper["allOf"]
+	if !exists {
+		return nil
+	}
+	parts, ok := value.([]any)
+	if !ok || len(parts) == 0 {
+		return fmt.Errorf("schema %sV2.%s: allOf is not a nonempty array", prefix, kind)
+	}
+	for _, part := range parts {
+		p, ok := object(part)
+		if !ok || len(p) != 1 {
+			return fmt.Errorf("schema %sV2.%s: unsupported envelope allOf branch", prefix, kind)
+		}
+		ref, ok := p["$ref"].(string)
+		name := strings.TrimPrefix(ref, "#/$defs/")
+		if !ok || !strings.HasPrefix(ref, "#/$defs/") || strings.Contains(name, "/") || !pipelineIgnoredDefs[name] {
+			return fmt.Errorf("schema %sV2.%s: unsupported envelope allOf reference %v", prefix, kind, p["$ref"])
+		}
+		if _, err := s.definition(name); err != nil {
+			return fmt.Errorf("schema %sV2.%s: unresolvable envelope allOf reference %s: %w", prefix, kind, ref, err)
+		}
+	}
+	return nil
+}
+
+// checkEnvelopeBranch keeps a v2 type branch to the type/param envelope so an
+// extra branch property cannot hide an unmapped field.
+func (s *pipelineSchema) checkEnvelopeBranch(name string, def, props schemaObject) error {
+	for _, key := range sortedPipelineKeys(def) {
+		if !pipelineBranchKeywords[key] {
+			return fmt.Errorf("schema %s: unsupported branch keyword %s", name, key)
+		}
+	}
+	for _, key := range sortedPipelineKeys(props) {
+		if key != "type" && key != "param" {
+			return fmt.Errorf("schema %s: unsupported branch property %s", name, key)
+		}
+	}
+	if value, exists := def["dependentSchemas"]; exists {
+		if err := s.checkBranchDependents(name, value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkBranchDependents accepts only required-only dependent schemas. They
+// select existing envelope fields and cannot add new ones.
+func (s *pipelineSchema) checkBranchDependents(name string, value any) error {
+	obj, ok := object(value)
+	if !ok || len(obj) == 0 {
+		return fmt.Errorf("schema %s: dependentSchemas is not a nonempty object", name)
+	}
+	for _, key := range sortedPipelineKeys(obj) {
+		sub, ok := object(obj[key])
+		if !ok || len(sub) != 1 {
+			return fmt.Errorf("schema %s.dependentSchemas.%s: unsupported shape", name, key)
+		}
+		ref, ok := sub["$ref"].(string)
+		if !ok {
+			return fmt.Errorf("schema %s.dependentSchemas.%s: unsupported reference %v", name, key, sub["$ref"])
+		}
+		target, targetDef, err := s.ref(ref, name+".dependentSchemas."+key)
+		if err != nil {
+			return err
+		}
+		if err := checkRequiredOnlyDefinition(target, targetDef); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func checkRequiredOnlyDefinition(name string, def schemaObject) error {
+	for _, key := range sortedPipelineKeys(def) {
+		switch key {
+		case "anyOf", "oneOf", "title", "description", "markdownDescription", "$comment":
+		default:
+			return fmt.Errorf("schema %s: dependent schema must only require existing fields (keyword %s)", name, key)
+		}
+	}
+	for _, key := range []string{"anyOf", "oneOf"} {
+		value, exists := def[key]
+		if !exists {
+			continue
+		}
+		parts, ok := value.([]any)
+		if !ok || len(parts) == 0 {
+			return fmt.Errorf("schema %s: invalid %s", name, key)
+		}
+		for _, part := range parts {
+			p, ok := object(part)
+			if !ok || len(p) != 1 || p["required"] == nil {
+				return fmt.Errorf("schema %s: unsupported %s alternative", name, key)
+			}
+			if _, ok := p["required"].([]any); !ok {
+				return fmt.Errorf("schema %s: invalid required alternative", name)
+			}
+		}
+	}
+	return nil
+}
+
 func (s *pipelineSchema) extractTypes(kind string) error {
 	prefix := "Action"
 	if kind == "recognition" {
@@ -259,6 +409,29 @@ func (s *pipelineSchema) extractTypes(kind string) error {
 	if !ok {
 		return fmt.Errorf("schema %sV2: missing %s object", prefix, kind)
 	}
+	if err := s.checkEnvelopeShape(prefix, kind, wrapper); err != nil {
+		return err
+	}
+	envelopeProps, ok := object(wrapper["properties"])
+	if !ok {
+		return fmt.Errorf("schema %sV2.%s: missing envelope properties", prefix, kind)
+	}
+	envelope := map[string]bool{}
+	for name, value := range envelopeProps {
+		if _, ok := object(value); !ok {
+			return fmt.Errorf("schema %sV2.%s.%s: envelope property is not an object", prefix, kind, name)
+		}
+		if name != "type" && name != "param" {
+			return fmt.Errorf("schema %sV2.%s: unsupported envelope property %s", prefix, kind, name)
+		}
+		envelope[name] = true
+	}
+	for _, name := range []string{"type", "param"} {
+		if !envelope[name] {
+			return fmt.Errorf("schema %sV2.%s: missing %s envelope property", prefix, kind, name)
+		}
+	}
+	s.envelopes[kind] = envelope
 	branches, ok := wrapper["anyOf"].([]any)
 	if !ok || len(branches) == 0 {
 		return fmt.Errorf("schema %sV2.%s: missing anyOf branches", prefix, kind)
@@ -292,6 +465,9 @@ func (s *pipelineSchema) extractTypes(kind string) error {
 		}
 		if types[typeName] != nil {
 			return fmt.Errorf("schema %s: duplicate branch for %s", name, typeName)
+		}
+		if err := s.checkEnvelopeBranch(name, def, p); err != nil {
+			return err
 		}
 		param, ok := object(p["param"])
 		if !ok {

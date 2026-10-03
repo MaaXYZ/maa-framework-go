@@ -21,8 +21,8 @@ func checkPipelineCoverage(repoRoot, schemaPath string, exclusions map[string]st
 	}
 	problems := map[string][]string{}
 	add := func(path, message string) { problems[path] = append(problems[path], path+": "+message) }
-	compare := func(path, typeName string, expected map[string]bool) error {
-		actual, err := goModel.fields(typeName)
+	compare := func(path, typeName string, expected map[string]bool, extract func(string) (pipelineFieldSet, error)) error {
+		actual, err := extract(typeName)
 		if err != nil {
 			return err
 		}
@@ -38,10 +38,22 @@ func checkPipelineCoverage(repoRoot, schemaPath string, exclusions map[string]st
 		}
 		return nil
 	}
-	if err := compare("node", "Node", schema.node); err != nil {
+	compareFields := func(path, typeName string, expected map[string]bool) error {
+		return compare(path, typeName, expected, goModel.fields)
+	}
+	if err := compare("node", "Node", schema.node, goModel.fields); err != nil {
 		return nil, nil, err
 	}
 	for _, kind := range []string{"action", "recognition"} {
+		typeName := "Action"
+		if kind == "recognition" {
+			typeName = "Recognition"
+		}
+		// The envelope carries type/param in both directions. A mutated struct
+		// tag or a diverging decode DTO is a coverage error, not silent support.
+		if err := compare(kind+".envelope", typeName, schema.envelopes[kind], goModel.envelopeFields); err != nil {
+			return nil, nil, err
+		}
 		decoder, err := goModel.decoderParams(kind)
 		if err != nil {
 			return nil, nil, err
@@ -65,7 +77,7 @@ func checkPipelineCoverage(repoRoot, schemaPath string, exclusions map[string]st
 				continue
 			}
 			if param != "" {
-				if err := compare(path+".param", param, fields); err != nil {
+				if err := compareFields(path+".param", param, fields); err != nil {
 					return nil, nil, err
 				}
 			}
@@ -82,8 +94,31 @@ func checkPipelineCoverage(repoRoot, schemaPath string, exclusions map[string]st
 		}
 	}
 	for _, pair := range [][2]string{{"SwipeListItem", "MultiSwipeItem"}, {"WaitFreezes", "WaitFreezesParam"}, {"NodeAttr", "NextItem"}} {
-		if err := compare(pair[0], pair[1], schema.nested[pair[0]]); err != nil {
+		if err := compareFields(pair[0], pair[1], schema.nested[pair[0]]); err != nil {
 			return nil, nil, err
+		}
+	}
+	// The inline sub-recognition wraps the standard recognition envelope under
+	// "recognition"; the schema def only declares sub_name, so that envelope key
+	// is validated through the Recognition envelope check instead.
+	if expected, ok := schema.nested["SubRecognitionInline"]; ok {
+		actual, err := goModel.envelopeFields("InlineSubRecognition")
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, field := range sortedPipelineKeys(expected) {
+			if _, ok := actual[field]; !ok {
+				add("SubRecognitionInline."+field, "missing Go field (InlineSubRecognition)")
+			}
+		}
+		if _, ok := actual["recognition"]; !ok {
+			add("SubRecognitionInline.recognition", "missing inline recognition envelope (InlineSubRecognition)")
+		}
+		for _, field := range sortedPipelineKeys(actual) {
+			if expected[field] || field == "recognition" {
+				continue
+			}
+			add("SubRecognitionInline."+field, "Go field absent from schema (InlineSubRecognition, "+actual[field]+")")
 		}
 	}
 	var issues []issue

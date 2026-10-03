@@ -86,43 +86,53 @@ func parseCustomControllerGo(customControllerPath string) (map[string]methodSig,
 		return nil, fmt.Errorf("parse %s: %w", customControllerPath, err)
 	}
 
-	result := map[string]methodSig{}
 	typeDefs := collectGoTypeDefs(file)
-	found := false
-
-	for _, decl := range file.Decls {
-		gen, ok := decl.(*ast.GenDecl)
-		if !ok || gen.Tok != token.TYPE {
-			continue
+	result := map[string]methodSig{}
+	stack := map[string]bool{}
+	var expand func(string) error
+	expand = func(name string) error {
+		if stack[name] {
+			return fmt.Errorf("CustomController embedded interface cycle at %s", name)
 		}
-		for _, spec := range gen.Specs {
-			typeSpec, ok := spec.(*ast.TypeSpec)
-			if !ok || typeSpec.Name.Name != "CustomController" {
+		stack[name] = true
+		defer delete(stack, name)
+		expr := typeDefs[name]
+		if target, ok := expr.(*ast.Ident); ok {
+			return expand(target.Name)
+		}
+		iface, ok := expr.(*ast.InterfaceType)
+		if !ok {
+			return fmt.Errorf("CustomController: unresolved or unsupported embedded interface %s", name)
+		}
+		for _, field := range iface.Methods.List {
+			if len(field.Names) == 0 {
+				target, ok := field.Type.(*ast.Ident)
+				if !ok {
+					return fmt.Errorf("CustomController: unsupported embedded interface at %s", fset.Position(field.Pos()))
+				}
+				if err := expand(target.Name); err != nil {
+					return err
+				}
 				continue
 			}
-			iface, ok := typeSpec.Type.(*ast.InterfaceType)
-			if !ok {
-				return nil, fmt.Errorf("CustomController is not an interface")
+			fn, ok := field.Type.(*ast.FuncType)
+			if !ok || len(field.Names) != 1 {
+				return fmt.Errorf("CustomController: unsupported method at %s", fset.Position(field.Pos()))
 			}
-			for _, m := range iface.Methods.List {
-				if len(m.Names) != 1 {
-					continue
-				}
-				fnType, ok := m.Type.(*ast.FuncType)
-				if !ok {
-					continue
-				}
-				name := m.Names[0].Name
-				params := parseGoFieldTypesCanonical(fnType.Params, typeDefs)
-				returns := parseGoFieldTypesCanonical(fnType.Results, typeDefs)
-				result[name] = methodSig{params: params, returns: returns}
+			sig := methodSig{params: parseGoFieldTypesCanonical(fn.Params, typeDefs), returns: parseGoFieldTypesCanonical(fn.Results, typeDefs)}
+			method := field.Names[0].Name
+			if prior, exists := result[method]; exists && (!sameStringSlice(prior.params, sig.params) || !sameStringSlice(prior.returns, sig.returns)) {
+				return fmt.Errorf("CustomController: conflicting embedded method %s", method)
 			}
-			found = true
+			result[method] = sig
 		}
+		return nil
 	}
-
-	if !found {
+	if typeDefs["CustomController"] == nil {
 		return nil, fmt.Errorf("CustomController interface not found")
+	}
+	if err := expand("CustomController"); err != nil {
+		return nil, err
 	}
 	return result, nil
 }
@@ -143,7 +153,7 @@ func parseCustomControllerHeader(headerPath string, aliases map[string]string) (
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", headerPath, err)
 	}
-	content := string(data)
+	content := removeCComments(string(data))
 	start := strings.Index(content, "struct MaaCustomControllerCallbacks")
 	if start < 0 {
 		return nil, fmt.Errorf("MaaCustomControllerCallbacks struct not found")
@@ -160,7 +170,10 @@ func parseCustomControllerHeader(headerPath string, aliases map[string]string) (
 	close += open
 
 	block := content[open+1 : close]
-	callbacks := parseControllerCallbackFields(block)
+	callbacks, err := parseControllerCallbackFields(block)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", headerPath, err)
+	}
 	if len(callbacks) == 0 {
 		return nil, fmt.Errorf("no callback field found in callbacks struct")
 	}
@@ -169,9 +182,15 @@ func parseCustomControllerHeader(headerPath string, aliases map[string]string) (
 	for _, cb := range callbacks {
 		goName := callbackNameToGoMethod(cb.name)
 		params := parseControllerParams(cb.paramsRaw, aliases)
+		if err := validateControllerAdapter(cb, params); err != nil {
+			return nil, fmt.Errorf("%s: %w", headerPath, err)
+		}
 		returns := deriveControllerReturns(cb.retType, params, aliases)
 		goParams := deriveControllerParams(params)
 
+		if _, exists := result[goName]; exists {
+			return nil, fmt.Errorf("duplicate controller callback %s", goName)
+		}
 		result[goName] = methodSig{params: goParams, returns: returns}
 	}
 
@@ -184,14 +203,14 @@ type controllerCallbackField struct {
 	paramsRaw string
 }
 
-func parseControllerCallbackFields(block string) []controllerCallbackField {
+func parseControllerCallbackFields(block string) ([]controllerCallbackField, error) {
 	cleaned := removeCComments(block)
 	stmts := splitControllerFieldStatements(cleaned)
 	out := make([]controllerCallbackField, 0, len(stmts))
 	for _, stmt := range stmts {
 		retType, name, paramsRaw, ok := parseControllerCallbackField(stmt)
 		if !ok {
-			continue
+			return nil, fmt.Errorf("unsupported controller callback field: %s", stmt)
 		}
 		out = append(out, controllerCallbackField{
 			retType:   retType,
@@ -199,7 +218,7 @@ func parseControllerCallbackFields(block string) []controllerCallbackField {
 			paramsRaw: paramsRaw,
 		})
 	}
-	return out
+	return out, nil
 }
 
 func splitControllerFieldStatements(block string) []string {
@@ -238,22 +257,22 @@ func parseControllerCallbackField(stmt string) (retType string, name string, par
 		return "", "", "", false
 	}
 
-	openPtr := strings.Index(s, "(*")
-	if openPtr < 0 {
+	pointer := callbackPointerRe.FindStringIndex(s)
+	if pointer == nil {
 		return "", "", "", false
 	}
-	retType = strings.TrimSpace(s[:openPtr])
+	retType = strings.TrimSpace(s[:pointer[0]])
 	if retType == "" {
 		return "", "", "", false
 	}
 
-	rest := strings.TrimSpace(s[openPtr+2:])
+	rest := strings.TrimSpace(s[pointer[1]:])
 	closeName := strings.IndexByte(rest, ')')
 	if closeName < 0 {
 		return "", "", "", false
 	}
 	name = strings.TrimSpace(rest[:closeName])
-	if name == "" {
+	if !cIdentifierRe.MatchString(name) {
 		return "", "", "", false
 	}
 
@@ -328,6 +347,55 @@ func extractCParamName(raw string) string {
 		return m[1]
 	}
 	return ""
+}
+
+var callbackPointerRe = regexp.MustCompile(`\(\s*(?:MAA_CALL\s*)?\*\s*`)
+var cIdentifierRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// Validate the raw ABI before removing the context and converting one output
+// buffer into a Go return value. Only the documented adapters are supported.
+func validateControllerAdapter(cb controllerCallbackField, params []controllerParam) error {
+	output := ""
+	switch cb.name {
+	case "request_uuid", "shell", "get_info":
+		output = "MaaStringBuffer"
+	case "screencap":
+		output = "MaaImageBuffer"
+	}
+	contextIndex := len(params) - 1
+	if output != "" {
+		contextIndex--
+	}
+	contexts, buffers := 0, 0
+	for i, p := range params {
+		base, depth := splitCBaseAndPtr(stripCParamName(p.raw))
+		if p.name == "trans_arg" {
+			contexts++
+			if base != "void" || depth != 1 || i != contextIndex {
+				return fmt.Errorf("%s: unsupported trans_arg ABI (expected void* at parameter %d)", cb.name, contextIndex+1)
+			}
+		}
+		if base == "MaaStringBuffer" || base == "MaaImageBuffer" {
+			buffers++
+			if base != output || depth != 1 || i != len(params)-1 {
+				return fmt.Errorf("%s: unsupported output buffer ABI", cb.name)
+			}
+		}
+	}
+	if contexts != 1 {
+		return fmt.Errorf("%s: expected exactly one trans_arg", cb.name)
+	}
+	expectedBuffers := 0
+	if output != "" {
+		expectedBuffers = 1
+	}
+	if buffers != expectedBuffers {
+		return fmt.Errorf("%s: expected %d output buffer, got %d", cb.name, expectedBuffers, buffers)
+	}
+	if output != "" && strings.TrimSpace(cb.retType) != "MaaBool" {
+		return fmt.Errorf("%s: output adapter requires MaaBool return", cb.name)
+	}
+	return nil
 }
 
 func deriveControllerParams(params []controllerParam) []string {

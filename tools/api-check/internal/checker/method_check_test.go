@@ -75,6 +75,141 @@ const (
 	}
 }
 
+func TestParseGoControllerMethodGroups_NarrowConversionAndDependencies(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	goPath := filepath.Join(dir, "adb.go")
+	src := `package adb
+
+type ScreencapMethod uint64
+type InputMethod uint64
+
+const (
+	screencapHelper  ScreencapMethod = 1 << 8
+	ScreencapNone    ScreencapMethod = 0
+	ScreencapNarrow                  = uint64(^uint32(0))
+	ScreencapWide    ScreencapMethod = ScreencapMethod(^uint32(0))
+	ScreencapDerived                 = screencapHelper | 1
+	ScreencapIotaBase ScreencapMethod = iota
+	ScreencapIotaNext
+	InputNone    InputMethod = 0
+	InputShifted             = InputNone + (1 << 20)
+)
+`
+	if err := os.WriteFile(goPath, []byte(src), 0o600); err != nil {
+		t.Fatalf("write go file: %v", err)
+	}
+
+	groups, issues, err := parseGoControllerMethodGroups(goPath, "adb")
+	if err != nil {
+		t.Fatalf("parse go groups: %v", err)
+	}
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %+v", issues)
+	}
+
+	want := map[string]map[string]uint64{
+		methodGroupAdbScreencap: {
+			"None":     0,
+			"Narrow":   4294967295,
+			"Wide":     4294967295,
+			"Derived":  257,
+			"IotaBase": 5,
+			"IotaNext": 6,
+		},
+		methodGroupAdbInput: {
+			"None":    0,
+			"Shifted": 1 << 20,
+		},
+	}
+	for group, methods := range want {
+		for name, value := range methods {
+			if got := groups[group][name]; got != value {
+				t.Errorf("%s %s: got=%d want=%d", group, name, got, value)
+			}
+		}
+	}
+}
+
+func TestParseGoControllerMethodGroups_DiagnosesOverflowAndUnsupportedCalls(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	goPath := filepath.Join(dir, "adb.go")
+	src := `package adb
+
+type ScreencapMethod uint64
+type InputMethod uint64
+
+func helper() uint64 { return 1 }
+
+const (
+	ScreencapOk       ScreencapMethod = 1
+	ScreencapOverflow uint8 = 300
+	ScreencapCall = helper()
+	ScreencapCycleA = ScreencapCycleB
+	ScreencapCycleB = ScreencapCycleA
+)
+`
+	if err := os.WriteFile(goPath, []byte(src), 0o600); err != nil {
+		t.Fatalf("write go file: %v", err)
+	}
+
+	groups, issues, err := parseGoControllerMethodGroups(goPath, "adb")
+	if err != nil {
+		t.Fatalf("parse go groups: %v", err)
+	}
+	if got, want := groups[methodGroupAdbScreencap]["Ok"], uint64(1); got != want {
+		t.Fatalf("unexpected ScreencapOk: got=%d want=%d", got, want)
+	}
+	for _, logicalName := range []string{"Overflow", "Call", "CycleA", "CycleB"} {
+		if !hasIssueMessageContaining(issues, "[adb.screencap] failed to evaluate Go method value: "+logicalName) {
+			t.Errorf("expected evaluation failure for %s, got issues: %+v", logicalName, issues)
+		}
+	}
+}
+
+func TestParseCControllerMethodGroups_HelperMacrosAndFailures(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	headerPath := filepath.Join(dir, "MaaDef.h")
+	content := `#define MAA_ADB_HELPER (1ULL << 9)
+#define MaaAdbScreencapMethod_None 0ULL
+#define MaaAdbScreencapMethod_Derived (MAA_ADB_HELPER | 1ULL)
+#define MaaAdbScreencapMethod_Undefined MissingHelper
+#define MaaAdbScreencapMethod_CycleA MaaAdbScreencapMethod_CycleB
+#define MaaAdbScreencapMethod_CycleB MaaAdbScreencapMethod_CycleA
+#define MaaAdbScreencapMethod_Divide (1ULL / 0)
+
+enum
+{
+    MAA_ADB_ENUM_HELPER = 7,
+};
+#define MaaAdbInputMethod_AdbShell MAA_ADB_ENUM_HELPER
+`
+	if err := os.WriteFile(headerPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write header: %v", err)
+	}
+
+	groups, issues, err := parseCControllerMethodGroups(headerPath)
+	if err != nil {
+		t.Fatalf("parse c groups: %v", err)
+	}
+	if got, want := groups[methodGroupAdbScreencap]["Derived"], uint64(513); got != want {
+		t.Fatalf("unexpected Derived: got=%d want=%d", got, want)
+	}
+	if got, want := groups[methodGroupAdbInput]["AdbShell"], uint64(7); got != want {
+		t.Fatalf("unexpected AdbShell: got=%d want=%d", got, want)
+	}
+	for _, logicalName := range []string{"Undefined", "CycleA", "CycleB", "Divide"} {
+		if !hasIssueMessageContaining(issues, "[adb.screencap] failed to evaluate C method value: "+logicalName) {
+			t.Errorf("expected evaluation failure for %s, got issues: %+v", logicalName, issues)
+		}
+	}
+}
+
 func TestCheckControllerMethodCoverage_DetectsMissingExtraMismatch(t *testing.T) {
 	t.Parallel()
 

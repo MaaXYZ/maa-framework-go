@@ -12,6 +12,8 @@ const (
 	sectionController       = "CustomController Consistency"
 	sectionControllerMethod = "Controller Method Coverage"
 	sectionPipeline         = "Pipeline V2 Coverage"
+	sectionConstants        = "Constant Coverage"
+	sectionEvents           = "Event Coverage"
 	defaultHeaderDirRel     = "deps/include"
 	customControllerRel     = "custom_controller.go"
 	controllerHeaderRel     = "MaaFramework/Instance/MaaCustomController.h"
@@ -37,13 +39,15 @@ var nativeFilesByModule = map[string][]string{
 }
 
 var moduleOrder = []string{"framework", "toolkit", "agent_server", "agent_client"}
-var sectionOrder = []string{sectionNativeAPI, sectionController, sectionControllerMethod, sectionPipeline}
+var sectionOrder = []string{sectionNativeAPI, sectionController, sectionControllerMethod, sectionConstants, sectionEvents, sectionPipeline}
 
 // Config selects the native headers and optional pipeline v2 schema to check.
 // Paths are resolved relative to the detected repository root.
 type Config struct {
 	HeaderDir string   `yaml:"header_dir"`
 	Blacklist []string `yaml:"blacklist"`
+	// NativeExclusions records intentional native symbol differences with reasons.
+	NativeExclusions map[string]string `yaml:"native_exclusions"`
 	// PipelineSchema enables pipeline v2 type and field-name coverage when set.
 	// Use the schema supplied by the same MaaFramework release as HeaderDir.
 	PipelineSchema string `yaml:"pipeline_schema"`
@@ -70,6 +74,7 @@ func (s *stringSliceFlag) Set(value string) error {
 type issue struct {
 	section string
 	message string
+	symbol  string
 }
 
 type methodSig struct {

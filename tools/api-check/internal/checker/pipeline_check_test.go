@@ -14,12 +14,49 @@ type ActionType string
 const ActionTypeClick ActionType = "Click"
 type RecognitionType string
 const RecognitionTypeDirectHit RecognitionType = "DirectHit"
-type Action struct { Type ActionType ` + "`json:\"type\"`" + `; Param any ` + "`json:\"param\"`" + ` }
-func (a *Action) UnmarshalJSON(data []byte) error { _ = actionParam(a.Type); return nil }
-func actionParam(t ActionType) any { switch t { case ActionTypeClick: return &ClickParam{}; default: return &RawActionParam{} } }
+type ActionParam interface{ isActionParam() }
+type RecognitionParam interface{ isRecognitionParam() }
+type Action struct { Type ActionType ` + "`json:\"type\"`" + `; Param ActionParam ` + "`json:\"param\"`" + ` }
+func (a *Action) UnmarshalJSON(data []byte) error {
+ var raw struct { Type ActionType ` + "`json:\"type\"`" + `; Param json.RawMessage ` + "`json:\"param\"`" + ` }
+ if err := unmarshalJSON(data, &raw); err != nil { return err }
+ param, err := decodeActionParam(raw.Type, raw.Param)
+ if err != nil { return err }
+ *a = Action{Type: raw.Type, Param: param}
+ return nil
+}
+func decodeActionParam(t ActionType, data json.RawMessage) (ActionParam, error) {
+ var param ActionParam
+ switch t {
+ case ActionTypeClick: param = &ClickParam{}
+ default: param = &RawActionParam{}
+ }
+ if err := unmarshalJSON(data, param); err != nil { return nil, err }
+ return param, nil
+}
 type RawActionParam struct { Data json.RawMessage ` + "`json:\"-\"`" + ` }
-type Recognition struct { Type RecognitionType ` + "`json:\"type\"`" + `; Param any ` + "`json:\"param\"`" + ` }
-func (r *Recognition) UnmarshalJSON(data []byte) error { switch r.Type { case RecognitionTypeDirectHit: r.Param = &DirectHitParam{} }; return nil }
+type Recognition struct { Type RecognitionType ` + "`json:\"type\"`" + `; Param RecognitionParam ` + "`json:\"param\"`" + ` }
+func (r *Recognition) UnmarshalJSON(data []byte) error {
+ var raw struct { Type RecognitionType ` + "`json:\"type\"`" + `; Param json.RawMessage ` + "`json:\"param\"`" + ` }
+ if err := unmarshalJSON(data, &raw); err != nil { return err }
+ switch raw.Type {
+ case RecognitionTypeDirectHit: r.Param = &DirectHitParam{}
+ }
+ r.Type = raw.Type
+ return nil
+}
+type InlineSubRecognition struct { SubName string ` + "`json:\"sub_name,omitempty\"`" + `; Recognition }
+func (n InlineSubRecognition) MarshalJSON() ([]byte,error) {
+ return marshalJSON(struct { SubName string ` + "`json:\"sub_name,omitempty\"`" + `; Recognition Recognition ` + "`json:\"recognition\"`" + ` }{SubName:n.SubName,Recognition:n.Recognition})
+}
+func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
+ type Alias struct { SubName string ` + "`json:\"sub_name,omitempty\"`" + `; Recognition json.RawMessage ` + "`json:\"recognition,omitempty\"`" + ` }
+ var alias Alias
+ if err := unmarshalJSON(data, &alias); err != nil { return err }
+ n.SubName = alias.SubName
+ if len(alias.Recognition) > 0 { return unmarshalJSON(alias.Recognition, &n.Recognition) }
+ return unmarshalJSON(data, &n.Recognition)
+}
 type Node struct { Action *Action ` + "`json:\"action\"`" + `; Recognition *Recognition ` + "`json:\"recognition\"`" + ` }
 type ClickParam struct { Target string ` + "`json:\"target\"`" + ` }
 type DirectHitParam struct{}
@@ -34,7 +71,9 @@ func (w WaitFreezesParam) MarshalJSON() ([]byte,error) {
 func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error {
  type NoMethod WaitFreezesParam
  var raw struct { NoMethod; Time int ` + "`json:\"time\"`" + ` }
- return json.Unmarshal(data, &raw)
+ if err := json.Unmarshal(data, &raw); err != nil { return err }
+ *w = WaitFreezesParam(raw.NoMethod)
+ return nil
 }
 `
 
@@ -45,7 +84,14 @@ func pipelineFixtureSchema() schemaObject {
 		return schemaObject{"properties": schemaObject{"type": schemaObject{"const": name}, "param": schemaObject{"allOf": []any{schemaObject{"$ref": "#/$defs/" + param}, schemaObject{"$ref": "#/$defs/jsonComments"}}}}}
 	}
 	wrapper := func(kind, name string) schemaObject {
-		return schemaObject{"properties": schemaObject{kind: schemaObject{"anyOf": []any{schemaObject{"$ref": "#/$defs/" + name}}}}}
+		return schemaObject{"properties": schemaObject{kind: schemaObject{
+			"type": "object",
+			"properties": schemaObject{
+				"type":  schemaObject{"type": "string"},
+				"param": schemaObject{"type": "object"},
+			},
+			"anyOf": []any{schemaObject{"$ref": "#/$defs/" + name}},
+		}}}
 	}
 	return schemaObject{"$defs": schemaObject{
 		"Node":       obj(schemaObject{"action": field(), "recognition": field(), "interrupt": schemaObject{"deprecated": true}}),
@@ -55,6 +101,7 @@ func pipelineFixtureSchema() schemaObject {
 		"DirectHitV2": branch("DirectHit", "DirectHit"), "DirectHit": obj(schemaObject{}),
 		"SwipeListItem": obj(schemaObject{"starting": field()}), "WaitFreezes": obj(schemaObject{"time": field()}),
 		"NodeAttr": obj(schemaObject{"name": field()}), "jsonComments": schemaObject{"patternProperties": schemaObject{}},
+		"SubRecognitionInline": obj(schemaObject{"sub_name": field()}),
 	}}
 }
 
@@ -111,8 +158,11 @@ func TestPipelineCoverage(t *testing.T) {
 			return s, g
 		}, want: []string{"action.Future.type", "action.Future.decoder", "action.Future.schema"}},
 		{name: "missing decoder", change: func(s schemaObject, g string) (schemaObject, string) {
-			return s, strings.Replace(g, "case ActionTypeClick: return &ClickParam{};", "", 1)
+			return s, strings.Replace(g, "case ActionTypeClick: param = &ClickParam{}", "", 1)
 		}, want: []string{"action.Click.decoder: missing typed Go decoder case"}},
+		{name: "envelope renamed in both directions", change: func(s schemaObject, g string) (schemaObject, string) {
+			return s, strings.Replace(g, "Type ActionType `json:\"type\"`", "Type ActionType `json:\"wrong\"`", 2)
+		}, want: []string{"action.envelope.type: missing Go field (Action)", "action.envelope.wrong: Go field absent from schema (Action,"}},
 		{name: "nested missing field", change: func(s schemaObject, g string) (schemaObject, string) {
 			fixtureProps(s, "SwipeListItem")["pressure"] = schemaObject{"type": "integer"}
 			return s, g
@@ -130,6 +180,10 @@ func TestPipelineCoverage(t *testing.T) {
 		}, want: []string{"WaitFreezes.ghost: missing Go field"}},
 		{name: "anonymous embedding and type alias", change: func(s schemaObject, g string) (schemaObject, string) {
 			return s, strings.Replace(g, "type ClickParam struct { Target string `json:\"target\"` }", "type ClickBase struct { Target string `json:\"target\"` }; type ClickAlias = ClickBase; type ClickParam struct { ClickAlias }", 1)
+		}, want: nil},
+		{name: "embedded codec ignored by json tag", change: func(s schemaObject, g string) (schemaObject, string) {
+			g = strings.Replace(g, "type ClickParam struct { Target string `json:\"target\"` }", "type ClickParam struct { ClickWire `json:\"-\"`; Target string `json:\"target\"` }", 1)
+			return s, g + "\ntype ClickWire struct{}\nfunc (p ClickWire) MarshalJSON() ([]byte,error) { return json.Marshal(struct { Wrong int `json:\"wrong\"` }{}) }\n"
 		}, want: nil},
 	}
 	for _, tt := range tests {
@@ -164,9 +218,9 @@ func TestPipelineAmbiguousGoShapes(t *testing.T) {
 		{"duplicate tags", "type ClickParam struct {", "type ClickParam struct { Other int `json:\"target\"`;", "conflicting JSON field target"},
 		{"conflicting promoted fields", "type ClickParam struct { Target string `json:\"target\"` }", "type BaseA struct { Target string `json:\"target\"` }; type BaseB struct { Target string `json:\"target\"` }; type ClickParam struct { BaseA; BaseB }", "conflicting JSON field target"},
 		{"promoted field shadow", "type ClickParam struct {", "type ClickBase struct { Target string `json:\"target\"` }; type ClickParam struct { ClickBase;", "conflicting JSON field target"},
-		{"unrelated decoder literal", "case ActionTypeClick: return &ClickParam{};", "case ActionTypeClick: log(&ClickParam{}); return nil;", "expected one parameter literal assigned to Param or returned"},
-		{"logging literal alongside real decoder", "case ActionTypeClick: return &ClickParam{};", "case ActionTypeClick: log(&RawActionParam{}); return &ClickParam{};", ""},
-		{"reassigned wire variable", "return json.Unmarshal(data, &raw)", "raw = something(); return json.Unmarshal(data, &raw)", "reassigned or shadowed wire variable raw"},
+		{"unrelated decoder literal", "case ActionTypeClick: param = &ClickParam{}", "case ActionTypeClick: log(&ClickParam{}); return nil", "expected one parameter literal assigned to the returned Param"},
+		{"logging literal alongside real decoder", "case ActionTypeClick: param = &ClickParam{}", "case ActionTypeClick: log(&RawActionParam{}); param = &ClickParam{}", ""},
+		{"reassigned wire variable", "if err := json.Unmarshal(data, &raw); err != nil { return err }", "raw = something(); if err := json.Unmarshal(data, &raw); err != nil { return err }", "reassigned or shadowed wire variable raw"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -267,8 +321,8 @@ func TestPipelineUnsupportedCodec(t *testing.T) {
 func TestPipelineCodecDirections(t *testing.T) {
 	const marshalTime = "func (w WaitFreezesParam) MarshalJSON() ([]byte,error) { return json.Marshal(struct { Time int `json:\"time\"` }{}) }\n"
 	const marshalEmpty = "func (w WaitFreezesParam) MarshalJSON() ([]byte,error) { return json.Marshal(struct{}{}) }\n"
-	const unmarshalTime = "func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error { var raw struct { Time int `json:\"time\"` }; return json.Unmarshal(data, &raw) }\n"
-	const unmarshalEmpty = "func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error { var raw struct{}; return json.Unmarshal(data, &raw) }\n"
+	const unmarshalTime = "func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error { var raw struct { Time int `json:\"time\"` }; if err := json.Unmarshal(data, &raw); err != nil { return err }; *w = WaitFreezesParam{Time: raw.Time}; return nil }\n"
+	const unmarshalEmpty = "func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error { var raw struct{}; if err := json.Unmarshal(data, &raw); err != nil { return err }; *w = WaitFreezesParam{}; return nil }\n"
 	start := strings.Index(pipelineFixtureGo, "func (w WaitFreezesParam) MarshalJSON()")
 	base := pipelineFixtureGo[:start]
 	tests := []struct{ name, defaultTag, codecs, want string }{

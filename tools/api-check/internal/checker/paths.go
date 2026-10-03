@@ -6,16 +6,25 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
+// detectRepoRoot walks up from the current working directory looking for the
+// maa-framework-go repository root.
 func detectRepoRoot() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("get cwd: %w", err)
 	}
+	return detectRepoRootFrom(cwd)
+}
 
-	dir, err := filepath.Abs(cwd)
+// detectRepoRootFrom walks up from start looking for a directory whose go.mod
+// declares repoRootModulePath, or a worktree-shaped root when go.mod is
+// unavailable.
+func detectRepoRootFrom(start string) (string, error) {
+	dir, err := filepath.Abs(start)
 	if err != nil {
 		return "", fmt.Errorf("get absolute cwd: %w", err)
 	}
@@ -58,6 +67,9 @@ func isRepoRoot(dir string) (bool, error) {
 	return false, nil
 }
 
+// readGoModulePath extracts the module path from the first module directive in
+// a go.mod file. The directive may use arbitrary whitespace, inline and
+// line comments, and quoted paths.
 func readGoModulePath(goModPath string) (string, error) {
 	f, err := os.Open(goModPath)
 	if err != nil {
@@ -67,15 +79,68 @@ func readGoModulePath(goModPath string) (string, error) {
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "module ") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "module ")), nil
+		fields, err := goModLineFields(scanner.Text())
+		if err != nil {
+			return "", fmt.Errorf("parse %s: %w", goModPath, err)
 		}
+		if len(fields) == 0 || fields[0] != "module" {
+			continue
+		}
+		if len(fields) != 2 {
+			return "", fmt.Errorf("parse %s: module directive requires exactly one path", goModPath)
+		}
+		return fields[1], nil
 	}
 	if err := scanner.Err(); err != nil {
 		return "", err
 	}
 	return "", errors.New("module declaration not found in go.mod")
+}
+
+// goModLineFields splits one go.mod line into tokens, honouring quoted strings
+// and stripping // comments that are outside quotes.
+func goModLineFields(line string) ([]string, error) {
+	var fields []string
+	for i := 0; i < len(line); {
+		switch {
+		case line[i] == ' ' || line[i] == '\t' || line[i] == '\r':
+			i++
+		case line[i] == '/' && i+1 < len(line) && line[i+1] == '/':
+			return fields, nil
+		case line[i] == '"' || line[i] == '`':
+			quote := line[i]
+			start := i
+			i++
+			closed := false
+			for i < len(line) {
+				if quote == '"' && line[i] == '\\' {
+					i += 2
+					continue
+				}
+				if line[i] == quote {
+					i++
+					closed = true
+					break
+				}
+				i++
+			}
+			if !closed {
+				return nil, errors.New("unterminated quoted string")
+			}
+			token, err := strconv.Unquote(line[start:i])
+			if err != nil {
+				return nil, fmt.Errorf("invalid quoted string %s: %w", line[start:i], err)
+			}
+			fields = append(fields, token)
+		default:
+			start := i
+			for i < len(line) && line[i] != ' ' && line[i] != '\t' && line[i] != '\r' {
+				i++
+			}
+			fields = append(fields, line[start:i])
+		}
+	}
+	return fields, nil
 }
 
 func resolveFromRepoRoot(repoRoot string, maybeRel string) string {

@@ -2,7 +2,6 @@ package checker
 
 import (
 	"encoding/json"
-	"flag"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,8 +26,8 @@ func TestPipelineConfigLoadAndMerge(t *testing.T) {
 	}
 }
 
-// Run in a subprocess to exercise CLI flags and exit codes without changing
-// the testing process's global flags, current directory, or stdout/stderr.
+// Run in a subprocess to exercise the CLI wrapper and exit codes without
+// changing the testing process's current directory or stdout/stderr.
 func TestPipelineRunHelper(t *testing.T) {
 	if os.Getenv("MAA_PIPELINE_RUN_HELPER") != "1" {
 		return
@@ -37,7 +36,6 @@ func TestPipelineRunHelper(t *testing.T) {
 	if err := json.Unmarshal([]byte(os.Getenv("MAA_PIPELINE_RUN_ARGS")), &args); err != nil {
 		t.Fatal(err)
 	}
-	flag.CommandLine = flag.NewFlagSet("api-check", flag.ExitOnError)
 	os.Args = append([]string{"api-check"}, args...)
 	os.Exit(Run())
 }
@@ -47,28 +45,7 @@ func writePipelineRunFixture(t *testing.T) (string, string) {
 	s := pipelineFixtureSchema()
 	fixtureProps(s, "Click")["pressure"] = schemaObject{"type": "integer"}
 	dir, schema := writePipelineFixture(t, s, pipelineFixtureGo)
-	files := map[string]string{
-		"go.mod":                              "module " + repoRootModulePath + "\n\ngo 1.24\n",
-		customControllerRel:                   "package maa\ntype CustomController interface { Foo() }\n",
-		"deps/include/" + controllerHeaderRel: "struct MaaCustomControllerCallbacks { void (*foo)(void* trans_arg); };\n",
-		"deps/include/" + maaDefHeaderRel:     "/* No method constants in this fixture. */\n",
-		adbControllerRel:                      "package adb\n",
-		win32ControllerRel:                    "package win32\n",
-	}
-	for _, paths := range nativeFilesByModule {
-		for _, path := range paths {
-			files[path] = "package native\n"
-		}
-	}
-	for path, data := range files {
-		path = filepath.Join(dir, path)
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(data), 0600); err != nil {
-			t.Fatal(err)
-		}
-	}
+	writeFixtureFiles(t, dir, repoFixtureFiles())
 	return dir, schema
 }
 
