@@ -50,7 +50,7 @@
 - **自定义扩展** - 以纯 Go 编写自定义识别、动作和控制器
 - **Agent 支持** - 从外部进程执行自定义识别与动作逻辑
 - **异步任务与事件** - 轮询 Job 状态与任务详情，或订阅 Resource、Controller、Tasker 事件
-- **流水线与运行时 API** - 基于 JSON 的声明式任务流；可在 Context 中动态执行任务、识别和动作
+- **Pipeline v2 模型与运行时 API** - 类型化的 `Pipeline`、`Node`、`Action` 和 `Recognition` 构造器生成嵌套 v2 JSON，并支持从 `Context` 运行任务、识别和动作。未知参数可通过 [`RawActionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawActionParam) 与 [`RawRecognitionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawRecognitionParam) 保留原始 JSON；这不会让原生库支持未知类型。
 
 ## 📦 安装
 
@@ -206,6 +206,8 @@ func main() {
 其他操作需要调用方协调：请串行执行选项设置、资源与 pipeline 修改、同一 `Context` 上的调用，以及 AgentClient / AgentServer 的生命周期操作。`Pipeline`、`Node` 等可变配置对象也需要调用方同步访问。句柄生命周期检查不代表所有原生操作都具备线程安全保证。
 
 事件 sink 和自定义识别、动作的注册变更，只能在实例及所有关联 tasker 静止时执行。添加、替换、注销或清空注册之前，请停止新提交，并等待相关工作和回调结束。同一实例的配置事务会串行执行，借用视图也使用同一把锁，但这些事务不得与原生执行重叠。不要在回调中变更注册。`AddSink` 和 `AddContextSink` 注册失败返回 0；重复移除已注销的 sink 不执行任何有效变更。注销不存在的自定义识别或动作会返回错误。
+
+`Tasker.OnNodeWaitFreezesInContext` 可订阅 `Node.WaitFreezes`，取得 `NodeWaitFreezesDetail`。自定义 context sink 可选实现 `ContextWaitFreezesEventSink`。使用 Win32 后台输入时，请在连接前调用 `Controller.SetBackgroundManagedKeys`；传入空切片可清空按键列表。
 
 请在 `AgentServerStartUp` 之前配置 AgentServer。服务运行期间，以及 join 或 detach 后，自定义注册和启动返回 `ErrInUse`，添加 sink 返回 0。未 detach 时，`AgentServerShutDown` 会永久关闭服务，即使在首次启动前调用也是如此：之后启动和自定义注册返回 `ErrClosed`，添加 sink 返回 0。原生通信上下文无法重建，因此 `Release` 后再次 `Init` 也不会恢复启动或配置能力。未 detach 的服务关闭后可以 `Release`，重复关闭不会再次调用原生接口。配置与启动会串行执行；启动、关闭、join 和 detach 之间仍需由调用方串行协调。detach 后，关闭无法确认服务已静止，`Release` 仍不可用。
 

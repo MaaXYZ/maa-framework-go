@@ -1,0 +1,454 @@
+package checker
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+const pipelineFixtureGo = `package maa
+import "encoding/json"
+type ActionType string
+const ActionTypeClick ActionType = "Click"
+type RecognitionType string
+const RecognitionTypeDirectHit RecognitionType = "DirectHit"
+type ActionParam interface{ isActionParam() }
+type RecognitionParam interface{ isRecognitionParam() }
+type Action struct { Type ActionType ` + "`json:\"type\"`" + `; Param ActionParam ` + "`json:\"param\"`" + ` }
+func (a *Action) UnmarshalJSON(data []byte) error {
+ var raw struct { Type ActionType ` + "`json:\"type\"`" + `; Param json.RawMessage ` + "`json:\"param\"`" + ` }
+ if err := unmarshalJSON(data, &raw); err != nil { return err }
+ param, err := decodeActionParam(raw.Type, raw.Param)
+ if err != nil { return err }
+ *a = Action{Type: raw.Type, Param: param}
+ return nil
+}
+func decodeActionParam(t ActionType, data json.RawMessage) (ActionParam, error) {
+ var param ActionParam
+ switch t {
+ case ActionTypeClick: param = &ClickParam{}
+ default: param = &RawActionParam{}
+ }
+ if err := unmarshalJSON(data, param); err != nil { return nil, err }
+ return param, nil
+}
+type RawActionParam struct { Data json.RawMessage ` + "`json:\"-\"`" + ` }
+type Recognition struct { Type RecognitionType ` + "`json:\"type\"`" + `; Param RecognitionParam ` + "`json:\"param\"`" + ` }
+func (r *Recognition) UnmarshalJSON(data []byte) error {
+ var raw struct { Type RecognitionType ` + "`json:\"type\"`" + `; Param json.RawMessage ` + "`json:\"param\"`" + ` }
+ if err := unmarshalJSON(data, &raw); err != nil { return err }
+ switch raw.Type {
+ case RecognitionTypeDirectHit: r.Param = &DirectHitParam{}
+ }
+ r.Type = raw.Type
+ return nil
+}
+type InlineSubRecognition struct { SubName string ` + "`json:\"sub_name,omitempty\"`" + `; Recognition }
+func (n InlineSubRecognition) MarshalJSON() ([]byte,error) {
+ return marshalJSON(struct { SubName string ` + "`json:\"sub_name,omitempty\"`" + `; Recognition Recognition ` + "`json:\"recognition\"`" + ` }{SubName:n.SubName,Recognition:n.Recognition})
+}
+func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
+ type Alias struct { SubName string ` + "`json:\"sub_name,omitempty\"`" + `; Recognition json.RawMessage ` + "`json:\"recognition,omitempty\"`" + ` }
+ var alias Alias
+ if err := unmarshalJSON(data, &alias); err != nil { return err }
+ n.SubName = alias.SubName
+ if len(alias.Recognition) > 0 { return unmarshalJSON(alias.Recognition, &n.Recognition) }
+ return unmarshalJSON(data, &n.Recognition)
+}
+type Node struct { Action *Action ` + "`json:\"action\"`" + `; Recognition *Recognition ` + "`json:\"recognition\"`" + ` }
+type ClickParam struct { Target string ` + "`json:\"target\"`" + ` }
+type DirectHitParam struct{}
+type MultiSwipeItem struct { Starting int ` + "`json:\"starting\"`" + ` }
+type NextItem struct { Name string ` + "`json:\"name\"`" + ` }
+type WaitFreezesParam struct { Time int ` + "`json:\"-\"`" + ` }
+func (w WaitFreezesParam) MarshalJSON() ([]byte,error) {
+ type NoMethod WaitFreezesParam
+ type Unused struct { Ghost int ` + "`json:\"ghost\"`" + ` }
+ return json.Marshal(struct { NoMethod; Time int ` + "`json:\"time\"`" + ` }{NoMethod:NoMethod(w),Time:w.Time})
+}
+func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error {
+ type NoMethod WaitFreezesParam
+ var raw struct { NoMethod; Time int ` + "`json:\"time\"`" + ` }
+ if err := json.Unmarshal(data, &raw); err != nil { return err }
+ *w = WaitFreezesParam(raw.NoMethod)
+ return nil
+}
+`
+
+func pipelineFixtureSchema() schemaObject {
+	field := func() schemaObject { return schemaObject{"type": "string"} }
+	obj := func(props schemaObject) schemaObject { return schemaObject{"type": "object", "properties": props} }
+	branch := func(name, param string) schemaObject {
+		return schemaObject{"properties": schemaObject{"type": schemaObject{"const": name}, "param": schemaObject{"allOf": []any{schemaObject{"$ref": "#/$defs/" + param}, schemaObject{"$ref": "#/$defs/jsonComments"}}}}}
+	}
+	wrapper := func(kind, name string) schemaObject {
+		return schemaObject{"properties": schemaObject{kind: schemaObject{
+			"type": "object",
+			"properties": schemaObject{
+				"type":  schemaObject{"type": "string"},
+				"param": schemaObject{"type": "object"},
+			},
+			"anyOf": []any{schemaObject{"$ref": "#/$defs/" + name}},
+		}}}
+	}
+	return schemaObject{"$defs": schemaObject{
+		"Node":       obj(schemaObject{"action": field(), "recognition": field(), "interrupt": schemaObject{"deprecated": true}}),
+		"ActionEnum": schemaObject{"enum": []any{"Click"}}, "RecognitionEnum": schemaObject{"enum": []any{"DirectHit"}},
+		"ActionV2": wrapper("action", "ClickV2"), "RecognitionV2": wrapper("recognition", "DirectHitV2"),
+		"ClickV2": branch("Click", "Click"), "Click": obj(schemaObject{"target": field()}),
+		"DirectHitV2": branch("DirectHit", "DirectHit"), "DirectHit": obj(schemaObject{}),
+		"SwipeListItem": obj(schemaObject{"starting": field()}), "WaitFreezes": obj(schemaObject{"time": field()}),
+		"NodeAttr": obj(schemaObject{"name": field()}), "jsonComments": schemaObject{"patternProperties": schemaObject{}},
+		"SubRecognitionInline": obj(schemaObject{"sub_name": field()}),
+	}}
+}
+
+func writePipelineFixture(t *testing.T, schema schemaObject, source string) (string, string) {
+	t.Helper()
+	dir := t.TempDir()
+	data, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "pipeline.schema.json")
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "pipeline.go"), []byte(source), 0600); err != nil {
+		t.Fatal(err)
+	}
+	return dir, path
+}
+
+func fixtureDefs(schema schemaObject) schemaObject { return schema["$defs"].(schemaObject) }
+func fixtureProps(schema schemaObject, name string) schemaObject {
+	return fixtureDefs(schema)[name].(schemaObject)["properties"].(schemaObject)
+}
+func issueText(issues []issue) string {
+	var out []string
+	for _, issue := range issues {
+		out = append(out, issue.message)
+	}
+	return strings.Join(out, "\n")
+}
+
+func TestPipelineCoverage(t *testing.T) {
+	tests := []struct {
+		name   string
+		change func(schemaObject, string) (schemaObject, string)
+		want   []string
+	}{
+		{name: "complete with codec DTO and unused tagged struct"},
+		{name: "missing pressure", change: func(s schemaObject, g string) (schemaObject, string) {
+			fixtureProps(s, "Click")["pressure"] = schemaObject{"type": "integer"}
+			return s, g
+		}, want: []string{"action.Click.param.pressure: missing Go field (ClickParam)"}},
+		{name: "new type despite raw fallback", change: func(s schemaObject, g string) (schemaObject, string) {
+			defs := fixtureDefs(s)
+			defs["ActionEnum"].(schemaObject)["enum"] = []any{"Click", "Future"}
+			defs["FutureV2"] = schemaObject{"properties": schemaObject{"type": schemaObject{"const": "Future"}, "param": schemaObject{"properties": schemaObject{}}}}
+			wrapper := fixtureProps(s, "ActionV2")["action"].(schemaObject)
+			wrapper["anyOf"] = append(wrapper["anyOf"].([]any), schemaObject{"$ref": "#/$defs/FutureV2"})
+			return s, g
+		}, want: []string{"action.Future.type: missing Go type constant", "action.Future.decoder: missing typed Go decoder case"}},
+		{name: "enum without branch", change: func(s schemaObject, g string) (schemaObject, string) {
+			fixtureDefs(s)["ActionEnum"].(schemaObject)["enum"] = []any{"Click", "Future"}
+			return s, g
+		}, want: []string{"action.Future.type", "action.Future.decoder", "action.Future.schema"}},
+		{name: "missing decoder", change: func(s schemaObject, g string) (schemaObject, string) {
+			return s, strings.Replace(g, "case ActionTypeClick: param = &ClickParam{}", "", 1)
+		}, want: []string{"action.Click.decoder: missing typed Go decoder case"}},
+		{name: "envelope renamed in both directions", change: func(s schemaObject, g string) (schemaObject, string) {
+			return s, strings.Replace(g, "Type ActionType `json:\"type\"`", "Type ActionType `json:\"wrong\"`", 2)
+		}, want: []string{"action.envelope.type: missing Go field (Action)", "action.envelope.wrong: Go field absent from schema (Action,"}},
+		{name: "nested missing field", change: func(s schemaObject, g string) (schemaObject, string) {
+			fixtureProps(s, "SwipeListItem")["pressure"] = schemaObject{"type": "integer"}
+			return s, g
+		}, want: []string{"SwipeListItem.pressure: missing Go field (MultiSwipeItem)"}},
+		{name: "extra Go field", change: func(s schemaObject, g string) (schemaObject, string) {
+			return s, strings.Replace(g, "type ClickParam struct {", "type ClickParam struct { Obsolete int `json:\"obsolete\"`;", 1)
+		}, want: []string{"action.Click.param.obsolete: Go field absent from schema (ClickParam,"}},
+		{name: "tagged unexported field does not count", change: func(s schemaObject, g string) (schemaObject, string) {
+			fixtureProps(s, "Click")["pressure"] = schemaObject{"type": "integer"}
+			return s, strings.Replace(g, "type ClickParam struct {", "type ClickParam struct { pressure int `json:\"pressure\"`;", 1)
+		}, want: []string{"action.Click.param.pressure: missing Go field (ClickParam)"}},
+		{name: "codec DTO missing real field", change: func(s schemaObject, g string) (schemaObject, string) {
+			fixtureProps(s, "WaitFreezes")["ghost"] = schemaObject{"type": "integer"}
+			return s, g
+		}, want: []string{"WaitFreezes.ghost: missing Go field"}},
+		{name: "anonymous embedding and type alias", change: func(s schemaObject, g string) (schemaObject, string) {
+			return s, strings.Replace(g, "type ClickParam struct { Target string `json:\"target\"` }", "type ClickBase struct { Target string `json:\"target\"` }; type ClickAlias = ClickBase; type ClickParam struct { ClickAlias }", 1)
+		}, want: nil},
+		{name: "embedded codec ignored by json tag", change: func(s schemaObject, g string) (schemaObject, string) {
+			g = strings.Replace(g, "type ClickParam struct { Target string `json:\"target\"` }", "type ClickParam struct { ClickWire `json:\"-\"`; Target string `json:\"target\"` }", 1)
+			return s, g + "\ntype ClickWire struct{}\nfunc (p ClickWire) MarshalJSON() ([]byte,error) { return json.Marshal(struct { Wrong int `json:\"wrong\"` }{}) }\n"
+		}, want: nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, g := pipelineFixtureSchema(), pipelineFixtureGo
+			if tt.change != nil {
+				s, g = tt.change(s, g)
+			}
+			dir, path := writePipelineFixture(t, s, g)
+			issues, excluded, err := checkPipelineCoverage(dir, path, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(excluded) != 0 {
+				t.Fatalf("unexpected exclusions: %v", excluded)
+			}
+			text := issueText(issues)
+			if len(issues) != len(tt.want) {
+				t.Fatalf("got %d issues; want %d:\n%s", len(issues), len(tt.want), text)
+			}
+			for _, want := range tt.want {
+				if !strings.Contains(text, want) {
+					t.Errorf("missing %q in %s", want, text)
+				}
+			}
+		})
+	}
+}
+
+func TestPipelineAmbiguousGoShapes(t *testing.T) {
+	tests := []struct{ name, old, replacement, want string }{
+		{"duplicate tags", "type ClickParam struct {", "type ClickParam struct { Other int `json:\"target\"`;", "conflicting JSON field target"},
+		{"conflicting promoted fields", "type ClickParam struct { Target string `json:\"target\"` }", "type BaseA struct { Target string `json:\"target\"` }; type BaseB struct { Target string `json:\"target\"` }; type ClickParam struct { BaseA; BaseB }", "conflicting JSON field target"},
+		{"promoted field shadow", "type ClickParam struct {", "type ClickBase struct { Target string `json:\"target\"` }; type ClickParam struct { ClickBase;", "conflicting JSON field target"},
+		{"unrelated decoder literal", "case ActionTypeClick: param = &ClickParam{}", "case ActionTypeClick: log(&ClickParam{}); return nil", "expected one parameter literal assigned to the returned Param"},
+		{"logging literal alongside real decoder", "case ActionTypeClick: param = &ClickParam{}", "case ActionTypeClick: log(&RawActionParam{}); param = &ClickParam{}", ""},
+		{"reassigned wire variable", "if err := json.Unmarshal(data, &raw); err != nil { return err }", "raw = something(); if err := json.Unmarshal(data, &raw); err != nil { return err }", "reassigned or shadowed wire variable raw"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := strings.Replace(pipelineFixtureGo, tt.old, tt.replacement, 1)
+			dir, path := writePipelineFixture(t, pipelineFixtureSchema(), source)
+			issues, _, err := checkPipelineCoverage(dir, path, nil)
+			if tt.want == "" {
+				if err != nil || len(issues) != 0 {
+					t.Fatalf("got %v / %v", issues, err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("got %v; want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestPipelineSchemaErrors(t *testing.T) {
+	tests := []struct {
+		name   string
+		change func(schemaObject)
+		want   string
+	}{
+		{"missing defs", func(s schemaObject) { delete(s, "$defs") }, "missing object $defs"},
+		{"unrecognized schema", func(s schemaObject) { delete(fixtureDefs(s), "ActionV2") }, "ActionV2"},
+		{"unknown parameter shape", func(s schemaObject) {
+			fixtureDefs(s)["Click"] = schemaObject{"type": "object", "oneOf": []any{schemaObject{"properties": schemaObject{"a": schemaObject{}}}}}
+		}, "unsupported oneOf field alternatives"},
+		{"ref cycle", func(s schemaObject) {
+			fixtureDefs(s)["Click"] = schemaObject{"$ref": "#/$defs/Loop"}
+			fixtureDefs(s)["Loop"] = schemaObject{"$ref": "#/$defs/Click"}
+		}, "reference cycle"},
+		{"missing reference", func(s schemaObject) { fixtureDefs(s)["Click"] = schemaObject{"$ref": "#/$defs/Missing"} }, "missing object definition Missing"},
+		{"external reference", func(s schemaObject) {
+			fixtureDefs(s)["Click"] = schemaObject{"$ref": "https://example.com/schema.json"}
+		}, "unsupported reference"},
+		{"conditional fields", func(s schemaObject) { fixtureDefs(s)["Click"].(schemaObject)["if"] = schemaObject{} }, "unsupported field extraction keyword if"},
+		{"invalid enum", func(s schemaObject) { fixtureDefs(s)["ActionEnum"].(schemaObject)["enum"] = []any{123} }, "invalid type"},
+		{"unknown branch", func(s schemaObject) { fixtureProps(s, "ClickV2")["type"] = schemaObject{"enum": []any{"Click"}} }, "missing type const"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := pipelineFixtureSchema()
+			tt.change(s)
+			dir, path := writePipelineFixture(t, s, pipelineFixtureGo)
+			_, _, err := checkPipelineCoverage(dir, path, nil)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("got %v; want %q", err, tt.want)
+			}
+		})
+	}
+	t.Run("missing file", func(t *testing.T) {
+		_, err := readPipelineSchema(filepath.Join(t.TempDir(), "missing.json"))
+		if err == nil {
+			t.Fatal("expected missing schema error")
+		}
+	})
+	t.Run("broken JSON", func(t *testing.T) {
+		dir, path := writePipelineFixture(t, pipelineFixtureSchema(), pipelineFixtureGo)
+		_ = dir
+		if err := os.WriteFile(path, []byte("{"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		_, err := readPipelineSchema(path)
+		if err == nil || !strings.Contains(err.Error(), "parse schema") {
+			t.Fatalf("got %v", err)
+		}
+	})
+}
+
+func TestPipelineExclusions(t *testing.T) {
+	s := pipelineFixtureSchema()
+	fixtureProps(s, "Click")["pressure"] = schemaObject{"type": "integer"}
+	dir, path := writePipelineFixture(t, s, pipelineFixtureGo)
+	issues, excluded, err := checkPipelineCoverage(dir, path, map[string]string{"action.Click.param.pressure": "Intentional fixture omission"})
+	if err != nil || len(issues) != 0 || len(excluded) != 1 || !strings.Contains(excluded[0], "Intentional fixture omission") {
+		t.Fatalf("got %v / %v / %v", issues, excluded, err)
+	}
+	_, _, err = checkPipelineCoverage(dir, path, map[string]string{"action.Click.param.pressure": " "})
+	if err == nil || !strings.Contains(err.Error(), "nonempty reason") {
+		t.Fatalf("got %v", err)
+	}
+	issues, _, err = checkPipelineCoverage(dir, path, map[string]string{"action.Click.param.target": "Stale reason"})
+	if err != nil || !strings.Contains(issueText(issues), "stale pipeline exclusion") {
+		t.Fatalf("got %v / %v", issues, err)
+	}
+}
+
+func TestPipelineUnsupportedCodec(t *testing.T) {
+	source := strings.Replace(pipelineFixtureGo, "return json.Marshal(struct", "return anotherEncoder(struct", 1)
+	dir, path := writePipelineFixture(t, pipelineFixtureSchema(), source)
+	_, _, err := checkPipelineCoverage(dir, path, nil)
+	if err == nil || !strings.Contains(err.Error(), "unsupported WaitFreezesParam.MarshalJSON codec") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestPipelineCodecDirections(t *testing.T) {
+	const marshalTime = "func (w WaitFreezesParam) MarshalJSON() ([]byte,error) { return json.Marshal(struct { Time int `json:\"time\"` }{}) }\n"
+	const marshalEmpty = "func (w WaitFreezesParam) MarshalJSON() ([]byte,error) { return json.Marshal(struct{}{}) }\n"
+	const unmarshalTime = "func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error { var raw struct { Time int `json:\"time\"` }; if err := json.Unmarshal(data, &raw); err != nil { return err }; *w = WaitFreezesParam{Time: raw.Time}; return nil }\n"
+	const unmarshalEmpty = "func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error { var raw struct{}; if err := json.Unmarshal(data, &raw); err != nil { return err }; *w = WaitFreezesParam{}; return nil }\n"
+	start := strings.Index(pipelineFixtureGo, "func (w WaitFreezesParam) MarshalJSON()")
+	base := pipelineFixtureGo[:start]
+	tests := []struct{ name, defaultTag, codecs, want string }{
+		{"default directions match", "time", "", ""},
+		{"marshal only missing default decoding field", "-", marshalTime, "MarshalJSON field time absent from default JSON decoding"},
+		{"marshal only hides public field", "time", marshalEmpty, "JSON field time absent from MarshalJSON wire DTO"},
+		{"marshal only matches default decoding", "time", marshalTime, ""},
+		{"unmarshal only missing default encoding field", "-", unmarshalTime, "UnmarshalJSON field time absent from default JSON encoding"},
+		{"unmarshal only hides public field", "time", unmarshalEmpty, "JSON field time absent from UnmarshalJSON wire DTO"},
+		{"unmarshal only matches default encoding", "time", unmarshalTime, ""},
+		{"both codecs match without default field", "-", marshalTime + unmarshalTime, ""},
+		{"both codecs missing decoding field", "-", marshalTime + unmarshalEmpty, "MarshalJSON field time absent from UnmarshalJSON wire DTO"},
+		{"both codecs missing encoding field", "-", marshalEmpty + unmarshalTime, "UnmarshalJSON field time absent from MarshalJSON wire DTO"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := strings.Replace(base, "Time int `json:\"-\"`", "Time int `json:\""+tt.defaultTag+"\"`", 1) + tt.codecs
+			dir, path := writePipelineFixture(t, pipelineFixtureSchema(), source)
+			issues, _, err := checkPipelineCoverage(dir, path, nil)
+			if tt.want == "" {
+				if err != nil || len(issues) != 0 {
+					t.Fatalf("got %v / %v", issues, err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("got %v; want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestPipelineCustomIntrinsicFields(t *testing.T) {
+	s := pipelineFixtureSchema()
+	fixtureDefs(s)["CustomActionSchema"] = schemaObject{"$ref": "./custom.action.schema.json"}
+	fixtureDefs(s)["Click"].(schemaObject)["allOf"] = []any{schemaObject{"$ref": "#/$defs/CustomActionSchema"}}
+	dir, path := writePipelineFixture(t, s, pipelineFixtureGo)
+	issues, _, err := checkPipelineCoverage(dir, path, nil)
+	if err != nil || len(issues) != 0 {
+		t.Fatalf("got %v / %v", issues, err)
+	}
+}
+
+func replaceFixtureMarshal(source, body string) string {
+	start := strings.Index(source, "func (w WaitFreezesParam) MarshalJSON()")
+	end := strings.Index(source, "func (w *WaitFreezesParam) UnmarshalJSON")
+	return source[:start] + "func (w WaitFreezesParam) MarshalJSON() ([]byte,error) {\n" + body + "\n}\n" + source[end:]
+}
+
+const pipelineUnusedClosureMarshal = `
+ correct := struct { Time int ` + "`json:\"time\"`" + ` }{}
+ unused := func() { _, _ = json.Marshal(correct) }
+ _ = unused
+ return anotherEncoder(struct { Wrong int ` + "`json:\"wrong\"`" + ` }{})
+`
+
+const pipelineIgnoredHelperMarshal = `
+ correct := struct { Time int ` + "`json:\"time\"`" + ` }{}
+ _, _ = json.Marshal(correct)
+ return anotherEncoder(struct { Wrong int ` + "`json:\"wrong\"`" + ` }{})
+`
+
+func TestPipelineMarshalReturnTracing(t *testing.T) {
+	tests := []struct{ name, body, want string }{
+		{"unused closure with correct DTO", pipelineUnusedClosureMarshal, "expected a direct JSON helper call"},
+		{"ignored helper with correct DTO", pipelineIgnoredHelperMarshal, "expected a direct JSON helper call"},
+		{"returned bytes variable unsupported", `correct := struct { Time int ` + "`json:\"time\"`" + ` }{}; bytes, err := json.Marshal(correct); return bytes, err`, "expected a direct JSON helper call"},
+		{"unused closure with wrong DTO ignored", `unused := func() { _, _ = json.Marshal(struct { Wrong int ` + "`json:\"wrong\"`" + ` }{}) }; _ = unused; return json.Marshal(struct { Time int ` + "`json:\"time\"`" + ` }{})`, ""},
+		{"ignored helper with wrong DTO ignored", `_, _ = json.Marshal(struct { Wrong int ` + "`json:\"wrong\"`" + ` }{}); return json.Marshal(struct { Time int ` + "`json:\"time\"`" + ` }{})`, ""},
+		{"unused closure cannot mask actual returned DTO", `unused := func() { _, _ = json.Marshal(struct { Time int ` + "`json:\"time\"`" + ` }{}) }; _ = unused; return json.Marshal(struct { Wrong int ` + "`json:\"wrong\"`" + ` }{})`, "MarshalJSON field wrong absent from UnmarshalJSON"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir, path := writePipelineFixture(t, pipelineFixtureSchema(), replaceFixtureMarshal(pipelineFixtureGo, tt.body))
+			issues, _, err := checkPipelineCoverage(dir, path, nil)
+			if tt.want == "" {
+				if err != nil || len(issues) != 0 {
+					t.Fatalf("got %v / %v", issues, err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("got %v; want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestPipelineInheritedCodecs(t *testing.T) {
+	tests := []struct{ name, old, replacement, want string }{
+		{"alias to custom codec", "type ClickParam struct { Target string `json:\"target\"` }", `type ClickParam = ClickWire; type ClickWire struct { Target string ` + "`json:\"target\"`" + ` }; func (p ClickWire) MarshalJSON()([]byte,error){return json.Marshal(struct { Wrong int ` + "`json:\"wrong\"`" + ` }{})}`, "unsupported alias inheriting a custom JSON codec"},
+		{"anonymous embedded custom codec", "type ClickParam struct { Target string `json:\"target\"` }", `type ClickParam struct { ClickWire; Target string ` + "`json:\"target\"`" + ` }; type ClickWire struct{}; func (p ClickWire) MarshalJSON()([]byte,error){return json.Marshal(struct { Wrong int ` + "`json:\"wrong\"`" + ` }{})}`, "unsupported anonymous embedding promoting a JSON codec"},
+		{"local alias preserves methods", "type NoMethod WaitFreezesParam", "type NoMethod = WaitFreezesParam", "unsupported anonymous embedding promoting a JSON codec"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := strings.Replace(pipelineFixtureGo, tt.old, tt.replacement, 1)
+			dir, path := writePipelineFixture(t, pipelineFixtureSchema(), source)
+			_, _, err := checkPipelineCoverage(dir, path, nil)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("got %v; want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestPipelineCodecBearingWireTypes(t *testing.T) {
+	const wire = `
+type ClickWire struct { Target string ` + "`json:\"target\"`" + ` }
+func (p ClickWire) MarshalJSON() ([]byte,error) {
+ return json.Marshal(struct { Wrong int ` + "`json:\"wrong\"`" + ` }{})
+}
+`
+	tests := []struct{ name, body, want string }{
+		{"direct codec bearing wire", "return json.Marshal(ClickWire(p))", "unsupported wire type ClickWire with a custom JSON codec"},
+		{"local alias retains wire codec", "type DTO = ClickWire; return json.Marshal(DTO(p))", "unsupported wire type DTO with a custom JSON codec"},
+		{"defined wire type strips codec", "type DTO ClickWire; return json.Marshal(DTO(p))", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := pipelineFixtureGo + wire + "\nfunc (p ClickParam) MarshalJSON() ([]byte,error) { " + tt.body + " }\n"
+			dir, path := writePipelineFixture(t, pipelineFixtureSchema(), source)
+			issues, _, err := checkPipelineCoverage(dir, path, nil)
+			if tt.want == "" {
+				if err != nil || len(issues) != 0 {
+					t.Fatalf("got %v / %v", issues, err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("got %v; want %q", err, tt.want)
+			}
+		})
+	}
+}

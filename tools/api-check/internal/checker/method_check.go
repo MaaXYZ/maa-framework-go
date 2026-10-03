@@ -1,16 +1,13 @@
 package checker
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
-	"go/parser"
 	"go/printer"
 	"go/token"
 	"os"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -31,12 +28,6 @@ var methodGroupSpecs = []methodGroupSpec{
 	{group: methodGroupAdbInput, cPrefix: "MaaAdbInputMethod_"},
 	{group: methodGroupWin32Screencap, cPrefix: "MaaWin32ScreencapMethod_"},
 	{group: methodGroupWin32Input, cPrefix: "MaaWin32InputMethod_"},
-}
-
-type uintExprDef struct {
-	expr      ast.Expr
-	raw       string
-	iotaValue uint64
 }
 
 type normalizedCMethod struct {
@@ -88,31 +79,19 @@ func checkControllerMethodCoverage(maaDefHeaderPath string, adbControllerPath st
 	return issues, nil
 }
 
+// parseCControllerMethodGroups extracts the adb/win32 method macros from
+// MaaDef.h. The macros are evaluated with the shared C constant evaluator, so
+// method values may depend on helper macros and enums anywhere in the header
+// while width and unsigned semantics are preserved.
 func parseCControllerMethodGroups(headerPath string) (map[string]map[string]uint64, []issue, error) {
-	data, err := os.ReadFile(headerPath)
+	content, err := os.ReadFile(headerPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read %s: %w", headerPath, err)
 	}
 
-	defines := parseCDefineExprs(removeCComments(string(data)))
-	rawByGroup := map[string]map[string]string{
-		methodGroupAdbScreencap:   {},
-		methodGroupAdbInput:       {},
-		methodGroupWin32Screencap: {},
-		methodGroupWin32Input:     {},
-	}
-	for macroName, expr := range defines {
-		for _, spec := range methodGroupSpecs {
-			if !strings.HasPrefix(macroName, spec.cPrefix) {
-				continue
-			}
-			logicalName := strings.TrimPrefix(macroName, spec.cPrefix)
-			if logicalName == "" {
-				continue
-			}
-			rawByGroup[spec.group][logicalName] = expr
-			break
-		}
+	env, err := evaluateCConstSources([]cConstSource{{path: headerPath, content: string(content)}})
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse C constants: %w", err)
 	}
 
 	valuesByGroup := map[string]map[string]uint64{
@@ -124,152 +103,108 @@ func parseCControllerMethodGroups(headerPath string) (map[string]map[string]uint
 	issues := make([]issue, 0)
 
 	for _, spec := range methodGroupSpecs {
-		rawDefs := rawByGroup[spec.group]
-		if len(rawDefs) == 0 {
-			continue
-		}
-
-		replacements := make(map[string]string, len(rawDefs))
-		for logicalName := range rawDefs {
-			replacements[spec.cPrefix+logicalName] = logicalName
-		}
-
-		exprDefs := map[string]uintExprDef{}
-		parseFailures := map[string]string{}
-
-		for logicalName, rawExpr := range rawDefs {
-			normalized := normalizeCMacroExpr(rawExpr, replacements)
-			parsedExpr, parseErr := parser.ParseExpr(normalized)
-			if parseErr != nil {
-				parseFailures[logicalName] = parseErr.Error()
+		rawDefs := map[string]string{}
+		for name := range env.decls {
+			logicalName, ok := strings.CutPrefix(name, spec.cPrefix)
+			if !ok || logicalName == "" {
 				continue
 			}
-			exprDefs[logicalName] = uintExprDef{
-				expr: parsedExpr,
-				raw:  normalized,
+			rawDefs[logicalName] = name
+		}
+
+		for _, logicalName := range sortedStringKeys(rawDefs) {
+			fullName := rawDefs[logicalName]
+			if failure := env.failures[fullName]; failure != "" {
+				issues = append(issues, issue{
+					section: sectionControllerMethod,
+					message: fmt.Sprintf("[%s] failed to evaluate C method value: %s expr=%s (%s)", spec.group, logicalName, env.decls[fullName].expr, failure),
+				})
+				continue
 			}
-		}
-
-		groupValues, evalFailures := evaluateUintExprDefs(exprDefs)
-		valuesByGroup[spec.group] = groupValues
-
-		for _, logicalName := range sortedStringKeys(parseFailures) {
-			rawExpr := normalizeCMacroExpr(rawDefs[logicalName], replacements)
-			issues = append(issues, issue{
-				section: sectionControllerMethod,
-				message: fmt.Sprintf("[%s] failed to evaluate C method value: %s expr=%s (%s)", spec.group, logicalName, rawExpr, parseFailures[logicalName]),
-			})
-		}
-		for _, logicalName := range sortedStringKeys(evalFailures) {
-			rawExpr := exprDefs[logicalName].raw
-			issues = append(issues, issue{
-				section: sectionControllerMethod,
-				message: fmt.Sprintf("[%s] failed to evaluate C method value: %s expr=%s (%s)", spec.group, logicalName, rawExpr, evalFailures[logicalName]),
-			})
+			rawValue, ok := env.values[fullName]
+			if !ok {
+				issues = append(issues, issue{
+					section: sectionControllerMethod,
+					message: fmt.Sprintf("[%s] failed to evaluate C method value: %s expr=%s (not evaluated)", spec.group, logicalName, env.decls[fullName].expr),
+				})
+				continue
+			}
+			normalized, err := normalizeCNumericValue(numericValue{kind: numericUnsigned, bits: 64, val: rawValue})
+			if err != nil {
+				issues = append(issues, issue{
+					section: sectionControllerMethod,
+					message: fmt.Sprintf("[%s] failed to evaluate C method value: %s expr=%s (%s)", spec.group, logicalName, env.decls[fullName].expr, err),
+				})
+				continue
+			}
+			value, err := uint64Value(numericValue{kind: numericUnsigned, bits: 64, val: normalized})
+			if err != nil {
+				issues = append(issues, issue{
+					section: sectionControllerMethod,
+					message: fmt.Sprintf("[%s] failed to evaluate C method value: %s expr=%s (%s)", spec.group, logicalName, env.decls[fullName].expr, err),
+				})
+				continue
+			}
+			valuesByGroup[spec.group][logicalName] = value
 		}
 	}
 
 	return valuesByGroup, issues, nil
 }
 
+// parseGoControllerMethodGroups evaluates the exported Screencap*/Input*
+// constants of one controller file with go/types, keeping Go conversions,
+// widths, iota, and dependency semantics intact.
 func parseGoControllerMethodGroups(goPath string, controller string) (map[string]map[string]uint64, []issue, error) {
 	screencapGroup, inputGroup, err := goMethodGroups(controller)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, goPath, nil, 0)
+	evaluation, err := evaluateGoConstFile(goPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("parse %s: %w", goPath, err)
+		return nil, nil, err
 	}
 
-	type goMethodMeta struct {
-		group       string
-		logicalName string
-	}
-
-	defs := map[string]uintExprDef{}
-	metas := map[string]goMethodMeta{}
-
-	for _, decl := range file.Decls {
-		gen, ok := decl.(*ast.GenDecl)
-		if !ok || gen.Tok != token.CONST {
-			continue
-		}
-
-		iotaValue := uint64(0)
-		var prevValues []ast.Expr
-		for _, spec := range gen.Specs {
-			vs, ok := spec.(*ast.ValueSpec)
-			if !ok {
-				iotaValue++
-				continue
-			}
-
-			values := vs.Values
-			if len(values) > 0 {
-				prevValues = values
-			} else {
-				values = prevValues
-			}
-			if len(values) == 0 {
-				iotaValue++
-				continue
-			}
-
-			for i, ident := range vs.Names {
-				if ident == nil || ident.Name == "" || !ident.IsExported() {
-					continue
-				}
-				group, logicalName, matched := classifyGoMethodConst(ident.Name, screencapGroup, inputGroup)
-				if !matched {
-					continue
-				}
-				exprIdx := i
-				if exprIdx >= len(values) {
-					exprIdx = len(values) - 1
-				}
-				expr := values[exprIdx]
-				defs[ident.Name] = uintExprDef{
-					expr:      expr,
-					raw:       formatGoExpr(expr),
-					iotaValue: iotaValue,
-				}
-				metas[ident.Name] = goMethodMeta{
-					group:       group,
-					logicalName: logicalName,
-				}
-			}
-
-			iotaValue++
-		}
-	}
-
-	values, failures := evaluateUintExprDefs(defs)
 	out := map[string]map[string]uint64{
 		screencapGroup: {},
 		inputGroup:     {},
 	}
+	issues := make([]issue, 0)
 
-	for name, value := range values {
-		meta, ok := metas[name]
-		if !ok {
-			continue
-		}
-		out[meta.group][meta.logicalName] = value
+	names := make([]string, 0, len(evaluation.values)+len(evaluation.failures))
+	for name := range evaluation.values {
+		names = append(names, name)
 	}
+	for name := range evaluation.failures {
+		if _, ok := evaluation.values[name]; !ok {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
 
-	issues := make([]issue, 0, len(failures))
-	for _, name := range sortedStringKeys(failures) {
-		meta, ok := metas[name]
-		if !ok {
+	for _, name := range names {
+		group, logicalName, matched := classifyGoMethodConst(name, screencapGroup, inputGroup)
+		if !matched {
 			continue
 		}
-		issues = append(issues, issue{
-			section: sectionControllerMethod,
-			message: fmt.Sprintf("[%s] failed to evaluate Go method value: %s expr=%s (%s)", meta.group, meta.logicalName, defs[name].raw, failures[name]),
-		})
+		if failure, failed := evaluation.failures[name]; failed {
+			issues = append(issues, issue{
+				section: sectionControllerMethod,
+				message: fmt.Sprintf("[%s] failed to evaluate Go method value: %s expr=%s (%s)", group, logicalName, failure.expr, failure.err),
+			})
+			continue
+		}
+		decl := evaluation.values[name]
+		value, err := uint64Value(numericValue{kind: decl.kind, bits: decl.bits, val: decl.value})
+		if err != nil {
+			issues = append(issues, issue{
+				section: sectionControllerMethod,
+				message: fmt.Sprintf("[%s] failed to evaluate Go method value: %s expr=%s (%s)", group, logicalName, decl.expr, err),
+			})
+			continue
+		}
+		out[group][logicalName] = value
 	}
 
 	return out, issues, nil
@@ -476,137 +411,6 @@ func normalizeCMacroExpr(expr string, replacements map[string]string) string {
 		}
 		return token
 	})
-}
-
-func evaluateUintExprDefs(defs map[string]uintExprDef) (map[string]uint64, map[string]string) {
-	values := map[string]uint64{}
-	failures := map[string]string{}
-	pending := make(map[string]uintExprDef, len(defs))
-	for name, def := range defs {
-		pending[name] = def
-	}
-
-	for {
-		if len(pending) == 0 {
-			break
-		}
-		progress := false
-		for name, def := range pending {
-			value, err := evalUintExpr(def.expr, values, def.iotaValue)
-			if err == nil {
-				values[name] = value
-				delete(pending, name)
-				progress = true
-				continue
-			}
-			var unknownErr *unknownIdentifierError
-			if errors.As(err, &unknownErr) {
-				continue
-			}
-			failures[name] = err.Error()
-			delete(pending, name)
-			progress = true
-		}
-		if progress {
-			continue
-		}
-
-		for name, def := range pending {
-			_, err := evalUintExpr(def.expr, values, def.iotaValue)
-			if err != nil {
-				failures[name] = err.Error()
-			}
-		}
-		break
-	}
-
-	return values, failures
-}
-
-func evalUintExpr(expr ast.Expr, env map[string]uint64, iotaValue uint64) (uint64, error) {
-	switch node := expr.(type) {
-	case *ast.ParenExpr:
-		return evalUintExpr(node.X, env, iotaValue)
-	case *ast.BasicLit:
-		if node.Kind != token.INT {
-			return 0, fmt.Errorf("unsupported literal kind: %s", node.Kind.String())
-		}
-		value, err := strconv.ParseUint(node.Value, 0, 64)
-		if err != nil {
-			return 0, fmt.Errorf("parse int literal %q: %w", node.Value, err)
-		}
-		return value, nil
-	case *ast.Ident:
-		if node.Name == "iota" {
-			return iotaValue, nil
-		}
-		value, ok := env[node.Name]
-		if !ok {
-			return 0, &unknownIdentifierError{name: node.Name}
-		}
-		return value, nil
-	case *ast.UnaryExpr:
-		value, err := evalUintExpr(node.X, env, iotaValue)
-		if err != nil {
-			return 0, err
-		}
-		switch node.Op {
-		case token.ADD:
-			return value, nil
-		case token.SUB:
-			return ^value + 1, nil
-		case token.XOR, token.TILDE:
-			return ^value, nil
-		default:
-			return 0, fmt.Errorf("unsupported unary operator: %s", node.Op.String())
-		}
-	case *ast.BinaryExpr:
-		left, err := evalUintExpr(node.X, env, iotaValue)
-		if err != nil {
-			return 0, err
-		}
-		right, err := evalUintExpr(node.Y, env, iotaValue)
-		if err != nil {
-			return 0, err
-		}
-		switch node.Op {
-		case token.ADD:
-			return left + right, nil
-		case token.SUB:
-			return left - right, nil
-		case token.MUL:
-			return left * right, nil
-		case token.QUO:
-			if right == 0 {
-				return 0, fmt.Errorf("division by zero")
-			}
-			return left / right, nil
-		case token.REM:
-			if right == 0 {
-				return 0, fmt.Errorf("modulo by zero")
-			}
-			return left % right, nil
-		case token.SHL:
-			return left << right, nil
-		case token.SHR:
-			return left >> right, nil
-		case token.AND:
-			return left & right, nil
-		case token.OR:
-			return left | right, nil
-		case token.XOR:
-			return left ^ right, nil
-		default:
-			return 0, fmt.Errorf("unsupported binary operator: %s", node.Op.String())
-		}
-	case *ast.CallExpr:
-		if len(node.Args) != 1 {
-			return 0, fmt.Errorf("unsupported call expression")
-		}
-		return evalUintExpr(node.Args[0], env, iotaValue)
-	default:
-		return 0, fmt.Errorf("unsupported expression type: %T", expr)
-	}
 }
 
 func formatGoExpr(expr ast.Expr) string {

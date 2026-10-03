@@ -6,6 +6,8 @@ import "github.com/MaaXYZ/maa-framework-go/v4/internal/jsoncodec"
 //
 // Custom encoders must honor the encoding/json semantics used by this package,
 // including json.Marshaler, "omitempty", and the "omitzero" option added in Go 1.24.
+// json.RawMessage and the raw parameter types must encode as JSON values,
+// preserving numbers without conversion through floating-point Go values.
 // Support for "omitzero" includes calling IsZero() methods. For this package's
 // slice fields tagged "omitzero", nil must be omitted while non-nil empty slices
 // must be encoded as [].
@@ -15,6 +17,8 @@ import "github.com/MaaXYZ/maa-framework-go/v4/internal/jsoncodec"
 type JSONEncoder func(v any) ([]byte, error)
 
 // JSONDecoder defines how JSON is deserialized into values.
+// Custom decoders must validate the input and honor json.Unmarshaler and
+// json.RawMessage so pipeline v2 parameters retain their JSON representation.
 type JSONDecoder func(data []byte, v any) error
 
 // SetJSONEncoder sets the global JSON encoder used by this package.

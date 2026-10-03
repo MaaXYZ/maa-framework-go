@@ -6,7 +6,9 @@ import (
 	"time"
 )
 
-// Node represents a single task node in the pipeline.
+// Node represents a single task node using pipeline v2 JSON.
+// Action and Recognition use nested type/param objects; legacy flat pipeline input is not supported by this model.
+// Omitted fields are resolved by MaaFramework using the existing node or its defaults.
 type Node struct {
 	Name string `json:"-"`
 
@@ -21,7 +23,7 @@ type Node struct {
 	Next []NextItem `json:"next,omitempty"`
 	// RateLimit sets the minimum interval between recognition attempts in milliseconds. Default: 1000.
 	RateLimit *int64 `json:"rate_limit,omitempty"`
-	// Timeout sets the maximum time to wait for recognition in milliseconds. Default: 20000.
+	// Timeout sets the maximum time to wait for recognition in milliseconds. Default: 20000; -1 waits indefinitely.
 	Timeout *int64 `json:"timeout,omitempty"`
 	// OnError specifies nodes to execute when recognition times out or action execution fails.
 	OnError []NextItem `json:"on_error,omitempty"`
@@ -203,7 +205,7 @@ type NextItem struct {
 	Name string `json:"name"`
 	// JumpBack indicates whether to jump back to the parent node after this node's chain completes.
 	JumpBack bool `json:"jump_back"`
-	// Anchor indicates whether this node should be set as the anchor.
+	// Anchor resolves Name as an anchor name rather than a literal node name.
 	Anchor bool `json:"anchor"`
 }
 

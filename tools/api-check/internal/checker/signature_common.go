@@ -23,46 +23,82 @@ type goVarDeclLoc struct {
 }
 
 func parseGoVarFuncSignaturesWithLoc(parsedFile *ast.File, fset *token.FileSet, sourceFile string) (goVarSigMap, map[string]goVarDeclLoc) {
-	typeDefs := collectGoTypeDefs(parsedFile)
-	out := make(goVarSigMap)
-	locs := make(map[string]goVarDeclLoc)
-	for _, decl := range parsedFile.Decls {
-		gen, ok := decl.(*ast.GenDecl)
-		if !ok || gen.Tok != token.VAR {
-			continue
+	return collectGoFuncSignatures([]*ast.File{parsedFile}, fset, sourceFile)
+}
+
+// collectGoFuncSignatures resolves the package declarations before examining
+// registrations, so declaration order and file boundaries do not hide types.
+func collectGoFuncSignatures(files []*ast.File, fset *token.FileSet, sourceFile string) (goVarSigMap, map[string]goVarDeclLoc) {
+	types := map[string]ast.Expr{}
+	variables := map[string]ast.Expr{}
+	functions := map[string]*ast.FuncType{}
+	locs := map[string]goVarDeclLoc{}
+	for _, file := range files {
+		for name, expr := range collectGoTypeDefs(file) {
+			types[name] = expr
 		}
-		for _, spec := range gen.Specs {
-			vs, ok := spec.(*ast.ValueSpec)
-			if !ok || len(vs.Names) == 0 {
+		for _, decl := range file.Decls {
+			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Recv == nil {
+				functions[fn.Name.Name] = fn.Type
+			}
+			gen, ok := decl.(*ast.GenDecl)
+			if !ok || gen.Tok != token.VAR {
 				continue
 			}
-			fnType, ok := vs.Type.(*ast.FuncType)
-			if !ok {
-				continue
-			}
-			sig := methodSig{
-				params:  parseGoFieldTypesCanonical(fnType.Params, typeDefs),
-				returns: parseGoFieldTypesCanonical(fnType.Results, typeDefs),
-			}
-			for _, name := range vs.Names {
-				if name == nil || name.Name == "" {
-					continue
-				}
-				out[name.Name] = sig
-				if fset != nil {
-					pos := fset.Position(name.Pos())
-					file := sourceFile
-					if pos.Filename != "" {
-						file = filepath.Clean(pos.Filename)
+			for _, spec := range gen.Specs {
+				vs := spec.(*ast.ValueSpec)
+				for i, name := range vs.Names {
+					expr := vs.Type
+					if expr == nil && i < len(vs.Values) {
+						expr = vs.Values[i]
 					}
-					if file != "" && pos.Line > 0 {
-						locs[name.Name] = goVarDeclLoc{
-							file: file,
-							line: pos.Line,
+					variables[name.Name] = expr
+					if fset != nil {
+						pos := fset.Position(name.Pos())
+						fileName := sourceFile
+						if pos.Filename != "" {
+							fileName = filepath.Clean(pos.Filename)
 						}
+						locs[name.Name] = goVarDeclLoc{file: fileName, line: pos.Line}
 					}
 				}
 			}
+		}
+	}
+	var resolve func(ast.Expr, map[string]bool) *ast.FuncType
+	resolve = func(expr ast.Expr, seen map[string]bool) *ast.FuncType {
+		switch e := expr.(type) {
+		case *ast.FuncType:
+			return e
+		case *ast.FuncLit:
+			return e.Type
+		case *ast.ParenExpr:
+			return resolve(e.X, seen)
+		case *ast.CallExpr:
+			// Only a named function type conversion can establish this type.
+			if name, ok := e.Fun.(*ast.Ident); ok && types[name.Name] != nil {
+				return resolve(types[name.Name], seen)
+			}
+		case *ast.Ident:
+			if seen[e.Name] {
+				return nil
+			}
+			seen[e.Name] = true
+			defer delete(seen, e.Name)
+			if target := types[e.Name]; target != nil {
+				return resolve(target, seen)
+			}
+			if fn := functions[e.Name]; fn != nil {
+				return fn
+			}
+			return resolve(variables[e.Name], seen)
+		}
+		return nil
+	}
+	out := make(goVarSigMap)
+	for name, expr := range variables {
+		if fn := resolve(expr, map[string]bool{}); fn != nil {
+			out[name] = methodSig{params: parseGoFieldTypesCanonical(fn.Params, types), returns: parseGoFieldTypesCanonical(fn.Results, types)}
 		}
 	}
 	return out, locs
@@ -218,7 +254,7 @@ func parseHeaderFunctionSignatures(headerDir string, aliases map[string]string) 
 		if err != nil {
 			return err
 		}
-		content := removeCComments(string(data))
+		content := removeCPreprocessorLines(removeCComments(string(data)))
 		stmts := strings.Split(content, ";")
 		for _, raw := range stmts {
 			stmt := normalizeSpaces(strings.TrimSpace(raw))
@@ -230,6 +266,9 @@ func parseHeaderFunctionSignatures(headerDir string, aliases map[string]string) 
 			}
 			m := cAPIMacroInStmtRe.FindStringSubmatch(stmt)
 			if len(m) != 3 {
+				if cAPINameRe.MatchString(stmt) {
+					return fmt.Errorf("%s: unsupported exported C declaration: %s", path, stmt)
+				}
 				continue
 			}
 			module := moduleFromAPIMacro(strings.TrimSpace(m[1]))
@@ -239,7 +278,10 @@ func parseHeaderFunctionSignatures(headerDir string, aliases map[string]string) 
 			}
 			sig, name, ok := parseCFunctionDecl(decl, aliases)
 			if !ok {
-				continue
+				return fmt.Errorf("%s: unsupported exported C declaration: %s", path, decl)
+			}
+			if prior, exists := result[module][name]; exists && (!sameStringSlice(prior.params, sig.params) || !sameStringSlice(prior.returns, sig.returns)) {
+				return fmt.Errorf("%s: conflicting C declarations for %s", path, name)
 			}
 			result[module][name] = sig
 		}
@@ -336,7 +378,7 @@ func normalizeCTypeCanonical(raw string, aliases map[string]string) string {
 		return "<unsupported:c-alias:" + origBase + ">"
 	}
 	base, ptrCount := splitCBaseAndPtr(typ)
-	if base == "char" && ptrCount > 0 {
+	if base == "char" && ptrCount == 1 {
 		return "cstring"
 	}
 	if ptrCount > 0 {
@@ -431,13 +473,74 @@ func normalizeSpaces(s string) string {
 	return spacesRe.ReplaceAllString(strings.TrimSpace(s), " ")
 }
 
+// removeCComments preserves token boundaries and source positions. Quoted
+// strings and character literals can contain comment markers verbatim.
 func removeCComments(s string) string {
-	noBlock := cBlockCommentRe.ReplaceAllString(s, "")
-	return cLineCommentRe.ReplaceAllString(noBlock, "")
+	out := []byte(s)
+	var quote byte
+	for i := 0; i < len(s); i++ {
+		if quote != 0 {
+			if s[i] == '\\' {
+				i++
+				continue
+			}
+			if s[i] == quote {
+				quote = 0
+			}
+			continue
+		}
+		if s[i] == '"' || s[i] == '\'' {
+			quote = s[i]
+			continue
+		}
+		if i+1 >= len(s) || s[i] != '/' {
+			continue
+		}
+		end := i
+		switch s[i+1] {
+		case '/':
+			end = i + 2
+			for end < len(s) && s[end] != '\n' {
+				end++
+			}
+		case '*':
+			end = i + 2
+			for end+1 < len(s) && s[end:end+2] != "*/" {
+				end++
+			}
+			if end+1 < len(s) {
+				end += 2
+			} else {
+				end = len(s)
+			}
+		default:
+			continue
+		}
+		for j := i; j < end; j++ {
+			if out[j] != '\n' && out[j] != '\r' {
+				out[j] = ' '
+			}
+		}
+		i = end - 1
+	}
+	return string(out)
+}
+
+func removeCPreprocessorLines(s string) string {
+	lines := strings.Split(s, "\n")
+	continued := false
+	for i, line := range lines {
+		if continued || strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continued = strings.HasSuffix(strings.TrimSpace(line), "\\")
+			lines[i] = strings.Repeat(" ", len(line))
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 var (
 	cTypedefRe        = regexp.MustCompile(`(?s)\btypedef\s+([^;]+?)\s+([A-Za-z_][A-Za-z0-9_]*)\s*;`)
+	cAPINameRe        = regexp.MustCompile(`\bMAA_(FRAMEWORK|TOOLKIT|AGENT_SERVER|AGENT_CLIENT)_API\b`)
 	cAPIMacroInStmtRe = regexp.MustCompile(`MAA_(FRAMEWORK|TOOLKIT|AGENT_SERVER|AGENT_CLIENT)_API\s+(.+)`)
 	cFuncDeclRe       = regexp.MustCompile(`^(.+?)\b(Maa[A-Za-z0-9_]+)\s*\((.*)\)$`)
 	cParamNameRe      = regexp.MustCompile(`^(.+?)(?:\s+[A-Za-z_][A-Za-z0-9_]*)$`)

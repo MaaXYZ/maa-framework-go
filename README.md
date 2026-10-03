@@ -51,7 +51,7 @@ Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-p
 - **Custom Extensions** - Custom recognitions, actions, and controllers in pure Go
 - **Agent Support** - Run custom recognition and action logic from an external process
 - **Async Jobs and Events** - Poll job status and task details, or subscribe to resource, controller, and tasker events
-- **Pipeline and Runtime APIs** - Declarative JSON task flows; run tasks, recognitions, and actions from a Context at runtime
+- **Pipeline v2 model and runtime APIs** - Typed `Pipeline`, `Node`, `Action`, and `Recognition` builders emit nested v2 JSON and support runtime execution from a `Context`. Unknown parameters can be retained as raw JSON with [`RawActionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawActionParam) and [`RawRecognitionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawRecognitionParam); this fallback does not add native support for unknown types.
 
 ## 📦 Installation
 
@@ -206,6 +206,8 @@ Keep every resource and controller bound to a tasker alive until the tasker is d
 Other operations require caller coordination: serialize options, resource and pipeline changes, calls through a `Context`, and AgentClient/AgentServer lifecycle operations. Mutable configuration objects such as `Pipeline` and `Node` also require caller synchronization. Handle lifetime checks do not make all native operations thread-safe.
 
 Change event sinks and custom recognition/action registrations only when the instance and all associated taskers are idle. Stop new submissions and let their work and callbacks finish before adding, replacing, removing, or clearing registrations. Configuration transactions on the same instance are serialized, including through borrowed views, but must not overlap native execution. Do not change registrations from a callback. `AddSink` and `AddContextSink` return 0 on registration failure; removing an already-removed sink is a no-op. Unregistering an unknown custom recognition or action returns an error.
+
+`Tasker.OnNodeWaitFreezesInContext` subscribes to `Node.WaitFreezes` with `NodeWaitFreezesDetail`. Custom context sinks can optionally implement `ContextWaitFreezesEventSink`. For Win32 background input, call `Controller.SetBackgroundManagedKeys` before connecting; an empty slice clears the key list.
 
 Configure AgentServer before `AgentServerStartUp`. During service execution or after join or detach, custom registration and startup return `ErrInUse`, and adding a sink returns 0. Without prior detach, `AgentServerShutDown` permanently closes the server, even when called before startup: later startup and custom registration return `ErrClosed`, and adding a sink returns 0. The native communication context cannot be reset, so `Release` followed by `Init` does not restore startup or configuration. After an attached server shuts down, `Release` is allowed and repeated shutdown calls are no-ops. Configuration and startup are serialized; callers must serialize startup, shutdown, join, and detach with each other. After detach, shutdown cannot establish idleness and `Release` remains unavailable.
 

@@ -1,5 +1,16 @@
-header_dir: ../../deps/include
-blacklist:
-  # Known intentional exceptions can be listed here.
-  # MaaDbgControllerCreate is excluded from the Go binding by design; see blank_controller.go.
-  # - MaaDbgControllerCreate
+header_dir: deps/include
+native_exclusions: {}
+# Exact symbols with nonempty reasons; stale exclusions fail the check.
+# native_exclusions:
+#   MaaDbgControllerCreate: "BlankController provides the Go no-op controller."
+
+# Legacy config and repeatable --blacklist flags remain supported.
+blacklist: []
+
+# Opt in to pipeline v2 type and field-name coverage. Obtain this schema and
+# header_dir from the same MaaFramework release. Paths are repository-relative.
+# pipeline_schema: deps/tools/pipeline.schema.json
+
+# Exact reported paths only; every intentional difference needs a reason.
+# Stale entries fail the check so exceptions cannot silently accumulate.
+pipeline_exclusions: {}

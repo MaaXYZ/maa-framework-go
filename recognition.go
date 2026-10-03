@@ -7,14 +7,20 @@ import (
 	"slices"
 )
 
-// Recognition defines the recognition configuration for a node.
+// Recognition defines a node's recognition using the pipeline v2 type/param object format.
+// Known types decode to their typed parameters. Unrecognized type names retain
+// their parameter JSON as *RawRecognitionParam; this does not establish native support.
+// Unknown fields outside param, and unmodeled fields of known parameters, are not retained.
 type Recognition struct {
 	// Type specifies the recognition algorithm type.
 	Type RecognitionType `json:"type,omitempty"`
 	// Param specifies the recognition parameters.
+	// A nil Param omits param when encoding. For unknown types, an explicit JSON null is retained.
 	Param RecognitionParam `json:"param,omitempty"`
 }
 
+// UnmarshalJSON decodes a pipeline v2 recognition. Errors in known parameter types
+// are returned without falling back to raw JSON. On error the recognition is unchanged.
 func (nr *Recognition) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Type  RecognitionType `json:"type,omitempty"`
@@ -24,14 +30,20 @@ func (nr *Recognition) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	nr.Type = raw.Type
-
-	if len(raw.Param) == 0 || string(raw.Param) == "null" {
-		return nil
+	param, err := decodeRecognitionParam(raw.Type, raw.Param)
+	if err != nil {
+		return err
 	}
+	*nr = Recognition{Type: raw.Type, Param: param}
+	return nil
+}
 
+func decodeRecognitionParam(recognitionType RecognitionType, data []byte) (RecognitionParam, error) {
+	if len(data) == 0 {
+		return nil, nil
+	}
 	var param RecognitionParam
-	switch nr.Type {
+	switch recognitionType {
 	case RecognitionTypeDirectHit, "":
 		param = &DirectHitParam{}
 	case RecognitionTypeTemplateMatch:
@@ -53,14 +65,16 @@ func (nr *Recognition) UnmarshalJSON(data []byte) error {
 	case RecognitionTypeCustom:
 		param = &CustomRecognitionParam{}
 	default:
-		return errors.New("unsupported recognition type: " + string(nr.Type))
+		param = new(RawRecognitionParam)
 	}
 
-	if err := unmarshalJSON(raw.Param, param); err != nil {
-		return err
+	if _, raw := param.(*RawRecognitionParam); !raw && bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		return nil, nil
 	}
-	nr.Param = param
-	return nil
+	if err := unmarshalJSON(data, param); err != nil {
+		return nil, err
+	}
+	return param, nil
 }
 
 // SetBoxIndex sets which sub-recognition result's box to use as the final box.
@@ -72,7 +86,8 @@ func (nr *Recognition) SetBoxIndex(idx int) *Recognition {
 	return nr
 }
 
-// RecognitionType defines the available recognition algorithm types.
+// RecognitionType names a pipeline v2 recognition. Constants identify the types
+// modeled by this package; other names may be used with RawRecognitionParam if the native library supports them.
 type RecognitionType string
 
 const (
@@ -88,7 +103,7 @@ const (
 	RecognitionTypeCustom                RecognitionType = "Custom"
 )
 
-// RecognitionParam is the interface for recognition parameters.
+// RecognitionParam is the interface for typed recognition parameters and RawRecognitionParam.
 type RecognitionParam interface {
 	isRecognitionParam()
 }
@@ -108,12 +123,20 @@ const (
 )
 
 // DirectHitParam defines parameters for direct hit recognition.
-// DirectHit performs no actual recognition and always succeeds.
-type DirectHitParam struct{}
+// It performs no image matching and uses the first resolved ROI as its result box.
+// Recognition fails if the ROI cannot be resolved, for example an unavailable node reference.
+type DirectHitParam struct {
+	// ROI specifies the region to return. The zero value inherits the existing ROI or defaults to the whole image.
+	ROI Target `json:"roi,omitzero"`
+	// ROIOffset specifies an offset applied to the ROI.
+	// Nil inherits the existing/default offset; a pointer to a zero Rect clears it explicitly.
+	ROIOffset *Rect `json:"roi_offset,omitempty"`
+}
 
 func (n DirectHitParam) isRecognitionParam() {}
 
-// RecDirectHit creates a DirectHit recognition that always succeeds without actual recognition.
+// RecDirectHit creates a DirectHit recognition with the default ROI, without image matching.
+// To choose an ROI, set the returned recognition's Param to a DirectHitParam.
 func RecDirectHit() *Recognition {
 	return &Recognition{
 		Type:  RecognitionTypeDirectHit,
@@ -135,6 +158,7 @@ const (
 type TemplateMatchMethod int
 
 const (
+	TemplateMatchMethodSQDIFF_NORMED          TemplateMatchMethod = 1     // Normalized squared difference
 	TemplateMatchMethodSQDIFF_NORMED_Inverted TemplateMatchMethod = 10001 // Normalized squared difference (Inverted)
 	TemplateMatchMethodCCORR_NORMED           TemplateMatchMethod = 3     // Normalized cross correlation
 	TemplateMatchMethodCCOEFF_NORMED          TemplateMatchMethod = 5     // Normalized correlation coefficient (default, most accurate)
@@ -154,7 +178,8 @@ type TemplateMatchParam struct {
 	OrderBy TemplateMatchOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
 	Index int `json:"index,omitempty"`
-	// Method specifies the matching algorithm. 1: SQDIFF_NORMED, 3: CCORR_NORMED, 5: CCOEFF_NORMED. Default: 5.
+	// Method specifies the matching algorithm: 1 (SQDIFF_NORMED), 3 (CCORR_NORMED),
+	// 5 (CCOEFF_NORMED, default), or 10001 (inverted SQDIFF_NORMED).
 	Method TemplateMatchMethod `json:"method,omitempty"`
 	// GreenMask enables green color masking for transparent areas.
 	GreenMask bool `json:"green_mask,omitempty"`
@@ -417,6 +442,12 @@ type NeuralNetworkDetectParam struct {
 	// Expected selects class indices or labels, preserving their order.
 	// Nil inherits the existing/default selection; an empty list matches all classes.
 	Expected ClassSelectors `json:"expected,omitzero"`
+	// Threshold specifies confidence thresholds in [0, 1], in Expected order.
+	// Nil or an empty list inherits the existing thresholds or defaults to 0.3.
+	// A single threshold applies to all expected classes; otherwise lengths must match.
+	// A nonempty list containing 0 sends zero explicitly.
+	// JSON input may be a number or an array; encoding always uses an array.
+	Threshold []float64 `json:"threshold,omitempty"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Area | Random | Expected
 	OrderBy NeuralNetworkDetectOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
@@ -425,12 +456,78 @@ type NeuralNetworkDetectParam struct {
 
 func (n NeuralNetworkDetectParam) isRecognitionParam() {}
 
+// UnmarshalJSON normalizes a scalar threshold to a one-element list.
+// Invalid parameter values leave the receiver unchanged.
+func (p *NeuralNetworkDetectParam) UnmarshalJSON(data []byte) error {
+	raw := struct {
+		ROI       Target                        `json:"roi,omitzero"`
+		ROIOffset Rect                          `json:"roi_offset,omitempty"`
+		Labels    []string                      `json:"labels,omitempty"`
+		Model     string                        `json:"model,omitempty"`
+		Expected  ClassSelectors                `json:"expected,omitzero"`
+		Threshold neuralNetworkDetectThresholds `json:"threshold,omitempty"`
+		OrderBy   NeuralNetworkDetectOrderBy    `json:"order_by,omitempty"`
+		Index     int                           `json:"index,omitempty"`
+	}{
+		ROI:       p.ROI,
+		ROIOffset: p.ROIOffset,
+		Labels:    slices.Clone(p.Labels),
+		Model:     p.Model,
+		Expected:  slices.Clone(p.Expected),
+		Threshold: neuralNetworkDetectThresholds(slices.Clone(p.Threshold)),
+		OrderBy:   p.OrderBy,
+		Index:     p.Index,
+	}
+	if err := unmarshalJSON(data, &raw); err != nil {
+		return err
+	}
+	*p = NeuralNetworkDetectParam{
+		ROI:       raw.ROI,
+		ROIOffset: raw.ROIOffset,
+		Labels:    raw.Labels,
+		Model:     raw.Model,
+		Expected:  raw.Expected,
+		Threshold: []float64(raw.Threshold),
+		OrderBy:   raw.OrderBy,
+		Index:     raw.Index,
+	}
+	return nil
+}
+
+type neuralNetworkDetectThresholds []float64
+
+func (t *neuralNetworkDetectThresholds) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	var values []*float64
+	if len(data) > 0 && data[0] == '[' {
+		if err := unmarshalJSON(data, &values); err != nil {
+			return err
+		}
+	} else {
+		var value *float64
+		if err := unmarshalJSON(data, &value); err != nil {
+			return err
+		}
+		values = []*float64{value}
+	}
+	thresholds := make(neuralNetworkDetectThresholds, len(values))
+	for i, value := range values {
+		if value == nil {
+			return errors.New("neural network detection threshold must contain only numbers")
+		}
+		thresholds[i] = *value
+	}
+	*t = thresholds
+	return nil
+}
+
 // RecNeuralNetworkDetect creates a NeuralNetworkDetect recognition with the given parameters.
 // This detects objects at arbitrary positions using deep learning models like YOLO.
 func RecNeuralNetworkDetect(p NeuralNetworkDetectParam) *Recognition {
 	param := p
 	param.Labels = slices.Clone(p.Labels)
 	param.Expected = slices.Clone(p.Expected)
+	param.Threshold = slices.Clone(p.Threshold)
 	return &Recognition{
 		Type:  RecognitionTypeNeuralNetworkDetect,
 		Param: &param,
@@ -438,12 +535,13 @@ func RecNeuralNetworkDetect(p NeuralNetworkDetectParam) *Recognition {
 }
 
 // SubRecognitionItem is one element of And all_of / Or any_of.
-// It is either a node name (string reference) or an inline recognition (object with type, param, sub_name).
+// It is either a node name (string reference) or a v2 inline recognition with a recognition object and optional sub_name.
 // GetNodeData from C++ outputs: all_of/any_of as array of string | object; this type supports both.
 type SubRecognitionItem struct {
 	// NodeName is set when the JSON value is a string (reference to another node by name).
 	NodeName string
 	// Inline is set when the JSON value is an object (inline recognition with type, param, sub_name).
+	// The v2 JSON envelope nests type and param under recognition.
 	Inline *InlineSubRecognition
 }
 
@@ -501,11 +599,20 @@ func Inline(rec *Recognition, name ...string) SubRecognitionItem {
 	return SubRecognitionItem{Inline: newInlineSub(subName, rec)}
 }
 
-// InlineSubRecognition is an inline sub-recognition element (object form in all_of/any_of).
-// It has sub_name plus type and param; used for both And and Or.
+// InlineSubRecognition is a v2 inline sub-recognition in all_of/any_of.
+// JSON uses {"sub_name": "...", "recognition": {"type": "...", "param": {...}}}.
+// SubName is retained by both And and Or; only And uses it to resolve later sub-recognition ROIs.
 type InlineSubRecognition struct {
 	SubName string `json:"sub_name,omitempty"`
 	Recognition
+}
+
+// MarshalJSON encodes the v2 recognition envelope used by MaaFramework.
+func (n InlineSubRecognition) MarshalJSON() ([]byte, error) {
+	return marshalJSON(struct {
+		SubName     string      `json:"sub_name,omitempty"`
+		Recognition Recognition `json:"recognition"`
+	}{SubName: n.SubName, Recognition: n.Recognition})
 }
 
 func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {

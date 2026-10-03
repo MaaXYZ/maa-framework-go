@@ -123,7 +123,11 @@ jobs:
         run: |
           echo "DYLD_LIBRARY_PATH=${{ github.workspace }}/deps/bin:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
 
-      - name: Run API Check
+      - name: Run API Check Tool Tests
+        run: |
+          go -C tools/api-check test ./...
+
+      - name: Run API and Pipeline Check
         run: |
           go -C tools/api-check run . --config config.ci.yaml
 

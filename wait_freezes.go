@@ -7,7 +7,8 @@ import (
 // WaitFreezesParam defines parameters for waiting until screen stabilizes.
 // The screen is considered stable when there are no significant changes for a continuous period.
 type WaitFreezesParam struct {
-	// Time specifies the duration that the screen must remain stable. Default: 1ms.
+	// Time specifies the duration that the screen must remain stable.
+	// Zero is omitted, inheriting the existing value; the framework's built-in default is zero (no wait).
 	// JSON: serialized as integer milliseconds.
 	Time time.Duration `json:"-"`
 	// Target specifies the region to monitor for changes.

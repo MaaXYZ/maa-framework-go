@@ -1,8 +1,12 @@
 header_dir: deps/include
-blacklist:
-  - MaaDbgControllerCreate
-  - MaaImageBufferGetEncoded
-  - MaaImageBufferGetEncodedSize
-  - MaaImageBufferSetEncoded
-  - MaaKWinControllerCreate
-  - MaaWlRootsControllerCreate
+pipeline_schema: deps/tools/pipeline.schema.json
+pipeline_exclusions:
+  action.KeyDown.param.key_code: "Legacy alias; Go emits canonical key, as does normalized native output."
+  action.KeyUp.param.key_code: "Legacy alias; Go emits canonical key, as does normalized native output."
+native_exclusions:
+  MaaDbgControllerCreate: "BlankController provides the Go no-op controller."
+  MaaImageBufferGetEncoded: "The Go buffer API uses raw image buffers."
+  MaaImageBufferGetEncodedSize: "The Go buffer API uses raw image buffers."
+  MaaImageBufferSetEncoded: "The Go buffer API uses raw image buffers."
+  MaaKWinControllerCreate: "The Go binding currently exposes the unified Linux controller."
+  MaaWlRootsControllerCreate: "The Go binding currently exposes the unified Linux controller."

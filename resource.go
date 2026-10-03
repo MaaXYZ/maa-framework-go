@@ -819,7 +819,8 @@ func (r *Resource) GetCustomActionList() ([]string, error) {
 
 // GetDefaultRecognitionParam returns the default recognition parameters for the specified type from DefaultPipelineMgr.
 // recoType is a recognition type (e.g., RecognitionTypeOCR, RecognitionTypeTemplateMatch).
-// Returns the parsed RecognitionParam interface.
+// Known types return typed parameters; other types supported by the native library
+// return *RawRecognitionParam. Native lookup failures and known-type decode errors are returned.
 func (r *Resource) GetDefaultRecognitionParam(recoType RecognitionType) (RecognitionParam, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -839,35 +840,8 @@ func (r *Resource) GetDefaultRecognitionParam(recoType RecognitionType) (Recogni
 		return nil, errors.New("default recognition param is empty")
 	}
 
-	// Create the appropriate param type based on recoType
-	var param RecognitionParam
-	switch recoType {
-	case RecognitionTypeDirectHit, "":
-		param = &DirectHitParam{}
-	case RecognitionTypeTemplateMatch:
-		param = &TemplateMatchParam{}
-	case RecognitionTypeFeatureMatch:
-		param = &FeatureMatchParam{}
-	case RecognitionTypeColorMatch:
-		param = &ColorMatchParam{}
-	case RecognitionTypeOCR:
-		param = &OCRParam{}
-	case RecognitionTypeNeuralNetworkClassify:
-		param = &NeuralNetworkClassifyParam{}
-	case RecognitionTypeNeuralNetworkDetect:
-		param = &NeuralNetworkDetectParam{}
-	case RecognitionTypeAnd:
-		param = &AndRecognitionParam{}
-	case RecognitionTypeOr:
-		param = &OrRecognitionParam{}
-	case RecognitionTypeCustom:
-		param = &CustomRecognitionParam{}
-	default:
-		return nil, fmt.Errorf("unknown recognition type: %s", recoType)
-	}
-
-	// Unmarshal the JSON string into the param
-	if err := unmarshalJSON([]byte(jsonStr), param); err != nil {
+	param, err := decodeRecognitionParam(recoType, []byte(jsonStr))
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal default recognition param: %w", err)
 	}
 
@@ -876,7 +850,8 @@ func (r *Resource) GetDefaultRecognitionParam(recoType RecognitionType) (Recogni
 
 // GetDefaultActionParam returns the default action parameters for the specified type from DefaultPipelineMgr.
 // actionType is an action type (e.g., ActionTypeClick, ActionTypeSwipe).
-// Returns the parsed ActionParam interface.
+// Known types return typed parameters; other types supported by the native library
+// return *RawActionParam. Native lookup failures and known-type decode errors are returned.
 func (r *Resource) GetDefaultActionParam(actionType ActionType) (ActionParam, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -896,57 +871,8 @@ func (r *Resource) GetDefaultActionParam(actionType ActionType) (ActionParam, er
 		return nil, errors.New("default action param is empty")
 	}
 
-	// Create the appropriate param type based on actionType
-	var param ActionParam
-	switch actionType {
-	case ActionTypeDoNothing, "":
-		param = &DoNothingParam{}
-	case ActionTypeClick:
-		param = &ClickParam{}
-	case ActionTypeLongPress:
-		param = &LongPressParam{}
-	case ActionTypeSwipe:
-		param = &SwipeParam{}
-	case ActionTypeMultiSwipe:
-		param = &MultiSwipeParam{}
-	case ActionTypeTouchDown:
-		param = &TouchDownParam{}
-	case ActionTypeTouchMove:
-		param = &TouchMoveParam{}
-	case ActionTypeTouchUp:
-		param = &TouchUpParam{}
-	case ActionTypeClickKey:
-		param = &ClickKeyParam{}
-	case ActionTypeLongPressKey:
-		param = &LongPressKeyParam{}
-	case ActionTypeKeyDown:
-		param = &KeyDownParam{}
-	case ActionTypeKeyUp:
-		param = &KeyUpParam{}
-	case ActionTypeInputText:
-		param = &InputTextParam{}
-	case ActionTypeStartApp:
-		param = &StartAppParam{}
-	case ActionTypeStopApp:
-		param = &StopAppParam{}
-	case ActionTypeStopTask:
-		param = &StopTaskParam{}
-	case ActionTypeScroll:
-		param = &ScrollParam{}
-	case ActionTypeCommand:
-		param = &CommandParam{}
-	case ActionTypeShell:
-		param = &ShellParam{}
-	case ActionTypeScreencap:
-		param = &ScreencapParam{}
-	case ActionTypeCustom:
-		param = &CustomActionParam{}
-	default:
-		return nil, fmt.Errorf("unknown action type: %s", actionType)
-	}
-
-	// Unmarshal the JSON string into the param
-	if err := unmarshalJSON([]byte(jsonStr), param); err != nil {
+	param, err := decodeActionParam(actionType, []byte(jsonStr))
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal default action param: %w", err)
 	}
 

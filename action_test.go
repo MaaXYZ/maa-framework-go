@@ -3,9 +3,23 @@ package maa
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestShellParam_UnmarshalJSON_Overflow(t *testing.T) {
+	for _, input := range []string{
+		`{"cmd":"new","shell_timeout":9223372036854775807}`,
+		`{"cmd":"new","shell_timeout":-9223372036854775808}`,
+	} {
+		timeout := time.Second
+		original := ShellParam{Cmd: "old", ShellTimeout: &timeout}
+		got := original
+		require.ErrorContains(t, unmarshalJSON([]byte(input), &got), "time.Duration range")
+		require.Equal(t, original, got)
+	}
+}
 
 func TestAction_AutoUpJSON(t *testing.T) {
 	for _, actionType := range []ActionType{ActionTypeTouchDown, ActionTypeKeyDown} {
