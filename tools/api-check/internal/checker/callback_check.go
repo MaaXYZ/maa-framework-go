@@ -13,7 +13,9 @@ import (
 
 // callbackABIMatches applies the purego trampoline rules separately from the
 // ordinary function rules. C strings are byte pointers in callbacks; a C void
-// or MaaBool return may use a uintptr result in the Go trampoline.
+// or MaaBool return needs a uintptr result in the Go trampoline. On the
+// supported 64-bit targets, Windows requires exactly one pointer-sized,
+// non-floating-point Go result, even when its type matches the C result.
 func callbackABIMatches(goSig, cSig methodSig) bool {
 	if len(goSig.params) != len(cSig.params) {
 		return false
@@ -30,10 +32,13 @@ func callbackABIMatches(goSig, cSig methodSig) bool {
 			return false
 		}
 	}
-	if len(goSig.returns) > 1 {
+	if len(goSig.returns) != 1 {
 		return false
 	}
-	if len(goSig.returns) == 1 && (goSig.returns[0] == "cstring" || goSig.returns[0] == "image" || goSig.returns[0] == "interface" || strings.HasPrefix(goSig.returns[0], "callback:") || strings.HasPrefix(goSig.returns[0], "<unsupported:")) {
+	switch goSig.returns[0] {
+	case "ptr", "int64", "uint64":
+		// The supported Windows, Linux and macOS architectures are 64-bit.
+	default:
 		return false
 	}
 	if sameStringSlice(goSig.returns, cSig.returns) {

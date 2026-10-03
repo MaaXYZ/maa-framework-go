@@ -32,6 +32,7 @@ It checks both symbol coverage and function signatures.
   - method signature consistency using the same canonical type rules, including local embedded interfaces
   - validate context/output adapter argument types, counts, and positions before removing them
   - C string callback arguments/results use Go byte pointers; Go `string` is rejected by purego callbacks
+  - require exactly one pointer-sized, non-floating-point Go callback result on the supported 64-bit targets, including C `void` and `MaaBool` callbacks
   - compare callback struct field order and pointer-sized storage, bindings, and trampoline ABI
   - compare native callback typedefs and their root trampolines; require Go declarations for callbacks used by exported C functions
 - Controller method coverage:
@@ -52,6 +53,7 @@ It checks both symbol coverage and function signatures.
 - Pipeline v2 coverage, when `pipeline_schema` is configured:
   - compare `ActionEnum` and `RecognitionEnum` independently with Go type constants
   - require a typed parameter decoder case for each known type, selected by the decoded Type and flowing into the receiver's Param
+  - reject writes to decoded envelopes or their Type fields after decoding, hidden envelope aliases or escapes, and reassigned or shadowed helper discriminants
   - ignore unused helpers and reject ambiguous receiver writes, shadowing, helper cycles, and fixed discriminants; raw fallback does not count as typed support
   - compare JSON field names in both directions for `Node`, Action/Recognition envelopes, parameters, `SwipeListItem`, `WaitFreezes`, `NodeAttr`, and optional `SubRecognitionInline`
   - inspect JSON tags, anonymous embedding, type aliases, and the actual struct passed to supported custom JSON codecs, including duration wire fields
@@ -63,6 +65,14 @@ Pipeline coverage is limited to the v2 object format (`{"type": "Click", "param"
 Schema metadata (`jsonComments`, `jsonCode`, `jsonDocument`, `jsonKeywords`), deprecated node fields, the v2 default-field helper branches, and the `CustomActionSchema`/`CustomRecognitionSchema` extension hooks are outside this inventory. Intrinsic Custom parameter fields are checked; arbitrary custom payload contents stay open. Other external schema references are rejected. The checker reads source using Go AST and requires no native libraries. It supports the repository's declaration shapes; it does not preprocess arbitrary C conditional branches or prove general Go control flow.
 
 Supported custom codecs pass a struct, a defined type without methods, or a traced local variable to `marshalJSON`/`unmarshalJSON` or `json.Marshal`/`json.Unmarshal`. `MarshalJSON` must directly return the supported JSON helper call; unrelated calls and calls inside closures do not establish coverage. Returning encoded bytes through variables, wire types with their own or inherited custom codecs, anonymous embedding promoting custom codecs, and conflicting JSON field names are rejected as unsupported shapes. Local `type NoMethod Param` DTOs remain supported because they strip methods; `type NoMethod = Param` aliases preserve methods. Other shapes require extending the checker explicitly.
+
+## Preventing false passes
+
+Checker changes need both a valid baseline that passes and isolated, compilable mutations that must fail. Test the complete extraction or CLI path, rather than only a comparison helper: overwrite a decoded discriminator, replace its envelope, reassign a helper parameter, or change a callback return type while keeping the C and Go signatures identical. Include nearby aliases, shadowing, and closure writes when they can hide the same fault. A mutation must produce a reported difference or an unsupported-shape error, never `PASS`.
+
+Use independent runtime evidence for ABI rules. The Windows-only checker test registers callbacks with the root module's purego dependency and compares the observed registration results with the checker's decisions. It needs no MaaFramework libraries. Cross-compilation alone cannot expose callback registration panics; the existing Windows CI executes this test.
+
+Keep unsupported data flow conservative: reject shapes the extractor cannot establish, and expand the supported subset only with passing baselines and failing mutations. Source inventory checks do not prove arbitrary runtime behavior, so retain native round-trip tests for value semantics. Statement coverage measures exercised code, not the number of broken bindings detected; review surviving mutations against the documented scope before accepting a checker change.
 
 ## Usage
 

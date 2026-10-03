@@ -311,7 +311,11 @@ func (d *pipelineDecoder) collectVars(body ast.Node) *pipelineVars {
 
 func (d *pipelineDecoder) analyzeUnmarshal(fn *ast.FuncDecl) error {
 	vars := d.collectVars(fn.Body)
-	d.decoded = append(d.decoded, d.envelopeSelectors(fn, vars)...)
+	selectors, err := d.envelopeSelectors(fn, vars)
+	if err != nil {
+		return err
+	}
+	d.decoded = append(d.decoded, selectors...)
 	d.addReceiverTypeDiscriminant(fn)
 
 	var switches []*ast.SwitchStmt
@@ -616,17 +620,28 @@ func (d *pipelineDecoder) addReceiverTypeDiscriminant(fn *ast.FuncDecl) {
 	d.decoded = append(d.decoded, recvType)
 }
 
+// pipelineEnvelope records a local envelope struct decoded from the method's
+// JSON data argument and the decoded position of its Type field.
+type pipelineEnvelope struct {
+	field   string
+	decoded token.Pos
+}
+
 // envelopeSelectors returns the decoded Type selectors of every raw envelope
-// struct decoded from the method's JSON data argument.
-func (d *pipelineDecoder) envelopeSelectors(fn *ast.FuncDecl, vars *pipelineVars) []ast.Expr {
+// struct decoded from the method's JSON data argument. A selector only counts
+// while the establishing decode is the last thing that can set it: a later
+// write to the envelope or its Type field, a write from a closure, or an alias
+// or pointer escape of the envelope is an extraction error.
+func (d *pipelineDecoder) envelopeSelectors(fn *ast.FuncDecl, vars *pipelineVars) ([]ast.Expr, error) {
 	dataParam := ""
 	if fn.Type.Params != nil && len(fn.Type.Params.List) != 0 && len(fn.Type.Params.List[0].Names) != 0 {
 		dataParam = fn.Type.Params.List[0].Names[0].Name
 	}
 	if dataParam == "" {
-		return nil
+		return nil, nil
 	}
-	var out []ast.Expr
+	var order []string
+	envelopes := map[string]pipelineEnvelope{}
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
 		if _, ok := node.(*ast.FuncLit); ok {
 			return false
@@ -655,11 +670,228 @@ func (d *pipelineDecoder) envelopeSelectors(fn *ast.FuncDecl, vars *pipelineVars
 			if pipelineFieldJSONName(field) != "type" && field.Names[0].Name != "Type" {
 				continue
 			}
-			out = append(out, &ast.SelectorExpr{X: ast.NewIdent(name), Sel: ast.NewIdent(field.Names[0].Name)})
+			env, exists := envelopes[name]
+			if !exists {
+				envelopes[name] = pipelineEnvelope{field: field.Names[0].Name, decoded: call.Pos()}
+				order = append(order, name)
+			} else if call.Pos() < env.decoded {
+				env.decoded = call.Pos()
+				envelopes[name] = env
+			}
 		}
 		return true
 	})
-	return out
+	var out []ast.Expr
+	for _, name := range order {
+		env := envelopes[name]
+		if err := d.checkEnvelopeUse(fn, dataParam, name, env.field, env.decoded); err != nil {
+			return nil, err
+		}
+		out = append(out, &ast.SelectorExpr{X: ast.NewIdent(name), Sel: ast.NewIdent(env.field)})
+	}
+	return out, nil
+}
+
+// checkEnvelopeUse rejects writes to the decoded envelope or its Type field,
+// writes from a closure, and aliases or pointer escapes that could rewrite the
+// discriminant after the establishing decode.
+func (d *pipelineDecoder) checkEnvelopeUse(fn *ast.FuncDecl, dataParam, name, field string, decoded token.Pos) error {
+	if err := d.scanEnvelopeUse(fn.Body, dataParam, name, field, decoded, false); err != nil {
+		return err
+	}
+	var problem error
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		if problem != nil {
+			return false
+		}
+		lit, ok := node.(*ast.FuncLit)
+		if !ok {
+			return true
+		}
+		problem = d.scanEnvelopeUse(lit.Body, dataParam, name, field, decoded, true)
+		return false
+	})
+	return problem
+}
+
+// scanEnvelopeUse reports the first unsupported use of the decoded envelope in
+// body. With closure set, writes are rejected regardless of their position
+// because the invocation time of the closure cannot be proved.
+func (d *pipelineDecoder) scanEnvelopeUse(body ast.Node, dataParam, name, field string, decoded token.Pos, closure bool) error {
+	var problem error
+	report := func(err error) {
+		if problem == nil {
+			problem = err
+		}
+	}
+	checkWrite := func(lhs ast.Expr) {
+		if target, ok := pipelineEnvelopeWriteTarget(lhs, name, field); ok {
+			switch {
+			case closure:
+				report(fmt.Errorf("%s: unsupported %s decoder rewrite of decoded envelope %s inside a closure", d.g.fset.Position(lhs.Pos()), d.kind, target))
+			case lhs.Pos() > decoded:
+				report(fmt.Errorf("%s: unsupported %s decoder rewrite of decoded envelope %s after its JSON decode", d.g.fset.Position(lhs.Pos()), d.kind, target))
+			}
+		}
+	}
+	ast.Inspect(body, func(node ast.Node) bool {
+		if problem != nil {
+			return false
+		}
+		switch n := node.(type) {
+		case *ast.FuncLit:
+			// Nested closures are covered by the outer closure scan.
+			return closure
+		case *ast.AssignStmt:
+			for i, lhs := range n.Lhs {
+				checkWrite(lhs)
+				if pipelineBlankIdent(lhs) || i >= len(n.Rhs) {
+					continue
+				}
+				if target, ok := pipelineEnvelopeEscape(n.Rhs[i], name, field); ok {
+					report(fmt.Errorf("%s: unsupported %s decoder alias of decoded envelope %s", d.g.fset.Position(lhs.Pos()), d.kind, target))
+				}
+			}
+		case *ast.ValueSpec:
+			blank := true
+			for _, id := range n.Names {
+				if id.Name != "_" {
+					blank = false
+					break
+				}
+			}
+			if blank {
+				return true
+			}
+			for _, value := range n.Values {
+				if target, ok := pipelineEnvelopeEscape(value, name, field); ok {
+					report(fmt.Errorf("%s: unsupported %s decoder alias of decoded envelope %s", d.g.fset.Position(value.Pos()), d.kind, target))
+				}
+			}
+		case *ast.CallExpr:
+			if pipelineEstablishingDecode(n, dataParam, name) {
+				return true
+			}
+			for _, arg := range n.Args {
+				if target, ok := pipelineEnvelopeEscape(arg, name, field); ok {
+					report(fmt.Errorf("%s: unsupported %s decoder escape of decoded envelope %s", d.g.fset.Position(arg.Pos()), d.kind, target))
+				}
+			}
+			if sel, ok := pipelineUnparen(n.Fun).(*ast.SelectorExpr); ok {
+				if target, ok := pipelineEnvelopeWriteTarget(sel.X, name, field); ok {
+					report(fmt.Errorf("%s: unsupported %s decoder method call on decoded envelope %s", d.g.fset.Position(n.Pos()), d.kind, target))
+				}
+			}
+		case *ast.SendStmt:
+			if target, ok := pipelineEnvelopeEscape(n.Value, name, field); ok {
+				report(fmt.Errorf("%s: unsupported %s decoder escape of decoded envelope %s through a channel", d.g.fset.Position(n.Value.Pos()), d.kind, target))
+			}
+		case *ast.ReturnStmt:
+			for _, result := range n.Results {
+				if target, ok := pipelineEnvelopeEscape(result, name, field); ok {
+					report(fmt.Errorf("%s: unsupported %s decoder escape of decoded envelope %s through a return", d.g.fset.Position(result.Pos()), d.kind, target))
+				}
+			}
+		case *ast.RangeStmt:
+			for _, lhs := range []ast.Expr{n.Key, n.Value} {
+				checkWrite(lhs)
+			}
+			if target, ok := pipelineEnvelopeEscape(n.X, name, field); ok {
+				report(fmt.Errorf("%s: unsupported %s decoder escape of decoded envelope %s through a range", d.g.fset.Position(n.X.Pos()), d.kind, target))
+			}
+		}
+		return true
+	})
+	return problem
+}
+
+// pipelineEstablishingDecode reports that call is the supported JSON decode of
+// the method's data argument into the envelope variable. That pointer escape
+// establishes the discriminant instead of hiding a write.
+func pipelineEstablishingDecode(call *ast.CallExpr, dataParam, name string) bool {
+	return len(call.Args) >= 2 &&
+		pipelineDecodeCallName(call) != "" &&
+		pipelineIdentTarget(call.Args[0]) == dataParam &&
+		pipelineIdentTarget(call.Args[1]) == name
+}
+
+// pipelineEnvelopeWriteTarget reports the decoded envelope reference written by
+// lhs, if any: the envelope itself or its Type field, through pointers,
+// dereferences, and parentheses.
+func pipelineEnvelopeWriteTarget(lhs ast.Expr, name, field string) (string, bool) {
+	lhs = pipelineReferenceBase(lhs)
+	if sel, ok := lhs.(*ast.SelectorExpr); ok {
+		if sel.Sel.Name == field && pipelineEnvelopeRef(sel.X, name) {
+			return name + "." + field, true
+		}
+		return "", false
+	}
+	if pipelineEnvelopeRef(lhs, name) {
+		return name, true
+	}
+	return "", false
+}
+
+// pipelineEnvelopeEscape reports the decoded envelope reference handed out by
+// expr, if any: the envelope itself or an address of its Type field, including
+// references nested in composite literals. Ordinary Type/Param reads are safe.
+func pipelineEnvelopeEscape(expr ast.Expr, name, field string) (string, bool) {
+	if pipelineEnvelopeRef(expr, name) {
+		return name, true
+	}
+	switch e := pipelineUnparen(expr).(type) {
+	case *ast.UnaryExpr:
+		if e.Op == token.AND {
+			if target, ok := pipelineEnvelopeWriteTarget(e.X, name, field); ok {
+				return target, true
+			}
+			return pipelineEnvelopeEscape(e.X, name, field)
+		}
+	case *ast.CompositeLit:
+		for _, element := range e.Elts {
+			if kv, ok := element.(*ast.KeyValueExpr); ok {
+				if target, ok := pipelineEnvelopeEscape(kv.Key, name, field); ok {
+					return target, true
+				}
+				element = kv.Value
+			}
+			if target, ok := pipelineEnvelopeEscape(element, name, field); ok {
+				return target, true
+			}
+		}
+	}
+	return "", false
+}
+
+// pipelineEnvelopeRef reports that expr is the decoded envelope or a pointer or
+// dereference of it, ignoring parentheses.
+func pipelineEnvelopeRef(expr ast.Expr, name string) bool {
+	id, ok := pipelineReferenceBase(expr).(*ast.Ident)
+	return ok && id.Name == name
+}
+
+// pipelineReferenceBase removes pointer, dereference, and parenthesis wrappers
+// without following aliases or evaluating expressions.
+func pipelineReferenceBase(expr ast.Expr) ast.Expr {
+	for {
+		expr = pipelineUnparen(expr)
+		switch e := expr.(type) {
+		case *ast.UnaryExpr:
+			if e.Op != token.AND {
+				return expr
+			}
+			expr = e.X
+		case *ast.StarExpr:
+			expr = e.X
+		default:
+			return expr
+		}
+	}
+}
+
+func pipelineBlankIdent(expr ast.Expr) bool {
+	id, ok := pipelineUnparen(expr).(*ast.Ident)
+	return ok && id.Name == "_"
 }
 
 func (d *pipelineDecoder) structType(name string, vars *pipelineVars) (*ast.StructType, bool) {
@@ -1021,6 +1253,9 @@ func (d *pipelineDecoder) helperParams(call *ast.CallExpr, vars *pipelineVars, s
 		return nil, fmt.Errorf("%s: %s decoder helper %s is not called with the decoded %s", pos, d.kind, id.Name, d.enumType)
 	}
 	paramName := params[typeIndex].name
+	if err := d.checkHelperParamUse(fn, paramName); err != nil {
+		return nil, err
+	}
 	stack[fn] = true
 	defer delete(stack, fn)
 
@@ -1215,6 +1450,97 @@ func (d *pipelineDecoder) helperCases(stmt *ast.SwitchStmt, vars *pipelineVars, 
 		}
 	}
 	return nil
+}
+
+// checkHelperParamUse rejects a decoder helper that reassigns or locally
+// shadows its enum parameter, including writes from closures: the helper switch
+// no longer proves that the caller's decoded discriminant drives the case
+// mapping.
+func (d *pipelineDecoder) checkHelperParamUse(fn *ast.FuncDecl, name string) error {
+	if err := d.scanHelperParamWrites(fn.Body, fn.Name.Name, name, false); err != nil {
+		return err
+	}
+	var problem error
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		if problem != nil {
+			return false
+		}
+		lit, ok := node.(*ast.FuncLit)
+		if !ok {
+			return true
+		}
+		problem = d.scanHelperParamWrites(lit.Body, fn.Name.Name, name, true)
+		return false
+	})
+	return problem
+}
+
+// scanHelperParamWrites reports the first write to name in body. With closure
+// set, the write is rejected regardless of its position because the invocation
+// time of the closure cannot be proved.
+func (d *pipelineDecoder) scanHelperParamWrites(body ast.Node, helper, name string, closure bool) error {
+	var problem error
+	report := func(pos token.Pos, action string) {
+		if problem != nil {
+			return
+		}
+		if closure {
+			problem = fmt.Errorf("%s: unsupported %s decoder helper %s writes its %s parameter %s inside a closure", d.g.fset.Position(pos), d.kind, helper, d.enumType, name)
+			return
+		}
+		problem = fmt.Errorf("%s: unsupported %s decoder helper %s %s its %s parameter %s", d.g.fset.Position(pos), d.kind, helper, action, d.enumType, name)
+	}
+	ast.Inspect(body, func(node ast.Node) bool {
+		if problem != nil {
+			return false
+		}
+		switch n := node.(type) {
+		case *ast.FuncLit:
+			// Nested closures are covered by the outer closure scan.
+			return closure
+		case *ast.AssignStmt:
+			for _, lhs := range n.Lhs {
+				if pipelineEnvelopeRef(lhs, name) {
+					action := "reassigns"
+					if n.Tok == token.DEFINE {
+						action = "shadows"
+					}
+					report(lhs.Pos(), action)
+					return false
+				}
+			}
+		case *ast.ValueSpec:
+			for _, id := range n.Names {
+				if id.Name == name {
+					report(id.Pos(), "shadows")
+					return false
+				}
+			}
+		case *ast.RangeStmt:
+			for _, expr := range []ast.Expr{n.Key, n.Value} {
+				if pipelineEnvelopeRef(expr, name) {
+					action := "reassigns"
+					if n.Tok == token.DEFINE {
+						action = "shadows"
+					}
+					report(expr.Pos(), action)
+					return false
+				}
+			}
+		case *ast.UnaryExpr:
+			if n.Op == token.AND && pipelineEnvelopeRef(n.X, name) {
+				report(n.Pos(), "takes the address of")
+				return false
+			}
+		case *ast.CallExpr:
+			if sel, ok := pipelineUnparen(n.Fun).(*ast.SelectorExpr); ok && pipelineEnvelopeRef(sel.X, name) {
+				report(n.Pos(), "calls a method on")
+				return false
+			}
+		}
+		return true
+	})
+	return problem
 }
 
 type pipelineFieldSet map[string]string

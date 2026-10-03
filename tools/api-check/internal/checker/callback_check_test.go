@@ -18,15 +18,15 @@ func TestCallbackABIMatches(t *testing.T) {
 	}{
 		{
 			name:  "identical signatures",
-			goSig: methodSig{params: []string{"ptr"}, returns: []string{"bool"}},
-			cSig:  methodSig{params: []string{"ptr"}, returns: []string{"bool"}},
+			goSig: methodSig{params: []string{"ptr"}, returns: []string{"uint64"}},
+			cSig:  methodSig{params: []string{"ptr"}, returns: []string{"uint64"}},
 			want:  true,
 		},
 		{
-			name:  "empty signatures",
+			name:  "C void still requires a pointer-sized Go result",
 			goSig: methodSig{},
 			cSig:  methodSig{},
-			want:  true,
+			want:  false,
 		},
 		{
 			name:  "C strings accept byte pointers",
@@ -98,6 +98,24 @@ func TestCallbackABIMatches(t *testing.T) {
 			name:  "matching bool returns",
 			goSig: methodSig{params: []string{"ptr"}, returns: []string{"bool"}},
 			cSig:  methodSig{params: []string{"ptr"}, returns: []string{"bool"}},
+			want:  false,
+		},
+		{
+			name:  "matching small integer returns",
+			goSig: methodSig{returns: []string{"int32"}},
+			cSig:  methodSig{returns: []string{"int32"}},
+			want:  false,
+		},
+		{
+			name:  "matching floating-point returns",
+			goSig: methodSig{returns: []string{"float64"}},
+			cSig:  methodSig{returns: []string{"float64"}},
+			want:  false,
+		},
+		{
+			name:  "matching signed pointer-sized returns on supported targets",
+			goSig: methodSig{returns: []string{"int64"}},
+			cSig:  methodSig{returns: []string{"int64"}},
 			want:  true,
 		},
 		{
@@ -774,6 +792,23 @@ func _MaaEventCallbackAgent(handle uintptr, message, detailsJson *byte, transArg
 `
 			},
 			wantIssues: []string{"callback trampoline ABI mismatch for MaaEventCallback"},
+		},
+		{
+			name: "matching void typedef and trampoline cannot register on Windows",
+			mutate: func(fx *callbackCoverageFixture) {
+				fx.frameworkGo = strings.Replace(callbackCoverageFrameworkGo, ") uintptr", ")", 1)
+				fx.eventGo = strings.Replace(callbackCoverageEventGo, ") uintptr {\n\treturn 0", ") {", 1)
+			},
+			wantIssues: []string{"callback ABI mismatch for MaaEventCallback", "callback trampoline ABI mismatch for MaaEventCallback"},
+		},
+		{
+			name: "bool controller trampoline cannot register on Windows",
+			mutate: func(fx *callbackCoverageFixture) {
+				fx.controllerGo = strings.Replace(callbackCoverageControllerGo,
+					"func _ConnectAgent(transArg uintptr) uintptr { return 0 }",
+					"func _ConnectAgent(transArg uintptr) bool { return false }", 1)
+			},
+			wantIssues: []string{"callback binding ABI mismatch for Connect"},
 		},
 		{
 			name: "Go callback typedef absent from C",
