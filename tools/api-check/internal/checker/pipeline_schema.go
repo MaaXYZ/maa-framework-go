@@ -143,20 +143,20 @@ func (s *pipelineSchema) fields(m schemaObject, path string, stack map[string]bo
 		if err != nil {
 			return nil, err
 		}
-		if pipelineIgnoredDefs[name] {
-			return out, nil
-		}
-		if stack[name] {
-			return nil, fmt.Errorf("schema %s: reference cycle at %s", path, name)
-		}
-		stack[name] = true
-		fields, err := s.fields(target, path+" -> "+name, stack)
-		delete(stack, name)
-		if err != nil {
-			return nil, err
-		}
-		for f := range fields {
-			out[f] = true
+		// Ignore only the referenced definition; sibling keywords still apply.
+		if !pipelineIgnoredDefs[name] {
+			if stack[name] {
+				return nil, fmt.Errorf("schema %s: reference cycle at %s", path, name)
+			}
+			stack[name] = true
+			fields, err := s.fields(target, path+" -> "+name, stack)
+			delete(stack, name)
+			if err != nil {
+				return nil, err
+			}
+			for f := range fields {
+				out[f] = true
+			}
 		}
 		shape = true
 	}
