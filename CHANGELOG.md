@@ -113,6 +113,7 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 **补充说明**：`TaskDetail` 不再预取完整 `NodeDetail` 列表，现改为返回懒加载的 `Nodes []NodeRef`；可通过 `NodeRef.GetDetail()` 或 `Tasker.GetNodeDetail(nodeId)` 按需获取节点详情。
 **新增 WaitFreezes 查询**：`Tasker.GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error)` 可根据回调中的 `wf_id` 查询阶段、耗时、识别 ID 列表和 ROI。
 **详情查询错误语义**：`GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 在无对应详情时返回非 nil 的 error，不再返回 `(nil, nil)`。
+**任务详情修复**：`GetTaskDetail` 在没有记录节点时仍返回原生任务的 `Entry` 和 `Status`，不再返回空入口和 `StatusInvalid`。
 
 #### Resource
 
