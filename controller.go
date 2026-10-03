@@ -611,6 +611,29 @@ func (c *Controller) SetMouseLockFollow(enabled bool) error {
 	)
 }
 
+// SetBackgroundManagedKeys sets the Win32 virtual-key codes managed during
+// background input. Call it before connecting a Win32 controller. An empty
+// slice clears the managed key list.
+func (c *Controller) SetBackgroundManagedKeys(keys []int32) error {
+	_, done, useErr := c.state.begin()
+	if useErr != nil {
+		return useErr
+	}
+	defer done()
+
+	value := unsafe.Pointer(unsafe.SliceData(keys))
+	var empty int32
+	if len(keys) == 0 {
+		// Native code constructs a pointer range even for an empty list.
+		value = unsafe.Pointer(&empty)
+	}
+	return c.setOption(
+		native.MaaCtrlOption_BackgroundManagedKeys,
+		value,
+		uintptr(len(keys))*unsafe.Sizeof(int32(0)),
+	)
+}
+
 // PostConnect posts a connection.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.

@@ -18,6 +18,9 @@ type MaaEventCallback func(handle uintptr, message, detailsJson *byte, transArg 
 
 type MaaTaskerOption int32
 
+// MaaTaskerOption_Invalid is the reserved invalid tasker option.
+const MaaTaskerOption_Invalid MaaTaskerOption = 0
+
 var (
 	MaaTaskerCreate               func() uintptr
 	MaaTaskerDestroy              func(tasker uintptr)
@@ -175,6 +178,10 @@ const (
 	//
 	// value: int, eg: 3; val_size: sizeof(int)
 	MaaCtrlOption_ScreenshotResizeMethod MaaCtrlOption = 6
+
+	// MaaCtrlOption_BackgroundManagedKeys sets managed Win32 virtual-key codes.
+	// Set before connecting. value: int32_t array; val_size: sizeof(int32_t) * count.
+	MaaCtrlOption_BackgroundManagedKeys MaaCtrlOption = 7
 
 	// MaaCtrlOption_ScreenshotTargetExpand scales screenshots uniformly to cover a reference size.
 	// Mutually exclusive with long-side and short-side targets; ignored when raw size is enabled.

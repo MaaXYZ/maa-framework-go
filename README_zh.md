@@ -207,6 +207,8 @@ func main() {
 
 事件 sink 和自定义识别、动作的注册变更，只能在实例及所有关联 tasker 静止时执行。添加、替换、注销或清空注册之前，请停止新提交，并等待相关工作和回调结束。同一实例的配置事务会串行执行，借用视图也使用同一把锁，但这些事务不得与原生执行重叠。不要在回调中变更注册。`AddSink` 和 `AddContextSink` 注册失败返回 0；重复移除已注销的 sink 不执行任何有效变更。注销不存在的自定义识别或动作会返回错误。
 
+`Tasker.OnNodeWaitFreezesInContext` 可订阅 `Node.WaitFreezes`，取得 `NodeWaitFreezesDetail`。自定义 context sink 可选实现 `ContextWaitFreezesEventSink`。使用 Win32 后台输入时，请在连接前调用 `Controller.SetBackgroundManagedKeys`；传入空切片可清空按键列表。
+
 请在 `AgentServerStartUp` 之前配置 AgentServer。服务运行期间，以及 join 或 detach 后，自定义注册和启动返回 `ErrInUse`，添加 sink 返回 0。未 detach 时，`AgentServerShutDown` 会永久关闭服务，即使在首次启动前调用也是如此：之后启动和自定义注册返回 `ErrClosed`，添加 sink 返回 0。原生通信上下文无法重建，因此 `Release` 后再次 `Init` 也不会恢复启动或配置能力。未 detach 的服务关闭后可以 `Release`，重复关闭不会再次调用原生接口。配置与启动会串行执行；启动、关闭、join 和 detach 之间仍需由调用方串行协调。detach 后，关闭无法确认服务已静止，`Release` 仍不可用。
 
 回调在原生调用线程上同步执行，多个回调可能重叠。处理函数中的共享状态需要同步保护，也不要等待必须由当前回调返回后才能完成的工作。不要在 AgentServer 回调中调用其生命周期方法。`Destroy` 成功返回时，原生清理已经完成，之后不会再调用用户回调；回调仍在执行时，销毁返回 `ErrInCallback`。自定义 Controller 的 `KeyUp` 和 `TouchUp` 回调可能在原生析构期间执行，此时 `Destroy` 尚未返回。

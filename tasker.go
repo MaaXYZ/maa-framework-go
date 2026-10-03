@@ -1102,6 +1102,7 @@ type contextEventSinkAdapter struct {
 	onNodeNextList        func(*Context, EventStatus, NodeNextListDetail)
 	onNodeRecognition     func(*Context, EventStatus, NodeRecognitionDetail)
 	onNodeAction          func(*Context, EventStatus, NodeActionDetail)
+	onNodeWaitFreezes     func(*Context, EventStatus, NodeWaitFreezesDetail)
 }
 
 // OnNodePipelineNode implements ContextEventSink by forwarding
@@ -1228,4 +1229,22 @@ func (t *Tasker) OnNodeActionInContext(fn func(*Context, EventStatus, NodeAction
 
 	sink := &contextEventSinkAdapter{onNodeAction: fn}
 	return t.AddContextSink(sink)
+}
+
+// OnNodeWaitFreezes implements ContextWaitFreezesEventSink for the adapter.
+func (a *contextEventSinkAdapter) OnNodeWaitFreezes(ctx *Context, status EventStatus, detail NodeWaitFreezesDetail) {
+	if a != nil && a.onNodeWaitFreezes != nil {
+		a.onNodeWaitFreezes(ctx, status, detail)
+	}
+}
+
+// OnNodeWaitFreezesInContext registers a callback for Node.WaitFreezes events
+// and returns its sink ID. Remove it with RemoveContextSink when no longer needed.
+func (t *Tasker) OnNodeWaitFreezesInContext(fn func(*Context, EventStatus, NodeWaitFreezesDetail)) int64 {
+	_, done, err := t.state.begin()
+	if err != nil {
+		return 0
+	}
+	defer done()
+	return t.AddContextSink(&contextEventSinkAdapter{onNodeWaitFreezes: fn})
 }

@@ -77,6 +77,8 @@ const (
 	ControllerFeatureNone                               ControllerFeature = 0
 	ControllerFeatureUseMouseDownAndUpInsteadOfClick    ControllerFeature = 1
 	ControllerFeatureUseKeyboardDownAndUpInsteadOfClick ControllerFeature = 1 << 1
+	// ControllerFeatureNoScalingTouchPoints disables automatic touch coordinate scaling.
+	ControllerFeatureNoScalingTouchPoints ControllerFeature = 1 << 2
 )
 
 // CustomController defines an interface for custom controller.

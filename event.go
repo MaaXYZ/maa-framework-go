@@ -70,6 +70,8 @@ const (
 	EventNodeNextList        = Event("Node.NextList")
 	EventNodeRecognition     = Event("Node.Recognition")
 	EventNodeAction          = Event("Node.Action")
+	// EventNodeWaitFreezes identifies wait-freezes progress and completion events.
+	EventNodeWaitFreezes = Event("Node.WaitFreezes")
 )
 
 // EventStatus represents the current state of an event
@@ -153,6 +155,43 @@ type NodeActionDetail struct {
 	ActionID uint64 `json:"action_id"`
 	Name     string `json:"name"`
 	Focus    any    `json:"focus"`
+}
+
+// NodeWaitFreezesDetail contains wait-freezes progress or completion data.
+// Param retains native JSON values. RecoIDs and Elapsed are supplied on completion.
+type NodeWaitFreezesDetail struct {
+	TaskID  uint64         `json:"task_id"`
+	WfID    int64          `json:"wf_id"`
+	Name    string         `json:"name"`
+	Phase   string         `json:"phase"`
+	ROI     Rect           `json:"roi"`
+	Param   map[string]any `json:"param"`
+	RecoIDs []int64        `json:"reco_ids,omitempty"`
+	Elapsed uint64         `json:"elapsed,omitempty"`
+	Focus   any            `json:"focus"`
+}
+
+// ContextWaitFreezesEventSink optionally adds Node.WaitFreezes handling to a
+// ContextEventSink. Existing sinks do not need to implement this interface.
+type ContextWaitFreezesEventSink interface {
+	OnNodeWaitFreezes(ctx *Context, event EventStatus, detail NodeWaitFreezesDetail)
+}
+
+func handleNodeWaitFreezes(sink any, handle uintptr, status EventStatus, detailsJSON []byte) {
+	s, ok := sink.(ContextWaitFreezesEventSink)
+	if !ok {
+		return
+	}
+	var detail NodeWaitFreezesDetail
+	if err := unmarshalJSON(detailsJSON, &detail); err != nil {
+		return
+	}
+	ctx := newCallbackContext(handle)
+	if ctx == nil {
+		return
+	}
+	defer ctx.invalidate()
+	s.OnNodeWaitFreezes(ctx, status, detail)
 }
 
 func parseEvent(msg string) (name string, status EventStatus) {
@@ -395,6 +434,8 @@ func (c *eventCallback) handleRaw(handle uintptr, msg string, detailsJSON []byte
 	case EventNodeAction:
 		handleNodeAction(c.sink, handle, eventStatus, detailsJSON)
 
+	case EventNodeWaitFreezes:
+		handleNodeWaitFreezes(c.sink, handle, eventStatus, detailsJSON)
 	default:
 		// do nothing
 	}
