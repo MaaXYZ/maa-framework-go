@@ -495,36 +495,38 @@ func TestTasker_ClearCache(t *testing.T) {
 
 func TestTasker_GetLatestNode(t *testing.T) {
 	ctrl := createBlankController(t)
-	defer func() {
-		require.Eventually(t, func() bool { return ctrl.Destroy() == nil }, 5*time.Second, 10*time.Millisecond)
-	}()
+	defer func() { require.NoError(t, ctrl.Destroy()) }()
 	connectJob, err := ctrl.PostConnect()
 	require.NoError(t, err)
-	isConnected := connectJob.Wait().Success()
-	require.True(t, isConnected)
+	require.True(t, connectJob.Wait().Success())
 
 	res := createResource(t)
-	defer res.Destroy()
-	resDir := "./test/data_set/PipelineSmoking/resource"
-	bundleJob, err := res.PostBundle(resDir)
-	require.NoError(t, err)
-	isPathSet := bundleJob.Wait().Success()
-	require.True(t, isPathSet)
+	defer func() { require.NoError(t, res.Destroy()) }()
 
 	tasker := createTasker(t)
-	defer tasker.Destroy()
+	defer func() {
+		// A native job's status can become terminal before its worker finishes
+		// releasing callbacks. Retry the owner before releasing its bindings.
+		require.Eventually(t, func() bool { return tasker.Destroy() == nil }, 5*time.Second, 10*time.Millisecond)
+	}()
 	taskerBind(t, tasker, ctrl, res)
-	job, err := tasker.PostTask("Wilderness")
+
+	const name = "LatestNode"
+	pipeline := NewPipeline().AddNode(NewNode(name).
+		SetRecognition(RecDirectHit()).
+		SetAction(ActDoNothing()))
+	job, err := tasker.PostTask(name, pipeline)
 	require.NoError(t, err)
-	require.NotNil(t, job)
-	time.Sleep(2 * time.Second)
-	detail, err := tasker.GetLatestNode("Wilderness")
+	require.True(t, job.Wait().Success())
+
+	detail, err := tasker.GetLatestNode(name)
 	require.NoError(t, err)
-	t.Log(detail)
-	stopJob, err := tasker.PostStop()
+	require.Equal(t, name, detail.Name)
+	require.True(t, detail.RunCompleted)
+	taskDetail, err := job.GetDetail()
 	require.NoError(t, err)
-	ok := stopJob.Wait().Success()
-	require.True(t, ok)
+	require.Len(t, taskDetail.Nodes, 1)
+	require.Equal(t, taskDetail.Nodes[0].ID(), detail.ID)
 }
 
 func TestTasker_OverridePipeline(t *testing.T) {
