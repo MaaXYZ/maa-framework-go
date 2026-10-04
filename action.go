@@ -104,6 +104,7 @@ func decodeActionParam(actionType ActionType, data []byte) (ActionParam, error) 
 // this package; other names may be used with RawActionParam if the native library supports them.
 type ActionType string
 
+// Pipeline v2 action types.
 const (
 	ActionTypeDoNothing    ActionType = "DoNothing"
 	ActionTypeClick        ActionType = "Click"
@@ -185,6 +186,7 @@ type LongPressParam struct {
 
 func (n LongPressParam) isActionParam() {}
 
+// MarshalJSON encodes the long press param, with the duration as integer milliseconds.
 func (p LongPressParam) MarshalJSON() ([]byte, error) {
 	type NoMethod LongPressParam
 	return marshalJSON(struct {
@@ -193,6 +195,7 @@ func (p LongPressParam) MarshalJSON() ([]byte, error) {
 	}{NoMethod: NoMethod(p), Duration: p.Duration.Milliseconds()})
 }
 
+// UnmarshalJSON decodes the long press param, reading the duration as integer milliseconds.
 func (p *LongPressParam) UnmarshalJSON(data []byte) error {
 	type NoMethod LongPressParam
 	raw := struct {
@@ -240,6 +243,7 @@ type SwipeParam struct {
 
 func (n SwipeParam) isActionParam() {}
 
+// MarshalJSON encodes the swipe param, with the durations and end holds as integer milliseconds.
 func (p SwipeParam) MarshalJSON() ([]byte, error) {
 	type NoMethod SwipeParam
 	return marshalJSON(struct {
@@ -249,6 +253,7 @@ func (p SwipeParam) MarshalJSON() ([]byte, error) {
 	}{NoMethod: NoMethod(p), Duration: durationsToMs(p.Duration), EndHold: durationsToMs(p.EndHold)})
 }
 
+// UnmarshalJSON decodes the swipe param, reading the durations and end holds as integer milliseconds.
 func (p *SwipeParam) UnmarshalJSON(data []byte) error {
 	type NoMethod SwipeParam
 	raw := struct {
@@ -303,6 +308,8 @@ type MultiSwipeItem struct {
 	Pressure *int `json:"pressure,omitempty"`
 }
 
+// MarshalJSON encodes the multi-swipe item, with the starting time, durations,
+// and end holds as integer milliseconds.
 func (p MultiSwipeItem) MarshalJSON() ([]byte, error) {
 	type NoMethod MultiSwipeItem
 	return marshalJSON(struct {
@@ -318,6 +325,8 @@ func (p MultiSwipeItem) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalJSON decodes the multi-swipe item, reading the starting time,
+// durations, and end holds as integer milliseconds.
 func (p *MultiSwipeItem) UnmarshalJSON(data []byte) error {
 	type NoMethod MultiSwipeItem
 	raw := struct {
@@ -461,6 +470,7 @@ type LongPressKeyParam struct {
 
 func (n LongPressKeyParam) isActionParam() {}
 
+// MarshalJSON encodes the long press key param, with the duration as integer milliseconds.
 func (p LongPressKeyParam) MarshalJSON() ([]byte, error) {
 	type NoMethod LongPressKeyParam
 	return marshalJSON(struct {
@@ -469,6 +479,7 @@ func (p LongPressKeyParam) MarshalJSON() ([]byte, error) {
 	}{NoMethod: NoMethod(p), Duration: p.Duration.Milliseconds()})
 }
 
+// UnmarshalJSON decodes the long press key param, reading the duration as integer milliseconds.
 func (p *LongPressKeyParam) UnmarshalJSON(data []byte) error {
 	type NoMethod LongPressKeyParam
 	raw := struct {

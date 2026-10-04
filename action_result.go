@@ -8,12 +8,15 @@ import (
 // Point represents a 2D point [x, y].
 type Point [2]int
 
+// X returns the horizontal coordinate of the point.
 func (p Point) X() int { return p[0] }
+
+// Y returns the vertical coordinate of the point.
 func (p Point) Y() int { return p[1] }
 
+// UnmarshalJSON decodes a point from a two-element array [x, y]. A JSON
+// string containing the same array, e.g. `"[1, 2]"`, is also accepted.
 func (p *Point) UnmarshalJSON(data []byte) error {
-	// MaaFramework sometimes serializes points as a JSON string, e.g. `"[1, 2]"`.
-	// Accept both `"[1, 2]"` and `[1, 2]`.
 	var raw any
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
@@ -61,6 +64,7 @@ func (r *ActionResult) Value() any {
 	return r.val
 }
 
+// AsClick returns the click detail and true if the action type is Click.
 func (r *ActionResult) AsClick() (*ClickActionResult, bool) {
 	if r.tp != ActionTypeClick {
 		return nil, false
@@ -69,6 +73,7 @@ func (r *ActionResult) AsClick() (*ClickActionResult, bool) {
 	return val, ok
 }
 
+// AsLongPress returns the long press detail and true if the action type is LongPress.
 func (r *ActionResult) AsLongPress() (*LongPressActionResult, bool) {
 	if r.tp != ActionTypeLongPress {
 		return nil, false
@@ -77,6 +82,7 @@ func (r *ActionResult) AsLongPress() (*LongPressActionResult, bool) {
 	return val, ok
 }
 
+// AsSwipe returns the swipe detail and true if the action type is Swipe.
 func (r *ActionResult) AsSwipe() (*SwipeActionResult, bool) {
 	if r.tp != ActionTypeSwipe {
 		return nil, false
@@ -85,6 +91,7 @@ func (r *ActionResult) AsSwipe() (*SwipeActionResult, bool) {
 	return val, ok
 }
 
+// AsMultiSwipe returns the multi-swipe detail and true if the action type is MultiSwipe.
 func (r *ActionResult) AsMultiSwipe() (*MultiSwipeActionResult, bool) {
 	if r.tp != ActionTypeMultiSwipe {
 		return nil, false
@@ -93,6 +100,8 @@ func (r *ActionResult) AsMultiSwipe() (*MultiSwipeActionResult, bool) {
 	return val, ok
 }
 
+// AsClickKey returns the key detail and true if the action type is ClickKey,
+// KeyDown, or KeyUp.
 func (r *ActionResult) AsClickKey() (*ClickKeyActionResult, bool) {
 	if r.tp != ActionTypeClickKey && r.tp != ActionTypeKeyDown && r.tp != ActionTypeKeyUp {
 		return nil, false
@@ -101,6 +110,7 @@ func (r *ActionResult) AsClickKey() (*ClickKeyActionResult, bool) {
 	return val, ok
 }
 
+// AsLongPressKey returns the long press key detail and true if the action type is LongPressKey.
 func (r *ActionResult) AsLongPressKey() (*LongPressKeyActionResult, bool) {
 	if r.tp != ActionTypeLongPressKey {
 		return nil, false
@@ -109,6 +119,7 @@ func (r *ActionResult) AsLongPressKey() (*LongPressKeyActionResult, bool) {
 	return val, ok
 }
 
+// AsInputText returns the input text detail and true if the action type is InputText.
 func (r *ActionResult) AsInputText() (*InputTextActionResult, bool) {
 	if r.tp != ActionTypeInputText {
 		return nil, false
@@ -117,6 +128,7 @@ func (r *ActionResult) AsInputText() (*InputTextActionResult, bool) {
 	return val, ok
 }
 
+// AsApp returns the app detail and true if the action type is StartApp or StopApp.
 func (r *ActionResult) AsApp() (*AppActionResult, bool) {
 	if r.tp != ActionTypeStartApp && r.tp != ActionTypeStopApp {
 		return nil, false
@@ -125,6 +137,7 @@ func (r *ActionResult) AsApp() (*AppActionResult, bool) {
 	return val, ok
 }
 
+// AsScroll returns the scroll detail and true if the action type is Scroll.
 func (r *ActionResult) AsScroll() (*ScrollActionResult, bool) {
 	if r.tp != ActionTypeScroll {
 		return nil, false
@@ -133,6 +146,8 @@ func (r *ActionResult) AsScroll() (*ScrollActionResult, bool) {
 	return val, ok
 }
 
+// AsTouch returns the touch detail and true if the action type is TouchDown,
+// TouchMove, or TouchUp.
 func (r *ActionResult) AsTouch() (*TouchActionResult, bool) {
 	if r.tp != ActionTypeTouchDown && r.tp != ActionTypeTouchMove && r.tp != ActionTypeTouchUp {
 		return nil, false
@@ -141,6 +156,7 @@ func (r *ActionResult) AsTouch() (*TouchActionResult, bool) {
 	return val, ok
 }
 
+// AsShell returns the shell detail and true if the action type is Shell.
 func (r *ActionResult) AsShell() (*ShellActionResult, bool) {
 	if r.tp != ActionTypeShell {
 		return nil, false
@@ -149,6 +165,7 @@ func (r *ActionResult) AsShell() (*ShellActionResult, bool) {
 	return val, ok
 }
 
+// AsScreencap returns the screencap detail and true if the action type is Screencap.
 func (r *ActionResult) AsScreencap() (*ScreencapActionResult, bool) {
 	if r.tp != ActionTypeScreencap {
 		return nil, false
@@ -157,6 +174,7 @@ func (r *ActionResult) AsScreencap() (*ScreencapActionResult, bool) {
 	return val, ok
 }
 
+// ClickActionResult holds the parsed detail of a Click action.
 type ClickActionResult struct {
 	Point   Point `json:"point"`
 	Contact int   `json:"contact"`
@@ -164,6 +182,7 @@ type ClickActionResult struct {
 	Pressure int `json:"pressure"`
 }
 
+// LongPressActionResult holds the parsed detail of a LongPress action.
 type LongPressActionResult struct {
 	Point    Point `json:"point"`
 	Duration int64 `json:"duration"`
@@ -172,6 +191,7 @@ type LongPressActionResult struct {
 	Pressure int `json:"pressure"`
 }
 
+// SwipeActionResult holds the parsed detail of a Swipe action.
 type SwipeActionResult struct {
 	Begin     Point   `json:"begin"`
 	End       []Point `json:"end"`
@@ -197,6 +217,8 @@ type swipeActionResultWire struct {
 	Pressure  int             `json:"pressure"`
 }
 
+// UnmarshalJSON decodes the swipe detail, retaining the raw end JSON so it can
+// be re-encoded verbatim.
 func (s *SwipeActionResult) UnmarshalJSON(data []byte) error {
 	var wire swipeActionResultWire
 	if err := unmarshalJSON(data, &wire); err != nil {
@@ -221,6 +243,8 @@ func (s *SwipeActionResult) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON encodes the swipe detail, preferring the retained raw end JSON
+// over re-encoding End.
 func (s SwipeActionResult) MarshalJSON() ([]byte, error) {
 	end := s.endRaw
 	if len(end) == 0 {
@@ -245,11 +269,11 @@ func (s SwipeActionResult) MarshalJSON() ([]byte, error) {
 }
 
 func parseSwipeEndPoints(end json.RawMessage) ([]Point, error) {
-	// MaaFramework may serialize SwipeParam.end as:
+	// Accepted forms of the swipe end JSON:
 	// - array of points: [[x,y], ...]
 	// - single point: [x,y]
 	// - JSON string of a single point: "[x, y]"
-	// We parse into []Point, but preserve original end JSON for marshaling.
+	// Parse into []Point, but preserve original end JSON for marshaling.
 	var raw any
 	if err := unmarshalJSON(end, &raw); err != nil {
 		return nil, err
@@ -296,28 +320,34 @@ func parseSwipeEndPoints(end json.RawMessage) ([]Point, error) {
 	}
 }
 
+// MultiSwipeActionResult holds the parsed detail of a MultiSwipe action.
 type MultiSwipeActionResult struct {
 	Swipes []SwipeActionResult `json:"swipes"`
 }
 
+// ClickKeyActionResult holds the parsed detail of ClickKey, KeyDown, and KeyUp actions.
 type ClickKeyActionResult struct {
 	Keycode []int `json:"keycode"`
 	AutoUp  bool  `json:"auto_up"`
 }
 
+// LongPressKeyActionResult holds the parsed detail of a LongPressKey action.
 type LongPressKeyActionResult struct {
 	Keycode  []int `json:"keycode"`
 	Duration int64 `json:"duration"`
 }
 
+// InputTextActionResult holds the parsed detail of an InputText action.
 type InputTextActionResult struct {
 	Text string `json:"text"`
 }
 
+// AppActionResult holds the parsed detail of StartApp and StopApp actions.
 type AppActionResult struct {
 	Package string `json:"package"`
 }
 
+// ScrollActionResult holds the parsed detail of a Scroll action.
 type ScrollActionResult struct {
 	// Point is kept to match MaaFramework raw detail JSON.
 	Point Point `json:"point"`
@@ -325,6 +355,7 @@ type ScrollActionResult struct {
 	Dy    int   `json:"dy"`
 }
 
+// TouchActionResult holds the parsed detail of TouchDown, TouchMove, and TouchUp actions.
 type TouchActionResult struct {
 	Contact  int   `json:"contact"`
 	Point    Point `json:"point"`
@@ -332,6 +363,7 @@ type TouchActionResult struct {
 	AutoUp   bool  `json:"auto_up"`
 }
 
+// ShellActionResult holds the parsed detail of a Shell action.
 type ShellActionResult struct {
 	Cmd          string `json:"cmd"`
 	ShellTimeout int    `json:"shell_timeout"`
@@ -339,6 +371,7 @@ type ShellActionResult struct {
 	Output       string `json:"output"`
 }
 
+// ScreencapActionResult holds the parsed detail of a Screencap action.
 type ScreencapActionResult struct {
 	Filepath string `json:"filepath"`
 	Format   string `json:"format"`
