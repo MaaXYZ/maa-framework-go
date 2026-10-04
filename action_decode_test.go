@@ -1,0 +1,196 @@
+package maa
+
+import (
+	"encoding/json"
+	"slices"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestAction_UnmarshalJSON_KnownParamErrors(t *testing.T) {
+	cases := []struct {
+		name string
+		data string
+	}{
+		{"action type must be a string", `{"type":5,"param":{}}`},
+		{"swipe duration must be an array", `{"type":"Swipe","param":{"duration":"bad"}}`},
+		{"multi swipe starting must be a number", `{"type":"MultiSwipe","param":{"swipes":[{"starting":"bad"}]}}`},
+		{"long press key duration must be a number", `{"type":"LongPressKey","param":{"duration":"bad"}}`},
+		{"shell timeout must be a number", `{"type":"Shell","param":{"shell_timeout":"bad"}}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			action := Action{Type: ActionTypeClick, Param: &ClickParam{Contact: 7}}
+			require.Error(t, unmarshalJSON([]byte(tc.data), &action))
+			require.Equal(t, ActionTypeClick, action.Type)
+			param, ok := action.Param.(*ClickParam)
+			require.True(t, ok, "malformed known params must not fall back to raw, got %T", action.Param)
+			require.Equal(t, 7, param.Contact)
+		})
+	}
+}
+
+func TestSwipeActionResult_EndRoundTrip(t *testing.T) {
+	encodedEnd := func(t *testing.T, result *SwipeActionResult) string {
+		t.Helper()
+		encoded, err := json.Marshal(result)
+		require.NoError(t, err)
+		var wire swipeActionResultWire
+		require.NoError(t, json.Unmarshal(encoded, &wire))
+		return string(wire.End)
+	}
+
+	t.Run("decoded end re-encodes verbatim", func(t *testing.T) {
+		var result SwipeActionResult
+		require.NoError(t, json.Unmarshal([]byte(`{"begin":[1,2],"end":[[3,4],[5,6]]}`), &result))
+		require.Equal(t, []Point{{3, 4}, {5, 6}}, result.End)
+		require.JSONEq(t, "[[3,4],[5,6]]", encodedEnd(t, &result))
+	})
+
+	t.Run("single point end form is preserved verbatim", func(t *testing.T) {
+		var result SwipeActionResult
+		require.NoError(t, json.Unmarshal([]byte(`{"end":[3,4]}`), &result))
+		require.Equal(t, []Point{{3, 4}}, result.End)
+		require.JSONEq(t, "[3,4]", encodedEnd(t, &result))
+	})
+
+	t.Run("constructed result encodes end as a point list", func(t *testing.T) {
+		result := SwipeActionResult{End: []Point{{3, 4}, {5, 6}}}
+		require.JSONEq(t, "[[3,4],[5,6]]", encodedEnd(t, &result))
+	})
+
+	t.Run("malformed end is rejected", func(t *testing.T) {
+		var result SwipeActionResult
+		require.Error(t, json.Unmarshal([]byte(`{"end":[["bad"]]}`), &result))
+		require.Nil(t, result.End)
+	})
+}
+
+func TestActionResult_AsAccessorMatrix(t *testing.T) {
+	details := []struct {
+		action ActionType
+		detail string
+	}{
+		{ActionTypeClick, `{"point":[1,2],"contact":0,"pressure":0}`},
+		{ActionTypeLongPress, `{"point":[1,2],"duration":1000,"contact":0,"pressure":0}`},
+		{ActionTypeSwipe, `{"begin":[1,2],"end":[[3,4]],"duration":[200]}`},
+		{ActionTypeMultiSwipe, `{"swipes":[{"begin":[1,2],"end":[[3,4]],"duration":[200]}]}`},
+		{ActionTypeClickKey, `{"keycode":[27],"auto_up":false}`},
+		{ActionTypeKeyDown, `{"keycode":[27],"auto_up":false}`},
+		{ActionTypeKeyUp, `{"keycode":[27],"auto_up":false}`},
+		{ActionTypeLongPressKey, `{"keycode":[27],"duration":1000}`},
+		{ActionTypeInputText, `{"text":"hi"}`},
+		{ActionTypeStartApp, `{"package":"com.example.app"}`},
+		{ActionTypeStopApp, `{"package":"com.example.app"}`},
+		{ActionTypeScroll, `{"point":[100,200],"dx":3,"dy":-3}`},
+		{ActionTypeTouchDown, `{"contact":0,"point":[1,2],"pressure":0,"auto_up":false}`},
+		{ActionTypeTouchMove, `{"contact":0,"point":[1,2],"pressure":0,"auto_up":false}`},
+		{ActionTypeTouchUp, `{"contact":0,"point":[1,2],"pressure":0,"auto_up":false}`},
+		{ActionTypeShell, `{"cmd":"echo hi","shell_timeout":20000,"success":true,"output":"hi"}`},
+		{ActionTypeScreencap, `{"filepath":"x.png","format":"png","quality":100,"success":true}`},
+	}
+
+	results := map[ActionType]*ActionResult{}
+	for _, d := range details {
+		result, err := parseActionResult(string(d.action), d.detail)
+		require.NoError(t, err, "action %s", d.action)
+		require.NotNil(t, result)
+		require.Equal(t, d.action, result.Type())
+		results[d.action] = result
+	}
+
+	accessors := []struct {
+		name   string
+		call   func(*ActionResult) (any, bool)
+		accept []ActionType
+	}{
+		{"AsClick", func(r *ActionResult) (any, bool) { return r.AsClick() }, []ActionType{ActionTypeClick}},
+		{"AsLongPress", func(r *ActionResult) (any, bool) { return r.AsLongPress() }, []ActionType{ActionTypeLongPress}},
+		{"AsSwipe", func(r *ActionResult) (any, bool) { return r.AsSwipe() }, []ActionType{ActionTypeSwipe}},
+		{"AsMultiSwipe", func(r *ActionResult) (any, bool) { return r.AsMultiSwipe() }, []ActionType{ActionTypeMultiSwipe}},
+		{"AsClickKey", func(r *ActionResult) (any, bool) { return r.AsClickKey() }, []ActionType{ActionTypeClickKey, ActionTypeKeyDown, ActionTypeKeyUp}},
+		{"AsLongPressKey", func(r *ActionResult) (any, bool) { return r.AsLongPressKey() }, []ActionType{ActionTypeLongPressKey}},
+		{"AsInputText", func(r *ActionResult) (any, bool) { return r.AsInputText() }, []ActionType{ActionTypeInputText}},
+		{"AsApp", func(r *ActionResult) (any, bool) { return r.AsApp() }, []ActionType{ActionTypeStartApp, ActionTypeStopApp}},
+		{"AsScroll", func(r *ActionResult) (any, bool) { return r.AsScroll() }, []ActionType{ActionTypeScroll}},
+		{"AsTouch", func(r *ActionResult) (any, bool) { return r.AsTouch() }, []ActionType{ActionTypeTouchDown, ActionTypeTouchMove, ActionTypeTouchUp}},
+		{"AsShell", func(r *ActionResult) (any, bool) { return r.AsShell() }, []ActionType{ActionTypeShell}},
+		{"AsScreencap", func(r *ActionResult) (any, bool) { return r.AsScreencap() }, []ActionType{ActionTypeScreencap}},
+	}
+
+	for _, acc := range accessors {
+		t.Run(acc.name, func(t *testing.T) {
+			for _, d := range details {
+				val, ok := acc.call(results[d.action])
+				if slices.Contains(acc.accept, d.action) {
+					require.True(t, ok, "%s should accept %s", acc.name, d.action)
+					require.NotNil(t, val)
+				} else {
+					require.False(t, ok, "%s should reject %s", acc.name, d.action)
+					require.Nil(t, val)
+				}
+			}
+		})
+	}
+}
+
+func TestParseActionResult_Errors(t *testing.T) {
+	_, err := parseActionResult("FutureAction", `{"value":1}`)
+	require.ErrorContains(t, err, "unknown action result type")
+
+	_, err = parseActionResult(string(ActionTypeClick), `{"point":"bad"}`)
+	require.Error(t, err, "malformed detail must be rejected")
+}
+
+func TestPoint_UnmarshalJSON_Forms(t *testing.T) {
+	t.Run("array and string forms", func(t *testing.T) {
+		var fromArray Point
+		require.NoError(t, json.Unmarshal([]byte(`[1,2]`), &fromArray))
+		require.Equal(t, Point{1, 2}, fromArray)
+		require.Equal(t, 1, fromArray.X())
+		require.Equal(t, 2, fromArray.Y())
+
+		var fromString Point
+		require.NoError(t, json.Unmarshal([]byte(`"[1, 2]"`), &fromString))
+		require.Equal(t, Point{1, 2}, fromString)
+	})
+
+	t.Run("invalid forms are rejected", func(t *testing.T) {
+		for _, input := range []string{
+			`[1]`, `[1,2,3]`, `["a","b"]`, `5`, `"abc"`, `"[1]"`, `"[1,2,3]"`,
+		} {
+			var p Point
+			require.Error(t, json.Unmarshal([]byte(input), &p), "input %s", input)
+		}
+	})
+}
+
+func TestParseSwipeEndPoints_Forms(t *testing.T) {
+	t.Run("accepted forms", func(t *testing.T) {
+		cases := []struct {
+			input string
+			want  []Point
+		}{
+			{`[[1,2],[3,4]]`, []Point{{1, 2}, {3, 4}}},
+			{`[1,2]`, []Point{{1, 2}}},
+			{`"[1, 2]"`, []Point{{1, 2}}},
+			{`"[[1,2],[3,4]]"`, []Point{{1, 2}, {3, 4}}},
+			{`[]`, []Point{}},
+		}
+		for _, tc := range cases {
+			points, err := parseSwipeEndPoints(json.RawMessage(tc.input))
+			require.NoError(t, err, "input %s", tc.input)
+			require.Equal(t, tc.want, points)
+		}
+	})
+
+	t.Run("invalid forms are rejected", func(t *testing.T) {
+		for _, input := range []string{
+			`[1]`, `[1,2,3]`, `[[1,2],[3]]`, `[[1,"a"]]`, `["a","b"]`, `3`, `"abc"`, `"[1]"`,
+		} {
+			_, err := parseSwipeEndPoints(json.RawMessage(input))
+			require.Error(t, err, "input %s", input)
+		}
+	})
+}
