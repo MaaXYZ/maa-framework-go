@@ -156,7 +156,9 @@ type ClickParam struct {
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
 	// Pressure specifies touch pressure; its range depends on the controller.
-	// Nil inherits the existing value or the framework default of 1; a pointer to 0 sends zero explicitly.
+	// Nil omits the field, so the default configured for Click actions
+	// (default_pipeline.json) or the framework default of 1 applies;
+	// a pointer to 0 sends zero explicitly.
 	Pressure *int `json:"pressure,omitempty"`
 }
 
@@ -179,8 +181,10 @@ type LongPressParam struct {
 	Duration time.Duration `json:"-"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
-	// Pressure specifies touch pressure; nil inherits the existing value or the framework default of 1.
-	// A pointer to 0 sends zero explicitly.
+	// Pressure specifies touch pressure; its range depends on the controller.
+	// Nil omits the field, so the default configured for LongPress actions
+	// (default_pipeline.json) or the framework default of 1 applies;
+	// a pointer to 0 sends zero explicitly.
 	Pressure *int `json:"pressure,omitempty"`
 }
 
@@ -236,8 +240,10 @@ type SwipeParam struct {
 	OnlyHover bool `json:"only_hover,omitempty"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
-	// Pressure specifies touch pressure; nil inherits the existing value or the framework default of 1.
-	// A pointer to 0 sends zero explicitly.
+	// Pressure specifies touch pressure; its range depends on the controller.
+	// Nil omits the field, so the default configured for Swipe actions
+	// (default_pipeline.json) or the framework default of 1 applies;
+	// a pointer to 0 sends zero explicitly.
 	Pressure *int `json:"pressure,omitempty"`
 }
 
@@ -387,7 +393,8 @@ func ActMultiSwipe(swipes ...MultiSwipeItem) *Action {
 // TouchDownParam defines parameters for touch down action.
 type TouchDownParam struct {
 	// AutoUp releases still-held contacts when the task stops, finishes, or the controller is destroyed.
-	// Nil leaves the value unspecified for inheritance; the framework's built-in default is false.
+	// Nil omits the field, so the default configured for TouchDown actions
+	// (default_pipeline.json) or the framework's built-in false applies.
 	AutoUp *bool `json:"auto_up,omitempty"`
 	// Target specifies the touch target position.
 	Target Target `json:"target,omitzero"`
@@ -461,7 +468,7 @@ func ActClickKey(keys []int) *Action {
 
 // LongPressKeyParam defines parameters for long press key action.
 type LongPressKeyParam struct {
-	// Key specifies the virtual key code to press. Required.
+	// Key specifies the virtual key codes to press. Required.
 	Key []int `json:"key,omitempty"`
 	// Duration specifies the long press duration. Default: 1000ms.
 	// JSON: serialized as integer milliseconds.
@@ -504,7 +511,8 @@ func ActLongPressKey(p LongPressKeyParam) *Action {
 // KeyDownParam defines parameters for key down action.
 type KeyDownParam struct {
 	// AutoUp releases still-held keys when the task stops, finishes, or the controller is destroyed.
-	// Nil leaves the value unspecified for inheritance; the framework's built-in default is false.
+	// Nil omits the field, so the default configured for KeyDown actions
+	// (default_pipeline.json) or the framework's built-in false applies.
 	AutoUp *bool `json:"auto_up,omitempty"`
 	// Key specifies the virtual key code to press down. Required.
 	Key int `json:"key,omitempty"`
@@ -645,10 +653,11 @@ func ActCommand(p CommandParam) *Action {
 
 // ShellParam defines parameters for shell command execution action.
 type ShellParam struct {
-	// Cmd specifies the command to run through the ADB controller.
+	// Cmd specifies the command to run in the controller's shell.
 	Cmd string `json:"cmd,omitempty"`
 	// ShellTimeout limits command execution, serialized as integer milliseconds.
-	// Nil inherits the existing timeout or the framework default of 20 seconds.
+	// Nil omits the field, so the default configured for Shell actions
+	// (default_pipeline.json) or the framework default of 20 seconds applies.
 	// A pointer to zero sends zero explicitly; -time.Millisecond means wait indefinitely.
 	ShellTimeout *time.Duration `json:"-"`
 }
@@ -695,7 +704,8 @@ func (p *ShellParam) UnmarshalJSON(data []byte) error {
 
 // ActShell creates a Shell action with the given command.
 // To specify a timeout, set the returned action's Param to a ShellParam with ShellTimeout.
-// This is only valid for ADB controllers. If the controller is not an ADB controller, the action will fail.
+// Only controllers that support shell commands (in practice, ADB controllers) can run it;
+// other controller types fail.
 // The output of the command can be obtained in the action detail by MaaTaskerGetActionDetail.
 func ActShell(cmd string) *Action {
 	return &Action{Type: ActionTypeShell, Param: &ShellParam{Cmd: cmd}}
@@ -705,9 +715,9 @@ func ActShell(cmd string) *Action {
 type ScreencapParam struct {
 	// Filename specifies screencap filename without extension. Empty means auto-generated by MaaFramework.
 	Filename string `json:"filename,omitempty"`
-	// Format specifies image format. Optional values: "png", "jpg", "jpeg".
+	// Format specifies image format. Optional values: "png", "jpg", "jpeg". Default: "png".
 	Format string `json:"format,omitempty"`
-	// Quality specifies image quality (0-100), only effective for jpg/jpeg. Omitted means framework default.
+	// Quality specifies image quality (0-100), only effective for jpg/jpeg. Default: 100.
 	Quality int `json:"quality,omitempty"`
 }
 
