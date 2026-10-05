@@ -161,8 +161,10 @@ func TestTasker_GetTaskDetailRealNativeBoundary(t *testing.T) {
 	tasker := createTasker(t)
 	t.Cleanup(func() {
 		// The tasker retains the resource binding until it is destroyed.
-		require.NoError(t, tasker.Destroy())
-		require.NoError(t, res.Destroy())
+		// The finished task's runner may still report busy for a moment, so
+		// the destroys retry through that transient window.
+		destroyEventually(t, tasker)
+		destroyEventually(t, res)
 	})
 	require.NoError(t, tasker.BindResource(res))
 
@@ -206,7 +208,8 @@ func TestTasker_InitializedBoundary(t *testing.T) {
 	require.True(t, bundle.Wait().Failure(), "loading an absent bundle must fail")
 	require.False(t, tasker.Initialized(), "a failed bundle load invalidates the resource")
 
-	require.NoError(t, res.Clear())
+	// The failed loader may still be settling; retry the transient rejection.
+	clearResourceEventually(t, res)
 	require.True(t, tasker.Initialized(), "Clear restores resource validity")
 
 	require.NoError(t, tasker.BindController(controller))

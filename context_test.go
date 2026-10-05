@@ -1668,17 +1668,17 @@ func (t testContextWaitFreezesAct) Run(ctx *Context, _ *CustomActionArg) bool {
 
 func TestContext_WaitFreezes(t *testing.T) {
 	ctrl := createBlankController(t)
-	defer ctrl.Destroy()
+	defer destroyEventually(t, ctrl)
 	connectJob, err := ctrl.PostConnect()
 	require.NoError(t, err)
 	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
-	defer res.Destroy()
+	defer destroyEventually(t, res)
 
 	tasker := createTasker(t)
-	defer tasker.Destroy()
+	defer destroyEventually(t, tasker)
 	taskerBind(t, tasker, ctrl, res)
 
 	err = res.RegisterCustomAction("TestContext_WaitFreezesAct", &testContextWaitFreezesAct{t})
@@ -1734,17 +1734,17 @@ func (t testContextOverridePipelineEdgeAct) Run(ctx *Context, _ *CustomActionArg
 
 func TestContext_OverridePipelineEdges(t *testing.T) {
 	ctrl := createBlankController(t)
-	defer ctrl.Destroy()
+	defer destroyEventually(t, ctrl)
 	connectJob, err := ctrl.PostConnect()
 	require.NoError(t, err)
 	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
-	defer res.Destroy()
+	defer destroyEventually(t, res)
 
 	tasker := createTasker(t)
-	defer tasker.Destroy()
+	defer destroyEventually(t, tasker)
 	taskerBind(t, tasker, ctrl, res)
 
 	err = res.RegisterCustomAction("TestContext_OverridePipelineEdgeAct", &testContextOverridePipelineEdgeAct{t})
@@ -1810,17 +1810,17 @@ func (t testContextOverrideNextEdgeAct) Run(ctx *Context, _ *CustomActionArg) bo
 
 func TestContext_OverrideNextEdges(t *testing.T) {
 	ctrl := createBlankController(t)
-	defer ctrl.Destroy()
+	defer destroyEventually(t, ctrl)
 	connectJob, err := ctrl.PostConnect()
 	require.NoError(t, err)
 	isConnected := connectJob.Wait().Success()
 	require.True(t, isConnected)
 
 	res := createResource(t)
-	defer res.Destroy()
+	defer destroyEventually(t, res)
 
 	tasker := createTasker(t)
-	defer tasker.Destroy()
+	defer destroyEventually(t, tasker)
 	taskerBind(t, tasker, ctrl, res)
 
 	runs := &[]string{}

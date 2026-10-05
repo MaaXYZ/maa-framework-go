@@ -24,6 +24,17 @@ func taskerBind(t *testing.T, tasker *Tasker, ctrl *Controller, res *Resource) {
 	require.NoError(t, err)
 }
 
+// destroyEventually destroys obj, retrying through the native settle window.
+// The native AsyncRunner resets its running flag only on the worker's next
+// loop after a job's completion is observable, so a destroy issued right
+// after a completed job can be rejected as in-use once. Discarding that
+// transient error would leak the object and everything still bound to it.
+func destroyEventually(t *testing.T, obj interface{ Destroy() error }) {
+	t.Helper()
+	require.Eventually(t, func() bool { return obj.Destroy() == nil },
+		jobConcurrencyTimeout, jobReapInterval/10)
+}
+
 func TestNewTasker(t *testing.T) {
 	tasker := createTasker(t)
 	tasker.Destroy()

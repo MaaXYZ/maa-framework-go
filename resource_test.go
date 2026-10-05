@@ -16,6 +16,16 @@ func createResource(t *testing.T) *Resource {
 	return res
 }
 
+// clearResourceEventually clears res, retrying through the native settle
+// window. The native resource loader resets its running flag only on the
+// worker's next loop after a load's completion is observable, so a Clear
+// issued right after a completed load can be rejected once.
+func clearResourceEventually(t *testing.T, res *Resource) {
+	t.Helper()
+	require.Eventually(t, func() bool { return res.Clear() == nil },
+		jobConcurrencyTimeout, jobReapInterval/10)
+}
+
 func TestNewResource(t *testing.T) {
 	res := createResource(t)
 	res.Destroy()
@@ -446,8 +456,9 @@ func TestResource_Clear(t *testing.T) {
 	require.NoError(t, err)
 	isPathSet := bundleJob.Wait().Success()
 	require.True(t, isPathSet)
-	err = res.Clear()
-	require.NoError(t, err)
+	// The completed loader may still be settling; retry the transient
+	// rejection instead of failing on it.
+	clearResourceEventually(t, res)
 }
 
 func TestResource_Loaded(t *testing.T) {
