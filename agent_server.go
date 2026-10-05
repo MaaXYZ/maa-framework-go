@@ -52,7 +52,10 @@ func lockAgentServerConfiguration() (func(), error) {
 // AgentServerRegisterCustomRecognition registers a custom recognition runner.
 // The name should match the custom_recognition field in Pipeline.
 // Configure before StartUp. It returns ErrInUse while the server is active,
-// joined, or detached, and ErrClosed after an attached server has shut down.
+// joined, or detached, and ErrClosed after any AgentServerShutDown call,
+// whether or not a server was ever started. The native layer also rejects
+// a name that is already registered, as a recognition or an action,
+// surfaced as a generic error.
 func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognitionRunner) error {
 	unlock, err := lockAgentServerConfiguration()
 	if err != nil {
@@ -83,7 +86,10 @@ func AgentServerRegisterCustomRecognition(name string, recognition CustomRecogni
 // AgentServerRegisterCustomAction registers a custom action runner.
 // The name should match the custom_action field in Pipeline.
 // Configure before StartUp. It returns ErrInUse while the server is active,
-// joined, or detached, and ErrClosed after an attached server has shut down.
+// joined, or detached, and ErrClosed after any AgentServerShutDown call,
+// whether or not a server was ever started. The native layer also rejects
+// a name that is already registered, as a recognition or an action,
+// surfaced as a generic error.
 func AgentServerRegisterCustomAction(name string, action CustomActionRunner) error {
 	unlock, err := lockAgentServerConfiguration()
 	if err != nil {
@@ -151,8 +157,14 @@ func addAgentServerSink(sink any, add func(native.MaaEventCallback, uintptr) int
 
 // AgentServerStartUp starts the MAA Agent Server in a separate native thread.
 // It returns after starting the thread; call AgentServerJoin only when the
-// caller needs to wait for the service to end. The identifier is used to match
-// with AgentClient.
+// caller needs to wait for the service to end.
+//
+// The identifier is the rendezvous name used to match with AgentClient: the
+// server serves an IPC socket whose filename embeds the identifier. A purely
+// numeric identifier in 1-65535 is instead treated as a TCP port that the
+// server connects to; an AgentClient must be listening there, see
+// WithTcpPort. An empty identifier makes startup fail.
+//
 // Concurrent server lifecycle operations are serialized internally, but they
 // must not be called from server callbacks. After an attached server's
 // ShutDown, StartUp returns ErrClosed for the rest of the process, even after
