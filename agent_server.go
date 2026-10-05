@@ -38,11 +38,15 @@ var agentServerLifecycleMu sync.Mutex
 
 func lockAgentServerConfiguration() (func(), error) {
 	agentServerConfigurationMu.Lock()
-	if agentServerState.Load() == uint32(agentServerClosed) {
+	// A single load keeps the decision consistent when a racing ShutDown
+	// closes the server mid-check; otherwise Closed can be misreported as
+	// ErrInUse.
+	state := agentServerState.Load()
+	if state == uint32(agentServerClosed) {
 		agentServerConfigurationMu.Unlock()
 		return nil, ErrClosed
 	}
-	if agentServerState.Load() != uint32(agentServerStopped) {
+	if state != uint32(agentServerStopped) {
 		agentServerConfigurationMu.Unlock()
 		return nil, ErrInUse
 	}
