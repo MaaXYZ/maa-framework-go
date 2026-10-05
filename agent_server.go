@@ -30,6 +30,12 @@ var (
 	agentServerActionIDs       = make(map[string]uint64)
 )
 
+// agentServerLifecycleMu serializes the server lifecycle operations (StartUp,
+// ShutDown, Join, Detach) so concurrent callers cannot double-join the native
+// service thread or race its state transitions. Only StartUp also holds
+// agentServerConfigurationMu, always acquired first, so no lock cycle exists.
+var agentServerLifecycleMu sync.Mutex
+
 func lockAgentServerConfiguration() (func(), error) {
 	agentServerConfigurationMu.Lock()
 	if agentServerState.Load() == uint32(agentServerClosed) {
@@ -147,17 +153,21 @@ func addAgentServerSink(sink any, add func(native.MaaEventCallback, uintptr) int
 // It returns after starting the thread; call AgentServerJoin only when the
 // caller needs to wait for the service to end. The identifier is used to match
 // with AgentClient.
-// Callers must serialize server lifecycle operations and must not call them
-// from server callbacks. After an attached server's ShutDown, StartUp returns
-// ErrClosed for the rest of the process, even after Release and Init, because
-// the native singleton's communication context cannot be reset. It returns
-// ErrInUse while the server is running, joined, or detached.
+// Concurrent server lifecycle operations are serialized internally, but they
+// must not be called from server callbacks. After an attached server's
+// ShutDown, StartUp returns ErrClosed for the rest of the process, even after
+// Release and Init, because the native singleton's communication context
+// cannot be reset. It returns ErrInUse while the server is running, joined,
+// or detached.
 func AgentServerStartUp(identifier string) error {
 	unlock, err := lockAgentServerConfiguration()
 	if err != nil {
 		return err
 	}
 	defer unlock()
+
+	agentServerLifecycleMu.Lock()
+	defer agentServerLifecycleMu.Unlock()
 
 	if !native.MaaAgentServerStartUp(identifier) {
 		return fmt.Errorf("failed to start agent server: %s", identifier)
@@ -176,6 +186,9 @@ func AgentServerStartUp(identifier string) error {
 // Without prior Detach, ShutDown permanently prevents startup and
 // configuration, even if called before StartUp; repeated calls are no-ops.
 func AgentServerShutDown() {
+	agentServerLifecycleMu.Lock()
+	defer agentServerLifecycleMu.Unlock()
+
 	if agentServerState.Load() == uint32(agentServerClosed) {
 		return
 	}
@@ -190,6 +203,9 @@ func AgentServerShutDown() {
 // After AgentServerDetach, it returns without waiting. Even after Join returns
 // for an attached thread, AgentServerShutDown must be called before Release.
 func AgentServerJoin() {
+	agentServerLifecycleMu.Lock()
+	defer agentServerLifecycleMu.Unlock()
+
 	native.MaaAgentServerJoin()
 	agentServerState.CompareAndSwap(uint32(agentServerRunningAttached), uint32(agentServerJoined))
 }
@@ -202,6 +218,9 @@ func AgentServerJoin() {
 // AgentServerShutDown cannot confirm its exit. Release returns ErrLibraryInUse
 // for the rest of the process, even after Join or ShutDown.
 func AgentServerDetach() {
+	agentServerLifecycleMu.Lock()
+	defer agentServerLifecycleMu.Unlock()
+
 	agentServerState.CompareAndSwap(uint32(agentServerRunningAttached), uint32(agentServerDetached))
 	native.MaaAgentServerDetach()
 }
