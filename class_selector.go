@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 )
 
 // ClassSelector selects a neural network class by index or label.
@@ -42,14 +43,20 @@ func (c ClassSelector) AsLabel() (string, error) {
 }
 
 // MarshalJSON encodes a selector as an integer or string.
+// It returns an error for an index outside the int32 range, which the
+// pipeline parser rejects.
 func (c ClassSelector) MarshalJSON() ([]byte, error) {
 	if c.isLabel {
 		return marshalJSON(c.label)
 	}
+	if c.index < math.MinInt32 || c.index > math.MaxInt32 {
+		return nil, fmt.Errorf("class selector: index %d outside the int32 range", c.index)
+	}
 	return marshalJSON(c.index)
 }
 
-// UnmarshalJSON accepts only an integer or string and leaves c unchanged on error.
+// UnmarshalJSON accepts only an integer or string and leaves c unchanged on
+// error. Indexes are limited to the int32 range the pipeline parser accepts.
 func (c *ClassSelector) UnmarshalJSON(data []byte) error {
 	data = bytes.TrimSpace(data)
 	if len(data) == 0 || bytes.Equal(data, []byte("null")) {
@@ -66,6 +73,9 @@ func (c *ClassSelector) UnmarshalJSON(data []byte) error {
 	var index int
 	if err := unmarshalJSON(data, &index); err != nil {
 		return fmt.Errorf("class selector: expected an integer or string: %w", err)
+	}
+	if index < math.MinInt32 || index > math.MaxInt32 {
+		return fmt.Errorf("class selector: index %d outside the int32 range", index)
 	}
 	*c = ClassIndex(index)
 	return nil
