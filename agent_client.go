@@ -365,6 +365,11 @@ func (ac *AgentClient) SetTimeout(duration time.Duration) error {
 	}
 
 	milliseconds := duration.Milliseconds()
+	// The native layer treats 0 as an immediate timeout, so a positive
+	// sub-millisecond duration is rounded up to 1ms instead of truncating to 0.
+	if milliseconds == 0 && duration > 0 {
+		milliseconds = 1
+	}
 
 	if !native.MaaAgentClientSetTimeout(ac.handle, milliseconds) {
 		return agentClientOpError("set timeout")
