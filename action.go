@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"time"
 )
@@ -527,10 +528,59 @@ type KeyDownParam struct {
 	// (default_pipeline.json) or the framework's built-in false applies.
 	AutoUp *bool `json:"auto_up,omitempty"`
 	// Key specifies the virtual key code to press down. Required.
+	// Decoding also accepts the legacy key_code alias; when both fields are
+	// present, key wins. Encoding always writes key.
 	Key int `json:"key,omitempty"`
 }
 
 func (n KeyDownParam) isActionParam() {}
+
+// UnmarshalJSON decodes the key down param, accepting the legacy key_code
+// alias for key. When both fields are present, key wins, matching the
+// upstream parser. On error the param is unchanged.
+func (p *KeyDownParam) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		AutoUp  *bool           `json:"auto_up,omitempty"`
+		Key     json.RawMessage `json:"key,omitempty"`
+		KeyCode json.RawMessage `json:"key_code,omitempty"`
+	}
+	if err := unmarshalJSON(data, &raw); err != nil {
+		return err
+	}
+	decoded := KeyDownParam{AutoUp: raw.AutoUp}
+	key, err := firstPresentKeyJSON(raw.Key, raw.KeyCode)
+	if err != nil {
+		return err
+	}
+	decoded.Key = key
+	*p = decoded
+	return nil
+}
+
+// firstPresentKeyJSON merges the key and key_code wire fields: the first
+// present one wins, mirroring the upstream parser's multi-key lookup.
+func firstPresentKeyJSON(key, keyCode json.RawMessage) (int, error) {
+	for _, field := range []struct {
+		name string
+		data json.RawMessage
+	}{
+		{"key", key},
+		{"key_code", keyCode},
+	} {
+		if len(field.data) == 0 {
+			continue
+		}
+		if bytes.Equal(bytes.TrimSpace(field.data), []byte("null")) {
+			return 0, fmt.Errorf("%s must be an integer", field.name)
+		}
+		var value int
+		if err := unmarshalJSON(field.data, &value); err != nil {
+			return 0, fmt.Errorf("%s must be an integer", field.name)
+		}
+		return value, nil
+	}
+	return 0, nil
+}
 
 // ActKeyDown creates a KeyDown action that presses the key without releasing.
 func ActKeyDown(key int) *Action {
@@ -546,10 +596,34 @@ type KeyUpParam struct {
 	// It only affects KeyDown; KeyUp does not use it. Nil leaves it unspecified.
 	AutoUp *bool `json:"auto_up,omitempty"`
 	// Key specifies the virtual key code to release. Required.
+	// Decoding also accepts the legacy key_code alias; when both fields are
+	// present, key wins. Encoding always writes key.
 	Key int `json:"key,omitempty"`
 }
 
 func (n KeyUpParam) isActionParam() {}
+
+// UnmarshalJSON decodes the key up param, accepting the legacy key_code
+// alias for key. When both fields are present, key wins, matching the
+// upstream parser. On error the param is unchanged.
+func (p *KeyUpParam) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		AutoUp  *bool           `json:"auto_up,omitempty"`
+		Key     json.RawMessage `json:"key,omitempty"`
+		KeyCode json.RawMessage `json:"key_code,omitempty"`
+	}
+	if err := unmarshalJSON(data, &raw); err != nil {
+		return err
+	}
+	decoded := KeyUpParam{AutoUp: raw.AutoUp}
+	key, err := firstPresentKeyJSON(raw.Key, raw.KeyCode)
+	if err != nil {
+		return err
+	}
+	decoded.Key = key
+	*p = decoded
+	return nil
+}
 
 // ActKeyUp creates a KeyUp action that releases a previously pressed key.
 func ActKeyUp(key int) *Action {

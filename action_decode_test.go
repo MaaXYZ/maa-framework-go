@@ -2,6 +2,7 @@ package maa
 
 import (
 	"encoding/json"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -82,6 +83,74 @@ func TestAction_OffsetDecodedPointReencodesAsRect(t *testing.T) {
 	encoded, err := marshalJSON(action)
 	require.NoError(t, err)
 	require.JSONEq(t, `{"type":"Click","param":{"target_offset":[5,10,1,1]}}`, string(encoded))
+}
+
+func TestKeyParam_UnmarshalJSON_KeyCodeAlias(t *testing.T) {
+	cases := []struct {
+		name    string
+		param   string
+		wantKey int
+	}{
+		{"key still decodes", `{"key":32}`, 32},
+		{"key_code alias decodes", `{"key_code":65}`, 65},
+		{"key wins over key_code", `{"key":1,"key_code":2}`, 1},
+		{"key wins regardless of document order", `{"key_code":2,"key":1}`, 1},
+		{"neither present stays zero", `{}`, 0},
+	}
+	for _, actionType := range []ActionType{ActionTypeKeyDown, ActionTypeKeyUp} {
+		for _, tc := range cases {
+			t.Run(string(actionType)+"/"+tc.name, func(t *testing.T) {
+				var action Action
+				input := fmt.Sprintf(`{"type":%q,"param":%s}`, actionType, tc.param)
+				require.NoError(t, unmarshalJSON([]byte(input), &action))
+
+				key := -1
+				switch p := action.Param.(type) {
+				case *KeyDownParam:
+					key = p.Key
+				case *KeyUpParam:
+					key = p.Key
+				default:
+					t.Fatalf("unexpected parameter type %T", action.Param)
+				}
+				require.Equal(t, tc.wantKey, key)
+
+				wantParam := fmt.Sprintf(`{"key":%d}`, tc.wantKey)
+				if tc.wantKey == 0 {
+					wantParam = `{}`
+				}
+				encoded, err := marshalJSON(action)
+				require.NoError(t, err)
+				require.JSONEq(t, fmt.Sprintf(`{"type":%q,"param":%s}`, actionType, wantParam), string(encoded))
+			})
+		}
+	}
+}
+
+func TestKeyParam_UnmarshalJSON_AutoUpWithAlias(t *testing.T) {
+	var action Action
+	require.NoError(t, unmarshalJSON([]byte(`{"type":"KeyDown","param":{"key_code":65,"auto_up":true}}`), &action))
+	param, ok := action.Param.(*KeyDownParam)
+	require.True(t, ok)
+	require.Equal(t, 65, param.Key)
+	require.NotNil(t, param.AutoUp)
+	require.True(t, *param.AutoUp)
+}
+
+func TestKeyParam_UnmarshalJSON_InvalidKeys(t *testing.T) {
+	for _, input := range []string{
+		`{"key":"bad"}`, `{"key_code":"bad"}`, `{"key":null}`, `{"key_code":null}`, `{"key_code":[65]}`,
+	} {
+		keyDown := KeyDownParam{Key: 7}
+		got := keyDown
+		require.Error(t, unmarshalJSON([]byte(input), &got), "input %s", input)
+		require.Equal(t, keyDown, got)
+
+		keyUp := KeyUpParam{Key: 7}
+		gotUp := keyUp
+		require.Error(t, unmarshalJSON([]byte(input), &gotUp), "input %s", input)
+		require.Equal(t, keyUp, gotUp)
+	}
 }
 
 func TestSwipeActionResult_EndRoundTrip(t *testing.T) {
