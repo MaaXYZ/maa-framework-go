@@ -341,7 +341,10 @@ type OCRParam struct {
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
 	// Expected specifies the expected text results, supports regex.
-	Expected []string `json:"expected,omitempty"`
+	// JSON input may be a single string or an array of strings.
+	// Nil is omitted to inherit the existing/default value; an empty
+	// non-nil list clears it.
+	Expected StringList `json:"expected,omitzero"`
 	// Threshold specifies the model confidence threshold [0-1.0]. Default: 0.3.
 	Threshold float64 `json:"threshold,omitempty"`
 	// Replace specifies text replacement rules for correcting OCR errors.
@@ -391,7 +394,10 @@ type NeuralNetworkClassifyParam struct {
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
 	// Labels specifies class names for label selection, debugging, and logging. Fills "Unknown" if not provided.
-	Labels []string `json:"labels,omitempty"`
+	// JSON input may be a single string or an array of strings.
+	// Nil is omitted to inherit the existing/default labels; an empty
+	// non-nil list clears them.
+	Labels StringList `json:"labels,omitzero"`
 	// Model specifies the model folder path relative to model/classify directory. Required. Only ONNX models supported.
 	Model string `json:"model,omitempty"`
 	// Expected selects class indices or labels, preserving their order.
@@ -436,7 +442,10 @@ type NeuralNetworkDetectParam struct {
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitempty"`
 	// Labels specifies class names for label selection, debugging, and logging. Auto-reads from model metadata if not provided.
-	Labels []string `json:"labels,omitempty"`
+	// JSON input may be a single string or an array of strings.
+	// Nil is omitted to inherit the existing/default labels; an empty
+	// non-nil list clears them.
+	Labels StringList `json:"labels,omitzero"`
 	// Model specifies the model folder path relative to model/detect directory. Required. Supports YOLOv8/YOLOv11 ONNX models.
 	Model string `json:"model,omitempty"`
 	// Expected selects class indices or labels, preserving their order.
@@ -462,7 +471,7 @@ func (p *NeuralNetworkDetectParam) UnmarshalJSON(data []byte) error {
 	raw := struct {
 		ROI       Target                        `json:"roi,omitzero"`
 		ROIOffset Rect                          `json:"roi_offset,omitempty"`
-		Labels    []string                      `json:"labels,omitempty"`
+		Labels    StringList                    `json:"labels,omitzero"`
 		Model     string                        `json:"model,omitempty"`
 		Expected  ClassSelectors                `json:"expected,omitzero"`
 		Threshold neuralNetworkDetectThresholds `json:"threshold,omitempty"`

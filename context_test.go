@@ -659,7 +659,7 @@ func (a *testContextGetNodeDataAct) testOCRRecognition(ctx *Context) {
 	assert.IsType(a.t, (*OCRParam)(nil), nodeData.Recognition.Param)
 
 	param := nodeData.Recognition.Param.(*OCRParam)
-	assert.Equal(a.t, []string{"Hello", "World"}, param.Expected)
+	assert.Equal(a.t, StringList{"Hello", "World"}, param.Expected)
 	assert.Equal(a.t, 0.5, param.Threshold)
 	assert.Equal(a.t, OCROrderByLength, param.OrderBy)
 	assert.True(a.t, param.OnlyRec)
@@ -692,7 +692,7 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkClassifyRecognition(ctx *Co
 	assert.IsType(a.t, (*NeuralNetworkClassifyParam)(nil), nodeData.Recognition.Param)
 
 	param := nodeData.Recognition.Param.(*NeuralNetworkClassifyParam)
-	assert.Equal(a.t, []string{"Cat", "Dog", "Mouse"}, param.Labels)
+	assert.Equal(a.t, StringList{"Cat", "Dog", "Mouse"}, param.Labels)
 	assert.Equal(a.t, "classifier.onnx", param.Model)
 	assert.Equal(a.t, ClassSelectors{ClassIndex(0), ClassIndex(2)}, param.Expected)
 }
@@ -722,7 +722,7 @@ func (a *testContextGetNodeDataAct) testNeuralNetworkDetectRecognition(ctx *Cont
 	assert.IsType(a.t, (*NeuralNetworkDetectParam)(nil), nodeData.Recognition.Param)
 
 	param := nodeData.Recognition.Param.(*NeuralNetworkDetectParam)
-	assert.Equal(a.t, []string{"person", "car", "bicycle"}, param.Labels)
+	assert.Equal(a.t, StringList{"person", "car", "bicycle"}, param.Labels)
 	assert.Equal(a.t, "yolov8.onnx", param.Model)
 	assert.Equal(a.t, ClassSelectors{ClassIndex(0), ClassIndex(1)}, param.Expected)
 	assert.Equal(a.t, NeuralNetworkDetectOrderByArea, param.OrderBy)

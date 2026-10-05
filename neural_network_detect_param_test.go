@@ -73,7 +73,7 @@ func TestNeuralNetworkDetectParam_DestinationReuse(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal([]byte(`{"index":1}`), &param))
 	require.Equal(t, "detector.onnx", param.Model)
-	require.Equal(t, []string{"cat"}, param.Labels)
+	require.Equal(t, StringList{"cat"}, param.Labels)
 	require.Equal(t, ClassSelectors{ClassLabel("cat")}, param.Expected)
 	require.Equal(t, []float64{0.25}, param.Threshold)
 	require.Equal(t, 1, param.Index)
