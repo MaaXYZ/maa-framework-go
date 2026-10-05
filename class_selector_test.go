@@ -3,6 +3,7 @@ package maa
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -37,7 +38,7 @@ func TestClassSelectors_JSON(t *testing.T) {
 
 func TestClassSelectors_RejectInvalidJSON(t *testing.T) {
 	for _, input := range []string{
-		`null`, `true`, `false`, `1.5`, `1.0`, `{}`, `{"index":0}`,
+		`null`, `true`, `false`, `1.5`, `1.0`, `1e2`, `{}`, `{"index":0}`, `  `, ``,
 		`[null]`, `[0,true]`, `["Cat",1.5]`, `[[0]]`, `[{}]`, `[0,`,
 		`999999999999999999999999999999999`,
 	} {
@@ -69,12 +70,42 @@ func TestClassSelector_Accessors(t *testing.T) {
 	_, err = label.AsIndex()
 	require.Error(t, err)
 	// A failed decode must not replace a previously valid value.
-	require.Error(t, json.Unmarshal([]byte(`null`), &label))
-	require.Equal(t, ClassLabel("Cat"), label)
+	for _, invalid := range []string{`null`, `true`, `{}`, `1.5`, `1e2`, `  `, ``} {
+		require.Error(t, json.Unmarshal([]byte(invalid), &label))
+		require.Equal(t, ClassLabel("Cat"), label)
+	}
 	require.NoError(t, json.Unmarshal([]byte(`2`), &label))
 	require.Equal(t, ClassIndex(2), label)
 	require.NoError(t, json.Unmarshal([]byte(`"Dog"`), &label))
 	require.Equal(t, ClassLabel("Dog"), label)
+}
+
+func TestClassSelector_IndexInt32Range(t *testing.T) {
+	// The pipeline parser deserializes indexes into a C++ int, so indexes
+	// beyond int32 fail the node load upstream in both directions.
+	for _, index := range []int{math.MinInt32, -1, 0, math.MaxInt32} {
+		data, err := json.Marshal(ClassIndex(index))
+		require.NoError(t, err)
+		var selector ClassSelector
+		require.NoError(t, json.Unmarshal(data, &selector))
+		got, err := selector.AsIndex()
+		require.NoError(t, err)
+		require.Equal(t, index, got)
+	}
+	for _, input := range []string{`2147483648`, `-2147483649`, `[2147483648]`, `["Cat",-2147483649]`} {
+		t.Run(input, func(t *testing.T) {
+			selectors := ClassSelectors{ClassLabel("original")}
+			require.Error(t, json.Unmarshal([]byte(input), &selectors))
+			require.Equal(t, ClassSelectors{ClassLabel("original")}, selectors)
+		})
+	}
+	if math.MaxInt > math.MaxInt32 {
+		// Wider-than-int32 indexes only exist where int itself is wider.
+		outOfRange := math.MaxInt32
+		outOfRange++
+		_, err := json.Marshal(ClassIndex(outOfRange))
+		require.Error(t, err)
+	}
 }
 
 func neuralExpected(t *testing.T, rec *Recognition) ClassSelectors {

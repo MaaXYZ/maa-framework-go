@@ -120,6 +120,24 @@ func TestNeuralNetworkDetectParam_InvalidPreservesValue(t *testing.T) {
 		require.Equal(t, before, param)
 		require.Equal(t, []string{"old", "second"}, labels)
 	})
+
+	t.Run("invalid expected preserves every field", func(t *testing.T) {
+		param := NeuralNetworkDetectParam{
+			ROI:       NewTargetRect(Rect{1, 2, 3, 4}),
+			ROIOffset: Rect{5, 6, 7, 8},
+			Labels:    StringList{"cat"},
+			Model:     "old.onnx",
+			Expected:  ClassSelectors{ClassLabel("old")},
+			Threshold: []float64{0.25},
+			OrderBy:   NeuralNetworkDetectOrderByScore,
+			Index:     1,
+		}
+		before := param
+		for _, expected := range []string{`true`, `1.5`, `[[0]]`, `[{}]`, `null`, `2147483648`} {
+			require.Error(t, json.Unmarshal([]byte(`{"labels":["new"],"model":"new.onnx","expected":`+expected+`,"threshold":0.5}`), &param))
+			require.Equal(t, before, param)
+		}
+	})
 }
 
 func TestNeuralNetworkDetectParam_NativeScalarThreshold(t *testing.T) {
