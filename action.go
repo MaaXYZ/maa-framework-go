@@ -163,9 +163,10 @@ type ClickParam struct {
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
 	// Pressure specifies touch pressure; its range depends on the controller.
-	// Nil omits the field, so the default configured for Click actions
-	// (default_pipeline.json) or the framework default of 1 applies;
-	// a pointer to 0 sends zero explicitly.
+	// Nil omits the field. When overriding a node with the same action type,
+	// it inherits the existing value; otherwise the default configured for
+	// Click actions (default_pipeline.json), or the framework default of 1,
+	// applies. A pointer to 0 sends zero explicitly.
 	Pressure *int `json:"pressure,omitempty"`
 }
 
@@ -185,17 +186,19 @@ type LongPressParam struct {
 	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
 	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
 	TargetOffset Rect `json:"target_offset,omitzero"`
-	// Duration specifies the long press duration; nil omits the field, so the
-	// default configured for LongPress actions (default_pipeline.json) or the
-	// framework default of 1000ms applies; a pointer to 0 sends zero explicitly.
-	// JSON: serialized as integer milliseconds.
+	// Duration specifies the long press duration, serialized as integer milliseconds.
+	// Nil omits the field. When overriding a node with the same action type,
+	// it inherits the existing value; otherwise the default configured for
+	// LongPress actions (default_pipeline.json), or the framework default of
+	// 1000ms, applies. A pointer to 0 sends zero explicitly.
 	Duration *time.Duration `json:"-"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
 	// Pressure specifies touch pressure; its range depends on the controller.
-	// Nil omits the field, so the default configured for LongPress actions
-	// (default_pipeline.json) or the framework default of 1 applies;
-	// a pointer to 0 sends zero explicitly.
+	// Nil omits the field. When overriding a node with the same action type,
+	// it inherits the existing value; otherwise the default configured for
+	// LongPress actions (default_pipeline.json), or the framework default of 1,
+	// applies. A pointer to 0 sends zero explicitly.
 	Pressure *int `json:"pressure,omitempty"`
 }
 
@@ -269,9 +272,10 @@ type SwipeParam struct {
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
 	// Pressure specifies touch pressure; its range depends on the controller.
-	// Nil omits the field, so the default configured for Swipe actions
-	// (default_pipeline.json) or the framework default of 1 applies;
-	// a pointer to 0 sends zero explicitly.
+	// Nil omits the field. When overriding a node with the same action type,
+	// it inherits the existing value; otherwise the default configured for
+	// Swipe actions (default_pipeline.json), or the framework default of 1,
+	// applies. A pointer to 0 sends zero explicitly.
 	Pressure *int `json:"pressure,omitempty"`
 }
 
@@ -423,8 +427,10 @@ func ActMultiSwipe(swipes ...MultiSwipeItem) *Action {
 // TouchDownParam defines parameters for touch down action.
 type TouchDownParam struct {
 	// AutoUp releases still-held contacts when the task stops, finishes, or the controller is destroyed.
-	// Nil omits the field, so the default configured for TouchDown actions
-	// (default_pipeline.json) or the framework's built-in false applies.
+	// Nil omits the field. When overriding a node with the same action type,
+	// it inherits the existing value; otherwise the default configured for
+	// TouchDown actions (default_pipeline.json), or the framework default of
+	// false, applies.
 	AutoUp *bool `json:"auto_up,omitempty"`
 	// Target specifies the touch target position.
 	Target Target `json:"target,omitzero"`
@@ -504,10 +510,11 @@ func ActClickKey(keys []int) *Action {
 type LongPressKeyParam struct {
 	// Key specifies the virtual key codes to press. Required.
 	Key []int `json:"key,omitempty"`
-	// Duration specifies the long press duration; nil omits the field, so the
-	// default configured for LongPressKey actions (default_pipeline.json) or
-	// the framework default of 1000ms applies; a pointer to 0 sends zero
-	// explicitly. JSON: serialized as integer milliseconds.
+	// Duration specifies the long press duration, serialized as integer milliseconds.
+	// Nil omits the field. When overriding a node with the same action type,
+	// it inherits the existing value; otherwise the default configured for
+	// LongPressKey actions (default_pipeline.json), or the framework default of
+	// 1000ms, applies. A pointer to 0 sends zero explicitly.
 	Duration *time.Duration `json:"-"`
 }
 
@@ -562,8 +569,10 @@ func ActLongPressKey(p LongPressKeyParam) *Action {
 // KeyDownParam defines parameters for key down action.
 type KeyDownParam struct {
 	// AutoUp releases still-held keys when the task stops, finishes, or the controller is destroyed.
-	// Nil omits the field, so the default configured for KeyDown actions
-	// (default_pipeline.json) or the framework's built-in false applies.
+	// Nil omits the field. When overriding a node with the same action type,
+	// it inherits the existing value; otherwise the default configured for
+	// KeyDown actions (default_pipeline.json), or the framework default of
+	// false, applies.
 	AutoUp *bool `json:"auto_up,omitempty"`
 	// Key specifies the virtual key code to press down. Required.
 	// Decoding also accepts the legacy key_code alias; when both fields are
@@ -792,8 +801,10 @@ type ShellParam struct {
 	// Cmd specifies the command to run in the controller's shell.
 	Cmd string `json:"cmd,omitempty"`
 	// ShellTimeout limits command execution, serialized as integer milliseconds.
-	// Nil omits the field, so the default configured for Shell actions
-	// (default_pipeline.json) or the framework default of 20 seconds applies.
+	// Nil omits the field. When overriding a node with the same action type,
+	// it inherits the existing value; otherwise the default configured for
+	// Shell actions (default_pipeline.json), or the framework default of
+	// 20 seconds, applies.
 	// A pointer to zero sends zero explicitly; -time.Millisecond means wait indefinitely.
 	ShellTimeout *time.Duration `json:"-"`
 }
