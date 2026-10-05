@@ -14,7 +14,9 @@ type WaitFreezesParam struct {
 	// Target specifies the region to monitor for changes.
 	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
-	TargetOffset Rect `json:"target_offset,omitempty"`
+	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
+	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
+	TargetOffset Rect `json:"target_offset,omitzero"`
 	// Threshold specifies the template matching threshold for detecting changes. Default: 0.95.
 	Threshold float64 `json:"threshold,omitempty"`
 	// Method specifies the template matching algorithm (cv::TemplateMatchModes). Default: 5.

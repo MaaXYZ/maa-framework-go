@@ -51,6 +51,7 @@ func TestActionParam_OffsetJSONOmission(t *testing.T) {
 		{"TouchMoveParam", "target_offset", TouchMoveParam{Target: target}, TouchMoveParam{Target: target, TargetOffset: Rect{1, 2, 0, 0}}},
 		{"ScrollParam", "target_offset", ScrollParam{Target: target}, ScrollParam{Target: target, TargetOffset: Rect{1, 2, 0, 0}}},
 		{"CustomActionParam", "target_offset", CustomActionParam{Target: target, CustomAction: "act"}, CustomActionParam{Target: target, TargetOffset: Rect{1, 2, 0, 0}, CustomAction: "act"}},
+		{"WaitFreezesParam", "target_offset", WaitFreezesParam{Target: target}, WaitFreezesParam{Target: target, TargetOffset: Rect{1, 2, 0, 0}}},
 	}
 	for _, p := range params {
 		t.Run(p.name, func(t *testing.T) {
