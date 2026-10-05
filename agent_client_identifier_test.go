@@ -67,6 +67,22 @@ func TestAgentClient_TcpPortIdentifierAndPairing(t *testing.T) {
 
 	client, err := NewAgentClient(WithTcpPort(0))
 	require.NoError(t, err)
+
+	// Registered before any fallible step so an early failure still destroys
+	// the client; Destroy is idempotent, and the closure reads connected and
+	// res by reference.
+	connected := false
+	var res *Resource
+	t.Cleanup(func() {
+		if connected {
+			_ = client.Disconnect()
+		}
+		require.NoError(t, client.Destroy())
+		if res != nil {
+			require.NoError(t, res.Destroy())
+		}
+	})
+
 	portIdentifier, err := client.Identifier()
 	require.NoError(t, err)
 	port, err := strconv.Atoi(portIdentifier)
@@ -79,18 +95,6 @@ func TestAgentClient_TcpPortIdentifierAndPairing(t *testing.T) {
 	server := startAgentClientTcpServer(t, portIdentifier, readyPath, logPath)
 
 	waitAgentClientTcpReady(t, readyPath, server, logPath)
-
-	connected := false
-	var res *Resource
-	t.Cleanup(func() {
-		if connected {
-			_ = client.Disconnect()
-		}
-		require.NoError(t, client.Destroy())
-		if res != nil {
-			require.NoError(t, res.Destroy())
-		}
-	})
 
 	require.NoError(t, client.SetTimeout(5*time.Second))
 	res, err = NewResource()
