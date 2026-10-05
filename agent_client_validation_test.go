@@ -1,7 +1,8 @@
 package maa
 
 import (
-	"strings"
+	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -9,14 +10,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// validationClientSeq numbers the identifier-mode clients created by
+// newValidationAgentClient within a test binary run.
+var validationClientSeq atomic.Uint64
+
 // newValidationAgentClient returns a real native identifier-mode client whose
 // SetTimeout calls are captured by a stub instead of reaching the library. The
-// native layer embeds the identifier in an IPC socket filename, so path
-// separators from subtest names must be replaced.
+// native layer embeds the identifier in an IPC socket filename under the temp
+// directory, and unix domain socket paths are capped far below a full test
+// name's length on some platforms (104 bytes on macOS including the temp
+// directory), so the identifier is a short numbered string instead of t.Name().
 func newValidationAgentClient(t *testing.T) (client *AgentClient, setTimeoutCalls func() []int64) {
 	t.Helper()
 
-	client, err := NewAgentClient(WithIdentifier(strings.ReplaceAll(t.Name(), "/", "-")))
+	client, err := NewAgentClient(WithIdentifier("val-" + strconv.FormatUint(validationClientSeq.Add(1), 10)))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, client.Destroy()) })
 
