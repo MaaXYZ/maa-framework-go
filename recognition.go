@@ -449,7 +449,8 @@ type NeuralNetworkDetectParam struct {
 	// Model specifies the model folder path relative to model/detect directory. Required. Supports YOLOv8/YOLOv11 ONNX models.
 	Model string `json:"model,omitempty"`
 	// Expected selects class indices or labels, preserving their order.
-	// Nil inherits the existing/default selection; an empty list matches all classes.
+	// Nil inherits the existing/default selection; an empty list matches all
+	// classes, subject to Threshold.
 	Expected ClassSelectors `json:"expected,omitzero"`
 	// Threshold specifies confidence thresholds in [0, 1], in Expected order.
 	// Nil or an empty list inherits the existing thresholds or defaults to 0.3.
