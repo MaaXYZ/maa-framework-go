@@ -1,3 +1,5 @@
+// Package adb defines the screencap and input method flags for ADB
+// controllers, with name parsing helpers.
 package adb
 
 import (
@@ -6,13 +8,13 @@ import (
 	"strings"
 )
 
-// AdbScreencapMethod
+// ScreencapMethod defines the ADB screencap method flags.
 //
 // Use bitwise OR to set the method you need,
 // MaaFramework will test their speed and use the fastest one.
 type ScreencapMethod uint64
 
-// AdbInputMethod
+// InputMethod defines the ADB input method flags.
 //
 // Use bitwise OR to set the method you need,
 // MaaFramework will select the available ones according to priority.
@@ -20,27 +22,57 @@ type ScreencapMethod uint64
 type InputMethod uint64
 
 const (
-	ScreencapNone                ScreencapMethod = 0
+	// ScreencapNone selects no ADB screencap method.
+	ScreencapNone ScreencapMethod = 0
+	// ScreencapEncodeToFileAndPull selects the EncodeToFileAndPull method:
+	// slow, high compatibility, lossless encoding.
 	ScreencapEncodeToFileAndPull ScreencapMethod = 1
-	ScreencapEncode              ScreencapMethod = 1 << 1
-	ScreencapRawWithGzip         ScreencapMethod = 1 << 2
-	ScreencapRawByNetcat         ScreencapMethod = 1 << 3
-	ScreencapMinicapDirect       ScreencapMethod = 1 << 4
-	ScreencapMinicapStream       ScreencapMethod = 1 << 5
-	ScreencapEmulatorExtras      ScreencapMethod = 1 << 6
-	ScreencapAll                                 = ^ScreencapNone
-	ScreencapDefault                             = ScreencapAll &
+	// ScreencapEncode selects the Encode method:
+	// slow, high compatibility, lossless encoding.
+	ScreencapEncode ScreencapMethod = 1 << 1
+	// ScreencapRawWithGzip selects the RawWithGzip method:
+	// medium speed, high compatibility, lossless encoding.
+	ScreencapRawWithGzip ScreencapMethod = 1 << 2
+	// ScreencapRawByNetcat selects the RawByNetcat method:
+	// fast, low compatibility, lossless encoding.
+	ScreencapRawByNetcat ScreencapMethod = 1 << 3
+	// ScreencapMinicapDirect selects the MinicapDirect method: fast, low
+	// compatibility. It uses lossy JPEG encoding, which may significantly
+	// reduce template matching accuracy; not recommended.
+	ScreencapMinicapDirect ScreencapMethod = 1 << 4
+	// ScreencapMinicapStream selects the MinicapStream method: very fast,
+	// low compatibility. It uses lossy JPEG encoding, which may
+	// significantly reduce template matching accuracy; not recommended.
+	ScreencapMinicapStream ScreencapMethod = 1 << 5
+	// ScreencapEmulatorExtras selects the EmulatorExtras method: very fast,
+	// low compatibility, lossless encoding. Emulators only: MuMu 12,
+	// LDPlayer 9.
+	ScreencapEmulatorExtras ScreencapMethod = 1 << 6
+	// ScreencapAll selects every ADB screencap method.
+	ScreencapAll = ^ScreencapNone
+	// ScreencapDefault selects every ADB screencap method except
+	// RawByNetcat, MinicapDirect, and MinicapStream.
+	ScreencapDefault = ScreencapAll &
 		(^ScreencapRawByNetcat) &
 		(^ScreencapMinicapDirect) &
 		(^ScreencapMinicapStream)
 
-	InputNone               InputMethod = 0
-	InputAdbShell           InputMethod = 1
+	// InputNone selects no ADB input method.
+	InputNone InputMethod = 0
+	// InputAdbShell selects the AdbShell method: slow, high compatibility.
+	InputAdbShell InputMethod = 1
+	// InputMinitouchAndAdbKey selects the MinitouchAndAdbKey method: fast,
+	// medium compatibility. Key input still uses AdbShell.
 	InputMinitouchAndAdbKey InputMethod = 1 << 1
-	InputMaatouch           InputMethod = 1 << 2
-	InputEmulatorExtras     InputMethod = 1 << 3
-	InputAll                            = ^InputNone
-	InputDefault                        = InputAll & (^InputEmulatorExtras)
+	// InputMaatouch selects the Maatouch method: fast, medium compatibility.
+	InputMaatouch InputMethod = 1 << 2
+	// InputEmulatorExtras selects the EmulatorExtras method: fast, low
+	// compatibility. Emulators only: MuMu 12.
+	InputEmulatorExtras InputMethod = 1 << 3
+	// InputAll selects every ADB input method.
+	InputAll = ^InputNone
+	// InputDefault selects every ADB input method except EmulatorExtras.
+	InputDefault = InputAll & (^InputEmulatorExtras)
 )
 
 const (
@@ -64,6 +96,8 @@ const (
 	inputDefaultStr            = "Default"
 )
 
+// String returns the screencap method's canonical name, or its decimal
+// value for unnamed combinations.
 func (m ScreencapMethod) String() string {
 	switch m {
 	case ScreencapNone:
@@ -90,6 +124,8 @@ func (m ScreencapMethod) String() string {
 	return strconv.FormatUint(uint64(m), 10)
 }
 
+// String returns the input method's canonical name, or its decimal value
+// for unnamed combinations.
 func (m InputMethod) String() string {
 	switch m {
 	case InputNone:
@@ -110,6 +146,10 @@ func (m InputMethod) String() string {
 	return strconv.FormatUint(uint64(m), 10)
 }
 
+// ParseScreencapMethod parses a screencap method name, matched
+// case-insensitively with surrounding whitespace ignored. Unrecognized
+// names fall back to a decimal numeric value; input matching neither
+// returns an error.
 func ParseScreencapMethod(s string) (ScreencapMethod, error) {
 	s = strings.ToLower(strings.TrimSpace(s))
 	switch {
@@ -142,6 +182,9 @@ func ParseScreencapMethod(s string) (ScreencapMethod, error) {
 	}
 }
 
+// ParseInputMethod parses an input method name, matched case-insensitively
+// with surrounding whitespace ignored. Unrecognized names fall back to a
+// decimal numeric value; input matching neither returns an error.
 func ParseInputMethod(s string) (InputMethod, error) {
 	s = strings.ToLower(strings.TrimSpace(s))
 	switch {

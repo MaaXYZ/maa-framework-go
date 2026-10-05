@@ -1,3 +1,5 @@
+// Package win32 defines the screencap and input method flags for Win32
+// controllers, with name parsing helpers.
 package win32
 
 import (
@@ -6,40 +8,89 @@ import (
 	"strings"
 )
 
-// Win32ScreencapMethod
+// ScreencapMethod defines the Win32 screencap method flags.
 //
-// No bitwise OR, just set it.
+// Use bitwise OR to combine methods; MaaFramework tests them and uses the
+// fastest available one.
 type ScreencapMethod uint64
 
-// Win32InputMethod
+// InputMethod defines the Win32 input method.
 //
-// No bitwise OR, just set it.
+// Select ONE method only; do not combine with bitwise OR.
 type InputMethod uint64
 
 const (
-	ScreencapNone                 ScreencapMethod = 0
-	ScreencapGDI                  ScreencapMethod = 1
-	ScreencapFramePool            ScreencapMethod = 1 << 1
-	ScreencapDXGIDesktopDup       ScreencapMethod = 1 << 2
+	// ScreencapNone selects no Win32 screencap method.
+	ScreencapNone ScreencapMethod = 0
+	// ScreencapGDI selects the GDI method: fast, medium compatibility.
+	ScreencapGDI ScreencapMethod = 1
+	// ScreencapFramePool selects the FramePool method: very fast, medium
+	// compatibility. Requires Windows 10 1903+ and supports background
+	// capture and pseudo-minimize.
+	ScreencapFramePool ScreencapMethod = 1 << 1
+	// ScreencapDXGIDesktopDup selects the DXGI_DesktopDup method: very
+	// fast, low compatibility. Desktop duplication (full screen).
+	ScreencapDXGIDesktopDup ScreencapMethod = 1 << 2
+	// ScreencapDXGIDesktopDupWindow selects the DXGI_DesktopDup_Window
+	// method: very fast, low compatibility. Desktop duplication then crop.
 	ScreencapDXGIDesktopDupWindow ScreencapMethod = 1 << 3
-	ScreencapPrintWindow          ScreencapMethod = 1 << 4
-	ScreencapScreenDC             ScreencapMethod = 1 << 5
+	// ScreencapPrintWindow selects the PrintWindow method: medium speed,
+	// medium compatibility. Supports background capture and
+	// pseudo-minimize.
+	ScreencapPrintWindow ScreencapMethod = 1 << 4
+	// ScreencapScreenDC selects the ScreenDC method: fast, high
+	// compatibility.
+	ScreencapScreenDC ScreencapMethod = 1 << 5
 
-	ScreencapAll        ScreencapMethod = ^ScreencapNone
+	// ScreencapAll selects every Win32 screencap method.
+	ScreencapAll ScreencapMethod = ^ScreencapNone
+	// ScreencapForeground selects the predefined foreground combination:
+	// DXGI_DesktopDup_Window | ScreenDC.
 	ScreencapForeground ScreencapMethod = ScreencapDXGIDesktopDupWindow | ScreencapScreenDC
+	// ScreencapBackground selects the predefined background combination:
+	// FramePool | PrintWindow.
 	ScreencapBackground ScreencapMethod = ScreencapFramePool | ScreencapPrintWindow
 
-	InputNone                     InputMethod = 0
-	InputSeize                    InputMethod = 1
-	InputSendMessage              InputMethod = 1 << 1
-	InputPostMessage              InputMethod = 1 << 2
-	InputLegacyEvent              InputMethod = 1 << 3
-	InputPostThreadMessage        InputMethod = 1 << 4
+	// InputNone selects no Win32 input method.
+	InputNone InputMethod = 0
+	// InputSeize selects the Seize input method.
+	InputSeize InputMethod = 1
+	// InputSendMessage selects the SendMessage input method: medium
+	// compatibility, supports background input.
+	InputSendMessage InputMethod = 1 << 1
+	// InputPostMessage selects the PostMessage input method: medium
+	// compatibility, supports background input.
+	InputPostMessage InputMethod = 1 << 2
+	// InputLegacyEvent selects the LegacyEvent input method: low
+	// compatibility, seizes the mouse, no background support.
+	InputLegacyEvent InputMethod = 1 << 3
+	// InputPostThreadMessage selects the PostThreadMessage input method.
+	//
+	// Deprecated: upstream deprecated this method and no longer implements
+	// it. A controller created with it still connects, but every input
+	// action fails.
+	InputPostThreadMessage InputMethod = 1 << 4
+	// InputSendMessageWithCursorPos selects the SendMessageWithCursorPos
+	// input method: medium compatibility, supports background input.
+	// Briefly moves the cursor to the target position, then restores it.
 	InputSendMessageWithCursorPos InputMethod = 1 << 5
+	// InputPostMessageWithCursorPos selects the PostMessageWithCursorPos
+	// input method: medium compatibility, supports background input.
+	// Briefly moves the cursor to the target position, then restores it.
 	InputPostMessageWithCursorPos InputMethod = 1 << 6
+	// InputSendMessageWithWindowPos selects the SendMessageWithWindowPos
+	// input method: medium compatibility, supports background input.
+	// Briefly moves the window to align the target with the cursor, then
+	// restores it; the cursor is not moved.
 	InputSendMessageWithWindowPos InputMethod = 1 << 7
+	// InputPostMessageWithWindowPos selects the PostMessageWithWindowPos
+	// input method: medium compatibility, supports background input.
+	// Briefly moves the window to align the target with the cursor, then
+	// restores it; the cursor is not moved.
 	InputPostMessageWithWindowPos InputMethod = 1 << 8
-	InputInterception             InputMethod = 1 << 9
+	// InputInterception selects the Interception input method:
+	// driver-level input injection via the Interception driver.
+	InputInterception InputMethod = 1 << 9
 	// InputAnchoredTouch injects touch points without moving the cursor or target window.
 	// It supports clicks and swipes, but not scrolling or keyboard input.
 	InputAnchoredTouch InputMethod = 1 << 10
@@ -77,6 +128,9 @@ const (
 	inputAnchoredTouchStr            = "AnchoredTouch"
 )
 
+// String returns the screencap method's canonical upstream spelling (for
+// example "DXGI_DesktopDup_Window"), or its decimal value for unnamed
+// combinations.
 func (m ScreencapMethod) String() string {
 	switch m {
 	case ScreencapNone:
@@ -103,6 +157,8 @@ func (m ScreencapMethod) String() string {
 	return strconv.FormatUint(uint64(m), 10)
 }
 
+// String returns the input method's canonical name, or its decimal value
+// for unnamed combinations.
 func (m InputMethod) String() string {
 	switch m {
 	case InputNone:
@@ -133,6 +189,12 @@ func (m InputMethod) String() string {
 	return strconv.FormatUint(uint64(m), 10)
 }
 
+// ParseScreencapMethod parses a screencap method name, matched
+// case-insensitively with surrounding whitespace ignored. It accepts both
+// the canonical upstream spellings and this binding's legacy
+// underscore-free DXGI spellings ("DXGIDesktopDup",
+// "DXGIDesktopDupWindow"). Unrecognized names fall back to a decimal
+// numeric value; input matching neither returns an error.
 func ParseScreencapMethod(s string) (ScreencapMethod, error) {
 	s = strings.ToLower(strings.TrimSpace(s))
 	switch {
@@ -165,6 +227,9 @@ func ParseScreencapMethod(s string) (ScreencapMethod, error) {
 	}
 }
 
+// ParseInputMethod parses an input method name, matched case-insensitively
+// with surrounding whitespace ignored. Unrecognized names fall back to a
+// decimal numeric value; input matching neither returns an error.
 func ParseInputMethod(s string) (InputMethod, error) {
 	s = strings.ToLower(strings.TrimSpace(s))
 	switch {
