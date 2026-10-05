@@ -32,8 +32,9 @@ var (
 
 // agentServerLifecycleMu serializes the server lifecycle operations (StartUp,
 // ShutDown, Join, Detach) so concurrent callers cannot double-join the native
-// service thread or race its state transitions. Only StartUp also holds
-// agentServerConfigurationMu, always acquired first, so no lock cycle exists.
+// service thread or race its state transitions. A blocking Join keeps ShutDown
+// and Detach waiting until the service ends independently. Only StartUp also
+// holds agentServerConfigurationMu, always acquired first.
 var agentServerLifecycleMu sync.Mutex
 
 func lockAgentServerConfiguration() (func(), error) {
@@ -171,9 +172,12 @@ func addAgentServerSink(sink any, add func(native.MaaEventCallback, uintptr) int
 // it connect to 127.0.0.1 on that port instead; an AgentClient must be
 // listening there, see WithTcpPort. An empty identifier makes startup fail.
 //
-// Concurrent server lifecycle operations are serialized internally, but they
-// must not be called from server callbacks. After an attached server's
-// ShutDown, StartUp returns ErrClosed for the rest of the process, even after
+// Server lifecycle operations are serialized internally to protect the native
+// service thread. A blocking [AgentServerJoin] prevents [AgentServerShutDown]
+// and [AgentServerDetach] from running until Join returns; see AgentServerJoin
+// for shutdown ordering. Do not call lifecycle operations from server callbacks.
+// After an attached server's ShutDown, StartUp returns ErrClosed for the rest
+// of the process, even after
 // Release and Init, because the native singleton's communication context
 // cannot be reset. It returns ErrInUse while the server is running, joined,
 // or detached.
@@ -209,6 +213,13 @@ func AgentServerStartUp(identifier string) error {
 // safe after Detach.
 // Without prior Detach, ShutDown permanently prevents startup and
 // configuration, even if called before StartUp; repeated calls are no-ops.
+//
+// ShutDown waits for any concurrent [AgentServerJoin] to return before it can
+// request a stop. It cannot interrupt a blocking Join. For client-controlled
+// shutdown, have the paired client Disconnect, let Join return, then call
+// ShutDown to close the sockets. To request a stop from the server process,
+// call ShutDown without an outstanding blocking Join; it still waits for the
+// native service thread to exit.
 func AgentServerShutDown() {
 	agentServerLifecycleMu.Lock()
 	defer agentServerLifecycleMu.Unlock()
@@ -226,6 +237,13 @@ func AgentServerShutDown() {
 // not request that the service stop, so it may block while the service runs.
 // After AgentServerDetach, it returns without waiting. Even after Join returns
 // for an attached thread, AgentServerShutDown must be called before Release.
+//
+// Join holds the lifecycle lock while waiting, so concurrent [AgentServerShutDown]
+// and [AgentServerDetach] calls wait for Join to return and cannot interrupt it.
+// Call Join only when the service will end independently, such as when the
+// paired client calls Disconnect. Once Join returns, call AgentServerShutDown
+// to close the sockets. To request a stop from the server process, call
+// AgentServerShutDown without first entering a blocking Join.
 func AgentServerJoin() {
 	agentServerLifecycleMu.Lock()
 	defer agentServerLifecycleMu.Unlock()
@@ -241,6 +259,8 @@ func AgentServerJoin() {
 // After Detach, AgentServerJoin cannot wait for the thread, and
 // AgentServerShutDown cannot confirm its exit. Release returns ErrLibraryInUse
 // for the rest of the process, even after Join or ShutDown.
+// Detach waits for any concurrent [AgentServerJoin] to return; it cannot
+// interrupt a blocking Join.
 func AgentServerDetach() {
 	agentServerLifecycleMu.Lock()
 	defer agentServerLifecycleMu.Unlock()
