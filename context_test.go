@@ -793,6 +793,7 @@ func (a *testContextGetNodeDataAct) testLongPressAction(ctx *Context) {
 	assert.IsType(a.t, (*LongPressParam)(nil), nodeData.Action.Param)
 
 	param := nodeData.Action.Param.(*LongPressParam)
+	assert.NotNil(a.t, param.Duration)
 	assert.Equal(a.t, int64(2000), param.Duration.Milliseconds())
 }
 
@@ -987,6 +988,7 @@ func (a *testContextGetNodeDataAct) testLongPressKeyAction(ctx *Context) {
 
 	param := nodeData.Action.Param.(*LongPressKeyParam)
 	assert.Equal(a.t, []int{4}, param.Key)
+	assert.NotNil(a.t, param.Duration)
 	assert.Equal(a.t, int64(1500), param.Duration.Milliseconds())
 }
 

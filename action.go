@@ -181,9 +181,11 @@ type LongPressParam struct {
 	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
 	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
 	TargetOffset Rect `json:"target_offset,omitzero"`
-	// Duration specifies the long press duration. Default: 1000ms.
+	// Duration specifies the long press duration; nil omits the field, so the
+	// default configured for LongPress actions (default_pipeline.json) or the
+	// framework default of 1000ms applies; a pointer to 0 sends zero explicitly.
 	// JSON: serialized as integer milliseconds.
-	Duration time.Duration `json:"-"`
+	Duration *time.Duration `json:"-"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
 	// Pressure specifies touch pressure; its range depends on the controller.
@@ -195,27 +197,42 @@ type LongPressParam struct {
 
 func (n LongPressParam) isActionParam() {}
 
-// MarshalJSON encodes the long press param, with the duration as integer milliseconds.
+// MarshalJSON encodes the long press param, with the duration as integer
+// milliseconds. A nil duration omits the field; a pointer to zero is emitted.
 func (p LongPressParam) MarshalJSON() ([]byte, error) {
 	type NoMethod LongPressParam
+	var duration *int64
+	if p.Duration != nil {
+		ms := p.Duration.Milliseconds()
+		duration = &ms
+	}
 	return marshalJSON(struct {
 		NoMethod
-		Duration int64 `json:"duration,omitempty"`
-	}{NoMethod: NoMethod(p), Duration: p.Duration.Milliseconds()})
+		Duration *int64 `json:"duration,omitempty"`
+	}{NoMethod: NoMethod(p), Duration: duration})
 }
 
-// UnmarshalJSON decodes the long press param, reading the duration as integer milliseconds.
+// UnmarshalJSON decodes the long press param, reading the duration as integer
+// milliseconds. An absent duration stays nil; zero decodes to a pointer to zero.
+// It rejects durations outside the range of time.Duration.
 func (p *LongPressParam) UnmarshalJSON(data []byte) error {
 	type NoMethod LongPressParam
 	raw := struct {
 		NoMethod
-		Duration int64 `json:"duration,omitempty"`
+		Duration *int64 `json:"duration,omitempty"`
 	}{}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
-	*p = LongPressParam(raw.NoMethod)
-	p.Duration = time.Duration(raw.Duration) * time.Millisecond
+	decoded := LongPressParam(raw.NoMethod)
+	if raw.Duration != nil {
+		duration, err := durationFromMs(*raw.Duration)
+		if err != nil {
+			return err
+		}
+		decoded.Duration = &duration
+	}
+	*p = decoded
 	return nil
 }
 
@@ -483,34 +500,51 @@ func ActClickKey(keys []int) *Action {
 type LongPressKeyParam struct {
 	// Key specifies the virtual key codes to press. Required.
 	Key []int `json:"key,omitempty"`
-	// Duration specifies the long press duration. Default: 1000ms.
-	// JSON: serialized as integer milliseconds.
-	Duration time.Duration `json:"-"`
+	// Duration specifies the long press duration; nil omits the field, so the
+	// default configured for LongPressKey actions (default_pipeline.json) or
+	// the framework default of 1000ms applies; a pointer to 0 sends zero
+	// explicitly. JSON: serialized as integer milliseconds.
+	Duration *time.Duration `json:"-"`
 }
 
 func (n LongPressKeyParam) isActionParam() {}
 
-// MarshalJSON encodes the long press key param, with the duration as integer milliseconds.
+// MarshalJSON encodes the long press key param, with the duration as integer
+// milliseconds. A nil duration omits the field; a pointer to zero is emitted.
 func (p LongPressKeyParam) MarshalJSON() ([]byte, error) {
 	type NoMethod LongPressKeyParam
+	var duration *int64
+	if p.Duration != nil {
+		ms := p.Duration.Milliseconds()
+		duration = &ms
+	}
 	return marshalJSON(struct {
 		NoMethod
-		Duration int64 `json:"duration,omitempty"`
-	}{NoMethod: NoMethod(p), Duration: p.Duration.Milliseconds()})
+		Duration *int64 `json:"duration,omitempty"`
+	}{NoMethod: NoMethod(p), Duration: duration})
 }
 
-// UnmarshalJSON decodes the long press key param, reading the duration as integer milliseconds.
+// UnmarshalJSON decodes the long press key param, reading the duration as
+// integer milliseconds. An absent duration stays nil; zero decodes to a
+// pointer to zero. It rejects durations outside the range of time.Duration.
 func (p *LongPressKeyParam) UnmarshalJSON(data []byte) error {
 	type NoMethod LongPressKeyParam
 	raw := struct {
 		NoMethod
-		Duration int64 `json:"duration,omitempty"`
+		Duration *int64 `json:"duration,omitempty"`
 	}{}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
-	*p = LongPressKeyParam(raw.NoMethod)
-	p.Duration = time.Duration(raw.Duration) * time.Millisecond
+	decoded := LongPressKeyParam(raw.NoMethod)
+	if raw.Duration != nil {
+		duration, err := durationFromMs(*raw.Duration)
+		if err != nil {
+			return err
+		}
+		decoded.Duration = &duration
+	}
+	*p = decoded
 	return nil
 }
 

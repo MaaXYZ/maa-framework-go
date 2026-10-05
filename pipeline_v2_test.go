@@ -112,7 +112,7 @@ func TestPipelineV2NativePressureRoundTrip(t *testing.T) {
 			build: func(pressure *int) *Action {
 				return ActLongPress(LongPressParam{
 					Target:   NewTargetRect(Rect{1, 2, 3, 4}),
-					Duration: 10 * time.Millisecond,
+					Duration: durationPointer(10 * time.Millisecond),
 					Pressure: pressure,
 				})
 			},

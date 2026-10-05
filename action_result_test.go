@@ -46,7 +46,7 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 			actionType: ActionTypeLongPress,
 			param: &LongPressParam{
 				Target:   NewTargetRect(Rect{120, 110, 10, 10}),
-				Duration: 1500 * time.Millisecond,
+				Duration: durationPointer(1500 * time.Millisecond),
 				Contact:  2,
 			},
 			assert: func(t *testing.T, detail *ActionDetail) {
@@ -144,7 +144,7 @@ func (a *testActionDetailFromActionAct) Run(ctx *Context, arg *CustomActionArg) 
 			actionType: ActionTypeLongPressKey,
 			param: &LongPressKeyParam{
 				Key:      []int{24},
-				Duration: 800 * time.Millisecond,
+				Duration: durationPointer(800 * time.Millisecond),
 			},
 			assert: func(t *testing.T, detail *ActionDetail) {
 				longPressKey, ok := detail.Result.AsLongPressKey()

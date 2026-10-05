@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -199,6 +200,86 @@ func TestCustomActionParam_UnmarshalJSON_NumberFidelity(t *testing.T) {
 		require.Error(t, unmarshalJSON([]byte(`{"custom_action":"new","target_offset":[1,2,3]}`), &got))
 		require.Equal(t, original, got)
 	})
+}
+
+func TestLongPressDuration_MarshalPointer(t *testing.T) {
+	cases := []struct {
+		name       string
+		action     *Action
+		wantOutput string
+	}{
+		{"LongPress nil duration omits the key", ActLongPress(LongPressParam{}), `{"type":"LongPress","param":{}}`},
+		{"LongPress explicit zero emits zero", ActLongPress(LongPressParam{Duration: durationPointer(0)}), `{"type":"LongPress","param":{"duration":0}}`},
+		{"LongPress value in milliseconds", ActLongPress(LongPressParam{Duration: durationPointer(500 * time.Millisecond)}), `{"type":"LongPress","param":{"duration":500}}`},
+		{"LongPressKey nil duration omits the key", ActLongPressKey(LongPressKeyParam{Key: []int{24}}), `{"type":"LongPressKey","param":{"key":[24]}}`},
+		{"LongPressKey explicit zero emits zero", ActLongPressKey(LongPressKeyParam{Duration: durationPointer(0)}), `{"type":"LongPressKey","param":{"duration":0}}`},
+		{"LongPressKey value in milliseconds", ActLongPressKey(LongPressKeyParam{Key: []int{24}, Duration: durationPointer(500 * time.Millisecond)}), `{"type":"LongPressKey","param":{"key":[24],"duration":500}}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			encoded, err := marshalJSON(tc.action)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.wantOutput, string(encoded))
+		})
+	}
+}
+
+func TestLongPressDuration_UnmarshalPointer(t *testing.T) {
+	cases := []struct {
+		name    string
+		input   string
+		wantNil bool
+		wantMs  int64
+	}{
+		{"LongPress absent duration stays nil", `{"type":"LongPress","param":{}}`, true, 0},
+		{"LongPress explicit zero round-trips", `{"type":"LongPress","param":{"duration":0}}`, false, 0},
+		{"LongPress value decodes", `{"type":"LongPress","param":{"duration":500}}`, false, 500},
+		{"LongPressKey absent duration stays nil", `{"type":"LongPressKey","param":{"key":[24]}}`, true, 0},
+		{"LongPressKey explicit zero round-trips", `{"type":"LongPressKey","param":{"duration":0}}`, false, 0},
+		{"LongPressKey value decodes", `{"type":"LongPressKey","param":{"key":[24],"duration":800}}`, false, 800},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var action Action
+			require.NoError(t, unmarshalJSON([]byte(tc.input), &action))
+			var duration *time.Duration
+			switch p := action.Param.(type) {
+			case *LongPressParam:
+				duration = p.Duration
+			case *LongPressKeyParam:
+				duration = p.Duration
+			default:
+				t.Fatalf("unexpected parameter type %T", action.Param)
+			}
+			if tc.wantNil {
+				require.Nil(t, duration)
+			} else {
+				require.NotNil(t, duration)
+				require.Equal(t, tc.wantMs, duration.Milliseconds())
+			}
+
+			encoded, err := marshalJSON(action)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.input, string(encoded))
+		})
+	}
+}
+
+func TestLongPressDuration_UnmarshalOverflow(t *testing.T) {
+	for _, input := range []string{
+		`{"duration":9223372036854775807}`,
+		`{"duration":-9223372036854775808}`,
+	} {
+		longPress := LongPressParam{Contact: 3}
+		got := longPress
+		require.ErrorContains(t, unmarshalJSON([]byte(input), &got), "time.Duration range")
+		require.Equal(t, longPress, got)
+
+		longPressKey := LongPressKeyParam{Key: []int{24}}
+		gotKey := longPressKey
+		require.ErrorContains(t, unmarshalJSON([]byte(input), &gotKey), "time.Duration range")
+		require.Equal(t, longPressKey, gotKey)
+	}
 }
 
 func TestSwipeActionResult_EndRoundTrip(t *testing.T) {

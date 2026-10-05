@@ -1,6 +1,19 @@
 package maa
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+// durationFromMs converts integer milliseconds, rejecting values outside the
+// range of time.Duration.
+func durationFromMs(ms int64) (time.Duration, error) {
+	const maxMilliseconds = int64((1<<63 - 1) / int64(time.Millisecond))
+	if ms > maxMilliseconds || ms < -maxMilliseconds {
+		return 0, errors.New("duration exceeds time.Duration range")
+	}
+	return time.Duration(ms) * time.Millisecond, nil
+}
 
 func durationsToMs(ds []time.Duration) []int64 {
 	if ds == nil {
