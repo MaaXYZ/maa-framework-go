@@ -15,7 +15,10 @@ import (
 // and exposes task, recognition, action, and pipeline operations.
 // A Context received in a callback, including a Clone, is valid only until
 // that callback returns. Keep results rather than retaining the Context.
-// Callers must serialize operations through the same Context.
+// Operations on the same Context are not serialized by this wrapper — the
+// underlying native context is unsynchronized, so callers must serialize
+// them themselves. Once the callback has returned, operations fail with
+// ErrClosed.
 type Context struct {
 	handle uintptr
 	state  *contextState
@@ -73,11 +76,13 @@ func (ctx *Context) runTask(entry, override string) (*TaskDetail, error) {
 
 // RunTask runs a pipeline task by entry name and returns its detail.
 // It accepts an entry string and an optional override parameter which can be
-// a JSON string or any data type that can be marshaled to JSON. The override
-// must be a JSON object (map). If the override value is nil, an empty JSON
-// object will be used. If multiple overrides are provided, only the first one
-// will be used. If the override value cannot be marshaled to JSON, an error
-// is returned and the task is not run.
+// a JSON string, raw JSON bytes, or any data type that can be marshaled to
+// JSON. The override must be a JSON object (map); this is enforced by the
+// native side, so a non-object override fails with a generic run error. If
+// the override value is nil, an empty JSON object will be used. If multiple
+// overrides are provided, only the first one will be used. If the override
+// value cannot be marshaled to JSON, an error is returned and the task is
+// not run.
 //
 // Example 1:
 //
@@ -140,11 +145,14 @@ func (ctx *Context) runRecognition(
 
 // RunRecognition runs a recognition by entry name and returns its detail.
 // It accepts an entry string and an optional override parameter which can be
-// a JSON string or any data type that can be marshaled to JSON. The override
-// must be a JSON object (map). If the override value is nil, an empty JSON
-// object will be used. If multiple overrides are provided, only the first one
-// will be used. If the override value cannot be marshaled to JSON, an error
-// is returned and the recognition is not run.
+// a JSON string, raw JSON bytes, or any data type that can be marshaled to
+// JSON. The override must be a JSON object (map); this is enforced by the
+// native side, so a non-object override fails with a generic run error. If
+// the override value is nil, an empty JSON object will be used. If multiple
+// overrides are provided, only the first one will be used. If the override
+// value cannot be marshaled to JSON, an error is returned and the recognition
+// is not run. The image must not be empty; an empty image is rejected by the
+// native side.
 //
 // Example 1:
 //
@@ -218,11 +226,13 @@ func (ctx *Context) runAction(
 
 // RunAction runs an action by entry name and returns its detail.
 // It accepts an entry string and an optional override parameter which can be
-// a JSON string or any data type that can be marshaled to JSON. The override
-// must be a JSON object (map). If the override value is nil, an empty JSON
-// object will be used. If multiple overrides are provided, only the first one
-// will be used. If the override value cannot be marshaled to JSON, an error
-// is returned and the action is not run.
+// a JSON string, raw JSON bytes, or any data type that can be marshaled to
+// JSON. The override must be a JSON object (map); this is enforced by the
+// native side, so a non-object override fails with a generic run error. If
+// the override value is nil, an empty JSON object will be used. If multiple
+// overrides are provided, only the first one will be used. If the override
+// value cannot be marshaled to JSON, an error is returned and the action is
+// not run.
 // recognitionDetail should be a JSON string for the previous recognition
 // detail (e.g., RecognitionDetail.DetailJson). Pass "" if not available.
 //
@@ -273,7 +283,9 @@ func (ctx *Context) RunAction(
 // RunRecognitionDirect runs recognition directly by type and parameters, without a pipeline entry.
 // It accepts a recognition type (e.g., RecognitionTypeOCR, RecognitionTypeTemplateMatch),
 // a recognition parameter implementing RecognitionParam (marshaled to JSON), and an image.
-// recoParam may be nil; it is then marshaled as JSON null.
+// recoParam may be nil; it is then marshaled as JSON null, which the native
+// side treats as an unspecified parameter, so the recognition's default
+// parameters are used.
 //
 // Example:
 //
@@ -324,7 +336,9 @@ func (ctx *Context) RunRecognitionDirect(
 // RunActionDirect runs action directly by type and parameters, without a pipeline entry.
 // It accepts an action type string (e.g., "Click", "Swipe"), an action parameter that will be
 // marshaled to JSON, a box for the action position, and recognition details. If action parameters
-// or recognition details are nil, they will be marshaled to JSON null.
+// or recognition details are nil, they will be marshaled to JSON null: a null action parameter
+// means the action's default parameters are used, and a null recognition
+// detail is treated as absent.
 //
 // Example:
 //
@@ -388,8 +402,10 @@ func (ctx *Context) overridePipeline(override string) error {
 
 // OverridePipeline overrides the current pipeline definition.
 // The override parameter can be a JSON string, raw JSON bytes, a Pipeline, or any
-// data type that can be marshaled to JSON. The resulting JSON must be an object
-// or an array of objects. If override is nil, an empty JSON object will be used.
+// data type that can be marshaled to JSON. The resulting JSON must be a JSON
+// object keyed by node names; arrays are rejected by the native side. If
+// override is nil, an empty JSON object will be used, which leaves the
+// current pipeline definition unchanged.
 //
 // Example 1:
 //
@@ -436,6 +452,7 @@ func (ctx *Context) OverridePipeline(override any) error {
 }
 
 // OverrideNext overrides the next list of a node by name.
+// An empty or nil nextList clears the node's next list.
 // If the underlying call fails (e.g., node not found or list invalid), it returns an error.
 func (ctx *Context) OverrideNext(name string, nextList []NextItem) error {
 	done, useErr := ctx.state.begin()
@@ -507,7 +524,9 @@ func (ctx *Context) getNodeJSONActive(name string) (string, error) {
 }
 
 // GetNode returns the node definition by name.
-// It fetches the node JSON via GetNodeJSON and unmarshals it into a Node struct.
+// It fetches the node JSON from the current pipeline and unmarshals it into
+// a Node struct. The node dump does not carry the node name, so Name is set
+// to name; a node without attach data gets an empty, non-nil Attach map.
 func (ctx *Context) GetNode(name string) (*Node, error) {
 	done, useErr := ctx.state.begin()
 	if useErr != nil {
@@ -532,7 +551,8 @@ func (ctx *Context) GetNode(name string) (*Node, error) {
 	return &node, nil
 }
 
-// GetTaskJob returns current task job.
+// GetTaskJob returns the job of the current task. If the context is no
+// longer usable, it returns a failed job carrying the error rather than nil.
 func (ctx *Context) GetTaskJob() *TaskJob {
 	done, useErr := ctx.state.begin()
 	if useErr != nil {
@@ -557,7 +577,8 @@ func (ctx *Context) GetTaskJob() *TaskJob {
 }
 
 // GetTasker returns a borrowed view of the current Tasker. Destroy must not be
-// called on the returned value.
+// called on the returned value. It returns nil if the context is no longer
+// usable.
 func (ctx *Context) GetTasker() *Tasker {
 	done, useErr := ctx.state.begin()
 	if useErr != nil {
@@ -573,8 +594,13 @@ func (ctx *Context) getTaskerActive() *Tasker {
 }
 
 // WaitFreezes waits until the screen stabilizes (no significant changes).
-// duration is the duration that the screen must remain stable.
-// box is the recognition hit box, used when target is "Self" to calculate the ROI; if nil, uses entire screen.
+// duration is the duration that the screen must remain stable, truncated to
+// whole milliseconds. Negative durations are invalid: they wrap into a huge
+// value that the native side rejects, surfacing as the generic error below.
+// box is the recognition hit box, used when the waitFreezesParam target is
+// "Self" to calculate the ROI. A nil box yields an empty ROI, so the default
+// "Self" target fails; to monitor the entire screen, pass a rect covering it
+// or set an explicit full-image or other non-Self target.
 // waitFreezesParam is optional; nil uses default params. duration and waitFreezesParam.Time are mutually exclusive;
 // one of them must be non-zero.
 // Returns nil if the screen stabilized within the timeout; returns an error on timeout or failure.
@@ -622,6 +648,7 @@ func (ctx *Context) WaitFreezes(
 }
 
 // Clone clones the current Context. The clone has the same callback lifetime.
+// It returns nil if the context is no longer usable or the native clone fails.
 func (ctx *Context) Clone() *Context {
 	done, useErr := ctx.state.begin()
 	if useErr != nil {
@@ -636,7 +663,8 @@ func (ctx *Context) Clone() *Context {
 	return &Context{handle: handle, state: ctx.state}
 }
 
-// SetAnchor sets an anchor by name.
+// SetAnchor sets an anchor by name. An empty nodeName erases the anchor;
+// the native side does not report an error for unknown names.
 func (ctx *Context) SetAnchor(anchorName, nodeName string) error {
 	done, useErr := ctx.state.begin()
 	if useErr != nil {
@@ -650,7 +678,8 @@ func (ctx *Context) SetAnchor(anchorName, nodeName string) error {
 	return nil
 }
 
-// GetAnchor gets an anchor by name.
+// GetAnchor gets an anchor by name. It returns an error if the anchor is
+// not set.
 func (ctx *Context) GetAnchor(anchorName string) (string, error) {
 	done, useErr := ctx.state.begin()
 	if useErr != nil {
@@ -667,7 +696,8 @@ func (ctx *Context) GetAnchor(anchorName string) (string, error) {
 	return buf.Get(), nil
 }
 
-// GetHitCount gets the hit count of a node by name.
+// GetHitCount gets the hit count of a node by name. An unknown node reports
+// a count of zero without error.
 func (ctx *Context) GetHitCount(nodeName string) (uint64, error) {
 	done, useErr := ctx.state.begin()
 	if useErr != nil {
@@ -683,7 +713,8 @@ func (ctx *Context) GetHitCount(nodeName string) (uint64, error) {
 	return count, nil
 }
 
-// ClearHitCount clears the hit count of a node by name.
+// ClearHitCount clears the hit count of a node by name. An unknown node
+// name is not an error.
 func (ctx *Context) ClearHitCount(nodeName string) error {
 	done, useErr := ctx.state.begin()
 	if useErr != nil {
