@@ -183,6 +183,12 @@ func AgentServerStartUp(identifier string) error {
 	agentServerLifecycleMu.Lock()
 	defer agentServerLifecycleMu.Unlock()
 
+	// A ShutDown that raced in after the configuration check closed the
+	// singleton; starting on it would abort inside the native layer.
+	if agentServerState.Load() == uint32(agentServerClosed) {
+		return ErrClosed
+	}
+
 	if !native.MaaAgentServerStartUp(identifier) {
 		return fmt.Errorf("failed to start agent server: %s", identifier)
 	}
