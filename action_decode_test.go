@@ -18,6 +18,8 @@ func TestAction_UnmarshalJSON_KnownParamErrors(t *testing.T) {
 		{"multi swipe starting must be a number", `{"type":"MultiSwipe","param":{"swipes":[{"starting":"bad"}]}}`},
 		{"long press key duration must be a number", `{"type":"LongPressKey","param":{"duration":"bad"}}`},
 		{"shell timeout must be a number", `{"type":"Shell","param":{"shell_timeout":"bad"}}`},
+		{"offset must be an array", `{"type":"Click","param":{"target_offset":"bad"}}`},
+		{"offset must have 2 or 4 elements", `{"type":"Click","param":{"target_offset":[1,2,3]}}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -29,6 +31,57 @@ func TestAction_UnmarshalJSON_KnownParamErrors(t *testing.T) {
 			require.Equal(t, 7, param.Contact)
 		})
 	}
+}
+
+func TestActionParam_OffsetJSONOmission(t *testing.T) {
+	target := NewTargetRect(Rect{100, 200, 10, 10})
+	params := []struct {
+		name      string
+		offsetKey string
+		zero      any
+		nonZero   any
+	}{
+		{"ClickParam", "target_offset", ClickParam{Target: target}, ClickParam{Target: target, TargetOffset: Rect{1, 2, 0, 0}}},
+		{"LongPressParam", "target_offset", LongPressParam{Target: target}, LongPressParam{Target: target, TargetOffset: Rect{1, 2, 0, 0}}},
+		{"SwipeParam", "begin_offset", SwipeParam{Begin: target}, SwipeParam{Begin: target, BeginOffset: Rect{1, 2, 0, 0}}},
+		{"MultiSwipeItem", "begin_offset", MultiSwipeItem{Begin: target}, MultiSwipeItem{Begin: target, BeginOffset: Rect{1, 2, 0, 0}}},
+		{"TouchDownParam", "target_offset", TouchDownParam{Target: target}, TouchDownParam{Target: target, TargetOffset: Rect{1, 2, 0, 0}}},
+		{"TouchMoveParam", "target_offset", TouchMoveParam{Target: target}, TouchMoveParam{Target: target, TargetOffset: Rect{1, 2, 0, 0}}},
+		{"ScrollParam", "target_offset", ScrollParam{Target: target}, ScrollParam{Target: target, TargetOffset: Rect{1, 2, 0, 0}}},
+		{"CustomActionParam", "target_offset", CustomActionParam{Target: target, CustomAction: "act"}, CustomActionParam{Target: target, TargetOffset: Rect{1, 2, 0, 0}, CustomAction: "act"}},
+	}
+	for _, p := range params {
+		t.Run(p.name, func(t *testing.T) {
+			encoded, err := marshalJSON(p.zero)
+			require.NoError(t, err)
+			var wire map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal(encoded, &wire))
+			_, ok := wire[p.offsetKey]
+			require.False(t, ok, "zero offset must omit %s, got %s", p.offsetKey, encoded)
+
+			encoded, err = marshalJSON(p.nonZero)
+			require.NoError(t, err)
+			wire = nil
+			require.NoError(t, json.Unmarshal(encoded, &wire))
+			require.Contains(t, wire, p.offsetKey)
+			var elements []int
+			require.NoError(t, json.Unmarshal(wire[p.offsetKey], &elements))
+			require.Len(t, elements, 4)
+			require.Equal(t, []int{1, 2, 0, 0}, elements)
+		})
+	}
+}
+
+func TestAction_OffsetDecodedPointReencodesAsRect(t *testing.T) {
+	var action Action
+	require.NoError(t, unmarshalJSON([]byte(`{"type":"Click","param":{"target_offset":[5,10]}}`), &action))
+	param, ok := action.Param.(*ClickParam)
+	require.True(t, ok)
+	require.Equal(t, Rect{5, 10, 1, 1}, param.TargetOffset)
+
+	encoded, err := marshalJSON(action)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"type":"Click","param":{"target_offset":[5,10,1,1]}}`, string(encoded))
 }
 
 func TestSwipeActionResult_EndRoundTrip(t *testing.T) {

@@ -152,7 +152,9 @@ type ClickParam struct {
 	// Target specifies the click target position.
 	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
-	TargetOffset Rect `json:"target_offset,omitempty"`
+	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
+	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
+	TargetOffset Rect `json:"target_offset,omitzero"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
 	Contact int `json:"contact,omitempty"`
 	// Pressure specifies touch pressure; its range depends on the controller.
@@ -175,7 +177,9 @@ type LongPressParam struct {
 	// Target specifies the long press target position.
 	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
-	TargetOffset Rect `json:"target_offset,omitempty"`
+	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
+	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
+	TargetOffset Rect `json:"target_offset,omitzero"`
 	// Duration specifies the long press duration. Default: 1000ms.
 	// JSON: serialized as integer milliseconds.
 	Duration time.Duration `json:"-"`
@@ -225,7 +229,9 @@ type SwipeParam struct {
 	// Begin specifies the swipe start position.
 	Begin Target `json:"begin,omitzero"`
 	// BeginOffset specifies additional offset applied to begin position.
-	BeginOffset Rect `json:"begin_offset,omitempty"`
+	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
+	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
+	BeginOffset Rect `json:"begin_offset,omitzero"`
 	// End specifies the swipe end position.
 	End []Target `json:"end,omitzero"`
 	// EndOffset specifies additional offset applied to end position.
@@ -294,7 +300,9 @@ type MultiSwipeItem struct {
 	// Begin specifies the swipe start position.
 	Begin Target `json:"begin,omitzero"`
 	// BeginOffset specifies additional offset applied to begin position.
-	BeginOffset Rect `json:"begin_offset,omitempty"`
+	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
+	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
+	BeginOffset Rect `json:"begin_offset,omitzero"`
 	// End specifies the swipe end position.
 	End []Target `json:"end,omitzero"`
 	// EndOffset specifies additional offset applied to end position.
@@ -399,7 +407,9 @@ type TouchDownParam struct {
 	// Target specifies the touch target position.
 	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
-	TargetOffset Rect `json:"target_offset,omitempty"`
+	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
+	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
+	TargetOffset Rect `json:"target_offset,omitzero"`
 	// Pressure specifies the touch pressure, range depends on controller implementation. Default: 0.
 	Pressure int `json:"pressure,omitempty"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
@@ -422,7 +432,9 @@ type TouchMoveParam struct {
 	// Target specifies the touch target position.
 	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
-	TargetOffset Rect `json:"target_offset,omitempty"`
+	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
+	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
+	TargetOffset Rect `json:"target_offset,omitzero"`
 	// Pressure specifies the touch pressure, range depends on controller implementation. Default: 0.
 	Pressure int `json:"pressure,omitempty"`
 	// Contact specifies the touch point identifier. Adb: finger index (0=first finger). Win32: mouse button (0=left, 1=right, 2=middle).
@@ -614,7 +626,9 @@ type ScrollParam struct {
 	// Target specifies the scroll target position.
 	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
-	TargetOffset Rect `json:"target_offset,omitempty"`
+	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
+	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
+	TargetOffset Rect `json:"target_offset,omitzero"`
 	// Dx specifies the horizontal scroll amount.
 	Dx int `json:"dx,omitempty"`
 	// Dy specifies the vertical scroll amount.
@@ -734,7 +748,9 @@ type CustomActionParam struct {
 	// Target specifies the action target position.
 	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
-	TargetOffset Rect `json:"target_offset,omitempty"`
+	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
+	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
+	TargetOffset Rect `json:"target_offset,omitzero"`
 	// CustomAction specifies the action name registered via MaaResourceRegisterCustomAction. Required.
 	CustomAction string `json:"custom_action,omitempty"`
 	// CustomActionParam specifies custom parameters passed to the action callback.

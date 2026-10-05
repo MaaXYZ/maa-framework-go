@@ -302,9 +302,10 @@ func parseRecognitionResultList(algorithm string, raw json.RawMessage) ([]*Recog
 }
 
 // combinedResultItem represents a single item in the CombinedResult array for And/Or recognition.
+// Box is a pointer because the framework reports a missed sub-recognition with a null box.
 type combinedResultItem struct {
 	Algorithm string          `json:"algorithm"`
-	Box       Rect            `json:"box"`
+	Box       *Rect           `json:"box"`
 	Detail    json.RawMessage `json:"detail"`
 	Name      string          `json:"name"`
 	RecoID    int64           `json:"reco_id"`
@@ -354,11 +355,15 @@ func parseCombinedResult(detailJson []byte) ([]*RecognitionDetail, error) {
 			}
 		}
 
+		var box Rect
+		if item.Box != nil {
+			box = *item.Box
+		}
 		combinedResult = append(combinedResult, &RecognitionDetail{
 			ID:             item.RecoID,
 			Name:           item.Name,
 			Algorithm:      item.Algorithm,
-			Box:            item.Box,
+			Box:            box,
 			DetailJson:     string(item.Detail),
 			Results:        detail,
 			CombinedResult: combined,
