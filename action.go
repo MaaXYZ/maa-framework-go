@@ -574,21 +574,32 @@ func (n KeyDownParam) isActionParam() {}
 // upstream parser. On error the param is unchanged.
 func (p *KeyDownParam) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		AutoUp  *bool           `json:"auto_up,omitempty"`
-		Key     json.RawMessage `json:"key,omitempty"`
-		KeyCode json.RawMessage `json:"key_code,omitempty"`
+		AutoUp *bool           `json:"auto_up,omitempty"`
+		Key    json.RawMessage `json:"key,omitempty"`
 	}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
 	decoded := KeyDownParam{AutoUp: raw.AutoUp}
-	key, err := firstPresentKeyJSON(raw.Key, raw.KeyCode)
+	key, err := firstPresentKeyJSON(raw.Key, keyCodeAliasJSON(data))
 	if err != nil {
 		return err
 	}
 	decoded.Key = key
 	*p = decoded
 	return nil
+}
+
+// keyCodeAliasJSON extracts the legacy key_code member from data, if present.
+func keyCodeAliasJSON(data []byte) json.RawMessage {
+	var alias struct {
+		KeyCode json.RawMessage `json:"key_code,omitempty"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(&alias); err != nil {
+		return nil
+	}
+	return alias.KeyCode
 }
 
 // firstPresentKeyJSON merges the key and key_code wire fields: the first
@@ -642,15 +653,14 @@ func (n KeyUpParam) isActionParam() {}
 // upstream parser. On error the param is unchanged.
 func (p *KeyUpParam) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		AutoUp  *bool           `json:"auto_up,omitempty"`
-		Key     json.RawMessage `json:"key,omitempty"`
-		KeyCode json.RawMessage `json:"key_code,omitempty"`
+		AutoUp *bool           `json:"auto_up,omitempty"`
+		Key    json.RawMessage `json:"key,omitempty"`
 	}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
 	decoded := KeyUpParam{AutoUp: raw.AutoUp}
-	key, err := firstPresentKeyJSON(raw.Key, raw.KeyCode)
+	key, err := firstPresentKeyJSON(raw.Key, keyCodeAliasJSON(data))
 	if err != nil {
 		return err
 	}
@@ -873,15 +883,20 @@ func (n CustomActionParam) isActionParam() {}
 // of custom_action_param by decoding its numbers as json.Number, exactly as
 // the upstream parser passes the sub-JSON through. On error the param is unchanged.
 func (p *CustomActionParam) UnmarshalJSON(data []byte) error {
-	type NoMethods CustomActionParam
-	raw := struct {
-		NoMethods
+	var raw struct {
+		Target            Target          `json:"target,omitzero"`
+		TargetOffset      Rect            `json:"target_offset,omitzero"`
+		CustomAction      string          `json:"custom_action,omitempty"`
 		CustomActionParam json.RawMessage `json:"custom_action_param,omitempty"`
-	}{}
+	}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
-	decoded := CustomActionParam(raw.NoMethods)
+	decoded := CustomActionParam{
+		Target:       raw.Target,
+		TargetOffset: raw.TargetOffset,
+		CustomAction: raw.CustomAction,
+	}
 	if len(raw.CustomActionParam) != 0 {
 		var param any
 		decoder := json.NewDecoder(bytes.NewReader(raw.CustomActionParam))
