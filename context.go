@@ -595,12 +595,15 @@ func (ctx *Context) getTaskerActive() *Tasker {
 
 // WaitFreezes waits until the screen stabilizes (no significant changes).
 // duration is the duration that the screen must remain stable, truncated to
-// whole milliseconds. Negative durations are invalid: they wrap into a huge
-// value that the native side rejects, surfacing as the generic error below.
+// whole milliseconds. Negative durations are never honored: the value wraps
+// on its way to the native side and ends up non-positive there, so it is
+// silently ignored when waitFreezesParam.Time is set and reported as a
+// missing duration otherwise.
 // box is the recognition hit box, used when the waitFreezesParam target is
 // "Self" to calculate the ROI. A nil box yields an empty ROI, so the default
-// "Self" target fails; to monitor the entire screen, pass a rect covering it
-// or set an explicit full-image or other non-Self target.
+// "Self" target fails; to monitor the entire screen, pass a rect covering it,
+// in box or in a region target. A boolean true target still means "Self"
+// here and does not widen a nil box.
 // waitFreezesParam is optional; nil uses default params. duration and waitFreezesParam.Time are mutually exclusive;
 // one of them must be non-zero.
 // Returns nil if the screen stabilized within the timeout; returns an error on timeout or failure.
