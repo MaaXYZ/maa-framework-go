@@ -828,10 +828,38 @@ type CustomActionParam struct {
 	// CustomAction specifies the action name registered via MaaResourceRegisterCustomAction. Required.
 	CustomAction string `json:"custom_action,omitempty"`
 	// CustomActionParam specifies custom parameters passed to the action callback.
+	// The value is passed through verbatim by the framework, so decoding keeps
+	// numbers as json.Number to preserve integers beyond float64 precision.
 	CustomActionParam any `json:"custom_action_param,omitempty"`
 }
 
 func (n CustomActionParam) isActionParam() {}
+
+// UnmarshalJSON decodes the custom action param, keeping the numeric fidelity
+// of custom_action_param by decoding its numbers as json.Number, exactly as
+// the upstream parser passes the sub-JSON through. On error the param is unchanged.
+func (p *CustomActionParam) UnmarshalJSON(data []byte) error {
+	type NoMethods CustomActionParam
+	raw := struct {
+		NoMethods
+		CustomActionParam json.RawMessage `json:"custom_action_param,omitempty"`
+	}{}
+	if err := unmarshalJSON(data, &raw); err != nil {
+		return err
+	}
+	decoded := CustomActionParam(raw.NoMethods)
+	if len(raw.CustomActionParam) != 0 {
+		var param any
+		decoder := json.NewDecoder(bytes.NewReader(raw.CustomActionParam))
+		decoder.UseNumber()
+		if err := decoder.Decode(&param); err != nil {
+			return err
+		}
+		decoded.CustomActionParam = param
+	}
+	*p = decoded
+	return nil
+}
 
 // ActCustom creates a Custom action with the given parameters.
 func ActCustom(p CustomActionParam) *Action {

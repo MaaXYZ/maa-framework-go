@@ -153,6 +153,54 @@ func TestKeyParam_UnmarshalJSON_InvalidKeys(t *testing.T) {
 	}
 }
 
+func TestCustomActionParam_UnmarshalJSON_NumberFidelity(t *testing.T) {
+	t.Run("large integers are preserved exactly", func(t *testing.T) {
+		const input = `{"type":"Custom","param":{"custom_action":"act","custom_action_param":{"id":9007199254740993}}}`
+		var action Action
+		require.NoError(t, unmarshalJSON([]byte(input), &action))
+		param, ok := action.Param.(*CustomActionParam)
+		require.True(t, ok)
+		require.Equal(t, "act", param.CustomAction)
+		obj, ok := param.CustomActionParam.(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, json.Number("9007199254740993"), obj["id"])
+
+		encoded, err := marshalJSON(action)
+		require.NoError(t, err)
+		require.Equal(t, input, string(encoded))
+	})
+
+	t.Run("nested arrays strings and floats are unaffected", func(t *testing.T) {
+		const input = `{"type":"Custom","param":{"custom_action_param":{"big":[9007199254740994,-9007199254740995],"flag":true,"nested":{"n":9007199254740996},"ratio":1.5,"text":"hi"}}}`
+		var action Action
+		require.NoError(t, unmarshalJSON([]byte(input), &action))
+
+		encoded, err := marshalJSON(action)
+		require.NoError(t, err)
+		require.Equal(t, input, string(encoded))
+	})
+
+	t.Run("scalar param value", func(t *testing.T) {
+		const input = `{"type":"Custom","param":{"custom_action_param":42}}`
+		var action Action
+		require.NoError(t, unmarshalJSON([]byte(input), &action))
+		param, ok := action.Param.(*CustomActionParam)
+		require.True(t, ok)
+		require.Equal(t, json.Number("42"), param.CustomActionParam)
+
+		encoded, err := marshalJSON(action)
+		require.NoError(t, err)
+		require.Equal(t, input, string(encoded))
+	})
+
+	t.Run("destination is preserved on error", func(t *testing.T) {
+		original := CustomActionParam{CustomAction: "act", CustomActionParam: map[string]any{"x": 1}}
+		got := original
+		require.Error(t, unmarshalJSON([]byte(`{"custom_action":"new","target_offset":[1,2,3]}`), &got))
+		require.Equal(t, original, got)
+	})
+}
+
 func TestSwipeActionResult_EndRoundTrip(t *testing.T) {
 	encodedEnd := func(t *testing.T, result *SwipeActionResult) string {
 		t.Helper()
