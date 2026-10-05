@@ -312,10 +312,26 @@ func TestSwipeActionResult_EndRoundTrip(t *testing.T) {
 		require.JSONEq(t, "[[3,4],[5,6]]", encodedEnd(t, &result))
 	})
 
-	t.Run("malformed end is rejected", func(t *testing.T) {
-		var result SwipeActionResult
-		require.Error(t, json.Unmarshal([]byte(`{"end":[["bad"]]}`), &result))
-		require.Nil(t, result.End)
+	t.Run("malformed detail leaves the destination unchanged", func(t *testing.T) {
+		before := SwipeActionResult{
+			Begin:     Point{9, 8},
+			End:       []Point{{7, 6}},
+			EndHold:   []int{5},
+			Duration:  []int{4},
+			OnlyHover: true,
+			Starting:  3,
+			Contact:   2,
+			Pressure:  1,
+		}
+		before.endRaw = json.RawMessage(`[[1,2]]`)
+		for _, input := range []string{
+			`{"begin":[1,2],"end":[["bad"]]}`, // end parse fails after wire decode
+			`{"begin":"bad","end":[]}`,        // wire decode fails
+		} {
+			result := before
+			require.Error(t, json.Unmarshal([]byte(input), &result), "input %s", input)
+			require.Equal(t, before, result, "input %s", input)
+		}
 	})
 }
 

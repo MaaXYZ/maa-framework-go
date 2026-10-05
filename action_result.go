@@ -218,28 +218,30 @@ type swipeActionResultWire struct {
 }
 
 // UnmarshalJSON decodes the swipe detail, retaining the raw end JSON so it can
-// be re-encoded verbatim.
+// be re-encoded verbatim. On error the detail is unchanged.
 func (s *SwipeActionResult) UnmarshalJSON(data []byte) error {
 	var wire swipeActionResultWire
 	if err := unmarshalJSON(data, &wire); err != nil {
 		return err
 	}
 
-	s.Begin = wire.Begin
-	s.EndHold = wire.EndHold
-	s.Duration = wire.Duration
-	s.OnlyHover = wire.OnlyHover
-	s.Starting = wire.Starting
-	s.Contact = wire.Contact
-	s.Pressure = wire.Pressure
-
-	s.endRaw = append(s.endRaw[:0], wire.End...)
-
 	points, err := parseSwipeEndPoints(wire.End)
 	if err != nil {
 		return err
 	}
-	s.End = points
+
+	decoded := SwipeActionResult{
+		Begin:     wire.Begin,
+		End:       points,
+		EndHold:   wire.EndHold,
+		Duration:  wire.Duration,
+		OnlyHover: wire.OnlyHover,
+		Starting:  wire.Starting,
+		Contact:   wire.Contact,
+		Pressure:  wire.Pressure,
+	}
+	decoded.endRaw = append([]byte(nil), wire.End...)
+	*s = decoded
 	return nil
 }
 
