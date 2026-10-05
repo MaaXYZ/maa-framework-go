@@ -2,6 +2,7 @@ package maa
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -322,6 +323,11 @@ func TestContext_handleOverride(t *testing.T) {
 		{
 			name:     "marshal object",
 			override: []any{map[string]any{"A": 1}},
+			want:     `{"A":1}`,
+		},
+		{
+			name:     "first override wins",
+			override: []any{`{"A":1}`, `{"B":2}`},
 			want:     `{"A":1}`,
 		},
 		{
@@ -1629,4 +1635,207 @@ func TestContext_RunActionDirect(t *testing.T) {
 	default:
 		t.Fatal("custom action callback was not called")
 	}
+}
+
+type testContextWaitFreezesAct struct {
+	t *testing.T
+}
+
+func (t testContextWaitFreezesAct) Run(ctx *Context, _ *CustomActionArg) bool {
+	box := Rect{0, 0, 100, 100}
+
+	// duration only: the static blank screen must report stable.
+	err := ctx.WaitFreezes(100*time.Millisecond, &box, nil)
+	require.NoError(t.t, err)
+
+	// param.Time only, duration zero.
+	err = ctx.WaitFreezes(0, &box, &WaitFreezesParam{Time: 100 * time.Millisecond})
+	require.NoError(t.t, err)
+
+	// duration and param.Time are mutually exclusive.
+	err = ctx.WaitFreezes(100*time.Millisecond, &box, &WaitFreezesParam{Time: 100 * time.Millisecond})
+	require.Error(t.t, err)
+
+	// one of them must be non-zero.
+	err = ctx.WaitFreezes(0, &box, nil)
+	require.Error(t.t, err)
+
+	// a param that cannot be marshaled fails before anything is waited.
+	err = ctx.WaitFreezes(100*time.Millisecond, &box, &WaitFreezesParam{Target: NewTargetBool(false)})
+	require.ErrorContains(t.t, err, "failed to marshal override")
+	return true
+}
+
+func TestContext_WaitFreezes(t *testing.T) {
+	ctrl := createBlankController(t)
+	defer ctrl.Destroy()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
+	require.True(t, isConnected)
+
+	res := createResource(t)
+	defer res.Destroy()
+
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+	taskerBind(t, tasker, ctrl, res)
+
+	err = res.RegisterCustomAction("TestContext_WaitFreezesAct", &testContextWaitFreezesAct{t})
+	require.NoError(t, err)
+
+	pipeline := NewPipeline()
+	testContext_WaitFreezesNode := NewNode("TestContext_WaitFreezes").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_WaitFreezesAct"}))
+	pipeline.AddNode(testContext_WaitFreezesNode)
+
+	taskJob, err := tasker.PostTask(testContext_WaitFreezesNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
+	require.True(t, got)
+}
+
+type testContextOverridePipelineEdgeAct struct {
+	t *testing.T
+}
+
+func (t testContextOverridePipelineEdgeAct) Run(ctx *Context, _ *CustomActionArg) bool {
+	pipeline := NewPipeline()
+	testNode := NewNode("Test").
+		SetAction(ActClick(ClickParam{Target: NewTargetRect(Rect{100, 100, 10, 10})}))
+	pipeline.AddNode(testNode)
+
+	require.NoError(t.t, ctx.OverridePipeline(pipeline))
+	_, err := ctx.RunTask(testNode.Name)
+	require.NoError(t.t, err)
+
+	// nil override is a no-op and keeps the current override usable.
+	require.NoError(t.t, ctx.OverridePipeline(nil))
+	_, err = ctx.RunTask(testNode.Name)
+	require.NoError(t.t, err)
+
+	// the native API accepts JSON objects only; arrays are rejected.
+	err = ctx.OverridePipeline(`[{"Test":{"action":"DoNothing"}}]`)
+	require.Error(t.t, err)
+	err = ctx.OverridePipeline([]map[string]any{{"Test": map[string]any{"action": "DoNothing"}}})
+	require.Error(t.t, err)
+
+	// the rejected overrides left the previous override intact.
+	_, err = ctx.RunTask(testNode.Name)
+	require.NoError(t.t, err)
+
+	// a value that cannot be marshaled errors and leaves the override intact.
+	err = ctx.OverridePipeline(func() {})
+	require.Error(t.t, err)
+	_, err = ctx.RunTask(testNode.Name)
+	require.NoError(t.t, err)
+	return true
+}
+
+func TestContext_OverridePipelineEdges(t *testing.T) {
+	ctrl := createBlankController(t)
+	defer ctrl.Destroy()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
+	require.True(t, isConnected)
+
+	res := createResource(t)
+	defer res.Destroy()
+
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+	taskerBind(t, tasker, ctrl, res)
+
+	err = res.RegisterCustomAction("TestContext_OverridePipelineEdgeAct", &testContextOverridePipelineEdgeAct{t})
+	require.NoError(t, err)
+
+	pipeline := NewPipeline()
+	testContext_OverridePipelineEdgeNode := NewNode("TestContext_OverridePipelineEdge").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_OverridePipelineEdgeAct"}))
+	pipeline.AddNode(testContext_OverridePipelineEdgeNode)
+
+	taskJob, err := tasker.PostTask(testContext_OverridePipelineEdgeNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
+	require.True(t, got)
+}
+
+type testContextOverrideNextEdgeTaskAct struct {
+	runs *[]string
+}
+
+func (a *testContextOverrideNextEdgeTaskAct) Run(_ *Context, _ *CustomActionArg) bool {
+	*a.runs = append(*a.runs, "TaskA")
+	return true
+}
+
+type testContextOverrideNextEdgeAct struct {
+	t    *testing.T
+	runs *[]string
+}
+
+func (t testContextOverrideNextEdgeAct) Run(ctx *Context, _ *CustomActionArg) bool {
+	pipeline := NewPipeline()
+	testNode := NewNode("Test").
+		SetNext([]NextItem{{Name: "TaskA"}})
+	pipeline.AddNode(testNode)
+	taskANode := NewNode("TaskA").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_OverrideNextEdgeTaskAct"}))
+	pipeline.AddNode(taskANode)
+
+	err := ctx.OverridePipeline(pipeline)
+	require.NoError(t.t, err)
+
+	_, err = ctx.RunTask(testNode.Name)
+	require.NoError(t.t, err)
+	require.Len(t.t, *t.runs, 1)
+
+	// an empty next list is valid and clears the node's next list.
+	err = ctx.OverrideNext(testNode.Name, []NextItem{})
+	require.NoError(t.t, err)
+	err = ctx.OverrideNext(testNode.Name, nil)
+	require.NoError(t.t, err)
+
+	// TaskA must not run again after the next list was cleared.
+	_, err = ctx.RunTask(testNode.Name)
+	require.NoError(t.t, err)
+	require.Len(t.t, *t.runs, 1)
+
+	// unknown node names are rejected.
+	err = ctx.OverrideNext("NoSuchNode", []NextItem{{Name: "TaskA"}})
+	require.Error(t.t, err)
+	return true
+}
+
+func TestContext_OverrideNextEdges(t *testing.T) {
+	ctrl := createBlankController(t)
+	defer ctrl.Destroy()
+	connectJob, err := ctrl.PostConnect()
+	require.NoError(t, err)
+	isConnected := connectJob.Wait().Success()
+	require.True(t, isConnected)
+
+	res := createResource(t)
+	defer res.Destroy()
+
+	tasker := createTasker(t)
+	defer tasker.Destroy()
+	taskerBind(t, tasker, ctrl, res)
+
+	runs := &[]string{}
+	err = res.RegisterCustomAction("TestContext_OverrideNextEdgeTaskAct", &testContextOverrideNextEdgeTaskAct{runs})
+	require.NoError(t, err)
+	err = res.RegisterCustomAction("TestContext_OverrideNextEdgeAct", &testContextOverrideNextEdgeAct{t, runs})
+	require.NoError(t, err)
+
+	pipeline := NewPipeline()
+	testContext_OverrideNextEdgeNode := NewNode("TestContext_OverrideNextEdge").
+		SetAction(ActCustom(CustomActionParam{CustomAction: "TestContext_OverrideNextEdgeAct"}))
+	pipeline.AddNode(testContext_OverrideNextEdgeNode)
+
+	taskJob, err := tasker.PostTask(testContext_OverrideNextEdgeNode.Name, pipeline)
+	require.NoError(t, err)
+	got := taskJob.Wait().Success()
+	require.True(t, got)
 }
