@@ -1,26 +1,42 @@
-// Package maa provides the Go binding for MaaFramework.
-//
 // This file provides BlankController, a pure-Go no-op custom controller
-// implementation (via NewCustomController) for testing and development purposes.
+// implementation (via NewCustomController) for testing and development
+// purposes.
 //
 // NOTE: This is NOT a binding to MaaDbgControllerCreate from the C API.
 // MaaDbgControllerCreate is intentionally excluded from the Go binding.
 // Do NOT add a NewDbgController or any wrapper for MaaDbgControllerCreate here.
 // Use BlankController as a Go-native no-op stub alternative.
-// For image-based testing, use the C implementation via MaaDbgControllerCreate.
+// For image-based testing in Go, use NewReplayController or a CustomController
+// with a custom Screencap implementation; MaaDbgControllerCreate serves images
+// from a directory and is available only through the C API.
+
 package maa
 
 import (
 	"image"
 )
 
+// BlankController is a no-op CustomController for testing: every method
+// reports success without performing any action. It is designed to be
+// embedded in test controller types that override only the methods under
+// test. Observable behavior worth knowing:
+//   - Screencap returns a 1280x720 image; after the native round-trip it is
+//     opaque black (alpha is dropped on the RGBA-to-BGR conversion and
+//     forced back to 255 on decoding).
+//   - RequestUUID returns "blank-controller" for every instance, so
+//     controllers are not distinguishable by UUID.
+//   - Connected reports true unconditionally, even before Connect.
+//   - GetInfo returns {"type":"blank"}, but the framework overwrites the
+//     "type" key with "custom" for every custom controller, so
+//     Controller.GetInfo always reports type "custom".
 type BlankController struct{}
 
 var _ CustomController = (*BlankController)(nil)
 
-// NewBlankController creates a blank controller that does nothing and always succeeds.
-// Use this to test framework features (resource binding, tasker initialization, etc.)
-// without any real controller behavior.
+// NewBlankController creates a controller whose operations all succeed as
+// no-ops. Use it to test framework features (resource binding, tasker
+// initialization, etc.) without any real controller behavior. It returns an
+// error only when native controller creation fails.
 func NewBlankController() (*Controller, error) {
 	return NewCustomController(&BlankController{})
 }
@@ -70,7 +86,8 @@ func (c *BlankController) RequestUUID() (string, bool) {
 	return "blank-controller", true
 }
 
-// Screencap implements CustomController.
+// Screencap implements CustomController. It returns a blank 1280x720 image,
+// opaque black after the native round-trip.
 func (c *BlankController) Screencap() (image.Image, bool) {
 	return image.NewRGBA(image.Rect(0, 0, 1280, 720)), true
 }
