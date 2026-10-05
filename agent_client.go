@@ -24,11 +24,20 @@ type AgentClient struct {
 }
 
 var (
+	// ErrInvalidAgentClient reports an AgentClient method called on a nil
+	// receiver. Destroy is exempt: calling it on nil returns nil.
 	ErrInvalidAgentClient = errors.New("invalid agent client")
-	ErrInvalidResource    = errors.New("invalid resource")
-	ErrInvalidController  = errors.New("invalid controller")
-	ErrInvalidTasker      = errors.New("invalid tasker")
-	ErrInvalidTimeout     = errors.New("timeout must be non-negative")
+	// ErrInvalidResource reports BindResource or RegisterResourceSink
+	// called with a nil *Resource.
+	ErrInvalidResource = errors.New("invalid resource")
+	// ErrInvalidController reports RegisterControllerSink called with a
+	// zero-value Controller.
+	ErrInvalidController = errors.New("invalid controller")
+	// ErrInvalidTasker reports RegisterTaskerSink called with a zero-value
+	// Tasker.
+	ErrInvalidTasker = errors.New("invalid tasker")
+	// ErrInvalidTimeout reports SetTimeout called with a negative duration.
+	ErrInvalidTimeout = errors.New("timeout must be non-negative")
 )
 
 const (
@@ -47,8 +56,13 @@ type AgentClientOption func(*agentClientConfig)
 
 // WithIdentifier sets the client identifier for creating an agent client.
 // The identifier is used to identify this specific client instance.
-// The identifier creation mode uses IPC, and will fall back to TCP on older
-// Windows versions that do not support AF_UNIX (builds prior to 17063).
+// In identifier mode the rendezvous is an IPC socket whose filename embeds
+// the identifier, except that a purely numeric identifier in 1-65535 is
+// treated as a TCP port number that the client binds, instead of an IPC
+// socket name. The identifier creation mode will fall back to TCP on older
+// Windows versions that do not support AF_UNIX (builds prior to 17063); in
+// that fallback the client binds an auto-selected port and Identifier
+// returns that port string rather than the passed identifier.
 // If empty, an identifier will be automatically generated.
 //
 // Priority: This option takes precedence for creation mode if specified
@@ -62,7 +76,10 @@ func WithIdentifier(identifier string) AgentClientOption {
 }
 
 // WithTcpPort sets the TCP port for creating a TCP-based agent client.
-// The client will connect to the agent server at the specified port.
+// The client listens on 127.0.0.1:port and the Agent server connects to
+// it, so the server must be started with the same port number as its
+// identifier, e.g. AgentServerStartUp("5555"). A port of 0 lets the system
+// auto-select a port; Identifier then returns the bound port as a string.
 //
 // Priority: This option takes precedence for creation mode if specified
 // after WithIdentifier. If specified before WithIdentifier, WithIdentifier
@@ -143,7 +160,8 @@ func (ac *AgentClient) Destroy() error {
 	return ac.state.close()
 }
 
-// Identifier returns the identifier of the current agent client.
+// Identifier returns the identifier of the current agent client. In TCP
+// mode it returns the bound port as a string; see WithTcpPort.
 func (ac *AgentClient) Identifier() (string, error) {
 	_, done, useErr := ac.begin()
 	if useErr != nil {
@@ -194,7 +212,14 @@ func (ac *AgentClient) BindResource(res *Resource) error {
 	return nil
 }
 
-// RegisterResourceSink registers resource events for the resource.
+// RegisterResourceSink registers a sink on the resource so that its
+// lifecycle events are forwarded to the connected Agent server. Each call
+// replaces the sink previously registered by this client for the resource,
+// and Disconnect clears the sinks registered on the client.
+//
+// Passing an object borrowed inside an AgentClient callback fails with
+// ErrBorrowed, a deliberate lifetime restriction: the client cannot keep
+// callback-scoped handles alive.
 func (ac *AgentClient) RegisterResourceSink(res *Resource) error {
 	_, done, useErr := ac.begin()
 	if useErr != nil {
@@ -225,7 +250,14 @@ func (ac *AgentClient) RegisterResourceSink(res *Resource) error {
 	return nil
 }
 
-// RegisterControllerSink registers controller events for the controller.
+// RegisterControllerSink registers a sink on the controller so that its
+// lifecycle events are forwarded to the connected Agent server. Each call
+// replaces the sink previously registered by this client for the
+// controller, and Disconnect clears the sinks registered on the client.
+//
+// Passing an object borrowed inside an AgentClient callback fails with
+// ErrBorrowed, a deliberate lifetime restriction: the client cannot keep
+// callback-scoped handles alive.
 func (ac *AgentClient) RegisterControllerSink(ctrl Controller) error {
 	_, done, useErr := ac.begin()
 	if useErr != nil {
@@ -256,7 +288,16 @@ func (ac *AgentClient) RegisterControllerSink(ctrl Controller) error {
 	return nil
 }
 
-// RegisterTaskerSink registers tasker events for the tasker.
+// RegisterTaskerSink registers a sink on the tasker so that its lifecycle
+// events are forwarded to the connected Agent server. It also forwards
+// context events: the native layer registers a context sink on the same
+// tasker. Each call replaces the sink previously registered by this client
+// for the tasker, and Disconnect clears the sinks registered on the
+// client.
+//
+// Passing an object borrowed inside an AgentClient callback fails with
+// ErrBorrowed, a deliberate lifetime restriction: the client cannot keep
+// callback-scoped handles alive.
 func (ac *AgentClient) RegisterTaskerSink(tasker Tasker) error {
 	_, done, useErr := ac.begin()
 	if useErr != nil {
@@ -288,6 +329,13 @@ func (ac *AgentClient) RegisterTaskerSink(tasker Tasker) error {
 }
 
 // Connect connects to the Agent server.
+//
+// A resource must be bound with BindResource first; the native layer fails
+// the connection otherwise. On success Connect performs the protocol
+// handshake and registers the Agent server's custom recognition and action
+// list on the bound resource. It blocks until connected or until the
+// timeout set by SetTimeout elapses; the default timeout is effectively
+// unlimited.
 func (ac *AgentClient) Connect() error {
 	_, done, useErr := ac.begin()
 	if useErr != nil {
@@ -335,7 +383,9 @@ func (ac *AgentClient) Connected() bool {
 	return native.MaaAgentClientConnected(ac.handle)
 }
 
-// Alive checks if the Agent server is still responsive.
+// Alive reports whether the communication channel to the Agent server is
+// still ready. It probes the local channel, not a heartbeat, so it may
+// keep returning true briefly for a server that has exited.
 func (ac *AgentClient) Alive() bool {
 	_, done, useErr := ac.begin()
 	if useErr != nil {
@@ -349,7 +399,15 @@ func (ac *AgentClient) Alive() bool {
 	return native.MaaAgentClientAlive(ac.handle)
 }
 
-// SetTimeout sets the timeout duration for the Agent server.
+// SetTimeout sets this client's timeout for communicating with the Agent
+// server. It bounds how long Connect, Disconnect, and calls that wait on
+// the server can block.
+//
+// Durations are converted to whole milliseconds; a positive sub-millisecond
+// duration is rounded up to one millisecond. A negative duration is
+// rejected with ErrInvalidTimeout. The native layer would instead treat a
+// negative timeout as unlimited; pass a very large duration to approximate
+// that.
 func (ac *AgentClient) SetTimeout(duration time.Duration) error {
 	_, done, useErr := ac.begin()
 	if useErr != nil {
@@ -377,7 +435,8 @@ func (ac *AgentClient) SetTimeout(duration time.Duration) error {
 	return nil
 }
 
-// GetCustomRecognitionList returns the custom recognition name list of the agent client.
+// GetCustomRecognitionList returns the custom recognition name list of the
+// agent client. The list is empty until Connect has succeeded.
 func (ac *AgentClient) GetCustomRecognitionList() ([]string, error) {
 	_, done, useErr := ac.begin()
 	if useErr != nil {
@@ -397,7 +456,8 @@ func (ac *AgentClient) GetCustomRecognitionList() ([]string, error) {
 	return buf.GetAll(), nil
 }
 
-// GetCustomActionList returns the custom action name list of the agent client.
+// GetCustomActionList returns the custom action name list of the agent
+// client. The list is empty until Connect has succeeded.
 func (ac *AgentClient) GetCustomActionList() ([]string, error) {
 	_, done, useErr := ac.begin()
 	if useErr != nil {
