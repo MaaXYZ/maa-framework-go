@@ -17,6 +17,9 @@ func TestScreencapMethod_String(t *testing.T) {
 		{"DXGI_DesktopDup_Window", ScreencapDXGIDesktopDupWindow, "DXGI_DesktopDup_Window"},
 		{"PrintWindow", ScreencapPrintWindow, "PrintWindow"},
 		{"ScreenDC", ScreencapScreenDC, "ScreenDC"},
+		{"All", ScreencapAll, "All"},
+		{"Foreground", ScreencapForeground, "Foreground"},
+		{"Background", ScreencapBackground, "Background"},
 		{"Unknown", ScreencapMethod(999), "999"},
 	}
 
@@ -71,6 +74,11 @@ func TestParseScreencapMethod(t *testing.T) {
 		{"FramePool", "FramePool", ScreencapFramePool, false},
 		{"DXGIDesktopDup", "DXGIDesktopDup", ScreencapDXGIDesktopDup, false},
 		{"DXGIDesktopDupWindow", "DXGIDesktopDupWindow", ScreencapDXGIDesktopDupWindow, false},
+		{"DXGI_DesktopDup", "DXGI_DesktopDup", ScreencapDXGIDesktopDup, false},
+		{"DXGI_DesktopDup_Window", "DXGI_DesktopDup_Window", ScreencapDXGIDesktopDupWindow, false},
+		{"All", "All", ScreencapAll, false},
+		{"Foreground", "Foreground", ScreencapForeground, false},
+		{"Background", "Background", ScreencapBackground, false},
 		{"PrintWindow", "PrintWindow", ScreencapPrintWindow, false},
 		{"ScreenDC", "ScreenDC", ScreencapScreenDC, false},
 		// Case insensitive
@@ -196,5 +204,90 @@ func TestInputMethodRoundTrip(t *testing.T) {
 				t.Errorf("Round trip failed: %v -> %q -> %v", m, str, parsed)
 			}
 		})
+	}
+}
+
+// TestEnumValuesMatchCAbi pins the exported enum values against the C ABI in
+// deps/include/MaaFramework/MaaDef.h. The String/Parse round-trip tests above
+// cannot catch a silent renumbering of the underlying bits.
+func TestEnumValuesMatchCAbi(t *testing.T) {
+	screencap := []struct {
+		name   string
+		method ScreencapMethod
+		want   uint64
+	}{
+		{"ScreencapNone", ScreencapNone, 0},
+		{"ScreencapGDI", ScreencapGDI, 1 << 0},
+		{"ScreencapFramePool", ScreencapFramePool, 1 << 1},
+		{"ScreencapDXGIDesktopDup", ScreencapDXGIDesktopDup, 1 << 2},
+		{"ScreencapDXGIDesktopDupWindow", ScreencapDXGIDesktopDupWindow, 1 << 3},
+		{"ScreencapPrintWindow", ScreencapPrintWindow, 1 << 4},
+		{"ScreencapScreenDC", ScreencapScreenDC, 1 << 5},
+		{"ScreencapAll", ScreencapAll, ^uint64(0)},
+		// Foreground = DXGI_DesktopDup_Window | ScreenDC
+		{"ScreencapForeground", ScreencapForeground, 1<<3 | 1<<5},
+		// Background = FramePool | PrintWindow
+		{"ScreencapBackground", ScreencapBackground, 1<<1 | 1<<4},
+	}
+	for _, tt := range screencap {
+		if got := uint64(tt.method); got != tt.want {
+			t.Errorf("%s = %#x, want %#x", tt.name, got, tt.want)
+		}
+	}
+
+	input := []struct {
+		name   string
+		method InputMethod
+		want   uint64
+	}{
+		{"InputNone", InputNone, 0},
+		{"InputSeize", InputSeize, 1 << 0},
+		{"InputSendMessage", InputSendMessage, 1 << 1},
+		{"InputPostMessage", InputPostMessage, 1 << 2},
+		{"InputLegacyEvent", InputLegacyEvent, 1 << 3},
+		{"InputPostThreadMessage", InputPostThreadMessage, 1 << 4},
+		{"InputSendMessageWithCursorPos", InputSendMessageWithCursorPos, 1 << 5},
+		{"InputPostMessageWithCursorPos", InputPostMessageWithCursorPos, 1 << 6},
+		{"InputSendMessageWithWindowPos", InputSendMessageWithWindowPos, 1 << 7},
+		{"InputPostMessageWithWindowPos", InputPostMessageWithWindowPos, 1 << 8},
+		{"InputInterception", InputInterception, 1 << 9},
+		{"InputAnchoredTouch", InputAnchoredTouch, 1 << 10},
+	}
+	for _, tt := range input {
+		if got := uint64(tt.method); got != tt.want {
+			t.Errorf("%s = %#x, want %#x", tt.name, got, tt.want)
+		}
+	}
+}
+
+// TestScreencapMethod_CanonicalSpellings pins the DXGI spellings against the
+// upstream bindings (PiCli Configurator.cpp, Python define.py, NodeJS
+// constant.cpp): String emits the underscore spellings and Parse accepts both
+// them and this binding's legacy underscore-free spellings.
+func TestScreencapMethod_CanonicalSpellings(t *testing.T) {
+	if got := ScreencapDXGIDesktopDup.String(); got != "DXGI_DesktopDup" {
+		t.Errorf("ScreencapDXGIDesktopDup.String() = %q, want %q", got, "DXGI_DesktopDup")
+	}
+	if got := ScreencapDXGIDesktopDupWindow.String(); got != "DXGI_DesktopDup_Window" {
+		t.Errorf("ScreencapDXGIDesktopDupWindow.String() = %q, want %q", got, "DXGI_DesktopDup_Window")
+	}
+
+	for _, tt := range []struct {
+		input    string
+		expected ScreencapMethod
+	}{
+		{"DXGI_DesktopDup", ScreencapDXGIDesktopDup},
+		{"DXGI_DesktopDup_Window", ScreencapDXGIDesktopDupWindow},
+		{"DXGIDesktopDup", ScreencapDXGIDesktopDup},
+		{"DXGIDesktopDupWindow", ScreencapDXGIDesktopDupWindow},
+	} {
+		got, err := ParseScreencapMethod(tt.input)
+		if err != nil {
+			t.Errorf("ParseScreencapMethod(%q) error = %v", tt.input, err)
+			continue
+		}
+		if got != tt.expected {
+			t.Errorf("ParseScreencapMethod(%q) = %v, want %v", tt.input, got, tt.expected)
+		}
 	}
 }
