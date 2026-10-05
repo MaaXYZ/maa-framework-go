@@ -82,3 +82,14 @@ func TestAgentClient_CreateV2FailureReturnsError(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, client)
 }
+
+// TestAgentClient_CreateTcpFailureReturnsError pins the defensive TCP-side
+// failure contract; upstream cannot currently return a null handle from
+// MaaAgentClientCreateTcp, so this path is only reachable through the stub.
+func TestAgentClient_CreateTcpFailureReturnsError(t *testing.T) {
+	replaceNativeForTest(t, &native.MaaAgentClientCreateTcp, func(uint16) uintptr { return 0 })
+
+	client, err := NewAgentClient(WithTcpPort(1))
+	require.Error(t, err)
+	require.Nil(t, client)
+}
