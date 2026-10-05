@@ -296,7 +296,8 @@ func NewCustomController(
 }
 
 // NOTE: MaaDbgController (MaaDbgControllerCreate) is intentionally NOT implemented in the Go binding.
-// MaaDbgControllerCreate has been superseded by more specific alternatives:
+// MaaDbgControllerCreate remains a current, non-deprecated API upstream; the
+// Go binding offers these alternatives instead:
 //   - BlankController (blank_controller.go): no-op stub that always succeeds
 //   - NewReplayController: replay recorded operations from a JSONL file
 // Do NOT add a Go binding for MaaDbgControllerCreate or NewDbgController here.

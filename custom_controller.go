@@ -82,11 +82,12 @@ const (
 )
 
 // CustomController defines an interface for custom controller.
-// Implementers of this interface must embed a CustomControllerHandler struct
-// and provide implementations for the following methods:
-// Connect, RequestUUID, StartApp, StopApp,
+// Implementers of this interface must provide implementations for the
+// following methods:
+// Connect, Connected, RequestUUID, GetFeature, StartApp, StopApp,
 // Screencap, Click, Swipe, TouchDown, TouchMove, TouchUp,
-// ClickKey, InputText, KeyDown, KeyUp, Scroll, RelativeMove, Shell and Inactive.
+// ClickKey, InputText, KeyDown, KeyUp, Scroll, RelativeMove,
+// Shell, Inactive and GetInfo.
 // Methods can be called concurrently from native threads; implementations must
 // synchronize shared state. KeyUp and TouchUp can be called during destruction.
 type CustomController interface {
@@ -109,13 +110,15 @@ type CustomController interface {
 	Scroll(dx, dy int32) bool
 	RelativeMove(dx, dy int32) bool
 	// Shell runs a controller-side shell command and returns its textual output.
+	// timeout is measured in milliseconds.
 	// Return ("", true) if the command succeeded but produced no output.
 	Shell(cmd string, timeout int64) (string, bool)
 	// Inactive is called when the framework requests restoring controller/window state (e.g. after tasks finish).
 	// Return true for success or when no action is needed.
 	Inactive() bool
 	// GetInfo returns custom controller information as a JSON string.
-	// Return ("", true) if no extra info is needed.
+	// Return ("{}", true) if no extra info is needed; an empty string is not
+	// valid JSON and logs a framework warning on every controller action.
 	GetInfo() (string, bool)
 }
 
