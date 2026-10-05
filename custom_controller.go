@@ -71,11 +71,20 @@ func unregisterCustomControllerCallbacks(id uint64) {
 	customControllerCallbacksAgentsMutex.Unlock()
 }
 
+// ControllerFeature is the feature bitmask returned by CustomController.GetFeature.
+// The flags indicate which input methods the controller supports or prefers.
 type ControllerFeature uint64
 
 const (
-	ControllerFeatureNone                               ControllerFeature = 0
-	ControllerFeatureUseMouseDownAndUpInsteadOfClick    ControllerFeature = 1
+	// ControllerFeatureNone reports no special features: the controller
+	// supports Click, Swipe, and ClickKey directly.
+	ControllerFeatureNone ControllerFeature = 0
+	// ControllerFeatureUseMouseDownAndUpInsteadOfClick makes the framework
+	// route clicks and swipes through TouchDown/TouchMove/TouchUp instead of
+	// Click and Swipe, so contact and pressure are forwarded.
+	ControllerFeatureUseMouseDownAndUpInsteadOfClick ControllerFeature = 1
+	// ControllerFeatureUseKeyboardDownAndUpInsteadOfClick makes the framework
+	// route ClickKey through KeyDown plus KeyUp instead of ClickKey.
 	ControllerFeatureUseKeyboardDownAndUpInsteadOfClick ControllerFeature = 1 << 1
 	// ControllerFeatureNoScalingTouchPoints disables automatic touch coordinate scaling.
 	ControllerFeatureNoScalingTouchPoints ControllerFeature = 1 << 2
@@ -90,6 +99,11 @@ const (
 // Shell, Inactive and GetInfo.
 // Methods can be called concurrently from native threads; implementations must
 // synchronize shared state. KeyUp and TouchUp can be called during destruction.
+//
+// Unlike the C API, which allows NULL callbacks (native then defaults
+// connected and inactive to true), this interface requires all 21 methods to
+// be implemented. When there is nothing to do, return the documented
+// defaults: Connected/Inactive → true, GetInfo → ("{}", true).
 type CustomController interface {
 	Connect() bool
 	Connected() bool
@@ -122,6 +136,10 @@ type CustomController interface {
 	GetInfo() (string, bool)
 }
 
+// MaaCustomControllerCallbacks is the purego mirror of the C
+// MaaCustomControllerCallbacks struct. Its field order and signatures must
+// match MaaCustomController.h exactly: the struct layout is the ABI that the
+// native MaaCustomControllerCreate reads.
 type MaaCustomControllerCallbacks struct {
 	Connect      uintptr
 	Connected    uintptr
@@ -528,8 +546,10 @@ func _InactiveAgent(handleArg uintptr) uintptr {
 
 	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	// For Win32 controllers, this restores window position (removes topmost) and unblocks user input.
-	// For other controllers, this is a no-op that always succeeds.
+	// For Win32 controllers, the inactive action restores window position (removes topmost) and unblocks user input.
+	// Here, success is decided by the custom controller's Inactive return value;
+	// the native default of true for a NULL inactive callback does not apply,
+	// because this bridge always registers the callback.
 	if !exists {
 		return uintptr(1)
 	}
