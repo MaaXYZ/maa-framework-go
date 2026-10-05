@@ -3,7 +3,6 @@
 // objects. They do not decode the legacy flat pipeline format.
 // For pipeline protocol details, see:
 // https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md
-
 package maa
 
 // Node is a single unit of work in a pipeline.
