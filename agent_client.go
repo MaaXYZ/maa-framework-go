@@ -333,8 +333,9 @@ func (ac *AgentClient) RegisterTaskerSink(tasker Tasker) error {
 // A resource must be bound with BindResource first; the native layer fails
 // the connection otherwise. On success Connect performs the protocol
 // handshake and registers the Agent server's custom recognition and action
-// list on the bound resource. It blocks until connected or until the
-// timeout set by SetTimeout elapses; the default timeout is effectively
+// list on the bound resource. Communication waits use the timeout set by
+// [AgentClient.SetTimeout]; each wait has its own timeout, so the whole
+// connection attempt can take longer. The default timeout is effectively
 // unlimited.
 func (ac *AgentClient) Connect() error {
 	_, done, useErr := ac.begin()
@@ -399,9 +400,10 @@ func (ac *AgentClient) Alive() bool {
 	return native.MaaAgentClientAlive(ac.handle)
 }
 
-// SetTimeout sets this client's timeout for communicating with the Agent
-// server. It bounds how long Connect, Disconnect, and calls that wait on
-// the server can block.
+// SetTimeout sets this client's timeout for each native communication wait
+// with the Agent server. Connect, Disconnect, and other remote calls can
+// perform multiple waits and process requests or callbacks between them,
+// so an operation's total duration can exceed this timeout.
 //
 // Durations are converted to whole milliseconds; a positive sub-millisecond
 // duration is rounded up to one millisecond. A negative duration is
