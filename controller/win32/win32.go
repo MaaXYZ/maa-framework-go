@@ -49,14 +49,19 @@ const (
 	screencapNoneStr                 = ""
 	screencapGDIStr                  = "GDI"
 	screencapFramePoolStr            = "FramePool"
-	screencapDXGIDesktopDupStr       = "DXGIDesktopDup"
-	screencapDXGIDesktopDupWindowStr = "DXGIDesktopDupWindow"
+	screencapDXGIDesktopDupStr       = "DXGI_DesktopDup"
+	screencapDXGIDesktopDupWindowStr = "DXGI_DesktopDup_Window"
 	screencapPrintWindowStr          = "PrintWindow"
 	screencapScreenDCStr             = "ScreenDC"
 
 	screencapAllStr        = "All"
 	screencapForegroundStr = "Foreground"
 	screencapBackgroundStr = "Background"
+
+	// Legacy Go-only spellings without underscores, emitted by earlier v4
+	// betas. ParseScreencapMethod still accepts them.
+	screencapDXGIDesktopDupLegacyStr       = "DXGIDesktopDup"
+	screencapDXGIDesktopDupWindowLegacyStr = "DXGIDesktopDupWindow"
 
 	inputNoneStr                     = ""
 	inputSeizeStr                    = "Seize"
@@ -137,9 +142,9 @@ func ParseScreencapMethod(s string) (ScreencapMethod, error) {
 		return ScreencapGDI, nil
 	case strings.EqualFold(screencapFramePoolStr, s):
 		return ScreencapFramePool, nil
-	case strings.EqualFold(screencapDXGIDesktopDupStr, s):
+	case strings.EqualFold(screencapDXGIDesktopDupStr, s), strings.EqualFold(screencapDXGIDesktopDupLegacyStr, s):
 		return ScreencapDXGIDesktopDup, nil
-	case strings.EqualFold(screencapDXGIDesktopDupWindowStr, s):
+	case strings.EqualFold(screencapDXGIDesktopDupWindowStr, s), strings.EqualFold(screencapDXGIDesktopDupWindowLegacyStr, s):
 		return ScreencapDXGIDesktopDupWindow, nil
 	case strings.EqualFold(screencapPrintWindowStr, s):
 		return ScreencapPrintWindow, nil
