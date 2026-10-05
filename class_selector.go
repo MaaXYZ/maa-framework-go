@@ -23,7 +23,10 @@ func ClassLabel(label string) ClassSelector {
 	return ClassSelector{label: label, isLabel: true}
 }
 
+// IsIndex reports whether the selector selects by class index.
 func (c ClassSelector) IsIndex() bool { return !c.isLabel }
+
+// IsLabel reports whether the selector selects by class label.
 func (c ClassSelector) IsLabel() bool { return c.isLabel }
 
 // AsIndex returns the index, or an error if the selector holds a label.
@@ -84,7 +87,8 @@ func (c *ClassSelector) UnmarshalJSON(data []byte) error {
 // ClassSelectors is an ordered list of class indices and labels.
 // JSON input may be a single integer or string, or an array of either.
 // Non-nil lists marshal as arrays. In neural network parameters, nil is omitted
-// to inherit the existing/default selection; an empty non-nil list clears it.
+// to inherit the existing/default selection; an empty non-nil list clears the
+// selection, matching all classes.
 type ClassSelectors []ClassSelector
 
 // UnmarshalJSON normalizes a scalar to a one-element list. Invalid input,
