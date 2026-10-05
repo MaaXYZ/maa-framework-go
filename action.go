@@ -13,6 +13,10 @@ import (
 // Known types decode to their typed parameters. Unrecognized type names retain
 // their parameter JSON as *RawActionParam; this does not establish native support.
 // Unknown fields outside param, and unmodeled fields of known parameters, are not retained.
+// Known parameter fields accept only their canonical JSON forms, the shapes
+// this package emits: list-typed fields (key, swipe durations and end holds,
+// swipe end and end offsets, command args) reject the single-value shorthand
+// the native pipeline parser also tolerates, so write the list form.
 type Action struct {
 	// Type specifies the action type.
 	Type ActionType `json:"type,omitempty"`
