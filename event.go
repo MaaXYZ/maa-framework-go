@@ -80,10 +80,12 @@ func (e Event) Failed() string {
 //     ResourceLoadingDetail.
 //   - EventControllerAction: running a controller action; ControllerActionDetail.
 //   - EventTaskerTask: running a pipeline task; TaskerTaskDetail.
-//   - EventNodePipelineNode, EventNodeRecognitionNode, EventNodeActionNode:
-//     the recognition and action stages of a pipeline node; the details decode
-//     as NodePipelineNodeDetail, NodeRecognitionNodeDetail, and
-//     NodeActionNodeDetail.
+//   - EventNodePipelineNode: a node of a running pipeline task;
+//     NodePipelineNodeDetail.
+//   - EventNodeRecognitionNode, EventNodeActionNode: the dedicated
+//     recognition-only and action-only task types posted via
+//     Tasker.PostRecognition and Tasker.PostAction; NodeRecognitionNodeDetail
+//     and NodeActionNodeDetail.
 //   - EventNodeNextList: scanning a node's next list; NodeNextListDetail.
 //   - EventNodeRecognition, EventNodeAction: a recognition or action step
 //     within a node; NodeRecognitionDetail and NodeActionDetail.
