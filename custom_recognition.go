@@ -39,7 +39,9 @@ func unregisterCustomRecognition(id uint64) bool {
 // when the framework executes a node with a Custom recognition.
 type CustomRecognitionArg struct {
 	TaskID int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
-	// CurrentTaskName is the name of the pipeline node currently executing.
+	// CurrentTaskName is the name of the node currently executing. Entries
+	// run via Context.RunRecognitionDirect use a synthesized name
+	// ("recognition/<type>/<uuid>") instead of a pipeline node name.
 	CurrentTaskName string
 	// CustomRecognitionName is the registered name of this custom recognizer.
 	CustomRecognitionName string

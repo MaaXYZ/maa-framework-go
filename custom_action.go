@@ -38,7 +38,9 @@ func unregisterCustomAction(id uint64) bool {
 // framework executes a node with a Custom action.
 type CustomActionArg struct {
 	TaskID int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
-	// CurrentTaskName is the name of the pipeline node currently executing.
+	// CurrentTaskName is the name of the node currently executing. Entries
+	// run via Context.RunActionDirect use a synthesized name
+	// ("action/<type>/<uuid>") instead of a pipeline node name.
 	CurrentTaskName string
 	// CustomActionName is the registered name of this custom action.
 	CustomActionName string
@@ -60,8 +62,9 @@ type CustomActionArg struct {
 // via Resource.RegisterCustomAction.
 type CustomActionRunner interface {
 	// Run reports whether the action succeeded. Returning false marks the
-	// node's action as failed, and the task continues from the node's
-	// on_error list.
+	// node's action as failed; for a pipeline node the task then continues
+	// from the node's on_error list, while action-only runs (e.g. via
+	// Context.RunAction) only report the failure in their ActionDetail.
 	Run(ctx *Context, arg *CustomActionArg) bool
 }
 
