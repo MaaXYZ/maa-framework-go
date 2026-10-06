@@ -338,7 +338,8 @@ func (ctx *Context) RunRecognitionDirect(
 // marshaled to JSON, a box for the action position, and recognition details. If action parameters
 // or recognition details are nil, they will be marshaled to JSON null: a null action parameter
 // means the action's default parameters are used, and a null recognition
-// detail is treated as absent.
+// detail is treated as absent. A non-nil recognition detail is marshaled as
+// an opaque JSON payload (see RecognitionDetail).
 //
 // Example:
 //

@@ -71,8 +71,9 @@ func NewTasker() (*Tasker, error) {
 }
 
 // Destroy closes the tasker once. Borrowed taskers cannot be destroyed.
-// Destroy returns ErrBound while an AgentClient is registered as a sink.
-// It returns ErrInUse while a method or asynchronous job is active.
+// Destroy returns ErrBound while an AgentClient is registered as a sink,
+// ErrInUse while a method or asynchronous job is active, and ErrInCallback
+// when called from inside one of the tasker's own callbacks.
 // Destroy the tasker before destroying its bound resource and controller.
 func (t *Tasker) Destroy() error {
 	if t == nil || !t.owned {
@@ -82,8 +83,10 @@ func (t *Tasker) Destroy() error {
 }
 
 // BindResource binds an initialized resource to the tasker. It returns
-// ErrTaskerRunning while tasks are pending or running. A previously bound
-// resource remains retained until the tasker is destroyed.
+// ErrTaskerRunning while tasks are pending or running. The C API accepts
+// rebinding and a null handle (unbind) in any state; the Go wrapper is
+// stricter and also rejects a nil resource. A previously bound resource
+// remains retained until the tasker is destroyed.
 func (t *Tasker) BindResource(res *Resource) error {
 	_, done, err := t.state.begin()
 	if err != nil {
@@ -126,8 +129,10 @@ func (t *Tasker) BindResource(res *Resource) error {
 }
 
 // BindController binds an initialized controller to the tasker. It returns
-// ErrTaskerRunning while tasks are pending or running. A previously bound
-// controller remains retained until the tasker is destroyed.
+// ErrTaskerRunning while tasks are pending or running. The C API accepts
+// rebinding and a null handle (unbind) in any state; the Go wrapper is
+// stricter and also rejects a nil controller. A previously bound controller
+// remains retained until the tasker is destroyed.
 func (t *Tasker) BindController(ctrl *Controller) error {
 	_, done, err := t.state.begin()
 	if err != nil {
@@ -272,7 +277,8 @@ func (t *Tasker) PostRecognition(recType RecognitionType, recParam RecognitionPa
 }
 
 // PostAction posts an action to the tasker asynchronously.
-// The box and recoDetail are from the previous recognition.
+// The box and recoDetail are from the previous recognition; recoDetail is
+// marshaled as an opaque JSON payload (see RecognitionDetail).
 // It returns an error and a terminal-failed job when the action cannot be
 // submitted, for example when the action or recognition detail parameter
 // cannot be marshaled or the tasker is closed; the action is not posted to
@@ -474,6 +480,17 @@ func (t *Tasker) overridePipeline(taskId int64, override any) error {
 }
 
 // RecognitionDetail contains recognition information.
+//
+// PostAction and Context.RunActionDirect marshal the recognition detail as
+// an opaque JSON payload for the native layer: with the default JSON codec
+// the keys are the Go field names, and Raw and Draws embed internal image
+// data rather than usable image content. The native layer does not parse
+// the payload keys, but the shape differs from the RecoResult JSON (keys
+// reco_id, name, algorithm, box, detail) the C API emits for recognition
+// details.
+//
+// Raw and Draws come from the recognition image cache and are subject to
+// its size limit (see SetRecoImageCacheLimit).
 type RecognitionDetail struct {
 	ID             int64
 	Name           string
@@ -483,13 +500,15 @@ type RecognitionDetail struct {
 	DetailJson     string
 	Results        *RecognitionResults  // nil if algorithm is DirectHit, And or Or.
 	CombinedResult []*RecognitionDetail // for And/Or algorithms only.
-	Raw            image.Image          // available when debug mode or save_draw is enabled.
+	Raw            image.Image          // available only in debug mode.
 	Draws          []image.Image        // available when debug mode or save_draw is enabled.
 }
 
 // GetRecognitionDetail queries recognition detail.
 // It returns an error when no detail is available for recId or the detail
-// cannot be decoded.
+// cannot be decoded. Only the algorithm strings the framework currently
+// produces decode successfully; an unrecognized algorithm string fails the
+// whole query.
 func (t *Tasker) GetRecognitionDetail(recId int64) (*RecognitionDetail, error) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -1066,6 +1085,8 @@ type taskerEventSinkAdapter struct {
 	onTaskerTask func(EventStatus, TaskerTaskDetail)
 }
 
+// OnTaskerTask implements TaskerEventSink by forwarding
+// Tasker.Task events to the registered callback, if any.
 func (a *taskerEventSinkAdapter) OnTaskerTask(tasker *Tasker, status EventStatus, detail TaskerTaskDetail) {
 	if a == nil || a.onTaskerTask == nil {
 		return

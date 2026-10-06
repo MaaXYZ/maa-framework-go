@@ -12,6 +12,11 @@ var (
 	jsonEmptyArray  = []byte("[]")
 )
 
+// RecognitionResult is the decoded view of a single recognition result from
+// a recognition detail JSON. The underlying value is discriminated by the
+// algorithm string reported by the framework; use Type, Value, and the As
+// methods to access it. An unrecognized algorithm string is a decode error,
+// so only the algorithm set currently produced by the framework decodes.
 type RecognitionResult struct {
 	tp  RecognitionType
 	val any
@@ -81,6 +86,7 @@ func (r *RecognitionResult) AsNeuralNetworkDetect() (*NeuralNetworkDetectResult,
 	return val, ok
 }
 
+// AsCustom returns the result as CustomRecognitionResult if the type matches.
 func (r *RecognitionResult) AsCustom() (*CustomRecognitionResult, bool) {
 	if r.tp != RecognitionTypeCustom {
 		return nil, false
@@ -90,27 +96,37 @@ func (r *RecognitionResult) AsCustom() (*CustomRecognitionResult, bool) {
 	return val, ok
 }
 
+// TemplateMatchResult is the decoded TemplateMatch result from a recognition
+// detail JSON, with keys box and score.
 type TemplateMatchResult struct {
 	Box   Rect    `json:"box"`
 	Score float64 `json:"score"`
 }
 
+// FeatureMatchResult is the decoded FeatureMatch result from a recognition
+// detail JSON, with keys box and count.
 type FeatureMatchResult struct {
 	Box   Rect `json:"box"`
 	Count int  `json:"count"`
 }
 
+// ColorMatchResult is the decoded ColorMatch result from a recognition
+// detail JSON, with keys box and count.
 type ColorMatchResult struct {
 	Box   Rect `json:"box"`
 	Count int  `json:"count"`
 }
 
+// OCRResult is the decoded OCR result from a recognition detail JSON, with
+// keys text, box, and score.
 type OCRResult struct {
 	Box   Rect    `json:"box"`
 	Text  string  `json:"text"`
 	Score float64 `json:"score"`
 }
 
+// NeuralNetworkClassifyResult is the decoded NeuralNetworkClassify result
+// from a recognition detail JSON, with keys cls_index, label, box, and score.
 type NeuralNetworkClassifyResult struct {
 	Box      Rect    `json:"box"`
 	ClsIndex uint64  `json:"cls_index"`
@@ -118,6 +134,8 @@ type NeuralNetworkClassifyResult struct {
 	Score    float64 `json:"score"`
 }
 
+// NeuralNetworkDetectResult is the decoded NeuralNetworkDetect result from a
+// recognition detail JSON, with keys cls_index, label, box, and score.
 type NeuralNetworkDetectResult struct {
 	Box      Rect    `json:"box"`
 	ClsIndex uint64  `json:"cls_index"`
