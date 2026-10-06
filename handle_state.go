@@ -10,16 +10,22 @@ import (
 // ErrClosed reports an operation on a destroyed native object.
 var ErrClosed = errors.New("maa: object is closed")
 
-// ErrBorrowed reports an attempt to destroy a handle obtained from a getter or callback.
+// ErrBorrowed reports an attempt to destroy, bind, or register callbacks on a
+// handle obtained from a getter or callback; such a view does not own the
+// native object.
 var ErrBorrowed = errors.New("maa: borrowed object cannot be destroyed")
 
-// ErrBound reports an attempt to destroy a resource or controller still bound to a tasker.
+// ErrBound reports an attempt to destroy an object another object still
+// retains: a resource or controller bound to a tasker, or a tasker with an
+// AgentClient registered as a sink.
 var ErrBound = errors.New("maa: object is bound to a tasker")
 
 // ErrInCallback reports an attempt to destroy an object from one of its callbacks.
 var ErrInCallback = errors.New("maa: object cannot be destroyed during a callback")
 
-// ErrInUse reports an attempt to destroy an object while a call or job is active.
+// ErrInUse reports an attempt to destroy an object while a call or job is
+// active, or to reconfigure an agent server that is active, joined, or
+// detached. Retry once the active work finishes.
 var ErrInUse = errors.New("maa: object has an active call")
 
 // ErrTaskerRunning reports an attempt to rebind a running tasker.
