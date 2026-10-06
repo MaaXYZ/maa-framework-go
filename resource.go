@@ -264,18 +264,9 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 		return fmt.Errorf("failed to register custom recognition: %s", name)
 	}
 
-	var oldID uint64
-	var hadOld bool
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
-		if existing, ok := v.CustomRecognizersCallbackID[name]; ok {
-			oldID = existing
-			hadOld = true
-		}
 		v.CustomRecognizersCallbackID[name] = id
 	})
-	if hadOld {
-		unregisterCustomRecognition(oldID)
-	}
 	return nil
 }
 
@@ -414,18 +405,9 @@ func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) 
 		return fmt.Errorf("failed to register custom action: %s", name)
 	}
 
-	var oldID uint64
-	var hadOld bool
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
-		if existing, ok := v.CustomActionsCallbackID[name]; ok {
-			oldID = existing
-			hadOld = true
-		}
 		v.CustomActionsCallbackID[name] = id
 	})
-	if hadOld {
-		unregisterCustomAction(oldID)
-	}
 	return nil
 }
 

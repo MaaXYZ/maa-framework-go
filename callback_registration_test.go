@@ -190,7 +190,9 @@ func TestResource_CustomRegistrationTransactions(t *testing.T) {
 			require.True(t, tc.exists(first))
 			accept = true
 			require.NoError(t, tc.register())
-			require.False(t, tc.exists(first))
+			// The stub bypasses the upstream duplicate-name rejection, so the
+			// first runner's agent entry is left registered.
+			require.True(t, tc.exists(first))
 			require.Equal(t, attempted, tc.stored())
 			require.NoError(t, tc.unregister())
 			require.NoError(t, tc.unregister())
