@@ -57,8 +57,9 @@ func (j *Job) Error() error {
 }
 
 // Status returns the current status of the job. It reports StatusFailure when
-// the job carries an error, for example after a failed submission or after
-// the owning handle has been closed.
+// the job carries an error and no terminal status has been cached yet, for
+// example after a failed submission or after the owning handle has been
+// closed.
 func (j *Job) Status() Status {
 	if status := Status(j.finalStatus.Load()); !status.Invalid() {
 		return status
