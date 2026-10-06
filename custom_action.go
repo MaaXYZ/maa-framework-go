@@ -34,18 +34,34 @@ func unregisterCustomAction(id uint64) bool {
 	return true
 }
 
+// CustomActionArg is the argument passed to CustomActionRunner.Run when the
+// framework executes a node with a Custom action.
 type CustomActionArg struct {
-	TaskID            int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
-	CurrentTaskName   string
-	CustomActionName  string
+	TaskID int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
+	// CurrentTaskName is the name of the pipeline node currently executing.
+	CurrentTaskName string
+	// CustomActionName is the registered name of this custom action.
+	CustomActionName string
+	// CustomActionParam is the node's custom_action_param, serialized as a
+	// JSON string.
 	CustomActionParam string
 	// RecognitionDetail may be nil when the custom action runs on an action-only
 	// node (e.g. invoked via Context.RunAction), where reco_id is invalid.
 	RecognitionDetail *RecognitionDetail
-	Box               Rect
+	// Box is the action's resolved target rect, the position the action
+	// should act on. It equals the preceding recognition's hit box only when
+	// the action target is Self (the default); with other targets it is the
+	// resolved target rect instead, and it may be empty when that rect is
+	// empty.
+	Box Rect
 }
 
+// CustomActionRunner performs the action for nodes registered under a name
+// via Resource.RegisterCustomAction.
 type CustomActionRunner interface {
+	// Run reports whether the action succeeded. Returning false marks the
+	// node's action as failed, and the task continues from the node's
+	// on_error list.
 	Run(ctx *Context, arg *CustomActionArg) bool
 }
 
@@ -54,6 +70,7 @@ type CustomActionRunner interface {
 // CustomActionRunner that calls f.
 type CustomActionFunc func(ctx *Context, arg *CustomActionArg) bool
 
+// Run calls f(ctx, arg).
 func (f CustomActionFunc) Run(ctx *Context, arg *CustomActionArg) bool {
 	return f(ctx, arg)
 }

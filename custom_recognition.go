@@ -35,13 +35,23 @@ func unregisterCustomRecognition(id uint64) bool {
 	return true
 }
 
+// CustomRecognitionArg is the argument passed to CustomRecognitionRunner.Run
+// when the framework executes a node with a Custom recognition.
 type CustomRecognitionArg struct {
-	TaskID                 int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
-	CurrentTaskName        string
-	CustomRecognitionName  string
+	TaskID int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
+	// CurrentTaskName is the name of the pipeline node currently executing.
+	CurrentTaskName string
+	// CustomRecognitionName is the registered name of this custom recognizer.
+	CustomRecognitionName string
+	// CustomRecognitionParam is the node's custom_recognition_param,
+	// serialized as a JSON string.
 	CustomRecognitionParam string
-	Img                    image.Image
-	Roi                    Rect
+	// Img is the current frame to recognize, decoded into a copy that stays
+	// valid after Run returns.
+	Img image.Image
+	// Roi is the region of interest the recognizer should search, resolved
+	// from the node's roi.
+	Roi Rect
 }
 
 // CustomRecognitionResult contains the box and detail returned by a custom recognizer.
@@ -64,6 +74,7 @@ type CustomRecognitionRunner interface {
 // CustomRecognitionRunner that calls f.
 type CustomRecognitionFunc func(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool)
 
+// Run calls f(ctx, arg).
 func (f CustomRecognitionFunc) Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
 	return f(ctx, arg)
 }
