@@ -42,24 +42,62 @@ func unregisterEventCallback(id uint64) {
 	eventCallbacksMutex.Unlock()
 }
 
+// Event is the family name of a MaaFramework notification, such as
+// "Resource.Loading". The families match the MaaMsg_* defines in the upstream
+// MaaMsg.h one-to-one and carry no status: the full notification name is built
+// by appending a status suffix with Starting, Succeeded, or Failed. Incoming
+// notification names are split the same way, and a name without a recognized
+// suffix reports EventStatusUnknown.
 type Event string
 
+// String returns the event family name itself, without a status suffix.
 func (e Event) String() string {
 	return string(e)
 }
 
+// Starting returns the notification name reported when the operation starts:
+// the family name plus ".Starting".
 func (e Event) Starting() string {
 	return string(e) + ".Starting"
 }
 
+// Succeeded returns the notification name reported when the operation
+// succeeds: the family name plus ".Succeeded".
 func (e Event) Succeeded() string {
 	return string(e) + ".Succeeded"
 }
 
+// Failed returns the notification name reported when the operation fails:
+// the family name plus ".Failed".
 func (e Event) Failed() string {
 	return string(e) + ".Failed"
 }
 
+// MaaFramework notification event families, matching the MaaMsg_* defines in
+// the upstream MaaMsg.h one-to-one:
+//
+//   - EventResourceLoading: loading resource content; details decode as
+//     ResourceLoadingDetail.
+//   - EventControllerAction: running a controller action; ControllerActionDetail.
+//   - EventTaskerTask: running a pipeline task; TaskerTaskDetail.
+//   - EventNodePipelineNode, EventNodeRecognitionNode, EventNodeActionNode:
+//     the recognition and action stages of a pipeline node; the details decode
+//     as NodePipelineNodeDetail, NodeRecognitionNodeDetail, and
+//     NodeActionNodeDetail.
+//   - EventNodeNextList: scanning a node's next list; NodeNextListDetail.
+//   - EventNodeRecognition, EventNodeAction: a recognition or action step
+//     within a node; NodeRecognitionDetail and NodeActionDetail.
+//   - EventNodeWaitFreezes: see its own comment below.
+//
+// Most families report Starting when the operation begins and Succeeded or
+// Failed when it ends, with two upstream edge cases: a Controller.Action
+// reports Starting and Succeeded only for focused actions (actions posted
+// through the public Post methods are auto-focused upstream), while Failed is
+// reported for every failed action; and a Node.Action may end without a
+// terminal event when its task is stopped. Events with an unknown family name
+// are ignored, and an event whose details fail to decode is dropped without
+// invoking the sink. Detail payloads are decoded leniently: keys upstream
+// adds beyond the documented detail fields are ignored.
 const (
 	EventResourceLoading     = Event("Resource.Loading")
 	EventControllerAction    = Event("Controller.Action")
@@ -70,7 +108,9 @@ const (
 	EventNodeNextList        = Event("Node.NextList")
 	EventNodeRecognition     = Event("Node.Recognition")
 	EventNodeAction          = Event("Node.Action")
-	// EventNodeWaitFreezes identifies wait-freezes progress and completion events.
+	// EventNodeWaitFreezes identifies wait-freezes lifecycle events: a single
+	// Starting when the wait loop is entered and a Succeeded or Failed on
+	// completion. There are no per-iteration progress events.
 	EventNodeWaitFreezes = Event("Node.WaitFreezes")
 )
 
@@ -157,8 +197,13 @@ type NodeActionDetail struct {
 	Focus    any    `json:"focus"`
 }
 
-// NodeWaitFreezesDetail contains wait-freezes progress or completion data.
-// Param retains native JSON values. RecoIDs and Elapsed are supplied on completion.
+// NodeWaitFreezesDetail contains wait-freezes lifecycle data.
+// Param retains native JSON values. RecoIDs and Elapsed are supplied on
+// completion: the Starting payload carries neither key, and both the
+// Succeeded and Failed payloads attach them. Phase reports which
+// wait-freezes stage fired: "pre", "repeat", or "post" for a pipeline node's
+// stages, or "context" for a wait started via Context.WaitFreezes. Elapsed is
+// measured in milliseconds.
 type NodeWaitFreezesDetail struct {
 	TaskID  uint64         `json:"task_id"`
 	WfID    int64          `json:"wf_id"`
