@@ -80,7 +80,7 @@ func TestPipelineV2NeuralNetworkDetectThresholdJSON(t *testing.T) {
 	encoded, err := marshalJSON(recognition)
 	require.NoError(t, err)
 	require.JSONEq(t,
-		`{"type":"NeuralNetworkDetect","param":{"model":"detector.onnx","roi_offset":[0,0,0,0],"threshold":[0.25,0]}}`,
+		`{"type":"NeuralNetworkDetect","param":{"model":"detector.onnx","threshold":[0.25,0]}}`,
 		string(encoded),
 	)
 

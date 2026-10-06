@@ -169,7 +169,7 @@ type TemplateMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Template specifies the template image paths. Required.
 	Template []string `json:"template,omitempty"`
 	// Threshold specifies the matching threshold [0-1.0]. Default: 0.7.
@@ -225,7 +225,7 @@ type FeatureMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Template specifies the template image paths. Required.
 	Template []string `json:"template,omitempty"`
 	// Count specifies the minimum number of feature points required (threshold). Default: 4.
@@ -280,7 +280,7 @@ type ColorMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Method specifies the color space. 4: RGB (default), 40: HSV, 6: GRAY.
 	Method ColorMatchMethod `json:"method,omitempty"`
 	// Lower specifies the color lower bounds. Required. Inner array length must match method channels.
@@ -339,7 +339,7 @@ type OCRParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Expected specifies the expected text results, supports regex.
 	// JSON input may be a single string or an array of strings.
 	// Nil is omitted to inherit the existing/default value; an empty
@@ -392,7 +392,7 @@ type NeuralNetworkClassifyParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Labels specifies class names for label selection, debugging, and logging. Fills "Unknown" if not provided.
 	// JSON input may be a single string or an array of strings.
 	// Nil is omitted to inherit the existing/default labels; an empty
@@ -440,7 +440,7 @@ type NeuralNetworkDetectParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Labels specifies class names for label selection, debugging, and logging. Auto-reads from model metadata if not provided.
 	// JSON input may be a single string or an array of strings.
 	// Nil is omitted to inherit the existing/default labels; an empty
@@ -696,7 +696,7 @@ type CustomRecognitionParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
 	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// CustomRecognition specifies the recognizer name registered via MaaResourceRegisterCustomRecognition. Required.
 	CustomRecognition string `json:"custom_recognition,omitempty"`
 	// CustomRecognitionParam specifies custom parameters passed to the recognition callback.

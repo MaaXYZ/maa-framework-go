@@ -70,7 +70,7 @@ func TestStringList_ParamFields(t *testing.T) {
 		t.Run(tc.name+" empty list marshals as []", func(t *testing.T) {
 			data, err := json.Marshal(tc.param)
 			require.NoError(t, err)
-			require.JSONEq(t, `{"roi_offset":[0,0,0,0],"`+tc.key+`":[]}`, string(data))
+			require.JSONEq(t, `{"`+tc.key+`":[]}`, string(data))
 		})
 	}
 	for _, tc := range []struct {
@@ -84,7 +84,7 @@ func TestStringList_ParamFields(t *testing.T) {
 		t.Run(tc.name+" nil list is omitted", func(t *testing.T) {
 			data, err := json.Marshal(tc.param)
 			require.NoError(t, err)
-			require.JSONEq(t, `{"roi_offset":[0,0,0,0]}`, string(data))
+			require.JSONEq(t, `{}`, string(data))
 		})
 	}
 }
