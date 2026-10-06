@@ -228,7 +228,7 @@ func TestPipelineV2KnownParamsRemainTypedAndValidate(t *testing.T) {
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"TemplateMatch","param":{"template":["icon.png"]}}`), &recognition))
 		param, ok := recognition.Param.(*TemplateMatchParam)
 		require.True(t, ok, "known recognition should remain typed, got %T", recognition.Param)
-		require.Equal(t, []string{"icon.png"}, param.Template)
+		require.Equal(t, StringList{"icon.png"}, param.Template)
 
 		beforeParam := *param
 		err := unmarshalJSON([]byte(`{"type":"ColorMatch","param":{"lower":["bad"]}}`), &recognition)
@@ -341,7 +341,7 @@ func TestDecodeRecognitionParamUnknownAndKnown(t *testing.T) {
 	require.NoError(t, err)
 	knownTemplate, ok := known.(*TemplateMatchParam)
 	require.True(t, ok, "known helper result should remain typed, got %T", known)
-	require.Equal(t, []string{"icon.png"}, knownTemplate.Template)
+	require.Equal(t, StringList{"icon.png"}, knownTemplate.Template)
 
 	_, err = decodeRecognitionParam(RecognitionTypeTemplateMatch, []byte(`{"threshold":["bad"]}`))
 	require.Error(t, err, "known helper errors must not fall back to RawRecognitionParam")

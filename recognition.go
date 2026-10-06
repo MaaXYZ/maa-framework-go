@@ -171,9 +171,9 @@ type TemplateMatchParam struct {
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Template specifies the template image paths. Required.
-	Template []string `json:"template,omitempty"`
+	Template StringList `json:"template,omitzero"`
 	// Threshold specifies the matching threshold [0-1.0]. Default: 0.7.
-	Threshold []float64 `json:"threshold,omitempty"`
+	Threshold []float64 `json:"threshold,omitzero"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Random.
 	OrderBy TemplateMatchOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
@@ -196,6 +196,71 @@ func RecTemplateMatch(p TemplateMatchParam) *Recognition {
 		Type:  RecognitionTypeTemplateMatch,
 		Param: &param,
 	}
+}
+
+// UnmarshalJSON normalizes a scalar template and a scalar threshold to
+// one-element lists. Invalid parameter values leave the receiver unchanged.
+func (p *TemplateMatchParam) UnmarshalJSON(data []byte) error {
+	raw := struct {
+		ROI       Target                  `json:"roi,omitzero"`
+		ROIOffset Rect                    `json:"roi_offset,omitzero"`
+		Template  StringList              `json:"template,omitzero"`
+		Threshold templateMatchThresholds `json:"threshold,omitzero"`
+		OrderBy   TemplateMatchOrderBy    `json:"order_by,omitempty"`
+		Index     int                     `json:"index,omitempty"`
+		Method    TemplateMatchMethod     `json:"method,omitempty"`
+		GreenMask bool                    `json:"green_mask,omitempty"`
+	}{
+		ROI:       p.ROI,
+		ROIOffset: p.ROIOffset,
+		Template:  slices.Clone(p.Template),
+		Threshold: templateMatchThresholds(slices.Clone(p.Threshold)),
+		OrderBy:   p.OrderBy,
+		Index:     p.Index,
+		Method:    p.Method,
+		GreenMask: p.GreenMask,
+	}
+	if err := unmarshalJSON(data, &raw); err != nil {
+		return err
+	}
+	*p = TemplateMatchParam{
+		ROI:       raw.ROI,
+		ROIOffset: raw.ROIOffset,
+		Template:  raw.Template,
+		Threshold: []float64(raw.Threshold),
+		OrderBy:   raw.OrderBy,
+		Index:     raw.Index,
+		Method:    raw.Method,
+		GreenMask: raw.GreenMask,
+	}
+	return nil
+}
+
+type templateMatchThresholds []float64
+
+func (t *templateMatchThresholds) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	var values []*float64
+	if len(data) > 0 && data[0] == '[' {
+		if err := unmarshalJSON(data, &values); err != nil {
+			return err
+		}
+	} else {
+		var value *float64
+		if err := unmarshalJSON(data, &value); err != nil {
+			return err
+		}
+		values = []*float64{value}
+	}
+	thresholds := make(templateMatchThresholds, len(values))
+	for i, value := range values {
+		if value == nil {
+			return errors.New("template match threshold must contain only numbers")
+		}
+		thresholds[i] = *value
+	}
+	*t = thresholds
+	return nil
 }
 
 // FeatureMatchOrderBy defines the ordering options for feature matching results.
@@ -227,7 +292,7 @@ type FeatureMatchParam struct {
 	// ROIOffset specifies the offset applied to ROI.
 	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Template specifies the template image paths. Required.
-	Template []string `json:"template,omitempty"`
+	Template StringList `json:"template,omitzero"`
 	// Count specifies the minimum number of feature points required (threshold). Default: 4.
 	Count int `json:"count,omitempty"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Area | Random.
@@ -471,7 +536,7 @@ func (n NeuralNetworkDetectParam) isRecognitionParam() {}
 func (p *NeuralNetworkDetectParam) UnmarshalJSON(data []byte) error {
 	raw := struct {
 		ROI       Target                        `json:"roi,omitzero"`
-		ROIOffset Rect                          `json:"roi_offset,omitempty"`
+		ROIOffset Rect                          `json:"roi_offset,omitzero"`
 		Labels    StringList                    `json:"labels,omitzero"`
 		Model     string                        `json:"model,omitempty"`
 		Expected  ClassSelectors                `json:"expected,omitzero"`

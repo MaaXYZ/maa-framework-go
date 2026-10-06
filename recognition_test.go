@@ -40,7 +40,7 @@ func TestSubRecognitionItem_UnmarshalJSON_NestedRecognition(t *testing.T) {
 	require.Equal(t, RecognitionTypeTemplateMatch, item.Inline.Type)
 	param, ok := item.Inline.Param.(*TemplateMatchParam)
 	require.True(t, ok)
-	require.Equal(t, []string{"a.png"}, param.Template)
+	require.Equal(t, StringList{"a.png"}, param.Template)
 }
 
 func TestSubRecognitionItem_UnmarshalJSON_Invalid(t *testing.T) {

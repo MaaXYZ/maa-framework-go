@@ -562,7 +562,7 @@ func (a *testContextGetNodeDataAct) testTemplateMatchRecognition(ctx *Context) {
 	assert.IsType(a.t, (*TemplateMatchParam)(nil), nodeData.Recognition.Param)
 
 	param := nodeData.Recognition.Param.(*TemplateMatchParam)
-	assert.Equal(a.t, []string{"test.png", "test2.png"}, param.Template)
+	assert.Equal(a.t, StringList{"test.png", "test2.png"}, param.Template)
 	assert.Equal(a.t, []float64{0.8}, param.Threshold)
 	assert.Equal(a.t, TemplateMatchOrderByScore, param.OrderBy)
 	assert.Equal(a.t, 1, param.Index)
@@ -597,7 +597,7 @@ func (a *testContextGetNodeDataAct) testFeatureMatchRecognition(ctx *Context) {
 	assert.IsType(a.t, (*FeatureMatchParam)(nil), nodeData.Recognition.Param)
 
 	param := nodeData.Recognition.Param.(*FeatureMatchParam)
-	assert.Equal(a.t, []string{"feature.png"}, param.Template)
+	assert.Equal(a.t, StringList{"feature.png"}, param.Template)
 	assert.Equal(a.t, 10, param.Count)
 	assert.Equal(a.t, FeatureMatchOrderByArea, param.OrderBy)
 	assert.Equal(a.t, FeatureMatchMethodSIFT, param.Detector)
