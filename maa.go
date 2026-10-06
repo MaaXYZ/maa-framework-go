@@ -14,15 +14,24 @@ var (
 	lifecycleMu             sync.RWMutex
 	shutdownNativeLibraries = native.Shutdown
 
-	ErrSetLogDir              = errors.New("failed to set log directory")
-	ErrSetSaveDraw            = errors.New("failed to set save draw option")
-	ErrSetStdoutLevel         = errors.New("failed to set stdout level")
-	ErrSetDebugMode           = errors.New("failed to set debug mode")
-	ErrSetSaveOnError         = errors.New("failed to set save on error option")
-	ErrSetDrawQuality         = errors.New("failed to set draw quality")
+	// ErrSetLogDir is returned when SetLogDir fails at the native layer.
+	ErrSetLogDir = errors.New("failed to set log directory")
+	// ErrSetSaveDraw is returned when SetSaveDraw fails at the native layer.
+	ErrSetSaveDraw = errors.New("failed to set save draw option")
+	// ErrSetStdoutLevel is returned when SetStdoutLevel fails at the native layer.
+	ErrSetStdoutLevel = errors.New("failed to set stdout level")
+	// ErrSetDebugMode is returned when SetDebugMode fails at the native layer.
+	ErrSetDebugMode = errors.New("failed to set debug mode")
+	// ErrSetSaveOnError is returned when SetSaveOnError fails at the native layer.
+	ErrSetSaveOnError = errors.New("failed to set save on error option")
+	// ErrSetDrawQuality is returned when SetDrawQuality fails at the native layer.
+	ErrSetDrawQuality = errors.New("failed to set draw quality")
+	// ErrSetRecoImageCacheLimit is returned when SetRecoImageCacheLimit fails at the native layer.
 	ErrSetRecoImageCacheLimit = errors.New("failed to set recognition image cache limit")
-	ErrLoadPlugin             = errors.New("failed to load plugin")
-	ErrEmptyLogDir            = errors.New("log directory path is empty")
+	// ErrLoadPlugin is returned when LoadPlugin cannot load any plugin for the given path.
+	ErrLoadPlugin = errors.New("failed to load plugin")
+	// ErrEmptyLogDir is returned by SetLogDir when the path is empty.
+	ErrEmptyLogDir = errors.New("log directory path is empty")
 )
 
 // LibraryLoadError represents an error that occurs when loading a MAA dynamic library.
@@ -125,6 +134,10 @@ func WithDebugMode(enabled bool) InitOption {
 	}
 }
 
+// WithPluginPaths returns an InitOption that sets the plugin paths loaded
+// during Init. The paths are copied, so mutating the argument slice after
+// building the option has no effect. Each path follows the LoadPlugin
+// resolution rules; passing no paths yields an empty list that loads nothing.
 func WithPluginPaths(path ...string) InitOption {
 	return func(ic *initConfig) {
 		pluginPaths := append([]string(nil), path...)
@@ -155,6 +168,8 @@ func WithJSONDecoder(decoder JSONDecoder) InitOption {
 
 // Init loads the dynamic library related to the MAA framework and registers its related functions.
 // It must be called before invoking any other MAA-related functions.
+// Once Init has succeeded, later calls to Init are no-ops and any options
+// passed to them are discarded.
 // Calls to Init and Release are serialized. Other MAA-related functions must
 // not run concurrently with Init or Release.
 // Note: If this function is not called before other MAA functions, it will trigger a null pointer panic.
@@ -265,6 +280,7 @@ func setGlobalOption(key native.MaaGlobalOption, value unsafe.Pointer, valSize u
 }
 
 // SetLogDir sets the log directory.
+// An empty path is rejected with ErrEmptyLogDir.
 func SetLogDir(path string) error {
 	if path == "" {
 		return ErrEmptyLogDir
@@ -283,9 +299,11 @@ func SetSaveDraw(enabled bool) error {
 	return nil
 }
 
+// LoggingLevel defines the logging verbosity levels, mirroring the
+// MaaLoggingLevelEnum values of MaaDef.h (Off = 0 through All = 7).
 type LoggingLevel int32
 
-// LoggingLevel
+// LoggingLevel values accepted by SetStdoutLevel, ordered by increasing verbosity.
 const (
 	LoggingLevelOff LoggingLevel = iota
 	LoggingLevelFatal
@@ -323,6 +341,7 @@ func SetSaveOnError(enabled bool) error {
 
 // SetDrawQuality sets image quality for draw images.
 // Default value is 85, range: [0, 100].
+// Values outside the range fail with ErrSetDrawQuality instead of being clamped.
 func SetDrawQuality(quality int32) error {
 	if !setGlobalOption(native.MaaGlobalOption_DrawQuality, unsafe.Pointer(&quality), unsafe.Sizeof(quality)) {
 		return ErrSetDrawQuality
@@ -341,8 +360,12 @@ func SetRecoImageCacheLimit(limit uint64) error {
 
 // LoadPlugin loads a plugin specified by path.
 // The path may be a full filesystem path or just a plugin name.
-// When only a name is provided, the function searches system directories and the current working directory for a matching plugin.
-// If the path refers to a directory, plugins inside that directory are searched recursively.
+// A bare name is resolved against the directory of the loaded MaaFramework
+// library first, then through the platform's dynamic-library search.
+// If the path refers to a directory, plugins inside it are searched
+// recursively, and the load fails with ErrLoadPlugin unless at least one
+// plugin loads. Plugins in the "plugins" directory next to the MaaFramework
+// library are loaded automatically when the library itself is loaded.
 func LoadPlugin(path string) error {
 	if !native.MaaGlobalLoadPlugin(path) {
 		return ErrLoadPlugin
