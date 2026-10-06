@@ -8,9 +8,13 @@ import (
 )
 
 // Recognition defines a node's recognition using the pipeline v2 type/param object format.
-// Known types decode to their typed parameters. Unrecognized type names retain
-// their parameter JSON as *RawRecognitionParam; this does not establish native support.
-// Unknown fields outside param, and unmodeled fields of known parameters, are not retained.
+// Known types decode to their typed parameters. Unrecognized type names —
+// including the lowercase aliases the native parser accepts, such as "ocr" —
+// retain their parameter JSON as *RawRecognitionParam; this does not establish
+// native support. Unknown fields outside param, and unmodeled fields of known
+// parameters, are not retained. Unlike the native parser, a recognition object
+// without a param key does not fall back to using the whole object as
+// parameters; Param stays nil.
 type Recognition struct {
 	// Type specifies the recognition algorithm type.
 	Type RecognitionType `json:"type,omitempty"`
@@ -78,7 +82,8 @@ func decodeRecognitionParam(recognitionType RecognitionType, data []byte) (Recog
 }
 
 // SetBoxIndex sets which sub-recognition result's box to use as the final box.
-// Only effective when the recognition type is And.
+// Only effective when the recognition type is And. The native parser requires
+// 0 <= idx < len(all_of) and fails to load the node otherwise.
 func (nr *Recognition) SetBoxIndex(idx int) *Recognition {
 	if p, ok := nr.Param.(*AndRecognitionParam); ok {
 		p.BoxIndex = idx
@@ -90,6 +95,7 @@ func (nr *Recognition) SetBoxIndex(idx int) *Recognition {
 // modeled by this package; other names may be used with RawRecognitionParam if the native library supports them.
 type RecognitionType string
 
+// Recognition algorithm type names used by the pipeline v2 protocol.
 const (
 	RecognitionTypeDirectHit             RecognitionType = "DirectHit"
 	RecognitionTypeTemplateMatch         RecognitionType = "TemplateMatch"
@@ -104,14 +110,21 @@ const (
 )
 
 // RecognitionParam is the interface for typed recognition parameters and RawRecognitionParam.
+// Builders and decoders do not validate protocol constraints such as threshold
+// ranges, list-length agreements, or required fields; the native parser
+// rejects invalid combinations when the pipeline is posted.
 type RecognitionParam interface {
 	isRecognitionParam()
 }
 
 // OrderBy defines the ordering options for recognition results.
-// Different recognition types support different subsets of these values.
+// Different recognition types support different subsets of these values; the
+// per-type OrderBy constants declare the values each parser accepts. The
+// native parser also reads the "order" key as an alias for "order_by"; this
+// model only uses "order_by".
 type OrderBy string
 
+// Result ordering options shared across recognition types.
 const (
 	OrderByHorizontal OrderBy = "Horizontal"
 	OrderByVertical   OrderBy = "Vertical"
@@ -147,6 +160,8 @@ func RecDirectHit() *Recognition {
 // TemplateMatchOrderBy defines the ordering options for template matching results.
 type TemplateMatchOrderBy OrderBy
 
+// Template match result ordering options the native parser accepts:
+// Horizontal, Vertical, Score, and Random.
 const (
 	TemplateMatchOrderByHorizontal = TemplateMatchOrderBy(OrderByHorizontal)
 	TemplateMatchOrderByVertical   = TemplateMatchOrderBy(OrderByVertical)
@@ -157,6 +172,9 @@ const (
 // TemplateMatchMethod defines the template matching algorithm (cv::TemplateMatchModes).
 type TemplateMatchMethod int
 
+// Template matching algorithms. The native parser forwards any integer to
+// OpenCV; adding 10000 to a method inverts its score, so the inverted
+// SQDIFF_NORMED is 10001. Default: 5 (CCOEFF_NORMED).
 const (
 	TemplateMatchMethodSQDIFF_NORMED          TemplateMatchMethod = 1     // Normalized squared difference
 	TemplateMatchMethodSQDIFF_NORMED_Inverted TemplateMatchMethod = 10001 // Normalized squared difference (Inverted)
@@ -168,11 +186,20 @@ const (
 type TemplateMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
 	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Template specifies the template image paths. Required.
+	// JSON input may be a single string or an array of strings; a scalar
+	// normalizes to a one-element list. Nil is omitted to inherit the
+	// existing/default templates; an empty non-nil list clears them.
 	Template StringList `json:"template,omitzero"`
 	// Threshold specifies the matching threshold [0-1.0]. Default: 0.7.
+	// JSON input may be a number or an array of numbers; a scalar normalizes
+	// to a one-element list. Nil is omitted to inherit the existing/default
+	// thresholds; an empty non-nil list clears them (matching fails at run
+	// time when templates or thresholds are empty).
 	Threshold []float64 `json:"threshold,omitzero"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Random.
 	OrderBy TemplateMatchOrderBy `json:"order_by,omitempty"`
@@ -238,6 +265,9 @@ func (p *TemplateMatchParam) UnmarshalJSON(data []byte) error {
 
 type templateMatchThresholds []float64
 
+// UnmarshalJSON accepts a JSON number or an array of numbers and normalizes
+// a scalar to a one-element list. Invalid input, including null items,
+// leaves the receiver unchanged.
 func (t *templateMatchThresholds) UnmarshalJSON(data []byte) error {
 	data = bytes.TrimSpace(data)
 	var values []*float64
@@ -266,6 +296,8 @@ func (t *templateMatchThresholds) UnmarshalJSON(data []byte) error {
 // FeatureMatchOrderBy defines the ordering options for feature matching results.
 type FeatureMatchOrderBy OrderBy
 
+// Feature match result ordering options the native parser accepts:
+// Horizontal, Vertical, Score, Area, and Random.
 const (
 	FeatureMatchOrderByHorizontal = FeatureMatchOrderBy(OrderByHorizontal)
 	FeatureMatchOrderByVertical   = FeatureMatchOrderBy(OrderByVertical)
@@ -277,21 +309,31 @@ const (
 // FeatureMatchDetector defines the feature detection algorithms.
 type FeatureMatchDetector string
 
+// Feature detection algorithms. The native parser accepts the CamelCase and
+// all-lowercase spellings of these names, plus "Default" (keep the existing
+// detector) and "SURF", which fails node load on builds without OpenCV
+// xfeatures2d. Default: SIFT.
 const (
 	FeatureMatchMethodSIFT  FeatureMatchDetector = "SIFT"  // Scale-Invariant Feature Transform (default, most accurate)
-	FeatureMatchMethodKAZE  FeatureMatchDetector = "KAZE"  // KAZE features for 2D/3D images
+	FeatureMatchMethodKAZE  FeatureMatchDetector = "KAZE"  // KAZE features
 	FeatureMatchMethodAKAZE FeatureMatchDetector = "AKAZE" // Accelerated KAZE
 	FeatureMatchMethodBRISK FeatureMatchDetector = "BRISK" // Binary Robust Invariant Scalable Keypoints (fast)
-	FeatureMatchMethodORB   FeatureMatchDetector = "ORB"   // Oriented FAST and Rotated BRIEF (fast, no scale invariance)
+	FeatureMatchMethodORB   FeatureMatchDetector = "ORB"   // Oriented FAST and Rotated BRIEF (fast)
+	FeatureMatchMethodSURF  FeatureMatchDetector = "SURF"  // Speeded-Up Robust Features; requires OpenCV xfeatures2d
 )
 
 // FeatureMatchParam defines parameters for feature matching recognition.
 type FeatureMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
 	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Template specifies the template image paths. Required.
+	// JSON input may be a single string or an array of strings; a scalar
+	// normalizes to a one-element list. Nil is omitted to inherit the
+	// existing/default templates; an empty non-nil list clears them.
 	Template StringList `json:"template,omitzero"`
 	// Count specifies the minimum number of feature points required (threshold). Default: 4.
 	Count int `json:"count,omitempty"`
@@ -301,7 +343,9 @@ type FeatureMatchParam struct {
 	Index int `json:"index,omitempty"`
 	// GreenMask enables green color masking for transparent areas.
 	GreenMask bool `json:"green_mask,omitempty"`
-	// Detector specifies the feature detector algorithm. Options: SIFT, KAZE, AKAZE, BRISK, ORB. Default: SIFT.
+	// Detector specifies the feature detector algorithm. Options: SIFT, KAZE,
+	// AKAZE, BRISK, ORB, and SURF (requires an OpenCV build with xfeatures2d).
+	// Default: SIFT.
 	Detector FeatureMatchDetector `json:"detector,omitempty"`
 	// Ratio specifies the matching ratio threshold [0-1.0]. Default: 0.6.
 	Ratio float64 `json:"ratio,omitempty"`
@@ -323,6 +367,8 @@ func RecFeatureMatch(p FeatureMatchParam) *Recognition {
 // ColorMatchMethod defines the color space for color matching (cv::ColorConversionCodes).
 type ColorMatchMethod int
 
+// Color spaces with the channel count each implies for the lower/upper
+// bounds. Default: 4 (RGB).
 const (
 	ColorMatchMethodRGB  ColorMatchMethod = 4  // RGB color space, 3 channels (default)
 	ColorMatchMethodHSV  ColorMatchMethod = 40 // HSV color space, 3 channels
@@ -332,6 +378,8 @@ const (
 // ColorMatchOrderBy defines the ordering options for color matching results.
 type ColorMatchOrderBy OrderBy
 
+// Color match result ordering options the native parser accepts: Horizontal,
+// Vertical, Score, Area, and Random.
 const (
 	ColorMatchOrderByHorizontal = ColorMatchOrderBy(OrderByHorizontal)
 	ColorMatchOrderByVertical   = ColorMatchOrderBy(OrderByVertical)
@@ -344,11 +392,15 @@ const (
 type ColorMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
 	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Method specifies the color space. 4: RGB (default), 40: HSV, 6: GRAY.
 	Method ColorMatchMethod `json:"method,omitempty"`
 	// Lower specifies the color lower bounds. Required. Inner array length must match method channels.
+	// The native parser also accepts a single flat row of channel values;
+	// the Go model decodes only the 2-D form.
 	Lower [][]int `json:"lower,omitempty"`
 	// Upper specifies the color upper bounds. Required. Inner array length must match method channels.
 	Upper [][]int `json:"upper,omitempty"`
@@ -390,6 +442,9 @@ func RecColorMatch(p ColorMatchParam) *Recognition {
 // OCROrderBy defines the ordering options for OCR results.
 type OCROrderBy OrderBy
 
+// OCR result ordering options the native parser accepts: Horizontal,
+// Vertical, Area, Length, Random, and Expected. Expected orders results by
+// their position in the Expected list, Length by matched text length.
 const (
 	OCROrderByHorizontal = OCROrderBy(OrderByHorizontal)
 	OCROrderByVertical   = OCROrderBy(OrderByVertical)
@@ -403,16 +458,23 @@ const (
 type OCRParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
 	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Expected specifies the expected text results, supports regex.
 	// JSON input may be a single string or an array of strings.
 	// Nil is omitted to inherit the existing/default value; an empty
 	// non-nil list clears it.
+	// The deprecated upstream "text" alias is not recognized; its value is
+	// silently dropped on decode.
 	Expected StringList `json:"expected,omitzero"`
 	// Threshold specifies the model confidence threshold [0-1.0]. Default: 0.3.
 	Threshold float64 `json:"threshold,omitempty"`
-	// Replace specifies text replacement rules for correcting OCR errors.
+	// Replace specifies text replacement rules for correcting OCR errors,
+	// applied as regex replacements. The native parser also accepts a single
+	// ["pattern","replacement"] pair; the Go model decodes only the array of
+	// pairs.
 	Replace [][2]string `json:"replace,omitempty"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Area | Length | Random | Expected.
 	OrderBy OCROrderBy `json:"order_by,omitempty"`
@@ -424,6 +486,7 @@ type OCRParam struct {
 	Model string `json:"model,omitempty"`
 	// ColorFilter specifies a ColorMatch node name whose color parameters (method, lower, upper)
 	// are used to binarize the image before OCR. Nodes with this field set will not participate in batch optimization.
+	// Recognition fails at run time if the referenced node does not exist or is not a ColorMatch node.
 	ColorFilter string `json:"color_filter,omitempty"`
 }
 
@@ -444,6 +507,8 @@ func RecOCR(p OCRParam) *Recognition {
 // NeuralNetworkClassifyOrderBy defines the ordering options for neural network classification results.
 type NeuralNetworkClassifyOrderBy OrderBy
 
+// Neural network classification result ordering options the native parser
+// accepts: Horizontal, Vertical, Score, Random, and Expected.
 const (
 	NeuralNetworkClassifyOrderByHorizontal = NeuralNetworkClassifyOrderBy(OrderByHorizontal)
 	NeuralNetworkClassifyOrderByVertical   = NeuralNetworkClassifyOrderBy(OrderByVertical)
@@ -456,7 +521,9 @@ const (
 type NeuralNetworkClassifyParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
 	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Labels specifies class names for label selection, debugging, and logging. Fills "Unknown" if not provided.
 	// JSON input may be a single string or an array of strings.
@@ -491,6 +558,8 @@ func RecNeuralNetworkClassify(p NeuralNetworkClassifyParam) *Recognition {
 // NeuralNetworkDetectOrderBy defines the ordering options for neural network detection results.
 type NeuralNetworkDetectOrderBy OrderBy
 
+// Neural network detection result ordering options the native parser
+// accepts: Horizontal, Vertical, Score, Area, Random, and Expected.
 const (
 	NeuralNetworkDetectOrderByHorizontal = NeuralNetworkDetectOrderBy(OrderByHorizontal)
 	NeuralNetworkDetectOrderByVertical   = NeuralNetworkDetectOrderBy(OrderByVertical)
@@ -504,7 +573,9 @@ const (
 type NeuralNetworkDetectParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
 	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Labels specifies class names for label selection, debugging, and logging. Auto-reads from model metadata if not provided.
 	// JSON input may be a single string or an array of strings.
@@ -571,6 +642,9 @@ func (p *NeuralNetworkDetectParam) UnmarshalJSON(data []byte) error {
 
 type neuralNetworkDetectThresholds []float64
 
+// UnmarshalJSON accepts a JSON number or an array of numbers and normalizes
+// a scalar to a one-element list. Invalid input, including null items,
+// leaves the receiver unchanged.
 func (t *neuralNetworkDetectThresholds) UnmarshalJSON(data []byte) error {
 	data = bytes.TrimSpace(data)
 	var values []*float64
@@ -647,7 +721,8 @@ func (s *SubRecognitionItem) UnmarshalJSON(data []byte) error {
 	return errors.New("SubRecognitionItem: expected string or object")
 }
 
-// MarshalJSON outputs a string when NodeName is set, otherwise the inline object.
+// MarshalJSON outputs a string when NodeName is set, the inline object when
+// Inline is set, and null when both are zero values.
 func (s SubRecognitionItem) MarshalJSON() ([]byte, error) {
 	if s.NodeName != "" {
 		return marshalJSON(s.NodeName)
@@ -665,7 +740,7 @@ func Ref(nodeName string) SubRecognitionItem {
 
 // Inline builds a SubRecognitionItem from a recognition; optional name is the sub_name.
 // Example: RecOr(Inline(RecTemplateMatch(...)), Inline(RecColorMatch(...)))
-// Example: RecAnd(Ref("A"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(2)
+// Example: RecAnd(Ref("A"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(1)
 func Inline(rec *Recognition, name ...string) SubRecognitionItem {
 	subName := ""
 	if len(name) > 0 {
@@ -675,9 +750,13 @@ func Inline(rec *Recognition, name ...string) SubRecognitionItem {
 }
 
 // InlineSubRecognition is a v2 inline sub-recognition in all_of/any_of.
-// JSON uses {"sub_name": "...", "recognition": {"type": "...", "param": {...}}}.
+// Input accepts the protocol envelope {"sub_name": "...", "recognition": {type, param}}
+// and the flat native dump {"sub_name", "type", "param"}; the legacy protocol
+// form with "recognition" holding a bare type name is not modeled.
 // SubName is retained by both And and Or; only And uses it to resolve later sub-recognition ROIs.
 type InlineSubRecognition struct {
+	// SubName names the inline sub-recognition. Only And uses it, to resolve
+	// the ROIs of later sub-recognitions.
 	SubName string `json:"sub_name,omitempty"`
 	Recognition
 }
@@ -690,6 +769,9 @@ func (n InlineSubRecognition) MarshalJSON() ([]byte, error) {
 	}{SubName: n.SubName, Recognition: n.Recognition})
 }
 
+// UnmarshalJSON decodes the protocol envelope, falling back to the flat
+// native dump form when the recognition key is absent. On error the receiver
+// is unchanged.
 func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
 	type Alias struct {
 		SubName     string          `json:"sub_name,omitempty"`
@@ -723,15 +805,20 @@ func newInlineSub(subName string, recognition *Recognition) *InlineSubRecognitio
 // AndRecognitionParam defines parameters for AND recognition.
 // AllOf elements are either node name strings or inline recognitions.
 type AndRecognitionParam struct {
-	AllOf    []SubRecognitionItem `json:"all_of,omitempty"`
-	BoxIndex int                  `json:"box_index,omitempty"`
+	// AllOf lists the sub-recognitions that must all succeed. Elements are
+	// node name references or inline recognitions (SubRecognitionItem).
+	AllOf []SubRecognitionItem `json:"all_of,omitempty"`
+	// BoxIndex selects which all_of result's box to use as the final box.
+	// The native parser requires 0 <= box_index < len(all_of); the default 0
+	// uses the first result.
+	BoxIndex int `json:"box_index,omitempty"`
 }
 
 func (n AndRecognitionParam) isRecognitionParam() {}
 
 // RecAnd creates an AND recognition that requires all sub-recognitions to succeed.
 // Use SetBoxIndex to set which result's box to use.
-// Example: RecAnd(Ref("NodeA"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(2)
+// Example: RecAnd(Ref("NodeA"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(1)
 func RecAnd(items ...SubRecognitionItem) *Recognition {
 	param := &AndRecognitionParam{AllOf: slices.Clone(items)}
 	return &Recognition{Type: RecognitionTypeAnd, Param: param}
@@ -740,6 +827,8 @@ func RecAnd(items ...SubRecognitionItem) *Recognition {
 // OrRecognitionParam defines parameters for OR recognition.
 // AnyOf elements are either node name strings or inline recognitions.
 type OrRecognitionParam struct {
+	// AnyOf lists the sub-recognitions, one of which must succeed. Elements
+	// are node name references or inline recognitions (SubRecognitionItem).
 	AnyOf []SubRecognitionItem `json:"any_of,omitempty"`
 }
 
@@ -760,7 +849,9 @@ func RecOr(anyOf ...SubRecognitionItem) *Recognition {
 type CustomRecognitionParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
 	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// CustomRecognition specifies the recognizer name registered via MaaResourceRegisterCustomRecognition. Required.
 	CustomRecognition string `json:"custom_recognition,omitempty"`
