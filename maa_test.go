@@ -141,3 +141,147 @@ func TestSetDebugMode(t *testing.T) {
 		})
 	}
 }
+
+func TestSetSaveOnError(t *testing.T) {
+	testCases := []struct {
+		name        string
+		enabled     bool
+		expectedErr error
+	}{
+		{
+			name:        "EnableSaveOnError",
+			enabled:     true,
+			expectedErr: nil,
+		},
+		{
+			name:        "DisableSaveOnError",
+			enabled:     false,
+			expectedErr: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := SetSaveOnError(tc.enabled)
+			require.Equal(t, tc.expectedErr, err)
+		})
+	}
+}
+
+func TestSetDrawQuality(t *testing.T) {
+	testCases := []struct {
+		name        string
+		quality     int32
+		expectedErr error
+	}{
+		{
+			name:        "BelowRange",
+			quality:     -1,
+			expectedErr: ErrSetDrawQuality,
+		},
+		{
+			name:        "MinBound",
+			quality:     0,
+			expectedErr: nil,
+		},
+		{
+			name:        "Default",
+			quality:     85,
+			expectedErr: nil,
+		},
+		{
+			name:        "MaxBound",
+			quality:     100,
+			expectedErr: nil,
+		},
+		{
+			name:        "AboveRange",
+			quality:     101,
+			expectedErr: ErrSetDrawQuality,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := SetDrawQuality(tc.quality)
+			require.Equal(t, tc.expectedErr, err)
+		})
+	}
+}
+
+func TestSetRecoImageCacheLimit(t *testing.T) {
+	testCases := []struct {
+		name        string
+		limit       uint64
+		expectedErr error
+	}{
+		{
+			name:        "Zero",
+			limit:       0,
+			expectedErr: nil,
+		},
+		{
+			name:        "Default",
+			limit:       4096,
+			expectedErr: nil,
+		},
+		{
+			name:        "Large",
+			limit:       1 << 20,
+			expectedErr: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := SetRecoImageCacheLimit(tc.limit)
+			require.Equal(t, tc.expectedErr, err)
+		})
+	}
+}
+
+func TestLoggingLevelValues(t *testing.T) {
+	testCases := []struct {
+		name  string
+		level LoggingLevel
+		want  int32
+	}{
+		{"Off", LoggingLevelOff, 0},
+		{"Fatal", LoggingLevelFatal, 1},
+		{"Error", LoggingLevelError, 2},
+		{"Warn", LoggingLevelWarn, 3},
+		{"Info", LoggingLevelInfo, 4},
+		{"Debug", LoggingLevelDebug, 5},
+		{"Trace", LoggingLevelTrace, 6},
+		{"All", LoggingLevelAll, 7},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, int32(tc.level))
+		})
+	}
+}
+
+func TestWithPluginPaths(t *testing.T) {
+	paths := []string{"./test/plugin_a", "./test/plugin_b"}
+	opt := WithPluginPaths(paths...)
+
+	cfg := initConfig{}
+	opt(&cfg)
+	require.NotNil(t, cfg.PluginPaths)
+	require.Equal(t, []string{"./test/plugin_a", "./test/plugin_b"}, *cfg.PluginPaths)
+
+	paths[0] = "./test/mutated"
+	require.Equal(t, "./test/plugin_a", (*cfg.PluginPaths)[0],
+		"the option must copy the argument slice")
+
+	WithPluginPaths()(&cfg)
+	require.NotNil(t, cfg.PluginPaths)
+	require.Empty(t, *cfg.PluginPaths)
+}
+
+func TestLoadPlugin(t *testing.T) {
+	err := LoadPlugin("./test/maa-nonexistent-plugin")
+	require.Equal(t, ErrLoadPlugin, err)
+}
