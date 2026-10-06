@@ -132,6 +132,10 @@ type ResourceLoadingDetail struct {
 	ResID uint64 `json:"res_id"`
 	Hash  string `json:"hash"`
 	Path  string `json:"path"`
+	// Type is the kind of load the event reports: the upstream PostPathType
+	// serialized as its value name, one of "Bundle", "OcrModel", "Pipeline",
+	// or "Image".
+	Type string `json:"type"`
 }
 
 // ControllerActionDetail contains information about controller action events
