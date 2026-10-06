@@ -634,14 +634,17 @@ func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
 	if err := unmarshalJSON(data, &alias); err != nil {
 		return err
 	}
-	n.SubName = alias.SubName
 
+	decoded := *n
+	decoded.SubName = alias.SubName
 	if len(alias.Recognition) > 0 {
-		return unmarshalJSON(alias.Recognition, &n.Recognition)
-	}
-	if err := unmarshalJSON(data, &n.Recognition); err != nil {
+		if err := unmarshalJSON(alias.Recognition, &decoded.Recognition); err != nil {
+			return err
+		}
+	} else if err := unmarshalJSON(data, &decoded.Recognition); err != nil {
 		return err
 	}
+	*n = decoded
 	return nil
 }
 
