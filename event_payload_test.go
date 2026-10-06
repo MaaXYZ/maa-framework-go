@@ -251,6 +251,28 @@ func TestEvent_DetailUnknownKeysTolerated(t *testing.T) {
 	})
 }
 
+// Pins the documented drop behavior on families beyond WaitFreezes: events
+// with an unknown family name are ignored, and undecodable details are
+// dropped without invoking the sink.
+func TestEvent_UnknownFamilyAndUndecodableDetailDropped(t *testing.T) {
+	t.Run("UnknownFamilyName", func(t *testing.T) {
+		calls := 0
+		sink := &taskerEventSinkAdapter{onTaskerTask: func(EventStatus, TaskerTaskDetail) {
+			calls++
+		}}
+		(&eventCallback{sink: sink}).handleRaw(98765, "Node.Assistant.Starting", []byte(`{"task_id":1}`))
+		require.Equal(t, 0, calls, "unknown family name must not reach the sink")
+	})
+	t.Run("UndecodableDetail", func(t *testing.T) {
+		calls := 0
+		sink := &taskerEventSinkAdapter{onTaskerTask: func(EventStatus, TaskerTaskDetail) {
+			calls++
+		}}
+		(&eventCallback{sink: sink}).handleRaw(98765, EventTaskerTask.Succeeded(), []byte(`{"task_id":"not-a-number"}`))
+		require.Equal(t, 0, calls, "undecodable detail must not reach the sink")
+	})
+}
+
 func TestEvent_FocusDecoding(t *testing.T) {
 	testCases := []struct {
 		name   string
