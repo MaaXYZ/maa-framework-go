@@ -301,7 +301,8 @@ func (r *Resource) UnregisterCustomRecognition(name string) error {
 		}
 	})
 	if !found {
-		return fmt.Errorf("custom recognition not found: %s", name)
+		// Upstream no-ops and reports success for unknown names.
+		return nil
 	}
 	if !native.MaaResourceUnregisterCustomRecognition(r.handle, name) {
 		return fmt.Errorf("failed to unregister custom recognition: %s", name)
@@ -447,7 +448,8 @@ func (r *Resource) UnregisterCustomAction(name string) error {
 		}
 	})
 	if !found {
-		return fmt.Errorf("custom action not found: %s", name)
+		// Upstream no-ops and reports success for unknown names.
+		return nil
 	}
 	if !native.MaaResourceUnregisterCustomAction(r.handle, name) {
 		return fmt.Errorf("failed to unregister custom action: %s", name)

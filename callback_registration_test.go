@@ -189,7 +189,7 @@ func TestResource_CustomRegistrationTransactions(t *testing.T) {
 			require.False(t, tc.exists(first))
 			require.Equal(t, attempted, tc.stored())
 			require.NoError(t, tc.unregister())
-			require.Error(t, tc.unregister())
+			require.NoError(t, tc.unregister())
 			require.False(t, tc.exists(attempted))
 			require.NoError(t, tc.register())
 			require.NoError(t, tc.clear())
