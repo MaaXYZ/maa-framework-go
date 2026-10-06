@@ -5,16 +5,10 @@
 // https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md
 package maa
 
-// Node is a single unit of work in a pipeline.
-//
-// Task is a logical sequential structure consisting of several Nodes connected in a specific order,
-// representing the entire process from start to finish.
-//
-// Entry is the first node in a task.
-//
-// Pipeline is a collection of all nodes.
-
-// Pipeline represents a collection of nodes that define a task flow.
+// Pipeline represents a collection of nodes that define a task flow. A task
+// is a logical sequential structure of nodes connected in a specific order,
+// representing the entire process from start to finish; its first node is
+// the entry.
 type Pipeline struct {
 	nodes map[string]*Node
 }

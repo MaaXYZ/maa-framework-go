@@ -88,7 +88,7 @@ func (c *ClassSelector) UnmarshalJSON(data []byte) error {
 // JSON input may be a single integer or string, or an array of either.
 // Non-nil lists marshal as arrays. In neural network parameters, nil is omitted
 // to inherit the existing/default selection; an empty non-nil list clears the
-// selection, matching all classes.
+// selection, matching all classes (detection results are still threshold-filtered).
 type ClassSelectors []ClassSelector
 
 // UnmarshalJSON normalizes a scalar to a one-element list. Invalid input,

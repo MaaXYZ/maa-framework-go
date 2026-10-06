@@ -13,6 +13,9 @@ type Node struct {
 	Name string `json:"-"`
 
 	// Anchor maps anchor name to target node name. This matches GetNodeData output format.
+	// The native parser also accepts a string or a list of anchor names as
+	// input; only the object form is modeled here. An empty target name marks
+	// the anchor as cleared.
 	Anchor map[string]string `json:"anchor,omitempty"`
 
 	// Recognition defines how this node recognizes targets on screen.
@@ -30,8 +33,11 @@ type Node struct {
 	// Inverse inverts the recognition result. Default: false.
 	Inverse bool `json:"inverse,omitempty"`
 	// Enabled determines whether this node is active. Default: true.
+	// The native parser also accepts the legacy "enable" alias; this model
+	// only decodes "enabled".
 	Enabled *bool `json:"enabled,omitempty"`
 	// MaxHit sets the maximum hit count of the node. Default: unlimited.
+	// The native parser stores this as a 32-bit unsigned int.
 	MaxHit *uint64 `json:"max_hit,omitempty"`
 	// PreDelay sets the delay before action execution in milliseconds. Default: 200.
 	PreDelay *int64 `json:"pre_delay,omitempty"`
@@ -42,6 +48,7 @@ type Node struct {
 	// PostWaitFreezes waits for screen to stabilize after action.
 	PostWaitFreezes *WaitFreezesParam `json:"post_wait_freezes,omitempty"`
 	// Repeat specifies the number of times to repeat the node. Default: 1.
+	// The native parser stores this as a 32-bit unsigned int.
 	Repeat *uint64 `json:"repeat,omitempty"`
 	// RepeatDelay sets the delay between repetitions in milliseconds. Default: 0.
 	RepeatDelay *int64 `json:"repeat_delay,omitempty"`
@@ -200,6 +207,8 @@ func (n *Node) SetAttach(attach map[string]any) *Node {
 
 // NextItem is one item in the list of nodes to run next.
 // It is used in Node.Next (on success) and Node.OnError (on failure).
+// The native parser also accepts bare node-name strings and a single
+// string instead of a list; this model decodes only objects.
 type NextItem struct {
 	// Name is the name of the target node.
 	Name string `json:"name"`
@@ -226,6 +235,7 @@ type NodeAttributeOption func(*NextItem)
 
 // WithJumpBack enables the jump-back mechanism. When this node matches, the system returns
 // to the parent node after completing this node's chain, and continues recognizing from the start of next list.
+// Jump-back is not performed while running the on_error chain.
 func WithJumpBack() NodeAttributeOption {
 	return func(i *NextItem) {
 		i.JumpBack = true

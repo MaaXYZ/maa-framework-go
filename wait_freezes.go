@@ -6,12 +6,15 @@ import (
 
 // WaitFreezesParam defines parameters for waiting until screen stabilizes.
 // The screen is considered stable when there are no significant changes for a continuous period.
+// The native parser also accepts a bare number as shorthand for the time in
+// milliseconds; this model decodes only the object form.
 type WaitFreezesParam struct {
 	// Time specifies the duration that the screen must remain stable.
 	// Zero is omitted, inheriting the existing value; the framework's built-in default is zero (no wait).
 	// JSON: serialized as integer milliseconds.
 	Time time.Duration `json:"-"`
 	// Target specifies the region to monitor for changes.
+	// The built-in default is the current recognition box.
 	Target Target `json:"target,omitzero"`
 	// TargetOffset specifies additional offset applied to target.
 	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
@@ -29,6 +32,9 @@ type WaitFreezesParam struct {
 	Timeout time.Duration `json:"-"`
 }
 
+// MarshalJSON encodes time, rate_limit, and timeout as integer milliseconds.
+// Zero durations are omitted so pipeline defaults and parent-node
+// inheritance apply.
 func (w WaitFreezesParam) MarshalJSON() ([]byte, error) {
 	type NoMethod WaitFreezesParam
 	return marshalJSON(struct {
@@ -44,6 +50,8 @@ func (w WaitFreezesParam) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalJSON decodes integer milliseconds for time, rate_limit, and
+// timeout into durations. Invalid input leaves the receiver unchanged.
 func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error {
 	type NoMethod WaitFreezesParam
 	raw := struct {
