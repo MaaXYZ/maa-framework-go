@@ -81,6 +81,24 @@ func TestJob_Wait(t *testing.T) {
 		require.Same(t, job, job.Wait())
 		require.Equal(t, StatusFailure, job.Status())
 	})
+
+	t.Run("ClosedOwnerSkipsWait", func(t *testing.T) {
+		waitCalled := false
+		waitFunc := func(id int64) Status {
+			waitCalled = true
+			return StatusSuccess
+		}
+		state := newHandleState(1, func(uintptr) {})
+		statusFunc := func(id int64) Status { return StatusSuccess }
+		job := newJob(1, statusFunc, waitFunc, state)
+		// Observing the terminal status through Status untracks the job, so
+		// the owner can be closed while Wait has never cached a status.
+		require.Equal(t, StatusSuccess, job.Status())
+		require.NoError(t, state.close())
+		require.Same(t, job, job.Wait())
+		require.False(t, waitCalled, "Wait should not call waitFunc when the owning handle is closed")
+		require.Equal(t, StatusFailure, job.Status())
+	})
 }
 
 func TestJob_Invalid(t *testing.T) {
