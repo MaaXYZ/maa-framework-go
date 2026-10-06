@@ -1,5 +1,5 @@
-// Package store provides registries of per-handle callback-registration
-// bookkeeping for the package's taskers, controllers, and resources.
+// Package store provides registries keyed by native handle for the callback
+// registrations of taskers, controllers, and resources.
 package store
 
 import "sync"
