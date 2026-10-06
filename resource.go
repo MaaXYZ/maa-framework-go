@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -561,6 +562,13 @@ func (r *Resource) overridePipeline(override string) error {
 		return useErr
 	}
 	defer done()
+
+	// The upstream C boundary rejects anything but a JSON object with a
+	// generic failure; validate locally so the error names the constraint.
+	var nodes map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(override), &nodes); err != nil || nodes == nil {
+		return errors.New("pipeline override must be a JSON object keyed by node name")
+	}
 
 	if native.MaaResourceOverridePipeline(r.handle, override) {
 		return nil
