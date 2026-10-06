@@ -120,8 +120,9 @@ type RecognitionParam interface {
 // OrderBy defines the ordering options for recognition results.
 // Different recognition types support different subsets of these values; the
 // per-type OrderBy constants declare the values each parser accepts. The
-// native parser also reads the "order" key as an alias for "order_by"; this
-// model only uses "order_by".
+// native parser also reads the "order" key as an alias for "order_by" and
+// accepts all-lowercase spellings and "Default" (the default ordering); this
+// model only uses the canonical key, and values pass through unchanged.
 type OrderBy string
 
 // Result ordering options shared across recognition types.
