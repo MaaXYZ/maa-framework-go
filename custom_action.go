@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -13,14 +14,30 @@ var (
 	customActionRunnerCallbackAgentsMutex sync.RWMutex
 )
 
-func registerCustomAction(action CustomActionRunner) uint64 {
+func registerCustomAction(action CustomActionRunner) (uint64, error) {
+	if isNilCustomActionRunner(action) {
+		return 0, errors.New("custom action runner is nil")
+	}
+
 	id := atomic.AddUint64(&customActionRunnerCallbackID, 1)
 
 	customActionRunnerCallbackAgentsMutex.Lock()
 	customActionRunnerCallbackAgents[id] = action
 	customActionRunnerCallbackAgentsMutex.Unlock()
 
-	return id
+	return id, nil
+}
+
+func isNilCustomActionRunner(action CustomActionRunner) bool {
+	if action == nil {
+		return true
+	}
+	// A typed-nil CustomActionFunc is a non-nil interface whose callback
+	// would panic; upstream rejects null callbacks at registration.
+	if f, ok := action.(CustomActionFunc); ok {
+		return f == nil
+	}
+	return false
 }
 
 func unregisterCustomAction(id uint64) bool {

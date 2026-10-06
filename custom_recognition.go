@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"errors"
 	"image"
 	"sync"
 	"sync/atomic"
@@ -14,14 +15,30 @@ var (
 	customRecognitionRunnerCallbackAgentsMutex sync.RWMutex
 )
 
-func registerCustomRecognition(recognizer CustomRecognitionRunner) uint64 {
+func registerCustomRecognition(recognizer CustomRecognitionRunner) (uint64, error) {
+	if isNilCustomRecognitionRunner(recognizer) {
+		return 0, errors.New("custom recognition runner is nil")
+	}
+
 	id := atomic.AddUint64(&customRecognitionRunnerCallbackID, 1)
 
 	customRecognitionRunnerCallbackAgentsMutex.Lock()
 	customRecognitionRunnerCallbackAgents[id] = recognizer
 	customRecognitionRunnerCallbackAgentsMutex.Unlock()
 
-	return id
+	return id, nil
+}
+
+func isNilCustomRecognitionRunner(recognizer CustomRecognitionRunner) bool {
+	if recognizer == nil {
+		return true
+	}
+	// A typed-nil CustomRecognitionFunc is a non-nil interface whose callback
+	// would panic; upstream rejects null callbacks at registration.
+	if f, ok := recognizer.(CustomRecognitionFunc); ok {
+		return f == nil
+	}
+	return false
 }
 
 func unregisterCustomRecognition(id uint64) bool {

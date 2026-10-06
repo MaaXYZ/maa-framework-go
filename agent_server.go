@@ -69,7 +69,10 @@ func AgentServerRegisterCustomRecognition(name string, recognition CustomRecogni
 	}
 	defer unlock()
 
-	id := registerCustomRecognition(recognition)
+	id, err := registerCustomRecognition(recognition)
+	if err != nil {
+		return err
+	}
 
 	ok := native.MaaAgentServerRegisterCustomRecognition(
 		name,
@@ -104,7 +107,10 @@ func AgentServerRegisterCustomAction(name string, action CustomActionRunner) err
 	}
 	defer unlock()
 
-	id := registerCustomAction(action)
+	id, err := registerCustomAction(action)
+	if err != nil {
+		return err
+	}
 
 	ok := native.MaaAgentServerRegisterCustomAction(
 		name,

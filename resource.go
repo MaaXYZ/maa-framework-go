@@ -246,7 +246,10 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 	r.state.registrationMu.Lock()
 	defer r.state.registrationMu.Unlock()
 
-	id := registerCustomRecognition(recognition)
+	id, err := registerCustomRecognition(recognition)
+	if err != nil {
+		return err
+	}
 
 	ok := native.MaaResourceRegisterCustomRecognition(
 		r.handle,
@@ -393,7 +396,10 @@ func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) 
 	r.state.registrationMu.Lock()
 	defer r.state.registrationMu.Unlock()
 
-	id := registerCustomAction(action)
+	id, err := registerCustomAction(action)
+	if err != nil {
+		return err
+	}
 
 	ok := native.MaaResourceRegisterCustomAction(
 		r.handle,

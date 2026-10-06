@@ -117,10 +117,11 @@ func TestCallbackContext_RejectsClosedTaskerDuringSetup(t *testing.T) {
 }
 
 func TestCustomAction_NilTaskerDoesNotPanic(t *testing.T) {
-	id := registerCustomAction(CustomActionFunc(func(*Context, *CustomActionArg) bool {
+	id, err := registerCustomAction(CustomActionFunc(func(*Context, *CustomActionArg) bool {
 		t.Fatal("custom action ran without a tasker")
 		return true
 	}))
+	require.NoError(t, err)
 	defer unregisterCustomAction(id)
 	oldGetTasker := native.MaaContextGetTasker
 	native.MaaContextGetTasker = func(uintptr) uintptr { return 0 }
