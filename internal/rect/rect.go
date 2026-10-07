@@ -1,3 +1,5 @@
+// Package rect provides the rectangle type shared by pipeline parameters and
+// result views.
 package rect
 
 import (
@@ -8,21 +10,25 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/jsoncodec"
 )
 
-// Rect represents a 2D rectangle area
+// Rect represents a 2D rectangle as [4]int: x, y, width, height.
 type Rect [4]int
 
+// X returns the left coordinate.
 func (r Rect) X() int {
 	return r[0]
 }
 
+// Y returns the top coordinate.
 func (r Rect) Y() int {
 	return r[1]
 }
 
+// Width returns the horizontal size.
 func (r Rect) Width() int {
 	return r[2]
 }
 
+// Height returns the vertical size.
 func (r Rect) Height() int {
 	return r[3]
 }

@@ -257,9 +257,14 @@ type SwipeParam struct {
 	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
 	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
 	BeginOffset Rect `json:"begin_offset,omitzero"`
-	// End specifies the swipe end position.
+	// End specifies the swipe end positions. The upstream single-target form
+	// (end: [10, 20] for one point target, or a bare true or node name) is not
+	// modeled: End decodes only from a list of targets. A zero Target element
+	// fails JSON encoding.
 	End []Target `json:"end,omitzero"`
-	// EndOffset specifies additional offset applied to end position.
+	// EndOffset specifies additional offset applied to end position. The
+	// upstream single-offset form (end_offset: [10, 20] for one offset) is not
+	// modeled: EndOffset decodes only from a list of offsets.
 	EndOffset []Rect `json:"end_offset,omitempty"`
 	// Duration specifies the swipe duration. Default: 200ms.
 	// JSON: serialized as array of integer milliseconds.
@@ -329,9 +334,14 @@ type MultiSwipeItem struct {
 	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
 	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
 	BeginOffset Rect `json:"begin_offset,omitzero"`
-	// End specifies the swipe end position.
+	// End specifies the swipe end positions. The upstream single-target form
+	// (end: [10, 20] for one point target, or a bare true or node name) is not
+	// modeled: End decodes only from a list of targets. A zero Target element
+	// fails JSON encoding.
 	End []Target `json:"end,omitzero"`
-	// EndOffset specifies additional offset applied to end position.
+	// EndOffset specifies additional offset applied to end position. The
+	// upstream single-offset form (end_offset: [10, 20] for one offset) is not
+	// modeled: EndOffset decodes only from a list of offsets.
 	EndOffset []Rect `json:"end_offset,omitempty"`
 	// Duration specifies the swipe duration. Default: 200ms.
 	// JSON: serialized as array of integer milliseconds.
