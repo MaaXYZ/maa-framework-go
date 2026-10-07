@@ -1,8 +1,12 @@
 package maa
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -58,6 +62,120 @@ type Node struct {
 	Focus any `json:"focus,omitempty"`
 	// Attach provides additional custom data for the node.
 	Attach map[string]any `json:"attach,omitempty"`
+}
+
+// UnmarshalJSON decodes a node definition. The next and on_error lists accept
+// the protocol's shorthand forms, matching the native parser: a single node
+// value in place of the list, and bare node-name strings in place of objects.
+// On error the node is unchanged.
+func (n *Node) UnmarshalJSON(data []byte) error {
+	normalized, err := normalizeNodeNextShorthand(data)
+	if err != nil {
+		return err
+	}
+	type Alias Node
+	var decoded Alias
+	if err := unmarshalJSON(normalized, &decoded); err != nil {
+		return err
+	}
+	*n = Node(decoded)
+	return nil
+}
+
+// normalizeNodeNextShorthand rewrites shorthand next/on_error values into the
+// object-array form this model decodes, leaving every other key untouched.
+func normalizeNodeNextShorthand(data []byte) ([]byte, error) {
+	var fields map[string]json.RawMessage
+	if err := unmarshalJSON(data, &fields); err != nil {
+		return nil, err
+	}
+	changed := false
+	for _, key := range [...]string{"next", "on_error"} {
+		value, ok := fields[key]
+		if !ok {
+			continue
+		}
+		normalized, err := normalizeNextValue(value)
+		if err != nil {
+			return nil, err
+		}
+		fields[key] = normalized
+		changed = true
+	}
+	if !changed {
+		return data, nil
+	}
+	return marshalJSON(fields)
+}
+
+// normalizeNextValue converts one next/on_error value — a single node value or
+// an array mixing name strings and objects — into an array of node objects.
+func normalizeNextValue(data []byte) ([]byte, error) {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return data, nil
+	}
+	var items []json.RawMessage
+	if trimmed[0] == '[' {
+		if err := unmarshalJSON(data, &items); err != nil {
+			return nil, err
+		}
+	} else {
+		items = []json.RawMessage{trimmed}
+	}
+	list := make([]json.RawMessage, 0, len(items))
+	for _, item := range items {
+		item = bytes.TrimSpace(item)
+		switch {
+		case len(item) == 0:
+			return nil, fmt.Errorf("next entry must be a string or object, got empty")
+		case item[0] == '"':
+			var name string
+			if err := unmarshalJSON(item, &name); err != nil {
+				return nil, err
+			}
+			next, err := parseNextName(name)
+			if err != nil {
+				return nil, err
+			}
+			encoded, err := marshalJSON(next)
+			if err != nil {
+				return nil, err
+			}
+			list = append(list, encoded)
+		case item[0] == '{':
+			list = append(list, item)
+		default:
+			return nil, fmt.Errorf("next entry must be a string or object, got %s", item)
+		}
+	}
+	return marshalJSON(list)
+}
+
+// parseNextName parses a shorthand next name with optional [JumpBack] and
+// [Anchor] prefixes, mirroring the native parser: an unclosed prefix or an
+// empty remaining name is an error; unrecognized prefixes are ignored.
+func parseNextName(raw string) (NextItem, error) {
+	var item NextItem
+	remaining := raw
+	for strings.HasPrefix(remaining, "[") {
+		end := strings.IndexByte(remaining, ']')
+		if end < 0 {
+			return NextItem{}, fmt.Errorf("invalid node attribute format, missing ']': %q", raw)
+		}
+		switch remaining[:end+1] {
+		case "[JumpBack]":
+			item.JumpBack = true
+		case "[Anchor]":
+			item.Anchor = true
+		}
+		remaining = remaining[end+1:]
+	}
+	if remaining == "" {
+		return NextItem{}, fmt.Errorf("invalid node format, missing node name or anchor name: %q", raw)
+	}
+	item.Name = remaining
+	return item, nil
 }
 
 // NewNode creates a new Node with the given name.
