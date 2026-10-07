@@ -953,8 +953,10 @@ func (c *Controller) PostScreencap() (*Job, error) {
 // PostScroll posts a scroll.
 // dx and dy are the horizontal and vertical scroll deltas: positive dx scrolls
 // right, positive dy scrolls up.
-// Scroll is supported by Win32 controllers and by custom controllers that
-// implement the Scroll method; for other controller types the action fails.
+// Scroll is supported by Win32, macOS, and Linux controllers when their input
+// method supports scrolling, and by custom controllers implementing Scroll.
+// Scroll failures are reported by the submitted job's final status;
+// use [Job.Wait] or [Job.Status] to check the result.
 // On Win32 the amounts are wheel-delta units, so multiples of 120 are recommended.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
