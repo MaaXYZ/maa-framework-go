@@ -95,9 +95,7 @@ func (t Target) MarshalJSON() ([]byte, error) {
 func (t *Target) UnmarshalJSON(data []byte) error {
 	data = bytes.TrimSpace(data)
 	if string(data) == "null" {
-		t.tp = targetNone
-		t.val = nil
-		return nil
+		return errors.New("pipeline target must not be null")
 	}
 
 	if string(data) == "true" {

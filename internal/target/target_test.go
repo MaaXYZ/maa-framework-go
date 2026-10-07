@@ -75,11 +75,6 @@ func TestTarget_UnmarshalJSON(t *testing.T) {
 			JSON:   "[100, 200]",
 			Expect: NewRect(rect.Rect{100, 200, 1, 1}),
 		},
-		{
-			Name:   "Unknown",
-			JSON:   "null",
-			Expect: Target{},
-		},
 	}
 
 	for _, tc := range cases {
@@ -93,7 +88,7 @@ func TestTarget_UnmarshalJSON(t *testing.T) {
 }
 
 func TestTarget_UnmarshalJSON_InvalidPreservesValue(t *testing.T) {
-	for _, input := range []string{"false", "[]", "[1]", "[1,2,3]", "[1,2,3,4,5]", "[1,null]", "[1,2.5]", "{}", "123"} {
+	for _, input := range []string{"null", "false", "[]", "[1]", "[1,2,3]", "[1,2,3,4,5]", "[1,null]", "[1,2.5]", "{}", "123"} {
 		t.Run(input, func(t *testing.T) {
 			original := NewString("[Anchor]Previous")
 			got := original
