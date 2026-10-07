@@ -20,6 +20,8 @@ type Recognition struct {
 	Type RecognitionType `json:"type,omitempty"`
 	// Param specifies the recognition parameters.
 	// A nil Param omits param when encoding. For unknown types, an explicit JSON null is retained.
+	// When decoding, an absent "param" reads parameters from the whole
+	// recognition object, so flat fields are preserved instead of lost.
 	Param RecognitionParam `json:"param,omitempty"`
 }
 

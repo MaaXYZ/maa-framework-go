@@ -11,7 +11,9 @@ import (
 )
 
 // Node represents a single task node using pipeline v2 JSON.
-// Action and Recognition use nested type/param objects; legacy flat pipeline input is not supported by this model.
+// Action and Recognition use nested type/param objects; a recognition object
+// without "param" decodes its parameters from the whole object, matching the
+// native parser. Legacy flat pipeline input at the node level is not supported.
 // Omitted fields are resolved by MaaFramework using the existing node or its defaults.
 type Node struct {
 	Name string `json:"-"`
@@ -27,12 +29,15 @@ type Node struct {
 	// Action defines what action to perform when recognition succeeds.
 	Action *Action `json:"action,omitempty"`
 	// Next specifies the list of possible next nodes to execute.
+	// Decoding also accepts the protocol's shorthand: a single node value in
+	// place of the list, and bare node-name strings in place of objects.
 	Next []NextItem `json:"next,omitempty"`
 	// RateLimit sets the minimum interval between recognition attempts in milliseconds. Default: 1000.
 	RateLimit *int64 `json:"rate_limit,omitempty"`
 	// Timeout sets the maximum time to wait for recognition in milliseconds. Default: 20000; -1 waits indefinitely.
 	Timeout *int64 `json:"timeout,omitempty"`
 	// OnError specifies nodes to execute when recognition times out or action execution fails.
+	// Decoding accepts the same shorthand forms as Next.
 	OnError []NextItem `json:"on_error,omitempty"`
 	// Inverse inverts the recognition result. Default: false.
 	Inverse bool `json:"inverse,omitempty"`
@@ -325,8 +330,10 @@ func (n *Node) SetAttach(attach map[string]any) *Node {
 
 // NextItem is one item in the list of nodes to run next.
 // It is used in Node.Next (on success) and Node.OnError (on failure).
-// The native parser also accepts bare node-name strings and a single
-// string instead of a list; this model decodes only objects.
+// Decoding accepts bare node-name strings in place of objects; a string may
+// carry [JumpBack] and [Anchor] prefixes, and unrecognized prefixes are
+// ignored, matching the native parser. Shorthand entries re-encode as
+// objects, matching native output.
 type NextItem struct {
 	// Name is the name of the target node.
 	Name string `json:"name"`
