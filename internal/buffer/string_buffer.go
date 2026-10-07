@@ -53,5 +53,10 @@ func (s *StringBuffer) Set(str string) bool {
 }
 
 func (s *StringBuffer) SetWithSize(str string, size uint64) bool {
+	// The native side copies exactly size bytes from the pointer the binding
+	// layer allocates for len(str)+1 bytes; a larger size reads past it.
+	if size > uint64(len(str)) {
+		return false
+	}
 	return native.MaaStringBufferSetEx(s.handle, str, size)
 }
