@@ -1028,7 +1028,7 @@ func (c *Controller) GetShellOutput() (string, error) {
 	if !got {
 		return "", errors.New("failed to get shell output")
 	}
-	return output.Get(), nil
+	return output.GetWithSize(), nil
 }
 
 // status gets the status of a request identified by the given id.

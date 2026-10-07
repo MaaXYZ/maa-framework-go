@@ -1,6 +1,9 @@
 package buffer
 
 import (
+	"bytes"
+	"unsafe"
+
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 )
 
@@ -57,10 +60,28 @@ func (s *StringBuffer) Clear() bool {
 }
 
 // Get returns the buffer content as a Go string, truncating at the first NUL.
-// Embedded NUL bytes stay in the buffer; read them back through Size and a
-// native consumer.
+// Embedded NUL bytes stay in the buffer; read them back with GetWithSize.
 func (s *StringBuffer) Get() string {
-	return native.MaaStringBufferGet(s.handle)
+	data := s.bytes()
+	if i := bytes.IndexByte(data, 0); i >= 0 {
+		data = data[:i]
+	}
+	return string(data)
+}
+
+// GetWithSize copies the entire buffer content into a Go string, preserving
+// embedded NULs. The returned string remains valid after the buffer is
+// modified or destroyed.
+func (s *StringBuffer) GetWithSize() string {
+	return string(s.bytes())
+}
+
+func (s *StringBuffer) bytes() []byte {
+	size := s.Size()
+	if size == 0 {
+		return nil
+	}
+	return unsafe.Slice((*byte)(native.MaaStringBufferGet(s.handle)), size)
 }
 
 // Size returns the content length in bytes, including any embedded NULs.

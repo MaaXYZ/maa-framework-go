@@ -533,7 +533,9 @@ func _ShellAgent(cmd *byte, timeout int64, handleArg uintptr, outputBuffer uintp
 	output, ok := ctrl.Shell(cStringToString(cmd), timeout)
 	if ok {
 		buf := buffer.NewStringBufferByHandle(outputBuffer)
-		buf.Set(output)
+		if !buf.SetWithSize(output, uint64(len(output))) {
+			return uintptr(0)
+		}
 		return uintptr(1)
 	}
 	return uintptr(0)

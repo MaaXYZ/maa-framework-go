@@ -364,7 +364,8 @@ var (
 // Buffer bindings (MaaBuffer.h). Each buffer is created with its Create
 // function, released with its Destroy function, and passed by handle to other
 // framework functions that produce string, image, or geometry results.
-// MaaStringBufferGet copies the buffer content into a Go string, and the list
+// MaaStringBufferGet returns borrowed storage valid until the buffer is
+// modified or destroyed; MaaStringBufferSize gives its byte length. The list
 // At functions return a borrowed element view that must not be destroyed,
 // while Append stores a deep copy of the given value.
 var (
@@ -372,7 +373,7 @@ var (
 	MaaStringBufferDestroy func(handle uintptr)
 	MaaStringBufferIsEmpty func(handle uintptr) bool
 	MaaStringBufferClear   func(handle uintptr) bool
-	MaaStringBufferGet     func(handle uintptr) string
+	MaaStringBufferGet     func(handle uintptr) unsafe.Pointer
 	MaaStringBufferSize    func(handle uintptr) uint64
 	MaaStringBufferSet     func(handle uintptr, str string) bool
 	MaaStringBufferSetEx   func(handle uintptr, str string, size uint64) bool
