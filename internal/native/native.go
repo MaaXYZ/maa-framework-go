@@ -1,5 +1,20 @@
 //go:build (darwin || linux || windows) && (amd64 || arm64)
 
+// Package native binds the MaaFramework C API for Go through purego. The four
+// mandatory dynamic libraries (MaaFramework, MaaToolkit, MaaAgentServer and
+// MaaAgentClient) are loaded by Initialize from an explicit directory or the
+// platform default search path, and their C functions are resolved into the
+// package-level function variables named after them. Shutdown undoes the load.
+//
+// Deprecated C APIs are intentionally not bound. The package is not safe for
+// concurrent use: Initialize and Shutdown must be serialized by the caller
+// (the public maa package does so), and no function of this package may be
+// called after Shutdown: successfully unloaded libraries leave their variables
+// nil, and function values captured before Shutdown reference native code
+// whose lifetime is no longer guaranteed.
+//
+// Initialize supports linux, android, darwin and windows on amd64 or arm64 and
+// panics for any other GOOS it compiles on.
 package native
 
 import (
@@ -161,7 +176,9 @@ func Shutdown() error {
 
 // load opens libDir/libName, preflights every required symbol, and only then
 // registers the resolved addresses. On any failure the opened handle is closed
-// and the library's function variables are cleared so no partial state leaks.
+// and the library's function variables are cleared so no partial state leaks;
+// if that close itself fails, the handle is retained for a later Shutdown to
+// retry (retainFailedClose).
 func (lib Library) load(libDir string) (uintptr, error) {
 	libPath := filepath.Join(libDir, lib.fileName())
 
@@ -203,6 +220,10 @@ func (lib Library) load(libDir string) (uintptr, error) {
 	return handle, nil
 }
 
+// retainFailedClose records a library whose close failed as if it were still
+// loaded: the handle is kept in loadedLibs for a later Shutdown to retry, and
+// lib.handle keeps the native handle so the package state reflects the still
+// resident image. Initialize refuses to run until Shutdown releases it.
 func (lib Library) retainFailedClose(handle uintptr) {
 	*lib.handle = handle
 	loadedLibs = append(loadedLibs, loadedLibrary{lib: lib, handle: handle})
@@ -215,8 +236,8 @@ func (lib Library) resolve(libPath string, handle uintptr) ([]uintptr, error) {
 	for i, entry := range lib.entries {
 		addr, err := lookupSymbol(handle, entry.name)
 		if err == nil && addr == 0 {
-			// Some platforms can report a missing symbol as a null address
-			// without an error; a null function address is never valid.
+			// A null function address is never valid; treat it as a lookup
+			// failure even if the platform reported no error.
 			err = fmt.Errorf("symbol %q resolved to a null address", entry.name)
 		}
 		if err != nil {
