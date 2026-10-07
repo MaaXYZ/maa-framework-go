@@ -11,8 +11,9 @@ import (
 
 // AdbDevice represents a single ADB device discovered by the toolkit.
 type AdbDevice struct {
-	// Name is a human-readable device label in the form
-	// "<serial>-<emulator name or adb path>".
+	// Name is a human-readable device label, typically in the form
+	// "<serial>-<emulator name or adb path>". Some Windows emulator
+	// finders use the emulator instance name in place of the serial.
 	Name string
 	// AdbPath is the path of the ADB executable used to query the device.
 	AdbPath string
@@ -171,8 +172,9 @@ func FindGamescopeInstances() ([]*GamescopeInstance, error) {
 // released, but the PipeWire file descriptor is not closed.
 // Do not use the helper after Destroy.
 // A PortalHelper must not be copied after creation.
-// A nil or zero-value helper behaves like a destroyed helper: its getters
-// return zero values and OpenStream reports an error.
+// A nil or zero-value helper behaves like a destroyed helper: OpenStream
+// reports an error, PipeWireFD returns -1, and the other getters return
+// zero values.
 type PortalHelper struct {
 	mu     sync.Mutex
 	handle uintptr
