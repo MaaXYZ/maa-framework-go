@@ -96,11 +96,19 @@ func (n *Node) UnmarshalJSON(data []byte) error {
 
 // normalizeNodeShorthand rewrites input forms this model does not decode
 // directly into their canonical v2 shape: v1 string recognition/action and
-// shorthand next/on_error values. Every other key is left untouched.
+// shorthand next/on_error values. Every other key is left untouched, except
+// that an explicit null for a wait-freezes field is rejected here, because
+// decoding null into the pointer fields would silently produce nil instead
+// of the native parser's error.
 func normalizeNodeShorthand(data []byte) ([]byte, error) {
 	var fields map[string]json.RawMessage
 	if err := unmarshalJSON(data, &fields); err != nil {
 		return nil, err
+	}
+	for _, key := range [...]string{"pre_wait_freezes", "post_wait_freezes", "repeat_wait_freezes"} {
+		if value, ok := fields[key]; ok && bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+			return nil, fmt.Errorf("%s must not be null", key)
+		}
 	}
 	changed := false
 	for _, key := range [...]string{"recognition", "action"} {

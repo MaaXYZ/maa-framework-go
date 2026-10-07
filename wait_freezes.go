@@ -2,6 +2,7 @@ package maa
 
 import (
 	"bytes"
+	"errors"
 	"time"
 )
 
@@ -52,7 +53,8 @@ func (w WaitFreezesParam) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON decodes integer milliseconds for time, rate_limit, and
 // timeout into durations, accepting a bare number as the time in
-// milliseconds, matching the native parser. Invalid input leaves the
+// milliseconds, matching the native parser. An explicit JSON null is
+// rejected, matching the native parser. Invalid input leaves the
 // receiver unchanged.
 func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error {
 	if shorthand, ok, err := waitFreezesShorthand(data); err != nil {
@@ -79,10 +81,14 @@ func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error {
 }
 
 // waitFreezesShorthand decodes the bare-number wait-freezes shorthand to the
-// time in milliseconds; ok is false when the input is an object or null.
+// time in milliseconds; ok is false when the input is an object. An explicit
+// null is an error, matching the native parser.
 func waitFreezesShorthand(data []byte) (time.Duration, bool, error) {
 	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 || trimmed[0] == '{' || bytes.Equal(trimmed, []byte("null")) {
+	if bytes.Equal(trimmed, []byte("null")) {
+		return 0, false, errors.New("wait freezes must not be null")
+	}
+	if len(trimmed) == 0 || trimmed[0] == '{' {
 		return 0, false, nil
 	}
 	var ms int64
