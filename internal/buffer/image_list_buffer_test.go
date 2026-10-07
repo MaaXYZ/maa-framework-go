@@ -177,8 +177,8 @@ func TestImageListBuffer_AppendNilReturnsFalse(t *testing.T) {
 }
 
 // TestImageListBuffer_AppendDeepCopyOwnership pins the Append ownership
-// contract: the list stores a deep copy, so destroying the source buffer
-// afterwards must not affect the stored element.
+// contract: the stored element stays valid independently of the source, so
+// destroying the source buffer afterwards must not affect it.
 func TestImageListBuffer_AppendDeepCopyOwnership(t *testing.T) {
 	imageListBuffer := createImageListBuffer(t)
 	defer imageListBuffer.Destroy()

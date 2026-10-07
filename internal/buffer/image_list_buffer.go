@@ -85,9 +85,9 @@ func (il *ImageListBuffer) GetAll() []image.Image {
 	return images
 }
 
-// Append stores a deep copy of value and reports whether the native call
-// succeeded; the caller keeps owning value. It returns false when value is
-// nil.
+// Append stores value in the list and reports whether the native call
+// succeeded; the stored element stays valid after the caller destroys value.
+// It returns false when value is nil.
 func (il *ImageListBuffer) Append(value *ImageBuffer) bool {
 	// Upstream returns false for a null value instead of crashing.
 	if value == nil {

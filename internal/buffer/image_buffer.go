@@ -6,9 +6,10 @@
 // exactly once through Destroy. The ByHandle constructors instead borrow a
 // handle owned elsewhere (typically a framework callback argument): the
 // wrapper is a shared view, and the owner stays responsible for destroying.
-// List buffers return copies from their element accessors, store deep copies
-// on Append, and surface an out-of-range index as a zero value ("" or nil)
-// and false from Remove, matching the native side. Image buffers hold raw
+// List buffers return copies from their element accessors, keep appended
+// elements valid independently of the source value, and surface an
+// out-of-range index as a zero value ("" or nil) and false from Remove,
+// matching the native side. Image buffers hold raw
 // BGR pixels in OpenCV's CV_8UC3 layout: Get decodes them into a fresh
 // opaque image.RGBA and Set encodes an image.Image back, while the native
 // PNG encoding API is intentionally unbound because Go handles image files
