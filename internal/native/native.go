@@ -83,8 +83,14 @@ func Initialize(libDir string) error {
 	}
 	libDir = resolvedDir
 
-	if err := handleLibDir(libDir); err != nil {
-		return err
+	// An empty libDir must skip handleLibDir entirely: on Windows,
+	// SetDllDirectoryW(L"") would remove the current directory from the DLL
+	// search order instead of keeping the default search behavior documented
+	// above.
+	if libDir != "" {
+		if err := handleLibDir(libDir); err != nil {
+			return err
+		}
 	}
 
 	for _, lib := range libraries {
