@@ -97,11 +97,13 @@ func TestPipelineV2UnknownRecognitionParamRoundTrip(t *testing.T) {
 }
 
 func TestPipelineV2UnknownParamMissingAndNullSemantics(t *testing.T) {
-	t.Run("missing action parameter remains nil", func(t *testing.T) {
+	t.Run("missing action parameter falls back to the whole object", func(t *testing.T) {
 		var action Action
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"FutureAction"}`), &action))
 		require.Equal(t, ActionType("FutureAction"), action.Type)
-		require.Nil(t, action.Param)
+		raw, ok := action.Param.(*RawActionParam)
+		require.True(t, ok, "missing param should decode the whole object for unknown types, got %T", action.Param)
+		require.JSONEq(t, `{"type":"FutureAction"}`, string(*raw))
 	})
 
 	t.Run("explicit null action parameter is retained", func(t *testing.T) {
@@ -131,11 +133,11 @@ func TestPipelineV2UnknownParamMissingAndNullSemantics(t *testing.T) {
 }
 
 func TestPipelineV2UnknownParamDecodeErrorsAndDestinationReuse(t *testing.T) {
-	t.Run("missing known action parameter clears an existing parameter", func(t *testing.T) {
+	t.Run("missing known action parameter resets to a zero parameter", func(t *testing.T) {
 		action := Action{Type: ActionTypeClick, Param: &ClickParam{Contact: 7}}
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"Click"}`), &action))
 		require.Equal(t, ActionTypeClick, action.Type)
-		require.Nil(t, action.Param)
+		require.Equal(t, &ClickParam{}, action.Param)
 	})
 
 	t.Run("null known action parameter clears an existing parameter", func(t *testing.T) {
@@ -159,14 +161,16 @@ func TestPipelineV2UnknownParamDecodeErrorsAndDestinationReuse(t *testing.T) {
 		require.Nil(t, recognition.Param)
 	})
 
-	t.Run("missing parameter clears an existing action parameter", func(t *testing.T) {
+	t.Run("missing parameter replaces an existing action parameter with the whole object", func(t *testing.T) {
 		action := Action{
 			Type:  ActionTypeClick,
 			Param: &ClickParam{Contact: 7},
 		}
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"FutureAction"}`), &action))
 		require.Equal(t, ActionType("FutureAction"), action.Type)
-		require.Nil(t, action.Param)
+		raw, ok := action.Param.(*RawActionParam)
+		require.True(t, ok, "missing param should decode the whole object for unknown types, got %T", action.Param)
+		require.JSONEq(t, `{"type":"FutureAction"}`, string(*raw))
 	})
 
 	t.Run("null parameter replaces an existing recognition parameter", func(t *testing.T) {

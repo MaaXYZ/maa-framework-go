@@ -27,6 +27,9 @@ type Action struct {
 
 // UnmarshalJSON decodes a pipeline v2 action. Errors in known parameter types
 // are returned without falling back to raw JSON. On error the action is unchanged.
+// When "param" is absent, parameters are decoded from the whole action object,
+// matching the native parser, so flat fields such as
+// {"type":"Click","contact":1} are preserved instead of silently lost.
 func (na *Action) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Type  ActionType      `json:"type,omitempty"`
@@ -36,7 +39,11 @@ func (na *Action) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	param, err := decodeActionParam(raw.Type, raw.Param)
+	paramData := raw.Param
+	if len(paramData) == 0 {
+		paramData = data
+	}
+	param, err := decodeActionParam(raw.Type, paramData)
 	if err != nil {
 		return err
 	}
@@ -257,24 +264,24 @@ type SwipeParam struct {
 	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
 	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
 	BeginOffset Rect `json:"begin_offset,omitzero"`
-	// End specifies the swipe end positions. The upstream single-target form
-	// (a bare true or node name, or a flat [x, y] point or [x, y, w, h]
-	// rectangle array) is not modeled: End decodes only from a list of
-	// targets. A zero Target element fails JSON encoding.
+	// End specifies the swipe end positions. JSON input may be a single
+	// target in place of the list (a bare true or node name, or a flat
+	// [x, y] point or [x, y, w, h] rectangle array); a single target
+	// normalizes to a one-element list. A zero Target element fails JSON
+	// encoding.
 	End []Target `json:"end,omitzero"`
-	// EndOffset specifies additional offset applied to end position. The
-	// upstream single-offset form (a flat [x, y] point or [x, y, w, h]
-	// rectangle array) is not modeled: EndOffset decodes only from a list of
-	// offsets.
+	// EndOffset specifies additional offset applied to end position. JSON
+	// input may be a single flat [x, y, w, h] rectangle in place of the
+	// list; a single offset normalizes to a one-element list.
 	EndOffset []Rect `json:"end_offset,omitempty"`
 	// Duration specifies the swipe duration. Default: 200ms.
-	// The native parser also accepts a single number in place of the
-	// array; this model decodes only the array form.
+	// JSON input may be a single number or an array; a single value
+	// normalizes to a one-element array.
 	// JSON: serialized as array of integer milliseconds.
 	Duration []time.Duration `json:"-"`
 	// EndHold specifies extra wait time at end position before releasing. Default: 0.
-	// The native parser also accepts a single number in place of the
-	// array; this model decodes only the array form.
+	// JSON input may be a single number or an array; a single value
+	// normalizes to a one-element array.
 	// JSON: serialized as array of integer milliseconds.
 	EndHold []time.Duration `json:"-"`
 	// OnlyHover enables hover-only mode without press/release actions. Default: false.
@@ -301,20 +308,35 @@ func (p SwipeParam) MarshalJSON() ([]byte, error) {
 	}{NoMethod: NoMethod(p), Duration: durationsToMs(p.Duration), EndHold: durationsToMs(p.EndHold)})
 }
 
-// UnmarshalJSON decodes the swipe param, reading the durations and end holds as integer milliseconds.
+// UnmarshalJSON decodes the swipe param, reading the durations and end holds
+// as integer milliseconds, normalizing single end targets and offsets to
+// one-element lists and single timing values to one-element arrays.
 func (p *SwipeParam) UnmarshalJSON(data []byte) error {
-	type NoMethod SwipeParam
 	raw := struct {
-		NoMethod
-		Duration []int64 `json:"duration,omitempty"`
-		EndHold  []int64 `json:"end_hold,omitempty"`
+		Begin       Target               `json:"begin,omitzero"`
+		BeginOffset Rect                 `json:"begin_offset,omitzero"`
+		End         orSingleList[Target] `json:"end,omitzero"`
+		EndOffset   orSingleList[Rect]   `json:"end_offset,omitempty"`
+		Duration    orScalarList[int64]  `json:"duration,omitempty"`
+		EndHold     orScalarList[int64]  `json:"end_hold,omitempty"`
+		OnlyHover   bool                 `json:"only_hover,omitempty"`
+		Contact     int                  `json:"contact,omitempty"`
+		Pressure    *int                 `json:"pressure,omitempty"`
 	}{}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
-	*p = SwipeParam(raw.NoMethod)
-	p.Duration = msToDurations(raw.Duration)
-	p.EndHold = msToDurations(raw.EndHold)
+	*p = SwipeParam{
+		Begin:       raw.Begin,
+		BeginOffset: raw.BeginOffset,
+		End:         raw.End,
+		EndOffset:   raw.EndOffset,
+		Duration:    msToDurations(raw.Duration),
+		EndHold:     msToDurations(raw.EndHold),
+		OnlyHover:   raw.OnlyHover,
+		Contact:     raw.Contact,
+		Pressure:    raw.Pressure,
+	}
 	return nil
 }
 
@@ -339,24 +361,24 @@ type MultiSwipeItem struct {
 	// JSON accepts [x, y], which expands to a 1x1 offset at (x, y), or [x, y, w, h];
 	// the zero value omits the field, so the pipeline default or parent-node inheritance applies.
 	BeginOffset Rect `json:"begin_offset,omitzero"`
-	// End specifies the swipe end positions. The upstream single-target form
-	// (a bare true or node name, or a flat [x, y] point or [x, y, w, h]
-	// rectangle array) is not modeled: End decodes only from a list of
-	// targets. A zero Target element fails JSON encoding.
+	// End specifies the swipe end positions. JSON input may be a single
+	// target in place of the list (a bare true or node name, or a flat
+	// [x, y] point or [x, y, w, h] rectangle array); a single target
+	// normalizes to a one-element list. A zero Target element fails JSON
+	// encoding.
 	End []Target `json:"end,omitzero"`
-	// EndOffset specifies additional offset applied to end position. The
-	// upstream single-offset form (a flat [x, y] point or [x, y, w, h]
-	// rectangle array) is not modeled: EndOffset decodes only from a list of
-	// offsets.
+	// EndOffset specifies additional offset applied to end position. JSON
+	// input may be a single flat [x, y, w, h] rectangle in place of the
+	// list; a single offset normalizes to a one-element list.
 	EndOffset []Rect `json:"end_offset,omitempty"`
 	// Duration specifies the swipe duration. Default: 200ms.
-	// The native parser also accepts a single number in place of the
-	// array; this model decodes only the array form.
+	// JSON input may be a single number or an array; a single value
+	// normalizes to a one-element array.
 	// JSON: serialized as array of integer milliseconds.
 	Duration []time.Duration `json:"-"`
 	// EndHold specifies extra wait time at end position before releasing. Default: 0.
-	// The native parser also accepts a single number in place of the
-	// array; this model decodes only the array form.
+	// JSON input may be a single number or an array; a single value
+	// normalizes to a one-element array.
 	// JSON: serialized as array of integer milliseconds.
 	EndHold []time.Duration `json:"-"`
 	// OnlyHover enables hover-only mode without press/release actions. Default: false.
@@ -386,22 +408,37 @@ func (p MultiSwipeItem) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON decodes the multi-swipe item, reading the starting time,
-// durations, and end holds as integer milliseconds.
+// durations, and end holds as integer milliseconds, normalizing single end
+// targets and offsets to one-element lists and single timing values to
+// one-element arrays.
 func (p *MultiSwipeItem) UnmarshalJSON(data []byte) error {
-	type NoMethod MultiSwipeItem
 	raw := struct {
-		NoMethod
-		Starting int64   `json:"starting,omitempty"`
-		Duration []int64 `json:"duration,omitempty"`
-		EndHold  []int64 `json:"end_hold,omitempty"`
+		Starting    int64                `json:"starting,omitempty"`
+		Begin       Target               `json:"begin,omitzero"`
+		BeginOffset Rect                 `json:"begin_offset,omitzero"`
+		End         orSingleList[Target] `json:"end,omitzero"`
+		EndOffset   orSingleList[Rect]   `json:"end_offset,omitempty"`
+		Duration    orScalarList[int64]  `json:"duration,omitempty"`
+		EndHold     orScalarList[int64]  `json:"end_hold,omitempty"`
+		OnlyHover   bool                 `json:"only_hover,omitempty"`
+		Contact     int                  `json:"contact,omitempty"`
+		Pressure    *int                 `json:"pressure,omitempty"`
 	}{}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
-	*p = MultiSwipeItem(raw.NoMethod)
-	p.Starting = time.Duration(raw.Starting) * time.Millisecond
-	p.Duration = msToDurations(raw.Duration)
-	p.EndHold = msToDurations(raw.EndHold)
+	*p = MultiSwipeItem{
+		Starting:    time.Duration(raw.Starting) * time.Millisecond,
+		Begin:       raw.Begin,
+		BeginOffset: raw.BeginOffset,
+		End:         raw.End,
+		EndOffset:   raw.EndOffset,
+		Duration:    msToDurations(raw.Duration),
+		EndHold:     msToDurations(raw.EndHold),
+		OnlyHover:   raw.OnlyHover,
+		Contact:     raw.Contact,
+		Pressure:    raw.Pressure,
+	}
 	return nil
 }
 
@@ -513,9 +550,79 @@ func ActTouchUp(contact int) *Action {
 // ClickKeyParam defines parameters for key click action.
 type ClickKeyParam struct {
 	// Key specifies the virtual key codes to click. Required.
-	// The native parser also accepts a single key code in place of the
-	// array; this model decodes only the array form.
+	// JSON input may be a single key code or an array; a single value
+	// normalizes to a one-element array.
 	Key []int `json:"key,omitempty"`
+}
+
+// UnmarshalJSON normalizes a single key code to a one-element array.
+func (p *ClickKeyParam) UnmarshalJSON(data []byte) error {
+	var decoded struct {
+		Key orScalarList[int] `json:"key,omitempty"`
+	}
+	if err := unmarshalJSON(data, &decoded); err != nil {
+		return err
+	}
+	*p = ClickKeyParam{Key: decoded.Key}
+	return nil
+}
+
+// orScalarList decodes a protocol value-or-array field: a single value
+// normalizes to a one-element list, matching the native parser's
+// get_and_check_value_or_array.
+type orScalarList[T any] []T
+
+func (l *orScalarList[T]) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		*l = nil
+		return nil
+	}
+	if trimmed[0] != '[' {
+		var single T
+		if err := unmarshalJSON(data, &single); err != nil {
+			return err
+		}
+		*l = orScalarList[T]{single}
+		return nil
+	}
+	var list []T
+	if err := unmarshalJSON(data, &list); err != nil {
+		return err
+	}
+	*l = list
+	return nil
+}
+
+// orSingleList decodes a protocol single-or-list field whose single form is
+// itself an array (a flat point/rectangle or pair): a flat array normalizes
+// to a one-element list, matching the native parser's single-target branch.
+// An array whose first element is an array (or an empty array) is a list.
+type orSingleList[T any] []T
+
+func (l *orSingleList[T]) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		*l = nil
+		return nil
+	}
+	if trimmed[0] == '[' {
+		inner := bytes.TrimSpace(trimmed[1:])
+		if len(inner) == 0 || inner[0] == '[' || inner[0] == ']' {
+			var list []T
+			if err := unmarshalJSON(data, &list); err != nil {
+				return err
+			}
+			*l = list
+			return nil
+		}
+	}
+	var single T
+	if err := unmarshalJSON(data, &single); err != nil {
+		return err
+	}
+	*l = orSingleList[T]{single}
+	return nil
 }
 
 func (n ClickKeyParam) isActionParam() {}
@@ -531,8 +638,8 @@ func ActClickKey(keys []int) *Action {
 // LongPressKeyParam defines parameters for long press key action.
 type LongPressKeyParam struct {
 	// Key specifies the virtual key codes to press. Required.
-	// The native parser also accepts a single key code in place of the
-	// array; this model decodes only the array form.
+	// JSON input may be a single key code or an array; a single value
+	// normalizes to a one-element array.
 	Key []int `json:"key,omitempty"`
 	// Duration specifies the long press duration, serialized as integer milliseconds.
 	// Nil omits the field. When overriding a node with the same action type,
@@ -560,18 +667,18 @@ func (p LongPressKeyParam) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON decodes the long press key param, reading the duration as
-// integer milliseconds. An absent duration stays nil; zero decodes to a
-// pointer to zero. It rejects durations outside the range of time.Duration.
+// integer milliseconds and normalizing a single key code to a one-element
+// array. An absent duration stays nil; zero decodes to a pointer to zero. It
+// rejects durations outside the range of time.Duration.
 func (p *LongPressKeyParam) UnmarshalJSON(data []byte) error {
-	type NoMethod LongPressKeyParam
 	raw := struct {
-		NoMethod
-		Duration *int64 `json:"duration,omitempty"`
+		Key      orScalarList[int] `json:"key,omitempty"`
+		Duration *int64            `json:"duration,omitempty"`
 	}{}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
-	decoded := LongPressKeyParam(raw.NoMethod)
+	decoded := LongPressKeyParam{Key: raw.Key}
 	if raw.Duration != nil {
 		duration, err := durationFromMs(*raw.Duration)
 		if err != nil {
