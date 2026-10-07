@@ -16,7 +16,7 @@ import (
 // Known parameter fields accept their canonical JSON forms plus the protocol's
 // shorthand forms the native parser tolerates (single values in place of
 // lists); all of them normalize to the canonical list shapes this package
-// emits. Command args reject the single-value shorthand.
+// emits.
 type Action struct {
 	// Type specifies the action type.
 	Type ActionType `json:"type,omitempty"`
@@ -962,12 +962,28 @@ type CommandParam struct {
 	// {ENTRY}: task entry name, {NODE}: current node name,
 	// {IMAGE}: screenshot file path, {BOX}: recognition target [x,y,w,h],
 	// {RESOURCE_DIR}: last loaded resource directory, {LIBRARY_DIR}: MaaFW library directory.
+	// JSON input may be a single argument or an array; a single value
+	// normalizes to a one-element array.
 	Args []string `json:"args,omitempty"`
 	// Detach enables detached mode to run without waiting for completion. Default: false.
 	Detach bool `json:"detach,omitempty"`
 }
 
 func (n CommandParam) isActionParam() {}
+
+// UnmarshalJSON normalizes a single argument to a one-element array.
+func (p *CommandParam) UnmarshalJSON(data []byte) error {
+	var decoded struct {
+		Exec   string               `json:"exec,omitempty"`
+		Args   orScalarList[string] `json:"args,omitempty"`
+		Detach bool                 `json:"detach,omitempty"`
+	}
+	if err := unmarshalJSON(data, &decoded); err != nil {
+		return err
+	}
+	*p = CommandParam{Exec: decoded.Exec, Args: decoded.Args, Detach: decoded.Detach}
+	return nil
+}
 
 // ActCommand creates a Command action with the given parameters.
 func ActCommand(p CommandParam) *Action {
