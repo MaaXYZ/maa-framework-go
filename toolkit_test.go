@@ -33,12 +33,7 @@ func TestToolkit_ConfigInitOptionFailure(t *testing.T) {
 
 func TestToolkit_FindAdbDevicesStub(t *testing.T) {
 	const listHandle = uintptr(7)
-	destroyed := 0
 
-	replaceNativeForTest(t, &native.MaaToolkitAdbDeviceListDestroy, func(handle uintptr) {
-		require.Equal(t, listHandle, handle)
-		destroyed++
-	})
 	replaceNativeForTest(t, &native.MaaToolkitAdbDeviceListSize, func(list uintptr) uint64 {
 		require.Equal(t, listHandle, list)
 		return 1
@@ -64,7 +59,18 @@ func TestToolkit_FindAdbDevicesStub(t *testing.T) {
 		Config:          `{"extras":{}}`,
 	}}
 
+	// Each subtest installs its own destroy stub so it can run in isolation.
+	destroyStub := func(t *testing.T) *int {
+		destroyed := 0
+		replaceNativeForTest(t, &native.MaaToolkitAdbDeviceListDestroy, func(handle uintptr) {
+			require.Equal(t, listHandle, handle)
+			destroyed++
+		})
+		return &destroyed
+	}
+
 	t.Run("auto discovery uses MaaToolkitAdbDeviceFind", func(t *testing.T) {
+		destroyed := destroyStub(t)
 		replaceNativeForTest(t, &native.MaaToolkitAdbDeviceListCreate, func() uintptr { return listHandle })
 		replaceNativeForTest(t, &native.MaaToolkitAdbDeviceFind, func(buffer uintptr) bool {
 			require.Equal(t, listHandle, buffer)
@@ -78,10 +84,11 @@ func TestToolkit_FindAdbDevicesStub(t *testing.T) {
 		devices, err := FindAdbDevices()
 		require.NoError(t, err)
 		require.Equal(t, wantDevice, devices)
-		require.Equal(t, 1, destroyed)
+		require.Equal(t, 1, *destroyed)
 	})
 
 	t.Run("specified discovery forwards only the first adb path", func(t *testing.T) {
+		destroyed := destroyStub(t)
 		replaceNativeForTest(t, &native.MaaToolkitAdbDeviceListCreate, func() uintptr { return listHandle })
 		replaceNativeForTest(t, &native.MaaToolkitAdbDeviceFind, func(uintptr) bool {
 			t.Error("Find must not be called when a specified adb path is given")
@@ -98,17 +105,31 @@ func TestToolkit_FindAdbDevicesStub(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "first-adb", gotPath)
 		require.Equal(t, wantDevice, devices)
-		require.Equal(t, 2, destroyed)
+		require.Equal(t, 1, *destroyed)
+	})
+
+	t.Run("empty result is an empty slice", func(t *testing.T) {
+		destroyed := destroyStub(t)
+		replaceNativeForTest(t, &native.MaaToolkitAdbDeviceListCreate, func() uintptr { return listHandle })
+		replaceNativeForTest(t, &native.MaaToolkitAdbDeviceFind, func(uintptr) bool { return true })
+		replaceNativeForTest(t, &native.MaaToolkitAdbDeviceListSize, func(uintptr) uint64 { return 0 })
+
+		devices, err := FindAdbDevices()
+		require.NoError(t, err)
+		require.NotNil(t, devices)
+		require.Empty(t, devices)
+		require.Equal(t, 1, *destroyed)
 	})
 
 	t.Run("native failure surfaces an error", func(t *testing.T) {
+		destroyed := destroyStub(t)
 		replaceNativeForTest(t, &native.MaaToolkitAdbDeviceListCreate, func() uintptr { return listHandle })
 		replaceNativeForTest(t, &native.MaaToolkitAdbDeviceFind, func(uintptr) bool { return false })
 
 		devices, err := FindAdbDevices()
 		require.Error(t, err)
 		require.Nil(t, devices)
-		require.Equal(t, 3, destroyed)
+		require.Equal(t, 1, *destroyed)
 	})
 }
 
