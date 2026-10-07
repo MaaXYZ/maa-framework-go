@@ -125,6 +125,7 @@ type CustomController interface {
 	RelativeMove(dx, dy int32) bool
 	// Shell runs a controller-side shell command and returns its textual output.
 	// timeout is measured in milliseconds.
+	// Embedded NUL bytes in the output are preserved.
 	// Return ("", true) if the command succeeded but produced no output.
 	Shell(cmd string, timeout int64) (string, bool)
 	// Inactive is called when the framework requests restoring controller/window state (e.g. after tasks finish).

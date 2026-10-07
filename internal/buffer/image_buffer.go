@@ -13,10 +13,10 @@
 // BGR pixels in OpenCV's CV_8UC3 layout: Get decodes them into a fresh
 // opaque image.RGBA and Set encodes an image.Image back, while the native
 // PNG encoding API is intentionally unbound because Go handles image files
-// natively. String buffers copy text through NUL-terminated C strings: Set
-// truncates at the first NUL, SetWithSize copies an exact byte count and
-// preserves embedded NULs, and Get truncates embedded NULs on the Go read
-// side.
+// natively. StringBuffer.Set copies a NUL-terminated C string and truncates
+// at the first NUL; SetWithSize copies an exact byte count and preserves
+// embedded NULs. Get truncates at the first NUL, while GetWithSize copies
+// the full content, preserving embedded NULs.
 package buffer
 
 import (

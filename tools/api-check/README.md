@@ -26,6 +26,7 @@ It checks both symbol coverage and function signatures.
 - Native API signature consistency:
   - compare Go var function signature vs C exported function signature
   - compare params/returns with strict arity/order
+  - C `char*` returns accept Go `string` or raw pointers, allowing callers to read length-delimited buffer content
   - C types are normalized with typedef expansion (for example `MaaTaskId -> MaaId -> int64_t`)
 - CustomController consistency:
   - method existence on both sides

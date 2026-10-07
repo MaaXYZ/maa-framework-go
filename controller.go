@@ -1013,7 +1013,7 @@ func (c *Controller) PostShell(cmd string, timeout time.Duration) (*Job, error) 
 	return newJob(id, c.status, c.wait, c.state), nil
 }
 
-// GetShellOutput gets the output of the last shell command.
+// GetShellOutput gets the output of the last shell command, including embedded NUL bytes.
 func (c *Controller) GetShellOutput() (string, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
