@@ -878,11 +878,14 @@ func (c *Controller) PostTouchUp(contact int32) (*Job, error) {
 
 // PostRelativeMove posts a relative cursor move.
 // dx and dy are the horizontal and vertical move offsets.
-// Supported by Win32 controllers whose input method implements relative move
-// (the message-based input used by mouse-lock-follow), by Linux controllers
-// (uinput/wlroots/libei input), and by custom controllers implementing
-// RelativeMove; macOS controllers do not support it.
-// If the controller does not support relative move, the posted action will fail.
+// Supported by Win32 controllers using Seize or message-based mouse input,
+// by Linux controllers (uinput/wlroots/libei input), and by custom controllers
+// implementing RelativeMove; macOS controllers do not support it.
+// Win32 message-based mouse input requires mouse-lock-follow mode to be active
+// when the action executes; enable it with [Controller.SetMouseLockFollow].
+// Seize mouse input does not require this mode.
+// Relative move failures are reported by the submitted job's final status;
+// use [Job.Wait] or [Job.Status] to check the result.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (c *Controller) PostRelativeMove(dx, dy int32) (*Job, error) {
