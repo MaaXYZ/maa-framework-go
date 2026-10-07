@@ -11,9 +11,11 @@ import (
 )
 
 // Node represents a single task node using pipeline v2 JSON.
-// Action and Recognition use nested type/param objects; a recognition object
-// without "param" decodes its parameters from the whole object, matching the
-// native parser. Legacy flat pipeline input at the node level is not supported.
+// Action and Recognition use nested type/param objects; a recognition or
+// action object without "param" decodes its parameters from the whole
+// object, and the v1 flat form (string recognition/action with parameters
+// flat on the node) normalizes into this v2 model, matching the native
+// parser. Encoding always emits v2.
 // Omitted fields are resolved by MaaFramework using the existing node or its defaults.
 type Node struct {
 	Name string `json:"-"`
@@ -69,14 +71,17 @@ type Node struct {
 	Attach map[string]any `json:"attach,omitempty"`
 }
 
-// UnmarshalJSON decodes a node definition. The next and on_error lists accept
+// UnmarshalJSON decodes a node definition. Decoding accepts the v2 nested
+// form, the v1 flat form (string recognition/action with parameters flat on
+// the node), and the form without "param"; all of them normalize into this
+// v2 model, and encoding always emits v2. The next and on_error lists accept
 // the protocol's shorthand forms, matching the native parser: a single node
 // value in place of the list, and bare node-name strings in place of objects.
 // Fields absent from the input, including Name, are reset to their zero
 // values; decoding replaces the node rather than merging into it. On error
 // the node is unchanged.
 func (n *Node) UnmarshalJSON(data []byte) error {
-	normalized, err := normalizeNodeNextShorthand(data)
+	normalized, err := normalizeNodeShorthand(data)
 	if err != nil {
 		return err
 	}
@@ -89,14 +94,38 @@ func (n *Node) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// normalizeNodeNextShorthand rewrites shorthand next/on_error values into the
-// object-array form this model decodes, leaving every other key untouched.
-func normalizeNodeNextShorthand(data []byte) ([]byte, error) {
+// normalizeNodeShorthand rewrites input forms this model does not decode
+// directly into their canonical v2 shape: v1 string recognition/action and
+// shorthand next/on_error values. Every other key is left untouched.
+func normalizeNodeShorthand(data []byte) ([]byte, error) {
 	var fields map[string]json.RawMessage
 	if err := unmarshalJSON(data, &fields); err != nil {
 		return nil, err
 	}
 	changed := false
+	for _, key := range [...]string{"recognition", "action"} {
+		value, ok := fields[key]
+		if !ok {
+			continue
+		}
+		trimmed := bytes.TrimSpace(value)
+		if len(trimmed) == 0 || trimmed[0] != '"' {
+			continue
+		}
+		// v1 form: "recognition": "ColorMatch" with parameters flat on the
+		// node. The native parser reads parameters from the whole node in
+		// this case, so wrap the string into the v2 envelope with the node
+		// itself as the param input.
+		envelope, err := marshalJSON(struct {
+			Type  json.RawMessage `json:"type"`
+			Param json.RawMessage `json:"param"`
+		}{Type: json.RawMessage(trimmed), Param: json.RawMessage(data)})
+		if err != nil {
+			return nil, err
+		}
+		fields[key] = envelope
+		changed = true
+	}
 	for _, key := range [...]string{"next", "on_error"} {
 		value, ok := fields[key]
 		if !ok {
