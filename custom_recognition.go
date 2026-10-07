@@ -145,7 +145,9 @@ func _MaaCustomRecognitionCallbackAgent(
 	outBoxRect := buffer.NewRectBufferByHandle(outBox)
 	outBoxRect.Set(box)
 	outDetailString := buffer.NewStringBufferByHandle(outDetail)
-	outDetailString.Set(ret.Detail)
+	// SetWithSize instead of Set: Detail may contain embedded NULs, which
+	// Set truncates at the first one (upstream strlen conversion).
+	outDetailString.SetWithSize(ret.Detail, uint64(len(ret.Detail)))
 	if ok {
 		return 1
 	}
