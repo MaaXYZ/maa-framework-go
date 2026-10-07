@@ -163,4 +163,8 @@ func TestStringBuffer_ByHandle(t *testing.T) {
 
 	stringBuffer.Destroy()
 	require.Equal(t, 1, destroys)
+
+	// Run the real destroy so the counted call does not leak the object.
+	native.MaaStringBufferDestroy = oldDestroy
+	native.MaaStringBufferDestroy(stringBuffer.Handle())
 }

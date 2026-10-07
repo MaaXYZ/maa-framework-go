@@ -101,4 +101,8 @@ func TestRectBuffer_ByHandle(t *testing.T) {
 
 	rectBuffer.Destroy()
 	require.Equal(t, 1, destroys)
+
+	// Run the real destroy so the counted call does not leak the object.
+	native.MaaRectDestroy = oldDestroy
+	native.MaaRectDestroy(rectBuffer.Handle())
 }
