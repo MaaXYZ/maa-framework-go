@@ -279,6 +279,14 @@ const (
 	assertIssueNotContains(t, issues, "[win32.screencap] Go method not found in C: DXGIDesktopDup")
 }
 
+func TestGoMethodGroupsUnknownController(t *testing.T) {
+	t.Parallel()
+
+	if _, _, err := goMethodGroups("macos"); err == nil || !strings.Contains(err.Error(), "unknown controller: macos") {
+		t.Fatalf("goMethodGroups() error = %v, want unknown controller error", err)
+	}
+}
+
 func TestCompareMethodGroupValues_CSideUnderscoreNormalizationCollision(t *testing.T) {
 	t.Parallel()
 
