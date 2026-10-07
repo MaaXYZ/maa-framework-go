@@ -27,8 +27,8 @@ type Target struct {
 	val any
 }
 
-// NewBool creates a target that is the boolean true, the pipeline's
-// current-result target.
+// NewBool creates the boolean-true target when b is true; false is not a
+// valid pipeline target and fails to encode.
 func NewBool(b bool) Target {
 	return Target{
 		tp:  targetBool,
