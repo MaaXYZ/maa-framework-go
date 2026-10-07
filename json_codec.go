@@ -19,6 +19,13 @@ type JSONEncoder func(v any) ([]byte, error)
 // JSONDecoder defines how JSON is deserialized into values.
 // Custom decoders must validate the input and honor json.Unmarshaler and
 // json.RawMessage so pipeline v2 parameters retain their JSON representation.
+// They must also ignore unknown fields, as encoding/json does by default:
+// JSON produced by MaaFramework can carry keys this package's structs do not
+// model. Node recognition and action completion events, for example, always
+// attach reco_details, node_details, or action_details, and recognition
+// events carry anchor as well when the node was reached through an anchor.
+// Event callbacks run only after the event details decode successfully, so a
+// decoder that rejects unknown fields silently drops those events.
 type JSONDecoder func(data []byte, v any) error
 
 // SetJSONEncoder sets the global JSON encoder used by this package.
@@ -30,6 +37,9 @@ func SetJSONEncoder(encoder JSONEncoder) {
 }
 
 // SetJSONDecoder sets the global JSON decoder used by this package.
+//
+// The decoder must satisfy the compatibility requirements documented by
+// [JSONDecoder], including ignoring unknown fields.
 func SetJSONDecoder(decoder JSONDecoder) {
 	jsoncodec.SetDecoder(jsoncodec.Decoder(decoder))
 }
