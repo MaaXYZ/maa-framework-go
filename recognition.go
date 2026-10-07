@@ -12,9 +12,8 @@ import (
 // including the lowercase aliases the native parser accepts, such as "ocr" —
 // retain their parameter JSON as *RawRecognitionParam; this does not establish
 // native support. Unknown fields outside param, and unmodeled fields of known
-// parameters, are not retained. Unlike the native parser, a recognition object
-// without a param key does not fall back to using the whole object as
-// parameters; Param stays nil.
+// parameters, are not retained. Like the native parser, a recognition object
+// without a param key reads its parameters from the whole object.
 type Recognition struct {
 	// Type specifies the recognition algorithm type.
 	Type RecognitionType `json:"type,omitempty"`

@@ -72,7 +72,9 @@ type Node struct {
 // UnmarshalJSON decodes a node definition. The next and on_error lists accept
 // the protocol's shorthand forms, matching the native parser: a single node
 // value in place of the list, and bare node-name strings in place of objects.
-// On error the node is unchanged.
+// Fields absent from the input, including Name, are reset to their zero
+// values; decoding replaces the node rather than merging into it. On error
+// the node is unchanged.
 func (n *Node) UnmarshalJSON(data []byte) error {
 	normalized, err := normalizeNodeNextShorthand(data)
 	if err != nil {
