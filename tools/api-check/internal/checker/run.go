@@ -1,3 +1,8 @@
+// Package checker implements the consistency checks behind the api-check
+// command: it compares the repository's Go bindings with the C headers under
+// deps/include across native API, CustomController, controller method,
+// constant, and event coverage, and adds pipeline v2 type and field-name
+// coverage when a schema is configured.
 package checker
 
 import (
@@ -17,8 +22,9 @@ func Run() int {
 }
 
 // run executes the checker with explicit arguments and output streams so it
-// can be tested without touching global flag or stream state. Usage errors
-// return 2, help returns 0, findings return 1, and a clean run returns 0.
+// can be tested without touching global flag or stream state. Usage,
+// configuration, and path errors return 2, as does a check that fails to
+// run; help returns 0, reported findings return 1, and a clean run returns 0.
 func run(args []string, stdout io.Writer, stderr io.Writer) int {
 	var (
 		configPath         string

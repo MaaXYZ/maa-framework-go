@@ -39,6 +39,7 @@ type unknownIdentifierError struct {
 	name string
 }
 
+// Error reports the identifier that the C constant evaluator could not resolve.
 func (e *unknownIdentifierError) Error() string {
 	return "unknown identifier: " + e.name
 }
