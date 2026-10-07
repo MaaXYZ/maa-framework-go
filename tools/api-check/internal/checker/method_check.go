@@ -403,16 +403,6 @@ func parseCDefineLine(line string) (string, string, bool) {
 	return name, normalizeSpaces(expr), true
 }
 
-func normalizeCMacroExpr(expr string, replacements map[string]string) string {
-	noSuffix := cMethodIntSuffixRe.ReplaceAllString(expr, "$1")
-	return cMethodIdentRe.ReplaceAllStringFunc(noSuffix, func(token string) string {
-		if replacement, ok := replacements[token]; ok {
-			return replacement
-		}
-		return token
-	})
-}
-
 func formatGoExpr(expr ast.Expr) string {
 	if expr == nil {
 		return ""
@@ -460,7 +450,4 @@ func sortedNormalizedCKeys(m map[string]normalizedCMethod) []string {
 	return keys
 }
 
-var (
-	cMethodIntSuffixRe = regexp.MustCompile(`(?i)\b(0x[0-9a-f]+|[0-9]+)(?:ull|llu|ul|lu|ll|u|l)\b`)
-	cMethodIdentRe     = regexp.MustCompile(`\b[A-Za-z_][A-Za-z0-9_]*\b`)
-)
+var cMethodIntSuffixRe = regexp.MustCompile(`(?i)\b(0x[0-9a-f]+|[0-9]+)(?:ull|llu|ul|lu|ll|u|l)\b`)
