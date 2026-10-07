@@ -57,16 +57,25 @@ func TestWaitFreezesParam_UnmarshalJSON_FailureLeavesTargetUnchanged(t *testing.
 	}
 	before := seeded
 	for name, payload := range map[string]string{
-		"threshold type":    `{"threshold":"bad"}`,
-		"bad target offset": `{"target_offset":[1,2,3]}`,
-		"numeric shorthand": `500`,
-		"invalid json":      `{`,
+		"threshold type":     `{"threshold":"bad"}`,
+		"bad target offset":  `{"target_offset":[1,2,3]}`,
+		"non-numeric scalar": `"fast"`,
+		"invalid json":       `{`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.Error(t, json.Unmarshal([]byte(payload), &seeded))
 			require.Equal(t, before, seeded)
 		})
 	}
+}
+
+func TestWaitFreezesParam_NumericShorthand(t *testing.T) {
+	var param WaitFreezesParam
+	require.NoError(t, json.Unmarshal([]byte(`500`), &param))
+	require.Equal(t, WaitFreezesParam{Time: 500 * time.Millisecond}, param)
+	encoded, err := json.Marshal(&param)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"time":500}`, string(encoded))
 }
 
 func TestWaitFreezesParam_JSONRoundTrip(t *testing.T) {
