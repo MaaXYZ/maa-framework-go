@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 )
 
@@ -408,10 +409,12 @@ type ColorMatchParam struct {
 	// Method specifies the color space. 4: RGB (default), 40: HSV, 6: GRAY.
 	Method ColorMatchMethod `json:"method,omitempty"`
 	// Lower specifies the color lower bounds. Required. Inner array length must match method channels.
-	// The native parser also accepts a single flat row of channel values;
-	// the Go model decodes only the 2-D form.
+	// JSON input may be a single flat row of channel values; a flat row
+	// normalizes to one row.
 	Lower [][]int `json:"lower,omitempty"`
 	// Upper specifies the color upper bounds. Required. Inner array length must match method channels.
+	// JSON input may be a single flat row of channel values; a flat row
+	// normalizes to one row.
 	Upper [][]int `json:"upper,omitempty"`
 	// Count specifies the minimum pixel count required (threshold). Default: 1.
 	Count int `json:"count,omitempty"`
@@ -421,6 +424,63 @@ type ColorMatchParam struct {
 	Index int `json:"index,omitempty"`
 	// Connected enables connected component analysis. Default: false.
 	Connected bool `json:"connected,omitempty"`
+}
+
+// UnmarshalJSON normalizes the flat single-row lower/upper form to one row,
+// matching the native parser.
+func (p *ColorMatchParam) UnmarshalJSON(data []byte) error {
+	var decoded struct {
+		ROI       Target            `json:"roi,omitzero"`
+		ROIOffset Rect              `json:"roi_offset,omitzero"`
+		Method    ColorMatchMethod  `json:"method,omitempty"`
+		Lower     intRows           `json:"lower,omitempty"`
+		Upper     intRows           `json:"upper,omitempty"`
+		Count     int               `json:"count,omitempty"`
+		OrderBy   ColorMatchOrderBy `json:"order_by,omitempty"`
+		Index     int               `json:"index,omitempty"`
+		Connected bool              `json:"connected,omitempty"`
+	}
+	if err := unmarshalJSON(data, &decoded); err != nil {
+		return err
+	}
+	*p = ColorMatchParam{
+		ROI:       decoded.ROI,
+		ROIOffset: decoded.ROIOffset,
+		Method:    decoded.Method,
+		Lower:     decoded.Lower,
+		Upper:     decoded.Upper,
+		Count:     decoded.Count,
+		OrderBy:   decoded.OrderBy,
+		Index:     decoded.Index,
+		Connected: decoded.Connected,
+	}
+	return nil
+}
+
+// intRows decodes a list of integer rows, accepting a single flat row as a
+// one-row list, matching the native parser's get_and_check_array_or_2darray.
+type intRows [][]int
+
+func (r *intRows) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		*r = nil
+		return nil
+	}
+	if trimmed[0] != '[' {
+		return fmt.Errorf("color bounds must be an array of rows or a single row, got %s", trimmed)
+	}
+	var rows [][]int
+	if err := unmarshalJSON(data, &rows); err == nil {
+		*r = rows
+		return nil
+	}
+	var flat []int
+	if err := unmarshalJSON(data, &flat); err == nil {
+		*r = intRows{flat}
+		return nil
+	}
+	return fmt.Errorf("color bounds must be an array of rows or a single row, got %s", trimmed)
 }
 
 func (n ColorMatchParam) isRecognitionParam() {}
@@ -475,15 +535,15 @@ type OCRParam struct {
 	// JSON input may be a single string or an array of strings.
 	// Nil is omitted to inherit the existing/default value; an empty
 	// non-nil list clears it.
-	// The deprecated upstream "text" alias is not recognized; its value is
-	// silently dropped on decode.
+	// The deprecated upstream "text" alias decodes into Expected when
+	// "expected" is absent; encoding always uses "expected".
 	Expected StringList `json:"expected,omitzero"`
 	// Threshold specifies the model confidence threshold [0-1.0]. Default: 0.3.
 	Threshold float64 `json:"threshold,omitempty"`
 	// Replace specifies text replacement rules for correcting OCR errors,
-	// applied as regex replacements. The native parser also accepts a single
-	// ["pattern","replacement"] pair; the Go model decodes only the array of
-	// pairs.
+	// applied as regex replacements. JSON input may be a single
+	// ["pattern","replacement"] pair; a single pair normalizes to a
+	// one-pair list.
 	Replace [][2]string `json:"replace,omitempty"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Area | Length | Random | Expected.
 	OrderBy OCROrderBy `json:"order_by,omitempty"`
@@ -500,6 +560,69 @@ type OCRParam struct {
 }
 
 func (n OCRParam) isRecognitionParam() {}
+
+// UnmarshalJSON maps the deprecated "text" alias to Expected when "expected"
+// is absent and normalizes a single replace pair to a one-pair list,
+// matching the native parser.
+func (p *OCRParam) UnmarshalJSON(data []byte) error {
+	var decoded struct {
+		ROI         Target                  `json:"roi,omitzero"`
+		ROIOffset   Rect                    `json:"roi_offset,omitzero"`
+		Expected    StringList              `json:"expected,omitzero"`
+		Threshold   float64                 `json:"threshold,omitempty"`
+		Replace     orSingleList[[2]string] `json:"replace,omitempty"`
+		OrderBy     OCROrderBy              `json:"order_by,omitempty"`
+		Index       int                     `json:"index,omitempty"`
+		OnlyRec     bool                    `json:"only_rec,omitempty"`
+		Model       string                  `json:"model,omitempty"`
+		ColorFilter string                  `json:"color_filter,omitempty"`
+	}
+	if err := unmarshalJSON(data, &decoded); err != nil {
+		return err
+	}
+	expected := decoded.Expected
+	if expected == nil {
+		text, err := ocrTextAliasJSON(data)
+		if err != nil {
+			return err
+		}
+		expected = text
+	}
+	*p = OCRParam{
+		ROI:         decoded.ROI,
+		ROIOffset:   decoded.ROIOffset,
+		Expected:    expected,
+		Threshold:   decoded.Threshold,
+		Replace:     decoded.Replace,
+		OrderBy:     decoded.OrderBy,
+		Index:       decoded.Index,
+		OnlyRec:     decoded.OnlyRec,
+		Model:       decoded.Model,
+		ColorFilter: decoded.ColorFilter,
+	}
+	return nil
+}
+
+// ocrTextAliasJSON extracts the deprecated "text" member from data and
+// decodes it as an expected-text list; nil means absent or null.
+func ocrTextAliasJSON(data []byte) (StringList, error) {
+	var alias struct {
+		Text json.RawMessage `json:"text,omitempty"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(&alias); err != nil {
+		return nil, err
+	}
+	trimmed := bytes.TrimSpace(alias.Text)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return nil, nil
+	}
+	var list StringList
+	if err := unmarshalJSON(trimmed, &list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
 
 // RecOCR creates an OCR recognition with the given parameters.
 // All fields are optional; pass OCRParam{} for defaults.
@@ -759,9 +882,11 @@ func Inline(rec *Recognition, name ...string) SubRecognitionItem {
 }
 
 // InlineSubRecognition is a v2 inline sub-recognition in all_of/any_of.
-// Input accepts the protocol envelope {"sub_name": "...", "recognition": {type, param}}
-// and the flat native dump {"sub_name", "type", "param"}; the legacy protocol
-// form with "recognition" holding a bare type name is not modeled.
+// Input accepts the protocol envelope {"sub_name": "...", "recognition": {type, param}},
+// the v1 form with "recognition" holding a bare type name (parameters flat
+// on the sub item), and the flat native dump {"sub_name", "type", "param"};
+// all of them normalize into this v2 model, and encoding always emits the
+// envelope.
 // SubName is retained by both And and Or; only And uses it to resolve later sub-recognition ROIs.
 type InlineSubRecognition struct {
 	// SubName names the inline sub-recognition. Only And uses it, to resolve
@@ -778,9 +903,10 @@ func (n InlineSubRecognition) MarshalJSON() ([]byte, error) {
 	}{SubName: n.SubName, Recognition: n.Recognition})
 }
 
-// UnmarshalJSON decodes the protocol envelope, falling back to the flat
-// native dump form when the recognition key is absent. On error the receiver
-// is unchanged.
+// UnmarshalJSON decodes the protocol envelope, the v1 form where
+// "recognition" holds a bare type name (parameters flat on the sub item, as
+// the native parser reads them), and the flat native dump form when the
+// recognition key is absent. On error the receiver is unchanged.
 func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
 	type Alias struct {
 		SubName     string          `json:"sub_name,omitempty"`
@@ -793,12 +919,25 @@ func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
 
 	decoded := *n
 	decoded.SubName = alias.SubName
-	if len(alias.Recognition) > 0 {
+	switch {
+	case len(alias.Recognition) == 0:
+		if err := unmarshalJSON(data, &decoded.Recognition); err != nil {
+			return err
+		}
+	case bytes.TrimSpace(alias.Recognition)[0] == '"':
+		if err := unmarshalJSON(alias.Recognition, &decoded.Recognition.Type); err != nil {
+			return err
+		}
+		// v1 form: the native parser reads parameters from the whole sub item.
+		param, err := decodeRecognitionParam(decoded.Recognition.Type, data)
+		if err != nil {
+			return err
+		}
+		decoded.Recognition.Param = param
+	default:
 		if err := unmarshalJSON(alias.Recognition, &decoded.Recognition); err != nil {
 			return err
 		}
-	} else if err := unmarshalJSON(data, &decoded.Recognition); err != nil {
-		return err
 	}
 	*n = decoded
 	return nil
