@@ -60,6 +60,10 @@ func (sl *StringListBuffer) GetAll() []string {
 }
 
 func (sl *StringListBuffer) Append(value *StringBuffer) bool {
+	// Upstream returns false for a null value instead of crashing.
+	if value == nil {
+		return false
+	}
 	return native.MaaStringListBufferAppend(sl.handle, value.handle)
 }
 

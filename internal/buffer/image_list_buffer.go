@@ -65,6 +65,10 @@ func (il *ImageListBuffer) GetAll() []image.Image {
 }
 
 func (il *ImageListBuffer) Append(value *ImageBuffer) bool {
+	// Upstream returns false for a null value instead of crashing.
+	if value == nil {
+		return false
+	}
 	return native.MaaImageListBufferAppend(il.handle, value.handle)
 }
 
