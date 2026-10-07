@@ -74,7 +74,7 @@ func (t Target) AsRect() (rect.Rect, error) {
 
 func (t Target) MarshalJSON() ([]byte, error) {
 	if t.IsZero() {
-		return []byte("null"), nil
+		return nil, errors.New("cannot encode a zero pipeline target")
 	}
 
 	switch t.tp {
