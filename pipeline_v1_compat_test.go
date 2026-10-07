@@ -276,10 +276,15 @@ func TestWaitFreezesShorthandAtNodeLevel(t *testing.T) {
 func TestWaitFreezesNullRejectedAtNodeLevel(t *testing.T) {
 	rateLimit := int64(100)
 	for _, key := range [...]string{"pre_wait_freezes", "post_wait_freezes", "repeat_wait_freezes"} {
-		seeded := Node{RateLimit: &rateLimit, PreWaitFreezes: &WaitFreezesParam{Time: time.Second}}
+		seeded := Node{
+			RateLimit:         &rateLimit,
+			PreWaitFreezes:    &WaitFreezesParam{Time: time.Second},
+			PostWaitFreezes:   &WaitFreezesParam{Time: 2 * time.Second},
+			RepeatWaitFreezes: &WaitFreezesParam{Time: 3 * time.Second},
+		}
+		before := seeded
 		require.Error(t, json.Unmarshal([]byte(`{"`+key+`":null}`), &seeded), key)
-		require.Equal(t, int64(100), *seeded.RateLimit, key)
-		require.Equal(t, &WaitFreezesParam{Time: time.Second}, seeded.PreWaitFreezes, key)
+		require.Equal(t, before, seeded, key)
 	}
 
 	var node Node
@@ -321,6 +326,11 @@ func TestCommandArgsShorthand(t *testing.T) {
 		before := Action{Type: action.Type, Param: action.Param}
 		require.Error(t, json.Unmarshal([]byte(`{"type":"Command","param":{"args":[1]}}`), &action))
 		require.Equal(t, before, action)
+
+		param := CommandParam{Exec: "sh", Args: []string{"keep"}, Detach: true}
+		paramBefore := param
+		require.Error(t, json.Unmarshal([]byte(`{"args":[1]}`), &param))
+		require.Equal(t, paramBefore, param)
 	})
 }
 
