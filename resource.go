@@ -147,9 +147,11 @@ func (r *Resource) setInference(ep native.MaaInferenceExecutionProvider, deviceI
 
 // UseCPU selects the CPU execution provider for inference.
 //
-// Inference options take effect when the first Post* load runs, so they must
-// be set before loading a model; later changes are ignored. When the
-// selected provider cannot be initialized, loading falls back to CPU.
+// Inference options are applied when a Post* load runs, so set them before
+// loading a model. A later change takes effect at the next load for model
+// sessions created afterwards; already created sessions keep their provider.
+// When the selected provider cannot be initialized, loading falls back to
+// CPU.
 func (r *Resource) UseCPU() error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -170,7 +172,8 @@ type InferenceDevice = native.MaaInferenceDevice
 // to select a device; UseDirectml interprets the other values as the
 // DirectML adapter id from Win32 EnumAdapters1, and UseCoreml as the
 // CoreML flag of the bundled onnxruntime. GPU ids beyond 1 are expressed
-// as plain integers.
+// as plain integers. The upstream CPU value is not exported here; UseCPU
+// selects that combination.
 const (
 	InferenceDeviceAuto InferenceDevice = -1
 	InferenceDevice0    InferenceDevice = 0
@@ -791,8 +794,8 @@ func (r *Resource) Loaded() bool {
 }
 
 // GetHash returns the hash of the loaded resource content.
-// It fails while the hash is empty, for example before the first successful
-// load on a newly created resource.
+// It fails while the hash is empty, for example on a newly created resource
+// that has never posted a load.
 func (r *Resource) GetHash() (string, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
