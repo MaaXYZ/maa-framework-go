@@ -25,6 +25,9 @@ type Recognition struct {
 
 // UnmarshalJSON decodes a pipeline v2 recognition. Errors in known parameter types
 // are returned without falling back to raw JSON. On error the recognition is unchanged.
+// When "param" is absent, parameters are decoded from the whole recognition
+// object, matching the native parser, so flat fields such as
+// {"type":"ColorMatch","lower":...} are preserved instead of silently lost.
 func (nr *Recognition) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Type  RecognitionType `json:"type,omitempty"`
@@ -34,7 +37,11 @@ func (nr *Recognition) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	param, err := decodeRecognitionParam(raw.Type, raw.Param)
+	paramData := raw.Param
+	if len(paramData) == 0 {
+		paramData = data
+	}
+	param, err := decodeRecognitionParam(raw.Type, paramData)
 	if err != nil {
 		return err
 	}

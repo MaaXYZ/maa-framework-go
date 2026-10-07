@@ -112,11 +112,13 @@ func TestPipelineV2UnknownParamMissingAndNullSemantics(t *testing.T) {
 		require.Equal(t, []byte("null"), []byte(*raw))
 	})
 
-	t.Run("missing recognition parameter remains nil", func(t *testing.T) {
+	t.Run("missing recognition parameter falls back to the whole object", func(t *testing.T) {
 		var recognition Recognition
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"FutureRecognition"}`), &recognition))
 		require.Equal(t, RecognitionType("FutureRecognition"), recognition.Type)
-		require.Nil(t, recognition.Param)
+		raw, ok := recognition.Param.(*RawRecognitionParam)
+		require.True(t, ok, "missing param should decode the whole object for unknown types, got %T", recognition.Param)
+		require.JSONEq(t, `{"type":"FutureRecognition"}`, string(*raw))
 	})
 
 	t.Run("explicit null recognition parameter is retained", func(t *testing.T) {
@@ -143,11 +145,11 @@ func TestPipelineV2UnknownParamDecodeErrorsAndDestinationReuse(t *testing.T) {
 		require.Nil(t, action.Param)
 	})
 
-	t.Run("missing known recognition parameter clears an existing parameter", func(t *testing.T) {
+	t.Run("missing known recognition parameter resets to a zero parameter", func(t *testing.T) {
 		recognition := Recognition{Type: RecognitionTypeTemplateMatch, Param: &TemplateMatchParam{Template: []string{"old.png"}}}
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"TemplateMatch"}`), &recognition))
 		require.Equal(t, RecognitionTypeTemplateMatch, recognition.Type)
-		require.Nil(t, recognition.Param)
+		require.Equal(t, &TemplateMatchParam{}, recognition.Param)
 	})
 
 	t.Run("null known recognition parameter clears an existing parameter", func(t *testing.T) {
