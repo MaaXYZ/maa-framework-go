@@ -60,6 +60,7 @@ func TestWaitFreezesParam_UnmarshalJSON_FailureLeavesTargetUnchanged(t *testing.
 		"threshold type":     `{"threshold":"bad"}`,
 		"bad target offset":  `{"target_offset":[1,2,3]}`,
 		"non-numeric scalar": `"fast"`,
+		"explicit null":      `null`,
 		"invalid json":       `{`,
 	} {
 		t.Run(name, func(t *testing.T) {

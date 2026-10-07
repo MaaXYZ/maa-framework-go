@@ -273,6 +273,57 @@ func TestWaitFreezesShorthandAtNodeLevel(t *testing.T) {
 	require.Equal(t, &WaitFreezesParam{Time: 500 * time.Millisecond}, node.PostWaitFreezes)
 }
 
+func TestWaitFreezesNullRejectedAtNodeLevel(t *testing.T) {
+	rateLimit := int64(100)
+	for _, key := range [...]string{"pre_wait_freezes", "post_wait_freezes", "repeat_wait_freezes"} {
+		seeded := Node{RateLimit: &rateLimit, PreWaitFreezes: &WaitFreezesParam{Time: time.Second}}
+		require.Error(t, json.Unmarshal([]byte(`{"`+key+`":null}`), &seeded), key)
+		require.Equal(t, int64(100), *seeded.RateLimit, key)
+		require.Equal(t, &WaitFreezesParam{Time: time.Second}, seeded.PreWaitFreezes, key)
+	}
+
+	var node Node
+	require.NoError(t, json.Unmarshal([]byte(`{"action":"DoNothing"}`), &node))
+	require.Nil(t, node.PreWaitFreezes, "absent fields stay nil and inherit")
+}
+
+func TestCommandArgsShorthand(t *testing.T) {
+	t.Run("scalar argument normalizes to a one-element array", func(t *testing.T) {
+		var action Action
+		require.NoError(t, json.Unmarshal([]byte(`{"type":"Command","param":{"exec":"sh","args":"-c"}}`), &action))
+		require.Equal(t, []string{"-c"}, action.Param.(*CommandParam).Args)
+	})
+
+	t.Run("v1 flat form normalizes and re-encodes nested", func(t *testing.T) {
+		var nodes map[string]*Node
+		require.NoError(t, json.Unmarshal([]byte(`{"N":{"action":"Command","exec":"sh","args":"-c"}}`), &nodes))
+		cmd, ok := nodes["N"].Action.Param.(*CommandParam)
+		require.True(t, ok)
+		require.Equal(t, "sh", cmd.Exec)
+		require.Equal(t, []string{"-c"}, cmd.Args)
+		encoded, err := json.Marshal(nodes)
+		require.NoError(t, err)
+		require.JSONEq(t, `{"N":{"action":{"type":"Command","param":{"exec":"sh","args":["-c"]}}}}`, string(encoded))
+	})
+
+	t.Run("array form unchanged and null stays nil", func(t *testing.T) {
+		var action Action
+		require.NoError(t, json.Unmarshal([]byte(`{"type":"Command","param":{"args":["-c","ls"]}}`), &action))
+		require.Equal(t, []string{"-c", "ls"}, action.Param.(*CommandParam).Args)
+		require.NoError(t, json.Unmarshal([]byte(`{"type":"Command","param":{"exec":"sh","args":null,"detach":true}}`), &action))
+		cmd := action.Param.(*CommandParam)
+		require.Nil(t, cmd.Args)
+		require.True(t, cmd.Detach, "fields alongside a null args still decode")
+	})
+
+	t.Run("failure invariance on a bad args entry", func(t *testing.T) {
+		action := Action{Type: ActionTypeCommand, Param: &CommandParam{Exec: "sh", Args: []string{"keep"}}}
+		before := Action{Type: action.Type, Param: action.Param}
+		require.Error(t, json.Unmarshal([]byte(`{"type":"Command","param":{"args":[1]}}`), &action))
+		require.Equal(t, before, action)
+	})
+}
+
 func TestInlineSubV1StringRecognition(t *testing.T) {
 	var recognition Recognition
 	require.NoError(t, json.Unmarshal([]byte(`{"type":"And","param":{"all_of":[
