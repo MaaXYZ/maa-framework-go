@@ -1,10 +1,12 @@
 package buffer
 
 import (
-	"github.com/stretchr/testify/require"
 	"image"
 	"image/color"
 	"testing"
+
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
+	"github.com/stretchr/testify/require"
 )
 
 func createImageListBuffer(t *testing.T) *ImageListBuffer {
@@ -140,4 +142,104 @@ func TestImageListBuffer_GetAll(t *testing.T) {
 
 	list := imageListBuffer.GetAll()
 	require.Len(t, list, 1)
+}
+
+// solidTestImage returns a new 2x2 NRGBA test image with a distinct pixel in
+// each corner.
+func solidTestImage() *image.NRGBA {
+	img := image.NewNRGBA(image.Rect(0, 0, 2, 2))
+	img.SetNRGBA(0, 0, color.NRGBA{R: 255, G: 0, B: 0, A: 255})
+	img.SetNRGBA(1, 0, color.NRGBA{R: 0, G: 255, B: 0, A: 255})
+	img.SetNRGBA(0, 1, color.NRGBA{R: 0, G: 0, B: 255, A: 255})
+	img.SetNRGBA(1, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
+	return img
+}
+
+// TestNewImageListBuffer_CreateFailure pins that a failed native creation
+// surfaces as a nil wrapper, matching the sibling create-failure tests.
+func TestNewImageListBuffer_CreateFailure(t *testing.T) {
+	oldCreate := native.MaaImageListBufferCreate
+	defer func() { native.MaaImageListBufferCreate = oldCreate }()
+	native.MaaImageListBufferCreate = func() uintptr { return 0 }
+
+	require.Nil(t, NewImageListBuffer())
+}
+
+// TestImageListBuffer_AppendNilReturnsFalse pins the null-value contract:
+// upstream rejects a null value with false instead of crashing.
+func TestImageListBuffer_AppendNilReturnsFalse(t *testing.T) {
+	imageListBuffer := createImageListBuffer(t)
+	defer imageListBuffer.Destroy()
+
+	require.False(t, imageListBuffer.Append(nil))
+	require.True(t, imageListBuffer.IsEmpty())
+	require.Equal(t, uint64(0), imageListBuffer.Size())
+}
+
+// TestImageListBuffer_AppendDeepCopyOwnership pins the Append ownership
+// contract: the list stores a deep copy, so destroying the source buffer
+// afterwards must not affect the stored element.
+func TestImageListBuffer_AppendDeepCopyOwnership(t *testing.T) {
+	imageListBuffer := createImageListBuffer(t)
+	defer imageListBuffer.Destroy()
+
+	img := solidTestImage()
+	imageBuffer := createImageBuffer(t)
+	require.NoError(t, imageBuffer.Set(img))
+	require.True(t, imageListBuffer.Append(imageBuffer))
+
+	imageBuffer.Destroy()
+
+	requireImagesEqual(t, img, imageListBuffer.Get(0))
+}
+
+// TestImageListBuffer_OutOfRange pins the out-of-range degradation: upstream
+// logs and returns null/false, which the wrapper surfaces as a nil image from
+// Get and false from Remove.
+func TestImageListBuffer_OutOfRange(t *testing.T) {
+	imageListBuffer := createImageListBuffer(t)
+	defer imageListBuffer.Destroy()
+
+	if got := imageListBuffer.Get(0); got != nil {
+		t.Fatalf("Get(0) on an empty list = %T; want a nil image.Image interface", got)
+	}
+	require.False(t, imageListBuffer.Remove(0))
+
+	imageBuffer := createImageBuffer(t)
+	defer imageBuffer.Destroy()
+	require.NoError(t, imageBuffer.Set(solidTestImage()))
+	require.True(t, imageListBuffer.Append(imageBuffer))
+
+	if got := imageListBuffer.Get(1); got != nil {
+		t.Fatalf("Get(1) past the last element = %T; want a nil image.Image interface", got)
+	}
+	require.False(t, imageListBuffer.Remove(1))
+	require.NotNil(t, imageListBuffer.Get(0))
+}
+
+// TestImageListBuffer_GetAllContentAndOrder pins GetAll element content,
+// ordering, and the non-nil empty slice on a fresh list.
+func TestImageListBuffer_GetAllContentAndOrder(t *testing.T) {
+	imageListBuffer := createImageListBuffer(t)
+	defer imageListBuffer.Destroy()
+
+	empty := imageListBuffer.GetAll()
+	require.NotNil(t, empty)
+	require.Empty(t, empty)
+
+	first := solidTestImage()
+	second := solidTestImage()
+	second.SetNRGBA(0, 0, color.NRGBA{R: 1, G: 2, B: 3, A: 255})
+
+	for _, img := range []*image.NRGBA{first, second} {
+		imageBuffer := createImageBuffer(t)
+		t.Cleanup(imageBuffer.Destroy)
+		require.NoError(t, imageBuffer.Set(img))
+		require.True(t, imageListBuffer.Append(imageBuffer))
+	}
+
+	all := imageListBuffer.GetAll()
+	require.Len(t, all, 2)
+	requireImagesEqual(t, first, all[0])
+	requireImagesEqual(t, second, all[1])
 }
