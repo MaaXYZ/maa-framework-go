@@ -515,6 +515,7 @@ func TestShutdownPartialFailureCanBeRetried(t *testing.T) {
 	if err := Initialize(dir); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
+	assertEveryFuncVarRegistered(t)
 
 	handles := []uintptr{maaFramework, maaToolkit, maaAgentServer, maaAgentClient}
 	failed := map[uintptr]bool{maaToolkit: true, maaAgentClient: true}
@@ -564,9 +565,7 @@ func TestShutdownPartialFailureCanBeRetried(t *testing.T) {
 	if err := Initialize(dir); err != nil {
 		t.Fatalf("Initialize after cleanup: %v", err)
 	}
-	if MaaVersion == nil {
-		t.Fatal("MaaVersion was not registered after recovery")
-	}
+	assertEveryFuncVarRegistered(t)
 }
 
 func TestInitializeBlockedAfterRetainedHandlesFromFailedLoad(t *testing.T) {
@@ -611,9 +610,7 @@ func TestInitializeBlockedAfterRetainedHandlesFromFailedLoad(t *testing.T) {
 	if err := Initialize(dir); err != nil {
 		t.Fatalf("Initialize after cleanup: %v", err)
 	}
-	if MaaVersion == nil {
-		t.Error("MaaVersion was not registered after recovery")
-	}
+	assertEveryFuncVarRegistered(t)
 }
 
 func TestInitializeRepeatedAfterSuccessIsNoOp(t *testing.T) {
