@@ -139,6 +139,15 @@ func TestSwipeShorthandNormalization(t *testing.T) {
 		require.Empty(t, swipe.EndOffset)
 	})
 
+	t.Run("scalar-headed end lists stay lists", func(t *testing.T) {
+		swipe := decode(t, `{"end": ["NodeA", "NodeB"]}`)
+		require.Len(t, swipe.End, 2)
+		swipe = decode(t, `{"end": [true, true]}`)
+		require.Len(t, swipe.End, 2)
+		swipe = decode(t, `{"end": [true, [1, 2, 3, 4]]}`)
+		require.Len(t, swipe.End, 2)
+	})
+
 	t.Run("end_offset single flat rectangle normalizes", func(t *testing.T) {
 		swipe := decode(t, `{"end_offset": [0, 0, 5, 5]}`)
 		require.Equal(t, []Rect{{0, 0, 5, 5}}, swipe.EndOffset)

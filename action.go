@@ -13,10 +13,10 @@ import (
 // Known types decode to their typed parameters. Unrecognized type names retain
 // their parameter JSON as *RawActionParam; this does not establish native support.
 // Unknown fields outside param, and unmodeled fields of known parameters, are not retained.
-// Known parameter fields accept only their canonical JSON forms, the shapes
-// this package emits: list-typed fields (key, swipe durations and end holds,
-// swipe end and end offsets, command args) reject the single-value shorthand
-// the native pipeline parser also tolerates, so write the list form.
+// Known parameter fields accept their canonical JSON forms plus the protocol's
+// shorthand forms the native parser tolerates (single values in place of
+// lists); all of them normalize to the canonical list shapes this package
+// emits. Command args reject the single-value shorthand.
 type Action struct {
 	// Type specifies the action type.
 	Type ActionType `json:"type,omitempty"`
@@ -313,15 +313,15 @@ func (p SwipeParam) MarshalJSON() ([]byte, error) {
 // one-element lists and single timing values to one-element arrays.
 func (p *SwipeParam) UnmarshalJSON(data []byte) error {
 	raw := struct {
-		Begin       Target               `json:"begin,omitzero"`
-		BeginOffset Rect                 `json:"begin_offset,omitzero"`
-		End         orSingleList[Target] `json:"end,omitzero"`
-		EndOffset   orSingleList[Rect]   `json:"end_offset,omitempty"`
-		Duration    orScalarList[int64]  `json:"duration,omitempty"`
-		EndHold     orScalarList[int64]  `json:"end_hold,omitempty"`
-		OnlyHover   bool                 `json:"only_hover,omitempty"`
-		Contact     int                  `json:"contact,omitempty"`
-		Pressure    *int                 `json:"pressure,omitempty"`
+		Begin       Target              `json:"begin,omitzero"`
+		BeginOffset Rect                `json:"begin_offset,omitzero"`
+		End         targetList          `json:"end,omitzero"`
+		EndOffset   orSingleList[Rect]  `json:"end_offset,omitempty"`
+		Duration    orScalarList[int64] `json:"duration,omitempty"`
+		EndHold     orScalarList[int64] `json:"end_hold,omitempty"`
+		OnlyHover   bool                `json:"only_hover,omitempty"`
+		Contact     int                 `json:"contact,omitempty"`
+		Pressure    *int                `json:"pressure,omitempty"`
 	}{}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
@@ -413,16 +413,16 @@ func (p MultiSwipeItem) MarshalJSON() ([]byte, error) {
 // one-element arrays.
 func (p *MultiSwipeItem) UnmarshalJSON(data []byte) error {
 	raw := struct {
-		Starting    int64                `json:"starting,omitempty"`
-		Begin       Target               `json:"begin,omitzero"`
-		BeginOffset Rect                 `json:"begin_offset,omitzero"`
-		End         orSingleList[Target] `json:"end,omitzero"`
-		EndOffset   orSingleList[Rect]   `json:"end_offset,omitempty"`
-		Duration    orScalarList[int64]  `json:"duration,omitempty"`
-		EndHold     orScalarList[int64]  `json:"end_hold,omitempty"`
-		OnlyHover   bool                 `json:"only_hover,omitempty"`
-		Contact     int                  `json:"contact,omitempty"`
-		Pressure    *int                 `json:"pressure,omitempty"`
+		Starting    int64               `json:"starting,omitempty"`
+		Begin       Target              `json:"begin,omitzero"`
+		BeginOffset Rect                `json:"begin_offset,omitzero"`
+		End         targetList          `json:"end,omitzero"`
+		EndOffset   orSingleList[Rect]  `json:"end_offset,omitempty"`
+		Duration    orScalarList[int64] `json:"duration,omitempty"`
+		EndHold     orScalarList[int64] `json:"end_hold,omitempty"`
+		OnlyHover   bool                `json:"only_hover,omitempty"`
+		Contact     int                 `json:"contact,omitempty"`
+		Pressure    *int                `json:"pressure,omitempty"`
 	}{}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
@@ -623,6 +623,55 @@ func (l *orSingleList[T]) UnmarshalJSON(data []byte) error {
 	}
 	*l = orSingleList[T]{single}
 	return nil
+}
+
+// targetList decodes swipe end positions. A single target — a bare true, a
+// node name, or a flat all-number array of 2 or 4 elements — normalizes to a
+// one-element list; every other value, including arrays headed by a scalar,
+// is a list of targets, matching the native end parser.
+type targetList []Target
+
+func (l *targetList) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		*l = nil
+		return nil
+	}
+	if trimmed[0] != '[' || isFlatNumberArray(trimmed) {
+		var single Target
+		if err := unmarshalJSON(data, &single); err != nil {
+			return err
+		}
+		*l = targetList{single}
+		return nil
+	}
+	var list []Target
+	if err := unmarshalJSON(data, &list); err != nil {
+		return err
+	}
+	*l = list
+	return nil
+}
+
+// isFlatNumberArray reports whether trimmed is a JSON array whose elements
+// are all numbers, the single-target flat point/rectangle form.
+func isFlatNumberArray(trimmed []byte) bool {
+	if len(trimmed) < 2 || trimmed[0] != '[' || trimmed[len(trimmed)-1] != ']' {
+		return false
+	}
+	inner := bytes.TrimSpace(trimmed[1 : len(trimmed)-1])
+	if len(inner) == 0 {
+		return false
+	}
+	for _, c := range inner {
+		switch c {
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+			'-', '+', '.', 'e', 'E', ',', ' ', '\t', '\n', '\r':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func (n ClickKeyParam) isActionParam() {}
