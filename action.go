@@ -268,9 +268,13 @@ type SwipeParam struct {
 	// offsets.
 	EndOffset []Rect `json:"end_offset,omitempty"`
 	// Duration specifies the swipe duration. Default: 200ms.
+	// The native parser also accepts a single number in place of the
+	// array; this model decodes only the array form.
 	// JSON: serialized as array of integer milliseconds.
 	Duration []time.Duration `json:"-"`
 	// EndHold specifies extra wait time at end position before releasing. Default: 0.
+	// The native parser also accepts a single number in place of the
+	// array; this model decodes only the array form.
 	// JSON: serialized as array of integer milliseconds.
 	EndHold []time.Duration `json:"-"`
 	// OnlyHover enables hover-only mode without press/release actions. Default: false.
@@ -346,9 +350,13 @@ type MultiSwipeItem struct {
 	// offsets.
 	EndOffset []Rect `json:"end_offset,omitempty"`
 	// Duration specifies the swipe duration. Default: 200ms.
+	// The native parser also accepts a single number in place of the
+	// array; this model decodes only the array form.
 	// JSON: serialized as array of integer milliseconds.
 	Duration []time.Duration `json:"-"`
 	// EndHold specifies extra wait time at end position before releasing. Default: 0.
+	// The native parser also accepts a single number in place of the
+	// array; this model decodes only the array form.
 	// JSON: serialized as array of integer milliseconds.
 	EndHold []time.Duration `json:"-"`
 	// OnlyHover enables hover-only mode without press/release actions. Default: false.
@@ -505,6 +513,8 @@ func ActTouchUp(contact int) *Action {
 // ClickKeyParam defines parameters for key click action.
 type ClickKeyParam struct {
 	// Key specifies the virtual key codes to click. Required.
+	// The native parser also accepts a single key code in place of the
+	// array; this model decodes only the array form.
 	Key []int `json:"key,omitempty"`
 }
 
@@ -521,6 +531,8 @@ func ActClickKey(keys []int) *Action {
 // LongPressKeyParam defines parameters for long press key action.
 type LongPressKeyParam struct {
 	// Key specifies the virtual key codes to press. Required.
+	// The native parser also accepts a single key code in place of the
+	// array; this model decodes only the array form.
 	Key []int `json:"key,omitempty"`
 	// Duration specifies the long press duration, serialized as integer milliseconds.
 	// Nil omits the field. When overriding a node with the same action type,
