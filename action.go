@@ -575,6 +575,9 @@ func (p *ClickKeyParam) UnmarshalJSON(data []byte) error {
 // The native get_and_check_value_or_array rejects an explicit null value.
 type orScalarList[T any] []T
 
+// UnmarshalJSON decodes a single T as a one-element list or an array as []T.
+// JSON null sets the slice to nil, as does empty or whitespace-only input
+// passed directly to this method. Other decoding errors leave the receiver unchanged.
 func (l *orScalarList[T]) UnmarshalJSON(data []byte) error {
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
@@ -603,6 +606,10 @@ func (l *orScalarList[T]) UnmarshalJSON(data []byte) error {
 // An array whose first element is an array (or an empty array) is a list.
 type orSingleList[T any] []T
 
+// UnmarshalJSON decodes an empty array or an array whose first element is an
+// array as []T; other non-null input decodes as one T and becomes a one-element list.
+// JSON null sets the slice to nil, as does empty or whitespace-only input
+// passed directly to this method. Other decoding errors leave the receiver unchanged.
 func (l *orSingleList[T]) UnmarshalJSON(data []byte) error {
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
@@ -634,6 +641,11 @@ func (l *orSingleList[T]) UnmarshalJSON(data []byte) error {
 // is a list of targets, matching the native end parser.
 type targetList []Target
 
+// UnmarshalJSON wraps a decoded Target in a one-element list for non-array input
+// or a non-empty flat numeric array; other arrays decode as a list of Targets.
+// Each value is validated by Target decoding. JSON null sets the slice to nil,
+// as does empty or whitespace-only input passed directly to this method.
+// Other decoding errors leave the receiver unchanged.
 func (l *targetList) UnmarshalJSON(data []byte) error {
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
