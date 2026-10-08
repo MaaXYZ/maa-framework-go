@@ -437,6 +437,109 @@ func TestPipelineUnmarshalAnchorShorthand(t *testing.T) {
 	})
 }
 
+func TestNodeAnchorJSONPresence(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		input  string
+		anchor map[string]string
+	}{
+		{name: "omitted", input: `{}`},
+		{name: "empty object", input: `{"anchor":{}}`, anchor: map[string]string{}},
+		{name: "nonempty object", input: `{"anchor":{"A":"N","B":""}}`, anchor: map[string]string{"A": "N", "B": ""}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			decoded := Node{Name: "Old", Anchor: map[string]string{"Old": "Old"}}
+			require.NoError(t, json.Unmarshal([]byte(tc.input), &decoded))
+			require.Equal(t, Node{Anchor: tc.anchor}, decoded, "decoding replaces prior state and preserves anchor presence")
+			for name, node := range map[string]*Node{
+				"decoded": &decoded,
+				"built":   NewNode("N").SetAnchor(tc.anchor),
+			} {
+				t.Run(name, func(t *testing.T) {
+					encoded, err := json.Marshal(node)
+					require.NoError(t, err)
+					require.JSONEq(t, tc.input, string(encoded))
+				})
+			}
+		})
+	}
+}
+
+func TestPipelineAnchorJSONPresence(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		input   string
+		anchor  map[string]string
+		encoded string
+	}{
+		{name: "omitted", input: `{"N":{}}`, encoded: `{"N":{}}`},
+		{name: "empty list", input: `{"N":{"anchor":[]}}`, anchor: map[string]string{}, encoded: `{"N":{"anchor":{}}}`},
+		{name: "empty object", input: `{"N":{"anchor":{}}}`, anchor: map[string]string{}, encoded: `{"N":{"anchor":{}}}`},
+		{name: "nonempty object", input: `{"N":{"anchor":{"A":"N"}}}`, anchor: map[string]string{"A": "N"}, encoded: `{"N":{"anchor":{"A":"N"}}}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var pipeline Pipeline
+			require.NoError(t, json.Unmarshal([]byte(tc.input), &pipeline))
+			node, ok := pipeline.GetNode("N")
+			require.True(t, ok)
+			require.Equal(t, tc.anchor, node.Anchor)
+			encoded, err := json.Marshal(&pipeline)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.encoded, string(encoded))
+			var roundTrip Pipeline
+			require.NoError(t, json.Unmarshal(encoded, &roundTrip))
+			require.Equal(t, pipeline, roundTrip)
+		})
+	}
+}
+
+func TestPipelineV2NativeAnchorOverrides(t *testing.T) {
+	rawResource := createResource(t)
+	t.Cleanup(func() { require.NoError(t, rawResource.Destroy()) })
+	pipelineResource := createResource(t)
+	t.Cleanup(func() { require.NoError(t, pipelineResource.Destroy()) })
+	nodeResource := createResource(t)
+	t.Cleanup(func() { require.NoError(t, nodeResource.Destroy()) })
+
+	for _, tc := range []struct {
+		name   string
+		input  string
+		anchor map[string]string
+	}{
+		{name: "omitted inherits", input: `{"N":{}}`, anchor: map[string]string{"Old": "N"}},
+		{name: "empty list clears configuration", input: `{"N":{"anchor":[]}}`, anchor: map[string]string{}},
+		{name: "empty object clears configuration", input: `{"N":{"anchor":{}}}`, anchor: map[string]string{}},
+		{name: "nonempty object replaces configuration", input: `{"N":{"anchor":{"New":"Missing","Clear":""}}}`, anchor: map[string]string{"New": "Missing", "Clear": ""}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, resource := range []*Resource{rawResource, pipelineResource, nodeResource} {
+				require.NoError(t, resource.OverridePipeline(`{"N":{"anchor":{"Old":"N"}}}`))
+			}
+			require.NoError(t, rawResource.OverridePipeline(tc.input))
+			var pipeline Pipeline
+			require.NoError(t, json.Unmarshal([]byte(tc.input), &pipeline))
+			require.NoError(t, pipelineResource.OverridePipeline(&pipeline))
+			node, ok := pipeline.GetNode("N")
+			require.True(t, ok)
+			encodedNode, err := json.Marshal(node)
+			require.NoError(t, err)
+			require.NoError(t, nodeResource.OverridePipeline(map[string]json.RawMessage{"N": encodedNode}))
+
+			rawNode, err := rawResource.GetNode("N")
+			require.NoError(t, err)
+			require.Equal(t, tc.anchor, rawNode.Anchor, "native input establishes inheritance or replacement")
+			for name, resource := range map[string]*Resource{
+				"Pipeline encoding":        pipelineResource,
+				"standalone Node encoding": nodeResource,
+			} {
+				typedNode, err := resource.GetNode("N")
+				require.NoError(t, err)
+				require.Equal(t, rawNode, typedNode, "%s must preserve the native override behavior", name)
+			}
+		})
+	}
+}
+
 func TestPipelineV2NativeAnchorShorthandRoundTrip(t *testing.T) {
 	const payload = `{
 		"String": {"anchor": "A"},
