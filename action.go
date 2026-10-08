@@ -557,9 +557,9 @@ type ClickKeyParam struct {
 
 // UnmarshalJSON normalizes a single key code to a one-element array.
 func (p *ClickKeyParam) UnmarshalJSON(data []byte) error {
-	var decoded struct {
+	decoded := struct {
 		Key orScalarList[int] `json:"key,omitempty"`
-	}
+	}{Key: slices.Clone(p.Key)}
 	if err := unmarshalJSON(data, &decoded); err != nil {
 		return err
 	}
@@ -781,19 +781,26 @@ func (n KeyDownParam) isActionParam() {}
 // alias for key. When both fields are present, key wins, matching the
 // upstream parser. On error the param is unchanged.
 func (p *KeyDownParam) UnmarshalJSON(data []byte) error {
-	var raw struct {
+	raw := struct {
 		AutoUp *bool           `json:"auto_up,omitempty"`
 		Key    json.RawMessage `json:"key,omitempty"`
+	}{}
+	if p.AutoUp != nil {
+		autoUp := *p.AutoUp
+		raw.AutoUp = &autoUp
 	}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
-	decoded := KeyDownParam{AutoUp: raw.AutoUp}
-	key, err := firstPresentKeyJSON(raw.Key, keyCodeAliasJSON(data))
-	if err != nil {
-		return err
+	decoded := KeyDownParam{AutoUp: raw.AutoUp, Key: p.Key}
+	keyCode := keyCodeAliasJSON(data)
+	if len(raw.Key) != 0 || len(keyCode) != 0 {
+		key, err := firstPresentKeyJSON(raw.Key, keyCode)
+		if err != nil {
+			return err
+		}
+		decoded.Key = key
 	}
-	decoded.Key = key
 	*p = decoded
 	return nil
 }
@@ -860,19 +867,26 @@ func (n KeyUpParam) isActionParam() {}
 // alias for key. When both fields are present, key wins, matching the
 // upstream parser. On error the param is unchanged.
 func (p *KeyUpParam) UnmarshalJSON(data []byte) error {
-	var raw struct {
+	raw := struct {
 		AutoUp *bool           `json:"auto_up,omitempty"`
 		Key    json.RawMessage `json:"key,omitempty"`
+	}{}
+	if p.AutoUp != nil {
+		autoUp := *p.AutoUp
+		raw.AutoUp = &autoUp
 	}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
-	decoded := KeyUpParam{AutoUp: raw.AutoUp}
-	key, err := firstPresentKeyJSON(raw.Key, keyCodeAliasJSON(data))
-	if err != nil {
-		return err
+	decoded := KeyUpParam{AutoUp: raw.AutoUp, Key: p.Key}
+	keyCode := keyCodeAliasJSON(data)
+	if len(raw.Key) != 0 || len(keyCode) != 0 {
+		key, err := firstPresentKeyJSON(raw.Key, keyCode)
+		if err != nil {
+			return err
+		}
+		decoded.Key = key
 	}
-	decoded.Key = key
 	*p = decoded
 	return nil
 }
@@ -988,11 +1002,11 @@ func (n CommandParam) isActionParam() {}
 
 // UnmarshalJSON normalizes a single argument to a one-element array.
 func (p *CommandParam) UnmarshalJSON(data []byte) error {
-	var decoded struct {
+	decoded := struct {
 		Exec   string               `json:"exec,omitempty"`
 		Args   orScalarList[string] `json:"args,omitempty"`
 		Detach bool                 `json:"detach,omitempty"`
-	}
+	}{Exec: p.Exec, Args: slices.Clone(p.Args), Detach: p.Detach}
 	if err := unmarshalJSON(data, &decoded); err != nil {
 		return err
 	}
@@ -1109,19 +1123,20 @@ func (n CustomActionParam) isActionParam() {}
 // of custom_action_param by decoding its numbers as json.Number, exactly as
 // the upstream parser passes the sub-JSON through. On error the param is unchanged.
 func (p *CustomActionParam) UnmarshalJSON(data []byte) error {
-	var raw struct {
+	raw := struct {
 		Target            Target          `json:"target,omitzero"`
 		TargetOffset      Rect            `json:"target_offset,omitzero"`
 		CustomAction      string          `json:"custom_action,omitempty"`
 		CustomActionParam json.RawMessage `json:"custom_action_param,omitempty"`
-	}
+	}{Target: p.Target, TargetOffset: p.TargetOffset, CustomAction: p.CustomAction}
 	if err := unmarshalJSON(data, &raw); err != nil {
 		return err
 	}
 	decoded := CustomActionParam{
-		Target:       raw.Target,
-		TargetOffset: raw.TargetOffset,
-		CustomAction: raw.CustomAction,
+		Target:            raw.Target,
+		TargetOffset:      raw.TargetOffset,
+		CustomAction:      raw.CustomAction,
+		CustomActionParam: p.CustomActionParam,
 	}
 	if len(raw.CustomActionParam) != 0 {
 		var param any

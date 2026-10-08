@@ -429,7 +429,7 @@ type ColorMatchParam struct {
 // UnmarshalJSON normalizes the flat single-row lower/upper form to one row,
 // matching the native parser.
 func (p *ColorMatchParam) UnmarshalJSON(data []byte) error {
-	var decoded struct {
+	decoded := struct {
 		ROI       Target            `json:"roi,omitzero"`
 		ROIOffset Rect              `json:"roi_offset,omitzero"`
 		Method    ColorMatchMethod  `json:"method,omitempty"`
@@ -439,6 +439,16 @@ func (p *ColorMatchParam) UnmarshalJSON(data []byte) error {
 		OrderBy   ColorMatchOrderBy `json:"order_by,omitempty"`
 		Index     int               `json:"index,omitempty"`
 		Connected bool              `json:"connected,omitempty"`
+	}{
+		ROI:       p.ROI,
+		ROIOffset: p.ROIOffset,
+		Method:    p.Method,
+		Lower:     clone2DInt(p.Lower),
+		Upper:     clone2DInt(p.Upper),
+		Count:     p.Count,
+		OrderBy:   p.OrderBy,
+		Index:     p.Index,
+		Connected: p.Connected,
 	}
 	if err := unmarshalJSON(data, &decoded); err != nil {
 		return err
@@ -565,7 +575,7 @@ func (n OCRParam) isRecognitionParam() {}
 // is absent and normalizes a single replace pair to a one-pair list,
 // matching the native parser.
 func (p *OCRParam) UnmarshalJSON(data []byte) error {
-	var decoded struct {
+	decoded := struct {
 		ROI         Target                  `json:"roi,omitzero"`
 		ROIOffset   Rect                    `json:"roi_offset,omitzero"`
 		Expected    StringList              `json:"expected,omitzero"`
@@ -576,16 +586,27 @@ func (p *OCRParam) UnmarshalJSON(data []byte) error {
 		OnlyRec     bool                    `json:"only_rec,omitempty"`
 		Model       string                  `json:"model,omitempty"`
 		ColorFilter string                  `json:"color_filter,omitempty"`
+	}{
+		ROI:         p.ROI,
+		ROIOffset:   p.ROIOffset,
+		Expected:    slices.Clone(p.Expected),
+		Threshold:   p.Threshold,
+		Replace:     slices.Clone(p.Replace),
+		OrderBy:     p.OrderBy,
+		Index:       p.Index,
+		OnlyRec:     p.OnlyRec,
+		Model:       p.Model,
+		ColorFilter: p.ColorFilter,
 	}
 	if err := unmarshalJSON(data, &decoded); err != nil {
 		return err
 	}
 	expected := decoded.Expected
-	if expected == nil {
-		text, err := ocrTextAliasJSON(data)
-		if err != nil {
-			return err
-		}
+	text, present, err := ocrTextAliasJSON(data)
+	if err != nil {
+		return err
+	}
+	if present {
 		expected = text
 	}
 	*p = OCRParam{
@@ -603,25 +624,29 @@ func (p *OCRParam) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ocrTextAliasJSON extracts the deprecated "text" member from data and
-// decodes it as an expected-text list; nil means absent or null.
-func ocrTextAliasJSON(data []byte) (StringList, error) {
+// ocrTextAliasJSON decodes the deprecated "text" member only when "expected"
+// is absent. The boolean reports an explicit text member, including null.
+func ocrTextAliasJSON(data []byte) (StringList, bool, error) {
 	var alias struct {
-		Text json.RawMessage `json:"text,omitempty"`
+		Expected json.RawMessage `json:"expected,omitempty"`
+		Text     json.RawMessage `json:"text,omitempty"`
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	if err := decoder.Decode(&alias); err != nil {
-		return nil, err
+		return nil, false, err
+	}
+	if len(alias.Expected) != 0 || len(alias.Text) == 0 {
+		return nil, false, nil
 	}
 	trimmed := bytes.TrimSpace(alias.Text)
-	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
-		return nil, nil
+	if bytes.Equal(trimmed, []byte("null")) {
+		return nil, true, nil
 	}
 	var list StringList
 	if err := unmarshalJSON(trimmed, &list); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return list, nil
+	return list, true, nil
 }
 
 // RecOCR creates an OCR recognition with the given parameters.
