@@ -2,6 +2,8 @@ package maa
 
 import (
 	"encoding/json"
+	"math"
+	"strconv"
 	"testing"
 	"time"
 
@@ -77,6 +79,33 @@ func TestWaitFreezesParam_NumericShorthand(t *testing.T) {
 	encoded, err := json.Marshal(&param)
 	require.NoError(t, err)
 	require.JSONEq(t, `{"time":500}`, string(encoded))
+}
+
+func TestWaitFreezesParam_NumericShorthandDurationBounds(t *testing.T) {
+	const maxMilliseconds = math.MaxInt64 / int64(time.Millisecond)
+	for _, ms := range []int64{maxMilliseconds, -maxMilliseconds} {
+		t.Run("valid_"+strconv.FormatInt(ms, 10), func(t *testing.T) {
+			var param WaitFreezesParam
+			require.NoError(t, json.Unmarshal([]byte(strconv.FormatInt(ms, 10)), &param))
+			require.Equal(t, ms, param.Time.Milliseconds())
+		})
+	}
+	for _, ms := range []int64{maxMilliseconds + 1, -maxMilliseconds - 1, math.MaxInt64, math.MinInt64} {
+		t.Run("overflow_"+strconv.FormatInt(ms, 10), func(t *testing.T) {
+			seeded := WaitFreezesParam{
+				Time:         time.Second,
+				Target:       NewTargetString("Keep"),
+				TargetOffset: Rect{1, 2, 3, 4},
+				Threshold:    0.9,
+				Method:       3,
+				RateLimit:    500 * time.Millisecond,
+				Timeout:      20 * time.Second,
+			}
+			before := seeded
+			require.ErrorContains(t, json.Unmarshal([]byte(strconv.FormatInt(ms, 10)), &seeded), "time.Duration range")
+			require.Equal(t, before, seeded)
+		})
+	}
 }
 
 func TestWaitFreezesParam_JSONRoundTrip(t *testing.T) {
