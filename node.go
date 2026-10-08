@@ -21,11 +21,14 @@ type Node struct {
 	Name string `json:"-"`
 
 	// Anchor maps anchor name to target node name. This matches GetNodeData output format.
-	// An empty target name clears that anchor. [Pipeline.UnmarshalJSON] also
+	// An empty target name clears that runtime anchor after the node is hit and
+	// its action returns. [Pipeline.UnmarshalJSON] also
 	// accepts a string or list of anchor names and resolves them to the containing
 	// node's map key. Decoding a Node directly accepts only the object form,
-	// even if Name is already set. Empty maps are omitted when encoding; use raw
-	// pipeline JSON to clear all anchors on an existing native node.
+	// even if Name is already set. A nil map is omitted when encoding, so
+	// MaaFramework inherits the existing node's anchor configuration or its defaults.
+	// A non-nil empty map encodes as an empty object and clears the node's anchor
+	// configuration; it does not clear anchors already stored at runtime.
 	Anchor map[string]string `json:"anchor,omitzero"`
 
 	// Recognition defines how this node recognizes targets on screen.

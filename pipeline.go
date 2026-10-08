@@ -37,7 +37,9 @@ func (p *Pipeline) MarshalJSON() ([]byte, error) {
 // An anchor string or list of strings sets each named anchor to the containing
 // node, matching the native parser. Object-form targets pass through without
 // checking whether they exist. Decoding a Node directly accepts only the object
-// form. Empty anchor maps are omitted when re-encoding, as documented by [Node].
+// form. An omitted anchor remains nil; an empty list or object becomes a non-nil
+// empty map and re-encodes as an empty object, clearing the node's anchor
+// configuration when applied to MaaFramework, as documented by [Node].
 // JSON null decodes to an empty pipeline. On error the pipeline is unchanged.
 func (p *Pipeline) UnmarshalJSON(data []byte) error {
 	var nodes map[string]json.RawMessage
