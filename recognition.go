@@ -576,16 +576,16 @@ func (n OCRParam) isRecognitionParam() {}
 // matching the native parser.
 func (p *OCRParam) UnmarshalJSON(data []byte) error {
 	decoded := struct {
-		ROI         Target                  `json:"roi,omitzero"`
-		ROIOffset   Rect                    `json:"roi_offset,omitzero"`
-		Expected    StringList              `json:"expected,omitzero"`
-		Threshold   float64                 `json:"threshold,omitempty"`
-		Replace     orSingleList[[2]string] `json:"replace,omitempty"`
-		OrderBy     OCROrderBy              `json:"order_by,omitempty"`
-		Index       int                     `json:"index,omitempty"`
-		OnlyRec     bool                    `json:"only_rec,omitempty"`
-		Model       string                  `json:"model,omitempty"`
-		ColorFilter string                  `json:"color_filter,omitempty"`
+		ROI         Target         `json:"roi,omitzero"`
+		ROIOffset   Rect           `json:"roi_offset,omitzero"`
+		Expected    StringList     `json:"expected,omitzero"`
+		Threshold   float64        `json:"threshold,omitempty"`
+		Replace     ocrReplaceList `json:"replace,omitempty"`
+		OrderBy     OCROrderBy     `json:"order_by,omitempty"`
+		Index       int            `json:"index,omitempty"`
+		OnlyRec     bool           `json:"only_rec,omitempty"`
+		Model       string         `json:"model,omitempty"`
+		ColorFilter string         `json:"color_filter,omitempty"`
 	}{
 		ROI:         p.ROI,
 		ROIOffset:   p.ROIOffset,
@@ -621,6 +621,37 @@ func (p *OCRParam) UnmarshalJSON(data []byte) error {
 		Model:       decoded.Model,
 		ColorFilter: decoded.ColorFilter,
 	}
+	return nil
+}
+
+// ocrReplaceList decodes OCR replacement rules, accepting a single pair
+// shorthand only when it contains exactly two non-null strings.
+type ocrReplaceList [][2]string
+
+// UnmarshalJSON validates and normalizes a single replacement pair.
+// Nested arrays decode as [][2]string; null sets the slice to nil.
+// On error the receiver is unchanged.
+func (r *ocrReplaceList) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) > 0 && trimmed[0] == '[' {
+		inner := bytes.TrimSpace(trimmed[1:])
+		if len(inner) > 0 && inner[0] != '[' && inner[0] != ']' {
+			var pair []*string
+			if err := unmarshalJSON(trimmed, &pair); err != nil {
+				return fmt.Errorf("OCR replacement pair must contain exactly two strings: %w", err)
+			}
+			if len(pair) != 2 || pair[0] == nil || pair[1] == nil {
+				return errors.New("OCR replacement pair must contain exactly two non-null strings")
+			}
+			*r = ocrReplaceList{{*pair[0], *pair[1]}}
+			return nil
+		}
+	}
+	var list orSingleList[[2]string]
+	if err := list.UnmarshalJSON(data); err != nil {
+		return err
+	}
+	*r = ocrReplaceList(list)
 	return nil
 }
 
