@@ -95,5 +95,6 @@ func waitFreezesShorthand(data []byte) (time.Duration, bool, error) {
 	if err := unmarshalJSON(data, &ms); err != nil {
 		return 0, false, err
 	}
-	return time.Duration(ms) * time.Millisecond, true, nil
+	duration, err := durationFromMs(ms)
+	return duration, true, err
 }
