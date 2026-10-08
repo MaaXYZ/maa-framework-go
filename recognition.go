@@ -427,7 +427,8 @@ type ColorMatchParam struct {
 }
 
 // UnmarshalJSON normalizes the flat single-row lower/upper form to one row,
-// matching the native parser.
+// matching the native parser. Omitted fields retain their existing values.
+// On error the param is unchanged.
 func (p *ColorMatchParam) UnmarshalJSON(data []byte) error {
 	decoded := struct {
 		ROI       Target            `json:"roi,omitzero"`
@@ -471,6 +472,8 @@ func (p *ColorMatchParam) UnmarshalJSON(data []byte) error {
 // one-row list, matching the native parser's get_and_check_array_or_2darray.
 type intRows [][]int
 
+// UnmarshalJSON accepts a flat integer row or a list of integer rows.
+// Null clears the list. On error the receiver is unchanged.
 func (r *intRows) UnmarshalJSON(data []byte) error {
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
@@ -573,7 +576,9 @@ func (n OCRParam) isRecognitionParam() {}
 
 // UnmarshalJSON maps the deprecated "text" alias to Expected when "expected"
 // is absent and normalizes a single replace pair to a one-pair list,
-// matching the native parser.
+// matching the native parser. A single pair must contain exactly two non-null
+// strings. Omitted fields retain their existing values.
+// On error the param is unchanged.
 func (p *OCRParam) UnmarshalJSON(data []byte) error {
 	decoded := struct {
 		ROI         Target         `json:"roi,omitzero"`

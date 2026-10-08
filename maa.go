@@ -135,9 +135,10 @@ func WithDebugMode(enabled bool) InitOption {
 }
 
 // WithPluginPaths returns an InitOption that sets the plugin paths loaded
-// during Init. The paths are copied, so mutating the argument slice after
-// building the option has no effect. Each path follows the LoadPlugin
-// resolution rules; passing no paths yields an empty list that loads nothing.
+// during Init. Init copies the paths when applying the option; changes to
+// the argument slice before Init affect the paths used. Each path follows
+// the LoadPlugin resolution rules; passing no paths yields an empty list
+// that loads nothing.
 func WithPluginPaths(path ...string) InitOption {
 	return func(ic *initConfig) {
 		pluginPaths := append([]string(nil), path...)

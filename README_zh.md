@@ -209,7 +209,7 @@ func main() {
 
 其他操作需要调用方协调：请串行执行选项设置、资源与 pipeline 修改、同一 `Context` 上的调用，以及 AgentClient / AgentServer 的生命周期操作。`Pipeline`、`Node` 等可变配置对象也需要调用方同步访问。句柄生命周期检查不代表所有原生操作都具备线程安全保证。
 
-事件 sink 和自定义识别、动作的注册变更，只能在实例及所有关联 tasker 静止时执行。添加、替换、注销或清空注册之前，请停止新提交，并等待相关工作和回调结束。同一实例的配置事务会串行执行，借用视图也使用同一把锁，但这些事务不得与原生执行重叠。不要在回调中变更注册。`AddSink` 和 `AddContextSink` 注册失败返回 0；重复移除已注销的 sink 不执行任何有效变更。`Resource.UnregisterCustomRecognition` 和 `Resource.UnregisterCustomAction` 注销不存在的名称时不执行任何有效变更，并返回 nil。
+事件 sink 和自定义识别、动作的注册变更，只能在实例及所有关联 tasker 静止时执行。添加、替换、注销或清空注册之前，请停止新提交，并等待相关工作和回调结束。同一实例的配置事务会串行执行，借用视图也使用同一把锁，但这些事务不得与原生执行重叠。不要在回调中变更注册。`AddSink` 和 `AddContextSink` 注册失败返回 0；重复移除已注销的 sink 不执行任何有效变更。`Resource.UnregisterCustomRecognition` 和 `Resource.UnregisterCustomAction` 注销不存在的名称时不执行任何有效变更，并返回 nil。通过 Go resource 包装器以外的接口注册的名称会返回错误并保留注册；`AgentClient.Connect` 添加的注册由 `AgentClient.Disconnect` 移除。
 
 `Tasker.OnNodeWaitFreezesInContext` 可订阅 `Node.WaitFreezes`，取得 `NodeWaitFreezesDetail`。自定义 context sink 可选实现 `ContextWaitFreezesEventSink`。使用 Win32 后台输入时，请在连接前调用 `Controller.SetBackgroundManagedKeys`；传入空切片可清空按键列表。
 

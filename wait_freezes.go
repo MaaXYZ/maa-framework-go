@@ -56,6 +56,7 @@ func (w WaitFreezesParam) MarshalJSON() ([]byte, error) {
 // milliseconds, matching the native parser. An explicit JSON null is
 // rejected, matching the native parser. Invalid input leaves the
 // receiver unchanged.
+// A bare millisecond value outside the range of time.Duration is rejected.
 func (w *WaitFreezesParam) UnmarshalJSON(data []byte) error {
 	if shorthand, ok, err := waitFreezesShorthand(data); err != nil {
 		return err

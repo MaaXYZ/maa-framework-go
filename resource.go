@@ -297,9 +297,11 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 	return nil
 }
 
-// UnregisterCustomRecognition unregisters a custom recognition runner from the
-// resource. Unregistering a name that is not registered is a no-op and
-// returns nil, matching the native library.
+// UnregisterCustomRecognition unregisters a runner added with RegisterCustomRecognition.
+// A name absent from both the Go registry and the native resource is a no-op
+// and returns nil. A name registered outside this wrapper returns an error
+// and remains registered. In particular, registrations added by AgentClient.Connect
+// are managed by the client and removed by AgentClient.Disconnect.
 // The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) UnregisterCustomRecognition(name string) error {
 	_, done, useErr := r.state.begin()
@@ -454,9 +456,11 @@ func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) 
 	return nil
 }
 
-// UnregisterCustomAction unregisters a custom action runner from the resource.
-// Unregistering a name that is not registered is a no-op and returns nil,
-// matching the native library.
+// UnregisterCustomAction unregisters a runner added with RegisterCustomAction.
+// A name absent from both the Go registry and the native resource is a no-op
+// and returns nil. A name registered outside this wrapper returns an error
+// and remains registered. In particular, registrations added by AgentClient.Connect
+// are managed by the client and removed by AgentClient.Disconnect.
 // The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) UnregisterCustomAction(name string) error {
 	_, done, useErr := r.state.begin()

@@ -374,10 +374,11 @@ func (n *Node) SetAttach(attach map[string]any) *Node {
 
 // NextItem is one item in the list of nodes to run next.
 // It is used in Node.Next (on success) and Node.OnError (on failure).
-// Decoding accepts bare node-name strings in place of objects; a string may
-// carry [JumpBack] and [Anchor] prefixes, and unrecognized prefixes are
-// ignored, matching the native parser. Shorthand entries re-encode as
-// objects, matching native output.
+// Node.UnmarshalJSON accepts bare node-name strings in these fields; direct
+// decoding into NextItem does not support this shorthand. A string may carry
+// [JumpBack] and [Anchor] prefixes, and unrecognized prefixes are ignored,
+// matching the native parser. Shorthand entries re-encode as objects,
+// matching native output.
 type NextItem struct {
 	// Name is the name of the target node.
 	Name string `json:"name"`

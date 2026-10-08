@@ -367,7 +367,8 @@ var (
 // MaaStringBufferGet returns borrowed storage valid until the buffer is
 // modified or destroyed; MaaStringBufferSize gives its byte length. The list
 // At functions return a borrowed element view that must not be destroyed,
-// while Append stores a deep copy of the given value.
+// while Append copies the element value with an independent buffer lifetime.
+// Appended image elements may share pixel storage with the source image.
 var (
 	MaaStringBufferCreate  func() uintptr
 	MaaStringBufferDestroy func(handle uintptr)

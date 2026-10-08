@@ -45,8 +45,9 @@ const (
 	// significantly reduce template matching accuracy; not recommended.
 	ScreencapMinicapStream ScreencapMethod = 1 << 5
 	// ScreencapEmulatorExtras selects the EmulatorExtras method: very fast,
-	// low compatibility, lossless encoding. Emulators only: MuMu 12,
-	// LDPlayer 9.
+	// low compatibility, lossless encoding. It supports MuMu 12, LDPlayer 9,
+	// and Tencent App Store (Androws) on Windows, and AVD on non-Android
+	// platforms.
 	ScreencapEmulatorExtras ScreencapMethod = 1 << 6
 	// ScreencapAll selects every ADB screencap method.
 	ScreencapAll = ^ScreencapNone
@@ -67,7 +68,8 @@ const (
 	// InputMaatouch selects the Maatouch method: fast, medium compatibility.
 	InputMaatouch InputMethod = 1 << 2
 	// InputEmulatorExtras selects the EmulatorExtras method: fast, low
-	// compatibility. Emulators only: MuMu 12.
+	// compatibility. It supports MuMu 12 and Tencent App Store (Androws) on
+	// Windows.
 	InputEmulatorExtras InputMethod = 1 << 3
 	// InputAll selects every ADB input method.
 	InputAll = ^InputNone

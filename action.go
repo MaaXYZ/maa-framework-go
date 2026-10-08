@@ -556,6 +556,7 @@ type ClickKeyParam struct {
 }
 
 // UnmarshalJSON normalizes a single key code to a one-element array.
+// An omitted key retains its existing value. On error the param is unchanged.
 func (p *ClickKeyParam) UnmarshalJSON(data []byte) error {
 	decoded := struct {
 		Key orScalarList[int] `json:"key,omitempty"`
@@ -779,7 +780,8 @@ func (n KeyDownParam) isActionParam() {}
 
 // UnmarshalJSON decodes the key down param, accepting the legacy key_code
 // alias for key. When both fields are present, key wins, matching the
-// upstream parser. On error the param is unchanged.
+// upstream parser. Omitted fields retain their existing values.
+// On error the param is unchanged.
 func (p *KeyDownParam) UnmarshalJSON(data []byte) error {
 	raw := struct {
 		AutoUp *bool           `json:"auto_up,omitempty"`
@@ -865,7 +867,8 @@ func (n KeyUpParam) isActionParam() {}
 
 // UnmarshalJSON decodes the key up param, accepting the legacy key_code
 // alias for key. When both fields are present, key wins, matching the
-// upstream parser. On error the param is unchanged.
+// upstream parser. Omitted fields retain their existing values.
+// On error the param is unchanged.
 func (p *KeyUpParam) UnmarshalJSON(data []byte) error {
 	raw := struct {
 		AutoUp *bool           `json:"auto_up,omitempty"`
@@ -1001,6 +1004,7 @@ type CommandParam struct {
 func (n CommandParam) isActionParam() {}
 
 // UnmarshalJSON normalizes a single argument to a one-element array.
+// Omitted fields retain their existing values. On error the param is unchanged.
 func (p *CommandParam) UnmarshalJSON(data []byte) error {
 	decoded := struct {
 		Exec   string               `json:"exec,omitempty"`
@@ -1121,7 +1125,9 @@ func (n CustomActionParam) isActionParam() {}
 
 // UnmarshalJSON decodes the custom action param, keeping the numeric fidelity
 // of custom_action_param by decoding its numbers as json.Number, exactly as
-// the upstream parser passes the sub-JSON through. On error the param is unchanged.
+// the upstream parser passes the sub-JSON through. Omitted fields retain their
+// existing values; a provided custom_action_param replaces the previous value.
+// On error the param is unchanged.
 func (p *CustomActionParam) UnmarshalJSON(data []byte) error {
 	raw := struct {
 		Target            Target          `json:"target,omitzero"`
