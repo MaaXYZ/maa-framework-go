@@ -1,6 +1,7 @@
 // Package maa provides Go bindings for the MaaFramework.
 // Typed pipeline builders use pipeline v2 JSON with nested action and recognition
-// objects. They do not decode the legacy flat pipeline format.
+// objects. Decoding also accepts the legacy flat pipeline format and normalizes
+// it into the v2 model; encoding always emits v2.
 // For pipeline protocol details, see:
 // https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md
 package maa
@@ -31,15 +32,13 @@ func (p *Pipeline) MarshalJSON() ([]byte, error) {
 	return marshalJSON(p.nodes)
 }
 
-// UnmarshalJSON decodes a pipeline JSON object keyed by node name, the unit
-// the native parser consumes. Each node decodes via Node.UnmarshalJSON and
-// takes its Name from the map key. The protocol's anchor shorthand — a
-// single anchor name or a list of anchor names, meaning "set this anchor to
-// the current node" — resolves against that name, exactly as the native
-// parser does; a Node decoded on its own cannot know its name and accepts
-// only the object form. Validating anchor targets is the native parser's
-// work. null decodes to an empty pipeline. On error the pipeline is
-// unchanged.
+// UnmarshalJSON replaces the pipeline with a JSON object keyed by node name.
+// Each node decodes via [Node.UnmarshalJSON] and takes its Name from the map key.
+// An anchor string or list of strings sets each named anchor to the containing
+// node, matching the native parser. Object-form targets pass through without
+// checking whether they exist. Decoding a Node directly accepts only the object
+// form. Empty anchor maps are omitted when re-encoding, as documented by [Node].
+// JSON null decodes to an empty pipeline. On error the pipeline is unchanged.
 func (p *Pipeline) UnmarshalJSON(data []byte) error {
 	var nodes map[string]json.RawMessage
 	if err := unmarshalJSON(data, &nodes); err != nil {

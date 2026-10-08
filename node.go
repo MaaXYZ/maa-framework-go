@@ -21,9 +21,11 @@ type Node struct {
 	Name string `json:"-"`
 
 	// Anchor maps anchor name to target node name. This matches GetNodeData output format.
-	// The native parser also accepts a string or a list of anchor names as
-	// input; only the object form is modeled here. An empty target name marks
-	// the anchor as cleared.
+	// An empty target name clears that anchor. [Pipeline.UnmarshalJSON] also
+	// accepts a string or list of anchor names and resolves them to the containing
+	// node's map key. Decoding a Node directly accepts only the object form,
+	// even if Name is already set. Empty maps are omitted when encoding; use raw
+	// pipeline JSON to clear all anchors on an existing native node.
 	Anchor map[string]string `json:"anchor,omitempty"`
 
 	// Recognition defines how this node recognizes targets on screen.
