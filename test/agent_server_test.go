@@ -142,6 +142,14 @@ func TestAgentServer_CallbackRoundTrip(t *testing.T) {
 	actionNames, err := client.GetCustomActionList()
 	require.NoError(t, err)
 	require.Contains(t, actionNames, agentTestAction)
+	require.Error(t, res.UnregisterCustomRecognition(agentTestRecognition))
+	recNames, err = res.GetCustomRecognitionList()
+	require.NoError(t, err)
+	require.Contains(t, recNames, agentTestRecognition)
+	require.Error(t, res.UnregisterCustomAction(agentTestAction))
+	actionNames, err = res.GetCustomActionList()
+	require.NoError(t, err)
+	require.Contains(t, actionNames, agentTestAction)
 
 	ctrl, err = maa.NewBlankController()
 	require.NoError(t, err)
@@ -192,6 +200,8 @@ func TestAgentServer_CallbackRoundTrip(t *testing.T) {
 
 	require.NoError(t, client.Disconnect())
 	connected = false
+	require.NoError(t, res.UnregisterCustomRecognition(agentTestRecognition))
+	require.NoError(t, res.UnregisterCustomAction(agentTestAction))
 	select {
 	case err := <-done:
 		serverExited = true
