@@ -570,6 +570,9 @@ func (p *ClickKeyParam) UnmarshalJSON(data []byte) error {
 // orScalarList decodes a protocol value-or-array field: a single value
 // normalizes to a one-element list, matching the native parser's
 // get_and_check_value_or_array.
+// JSON null is accepted as a nil slice; enclosing fields normally omit nil
+// slices when encoding, allowing native inheritance or defaults.
+// The native get_and_check_value_or_array rejects an explicit null value.
 type orScalarList[T any] []T
 
 func (l *orScalarList[T]) UnmarshalJSON(data []byte) error {
