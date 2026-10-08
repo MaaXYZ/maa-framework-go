@@ -324,7 +324,15 @@ func (r *Resource) UnregisterCustomRecognition(name string) error {
 		}
 	})
 	if !found {
-		// Upstream no-ops and reports success for unknown names.
+		names, err := r.GetCustomRecognitionList()
+		if err != nil {
+			return err
+		}
+		for _, registered := range names {
+			if registered == name {
+				return fmt.Errorf("custom recognition is registered outside the Go resource wrapper: %s", name)
+			}
+		}
 		return nil
 	}
 	if !native.MaaResourceUnregisterCustomRecognition(r.handle, name) {
@@ -473,7 +481,15 @@ func (r *Resource) UnregisterCustomAction(name string) error {
 		}
 	})
 	if !found {
-		// Upstream no-ops and reports success for unknown names.
+		names, err := r.GetCustomActionList()
+		if err != nil {
+			return err
+		}
+		for _, registered := range names {
+			if registered == name {
+				return fmt.Errorf("custom action is registered outside the Go resource wrapper: %s", name)
+			}
+		}
 		return nil
 	}
 	if !native.MaaResourceUnregisterCustomAction(r.handle, name) {
