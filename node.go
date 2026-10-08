@@ -26,7 +26,7 @@ type Node struct {
 	// node's map key. Decoding a Node directly accepts only the object form,
 	// even if Name is already set. Empty maps are omitted when encoding; use raw
 	// pipeline JSON to clear all anchors on an existing native node.
-	Anchor map[string]string `json:"anchor,omitempty"`
+	Anchor map[string]string `json:"anchor,omitzero"`
 
 	// Recognition defines how this node recognizes targets on screen.
 	Recognition *Recognition `json:"recognition,omitempty"`
