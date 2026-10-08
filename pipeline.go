@@ -86,7 +86,7 @@ func normalizeNodeAnchor(data []byte, nodeName string) ([]byte, error) {
 		}
 		resolved[anchor] = nodeName
 	case trimmed[0] == '[':
-		var anchors []string
+		var anchors StringList
 		if err := unmarshalJSON(trimmed, &anchors); err != nil {
 			return nil, err
 		}
