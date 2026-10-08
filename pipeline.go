@@ -5,6 +5,12 @@
 // https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md
 package maa
 
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+)
+
 // Pipeline represents a collection of nodes that define a task flow. A task
 // is a logical sequential structure of nodes connected in a specific order,
 // representing the entire process from start to finish; its first node is
@@ -23,6 +29,81 @@ func NewPipeline() *Pipeline {
 // MarshalJSON implements the json.Marshaler interface.
 func (p *Pipeline) MarshalJSON() ([]byte, error) {
 	return marshalJSON(p.nodes)
+}
+
+// UnmarshalJSON decodes a pipeline JSON object keyed by node name, the unit
+// the native parser consumes. Each node decodes via Node.UnmarshalJSON and
+// takes its Name from the map key. The protocol's anchor shorthand — a
+// single anchor name or a list of anchor names, meaning "set this anchor to
+// the current node" — resolves against that name, exactly as the native
+// parser does; a Node decoded on its own cannot know its name and accepts
+// only the object form. Validating anchor targets is the native parser's
+// work. null decodes to an empty pipeline. On error the pipeline is
+// unchanged.
+func (p *Pipeline) UnmarshalJSON(data []byte) error {
+	var nodes map[string]json.RawMessage
+	if err := unmarshalJSON(data, &nodes); err != nil {
+		return err
+	}
+	decoded := make(map[string]*Node, len(nodes))
+	for name, raw := range nodes {
+		normalized, err := normalizeNodeAnchor(raw, name)
+		if err != nil {
+			return err
+		}
+		var node Node
+		if err := unmarshalJSON(normalized, &node); err != nil {
+			return err
+		}
+		node.Name = name
+		decoded[name] = &node
+	}
+	p.nodes = decoded
+	return nil
+}
+
+// normalizeNodeAnchor rewrites a node's anchor shorthand — a single anchor
+// name or a list of anchor names — into the object form resolved to the
+// node's own name, matching the native parse_anchor. The object form and
+// every other field pass through untouched; null and non-string array
+// entries are errors, matching the native parser.
+func normalizeNodeAnchor(data []byte, nodeName string) ([]byte, error) {
+	var fields map[string]json.RawMessage
+	if err := unmarshalJSON(data, &fields); err != nil {
+		return nil, err
+	}
+	value, ok := fields["anchor"]
+	if !ok {
+		return data, nil
+	}
+	trimmed := bytes.TrimSpace(value)
+	resolved := map[string]string{}
+	switch {
+	case trimmed[0] == '"':
+		var anchor string
+		if err := unmarshalJSON(trimmed, &anchor); err != nil {
+			return nil, err
+		}
+		resolved[anchor] = nodeName
+	case trimmed[0] == '[':
+		var anchors []string
+		if err := unmarshalJSON(trimmed, &anchors); err != nil {
+			return nil, err
+		}
+		for _, anchor := range anchors {
+			resolved[anchor] = nodeName
+		}
+	case trimmed[0] == '{':
+		return data, nil
+	default:
+		return nil, fmt.Errorf("anchor must be a string, array, or object")
+	}
+	encoded, err := marshalJSON(resolved)
+	if err != nil {
+		return nil, err
+	}
+	fields["anchor"] = encoded
+	return marshalJSON(fields)
 }
 
 // AddNode adds a node to the pipeline and returns the pipeline for chaining.
