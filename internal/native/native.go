@@ -3,8 +3,10 @@
 // Package native binds the MaaFramework C API for Go through purego. The four
 // mandatory dynamic libraries (MaaFramework, MaaToolkit, MaaAgentServer and
 // MaaAgentClient) are loaded by Initialize from an explicit directory or the
-// platform default search path, and their C functions are resolved into the
-// package-level function variables named after them. Shutdown undoes the load.
+// platform loader's current search configuration, and their C functions are
+// resolved into the package-level function variables named after them.
+// Shutdown unloads the libraries but does not restore DLL search configuration
+// changed on Windows.
 //
 // Deprecated C APIs are intentionally not bound. The package is not safe for
 // concurrent use: Initialize and Shutdown must be serialized by the caller
@@ -79,11 +81,19 @@ type loadedLibrary struct {
 // Initialize loads all mandatory MaaFramework dynamic libraries from libDir
 // and resolves their symbols. A nonempty libDir is treated as an explicit
 // directory and resolved to an absolute path before any library filename is
-// formed; an empty libDir keeps the default loader-search behavior.
+// formed; an empty libDir uses the platform loader's current search configuration.
 // If any library fails to open, is missing a required symbol, or cannot be
 // registered, every library opened during this call is rolled back and the
 // returned error describes the failure. After a complete successful load,
 // repeated calls are a no-op success until Shutdown runs.
+//
+// On Windows, applying a nonempty directory calls SetDllDirectoryW for the
+// whole process. Once that call succeeds, neither Shutdown nor initialization
+// failure rollback restores the previous DLL search configuration. It remains
+// in effect until process exit or another DLL search configuration change.
+// A later empty-directory initialization leaves it unchanged; a nonempty one
+// can replace it. For unpackaged, unprotected Win32 processes, the change can
+// also affect subsequently started child processes.
 func Initialize(libDir string) error {
 	if initialized {
 		return nil
@@ -100,8 +110,8 @@ func Initialize(libDir string) error {
 
 	// An empty libDir must skip handleLibDir entirely: on Windows,
 	// SetDllDirectoryW(L"") would remove the current directory from the DLL
-	// search order instead of keeping the default search behavior documented
-	// above.
+	// search order instead of leaving the current DLL search configuration
+	// unchanged.
 	if libDir != "" {
 		if err := handleLibDir(libDir); err != nil {
 			return err
@@ -128,7 +138,7 @@ func Initialize(libDir string) error {
 // resolveLibraryDir treats a nonempty libDir as an explicit directory and
 // resolves it to an absolute path so that values such as "." cannot collapse
 // into a bare loader-search filename. An empty libDir is left empty so the
-// platform loader keeps its default search behavior.
+// platform loader uses its current search configuration.
 func resolveLibraryDir(libDir string) (string, error) {
 	if libDir == "" {
 		return "", nil
@@ -145,6 +155,7 @@ func resolveLibraryDir(libDir string) (string, error) {
 // kept so a later Shutdown can retry them. Any complete-initialization state
 // is invalidated up front so a partial unload cannot leave Initialize looking
 // finished.
+// On Windows, the process's DLL search configuration is not restored.
 func Shutdown() error {
 	initialized = false
 

@@ -54,7 +54,7 @@ var ErrLibraryInUse = errors.New("maa: cannot release libraries while native obj
 // logging, debugging, and resource locations.
 type initConfig struct {
 	// LibDir specifies the directory path where MAA dynamic libraries are located.
-	// If empty, the framework will attempt to locate libraries in default paths.
+	// If empty, libraries are located using the platform loader's current search configuration.
 	LibDir string
 
 	// LogDir specifies the directory where log files will be written.
@@ -95,6 +95,16 @@ type InitOption func(*initConfig)
 
 // WithLibDir returns an InitOption that sets the library directory path for the MAA framework.
 // The libDir parameter specifies the directory where the MAA dynamic library is located.
+// An empty directory uses the platform loader's current search configuration.
+//
+// On Windows, when Init applies a nonempty directory, it calls SetDllDirectoryW
+// to change the DLL search directory for the whole process. Once that call
+// succeeds, neither Release nor initialization failure rollback restores the
+// previous configuration. It remains in effect until the process exits or
+// another DLL search configuration change replaces it. Later Init calls with
+// an empty directory leave the current configuration unchanged.
+// For unpackaged, unprotected Win32 processes, the change can also affect the
+// DLL search order of subsequently started child processes.
 func WithLibDir(libDir string) InitOption {
 	return func(ic *initConfig) {
 		ic.LibDir = libDir
@@ -173,6 +183,8 @@ func WithJSONDecoder(decoder JSONDecoder) InitOption {
 // passed to them are discarded.
 // Calls to Init and Release are serialized. Other MAA-related functions must
 // not run concurrently with Init or Release.
+// On Windows, DLL search configuration changed through WithLibDir is not
+// restored if initialization fails; see [WithLibDir] for its process-wide scope.
 // Note: If this function is not called before other MAA functions, it will trigger a null pointer panic.
 func Init(opts ...InitOption) (err error) {
 	lifecycleMu.Lock()
@@ -260,6 +272,9 @@ func IsInited() bool {
 // Other MAA-related functions must not run concurrently with Init or Release.
 // If unloading fails, IsInited becomes false; call Release again to retry
 // cleanup before calling Init.
+// On Windows, Release does not restore the DLL search configuration changed
+// during Init. A later Init with an empty library directory uses the process's
+// current configuration; see [WithLibDir].
 func Release() error {
 	lifecycleMu.Lock()
 	defer lifecycleMu.Unlock()
