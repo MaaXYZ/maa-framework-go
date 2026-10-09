@@ -1,5 +1,8 @@
 {
     "Startup": {
-        "action": "StartApp"
+        "doc": "do nothing",
+        "action": {
+            "type": "DoNothing"
+        }
     }
 }

@@ -35,12 +35,9 @@
 
 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 的 Go 语言绑定。MaaFramework 是一个基于图像识别的跨平台自动化测试框架。
 
-> **🚀 无需 Cgo！** 基于 [purego](https://github.com/ebitengine/purego) 的纯 Go 实现。
->
-> Android 例外：purego 在 Android 上要借助 cgo 加载动态库，需要 `CGO_ENABLED=1` 并以 NDK 的 clang 作为 `CC`，例如
-> `GOOS=android GOARCH=arm64 CGO_ENABLED=1 CC=<ndk>/toolchains/llvm/prebuilt/<host>/bin/clang CGO_CFLAGS=--target=aarch64-linux-android24 CGO_LDFLAGS=--target=aarch64-linux-android24 go build`
+> **无需 Cgo！** 基于 [purego](https://github.com/ebitengine/purego) 的纯 Go 实现。Android 构建是例外，详见 [Android 构建指南](docs/zh/guides/android.md)。
 
-## ✨ 特性
+## 特性
 
 - **跨平台控制器** - ADB、Win32、Linux、macOS、PlayCover 与 Android Native
 - **录制与回放** - 将控制器操作记录为 JSONL，并用于调试与回归测试
@@ -50,11 +47,14 @@
 - **自定义扩展** - 以纯 Go 编写自定义识别、动作和控制器
 - **Agent 支持** - 从外部进程执行自定义识别与动作逻辑
 - **异步任务与事件** - 轮询 Job 状态与任务详情，或订阅 Resource、Controller、Tasker 事件
-- **Pipeline v2 模型与运行时 API** - 类型化的 `Pipeline`、`Node`、`Action` 和 `Recognition` 构造器生成嵌套 v2 JSON，并支持从 `Context` 运行任务、识别和动作。未知参数可通过 [`RawActionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawActionParam) 与 [`RawRecognitionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawRecognitionParam) 保留原始 JSON；这不会让原生库支持未知类型。
+- **Pipeline v2 模型 API** - 类型化构造器生成嵌套 v2 JSON
 
-## 📦 安装
+## 要求
 
-需要 Go 1.24 及以上。
+- **Go 1.24 及以上**
+- **MaaFramework** - 本绑定跟踪最新的 MaaFramework 版本（包括预发布版），不保证兼容更早的版本。头部徽章记录的是本绑定发布前通过单元测试的 MaaFramework 版本，是验证基线，不是版本要求。
+
+## 安装
 
 ### 1. 安装 Go 包
 
@@ -77,149 +77,75 @@ go get github.com/MaaXYZ/maa-framework-go/v4
 | Android  | amd64       | `MAA-android-x86_64-*.zip` |
 | Android  | arm64       | `MAA-android-aarch64-*.zip` |
 
-## ⚙️ 运行时要求
+### 3. 加载运行时库
 
-使用 maa-framework-go 构建的程序需要 MaaFramework 动态库才能运行。可通过以下任一方式提供：
+使用 maa-framework-go 构建的程序需要 MaaFramework 动态库才能运行。这里列出两种常用的加载方式；环境变量、系统库目录等其他方式及库文件清单见[运行时库加载指南](docs/zh/guides/library-loading.md)。
 
-1. **通过 `Init()` 选项** - 在代码中指定库文件路径：
+1. **库目录** - 通过 `WithLibDir` 指定包含库文件的目录：
 
    ```go
-   maa.Init(maa.WithLibDir("path/to/MaaFramework/bin"))
+   if err := maa.Init(maa.WithLibDir("path/to/MaaFramework/bin")); err != nil {
+       return err
+   }
    ```
 
-2. **工作目录** - 将 MaaFramework 库文件放在程序的工作目录中
+2. **工作目录** - 将库及其依赖放入程序的工作目录，并显式选择该目录：
 
-3. **环境变量** - 将库文件路径添加到 `PATH`（Windows）、`LD_LIBRARY_PATH`（Linux）或 `DYLD_LIBRARY_PATH`（macOS）
+   ```go
+   if err := maa.Init(maa.WithLibDir(".")); err != nil {
+       return err
+   }
+   ```
 
-4. **系统库路径** - 将库文件安装到系统库目录
+## 快速开始
 
-### MaaFramework 兼容性
-
-本绑定跟踪最新的 MaaFramework 版本（包括预发布版），不保证兼容更早的版本。缺少库或符号通常意味着已安装的 MaaFramework 早于本绑定所跟踪的版本。
-
-`Init` 需要来自同一兼容版本的四个库：`MaaFramework`、`MaaToolkit`、`MaaAgentServer` 和 `MaaAgentClient`。缺少库或符号时，`Init` 会返回可诊断的错误，而不会遗留部分初始化状态。
-
-仅当所有原生对象均已销毁且 Agent Server 已关闭后，`Release` 才会卸载库；否则返回 `ErrLibraryInUse`。
-
-调用 `AgentServerDetach` 后，`Release` 在进程剩余生命周期内都会被阻止：即使调用了 `AgentServerJoin` 或 `AgentServerShutDown`，原生 API 也无法确认已分离的服务线程是否退出。如果需要释放库，请保持服务线程未分离。
-
-`Init` 和 `Release` 的调用会串行执行，但其他 MAA 操作不得与二者并发执行。若卸载失败，`IsInited` 会变为 false；请重试 `Release` 完成清理后，再调用 `Init`。
-
-## 🚀 快速开始
+以下片段展示核心步骤。运行时初始化、设备发现、对象创建和退出清理见[完整快速开始示例](examples/quick-start/main.go)。运行前设置 `NewAdbController` 的 agent 二进制目录，并在 `examples/quick-start` 下运行，使 `./resource` 指向示例自带的资源包。
 
 ```go
-package main
-
-import (
-	"fmt"
-	"os"
-
-	"github.com/MaaXYZ/maa-framework-go/v4"
-)
-
-func main() {
-	if err := maa.Init(); err != nil {
-		fmt.Println("Failed to init MAA:", err)
-		os.Exit(1)
-	}
-	if err := maa.ConfigInitOption("./", "{}"); err != nil {
-		fmt.Println("Failed to init config:", err)
-		os.Exit(1)
-	}
-	tasker, err := maa.NewTasker()
-	if err != nil {
-		fmt.Println("Failed to create tasker")
-		os.Exit(1)
-	}
-
-	devices, err := maa.FindAdbDevices()
-	if err != nil {
-		fmt.Println("Failed to find adb devices:", err)
-		os.Exit(1)
-	}
-	if len(devices) == 0 {
-		fmt.Println("No ADB devices found. Connect a device or start an emulator.")
-		os.Exit(1)
-	}
-	device := devices[0]
-	ctrl, err := maa.NewAdbController(
-		device.AdbPath,
-		device.Address,
-		device.ScreencapMethod,
-		device.InputMethod,
-		device.Config,
-		"path/to/MaaAgentBinary",
-	)
-	if err != nil {
-		fmt.Println("Failed to create ADB controller")
-		os.Exit(1)
-	}
-	defer ctrl.Destroy()
-	connectJob, err := ctrl.PostConnect()
-	if err != nil {
-		fmt.Println("Failed to connect controller:", err)
-		os.Exit(1)
-	}
-	connectJob.Wait()
-	tasker.BindController(ctrl)
-
-	res, err := maa.NewResource()
-	if err != nil {
-		fmt.Println("Failed to create resource")
-		os.Exit(1)
-	}
-	defer res.Destroy()
-	bundleJob, err := res.PostBundle("./resource")
-	if err != nil {
-		fmt.Println("Failed to post resource bundle:", err)
-		os.Exit(1)
-	}
-	bundleJob.Wait()
-	tasker.BindResource(res)
-	defer tasker.Destroy()
-	if !tasker.Initialized() {
-		fmt.Println("Failed to init MAA.")
-		os.Exit(1)
-	}
-
-	taskJob, err := tasker.PostTask("Startup")
-	if err != nil {
-		fmt.Println("Failed to post task:", err)
-		os.Exit(1)
-	}
-	detail, err := taskJob.Wait().GetDetail()
-	if err != nil {
-		fmt.Println("Failed to get task detail:", err)
-		os.Exit(1)
-	}
-	fmt.Println(detail)
+// Initialize MAA, find an ADB device, and create ctrl (see the full example).
+connectJob, err := ctrl.PostConnect()
+if err != nil {
+	return fmt.Errorf("post connect: %w", err)
+}
+if !connectJob.Wait().Success() {
+	return errors.New("ADB controller connection failed")
 }
 
+// Create res before loading the resource bundle.
+bundleJob, err := res.PostBundle("./resource")
+if err != nil {
+	return fmt.Errorf("post resource bundle: %w", err)
+}
+if !bundleJob.Wait().Success() {
+	return errors.New("resource bundle loading failed")
+}
+
+// Create tasker after the controller is connected and the resource is loaded.
+if err := tasker.BindController(ctrl); err != nil {
+	return fmt.Errorf("bind controller: %w", err)
+}
+if err := tasker.BindResource(res); err != nil {
+	return fmt.Errorf("bind resource: %w", err)
+}
+if !tasker.Initialized() {
+	return errors.New("tasker initialization check failed")
+}
+
+taskJob, err := tasker.PostTask("Startup")
+if err != nil {
+	return fmt.Errorf("post task: %w", err)
+}
+if !taskJob.Wait().Success() {
+	return errors.New("Startup task failed")
+}
+detail, err := taskJob.GetDetail()
+if err != nil {
+	return fmt.Errorf("get task detail: %w", err)
+}
+fmt.Println(detail)
 ```
 
-### 原生对象生命周期
-
-`NewTasker`、`NewResource` 以及控制器构造函数返回的对象拥有其原生句柄。`GetResource`、`GetController`、`Context.GetTasker` 以及事件回调返回的是借用视图；对其调用 `Destroy` 会返回 `ErrBorrowed`。对所有者重复成功调用 `Destroy` 是安全的。如果仍有调用或异步 Job 执行，`Destroy` 会返回 `ErrInUse`，即使返回的 Job 已被丢弃；请在其结束后重试。如果需要取得 Job 的结果，请在销毁所有者之前调用 `Wait`。对象关闭后，会返回错误的方法将报告 `ErrClosed`，Job 则通过 `Error()` 暴露该错误。
-
-在 tasker 销毁之前，请保持所有曾绑定的 Resource 和 Controller 存活，包括重新绑定后替换下来的对象。提前关闭会返回 `ErrBound`。运行中的 tasker 重新绑定会返回 `ErrTaskerRunning`。`AgentClient` 同样会保持其绑定的 Resource 与已注册的事件源存活，直到该 client 被销毁。在回调中销毁其所属对象会返回 `ErrInCallback`。回调的 `Context`（包括克隆）会在回调返回时失效。
-
-### 并发与回调
-
-`Job` 和 `TaskJob` 支持并发调用 `Wait`、状态查询及判断方法和 `Error`。多个等待者共享完成后的结果，等待期间仍可查询状态。不要复制这些对象。`Tasker.GetResource` 和 `GetController` 可以与绑定变更并发执行；每次返回的借用视图对应本次调用期间观察到的绑定。
-
-其他操作需要调用方协调：请串行执行选项设置、资源与 pipeline 修改、同一 `Context` 上的调用，以及 AgentClient / AgentServer 的生命周期操作。`Pipeline`、`Node` 等可变配置对象也需要调用方同步访问。句柄生命周期检查不代表所有原生操作都具备线程安全保证。
-
-事件 sink 和自定义识别、动作的注册变更，只能在实例及所有关联 tasker 静止时执行。添加、替换、注销或清空注册之前，请停止新提交，并等待相关工作和回调结束。同一实例的配置事务会串行执行，借用视图也使用同一把锁，但这些事务不得与原生执行重叠。不要在回调中变更注册。`AddSink` 和 `AddContextSink` 注册失败返回 0；重复移除已注销的 sink 不执行任何有效变更。`Resource.UnregisterCustomRecognition` 和 `Resource.UnregisterCustomAction` 注销不存在的名称时不执行任何有效变更，并返回 nil。通过 Go resource 包装器以外的接口注册的名称会返回错误并保留注册；`AgentClient.Connect` 添加的注册由 `AgentClient.Disconnect` 移除。
-
-`Tasker.OnNodeWaitFreezesInContext` 可订阅 `Node.WaitFreezes`，取得 `NodeWaitFreezesDetail`。自定义 context sink 可选实现 `ContextWaitFreezesEventSink`。使用 Win32 后台输入时，请在连接前调用 `Controller.SetBackgroundManagedKeys`；传入空切片可清空按键列表。
-
-请在 `AgentServerStartUp` 之前配置 AgentServer。服务运行期间，以及 join 或 detach 后，自定义注册和启动返回 `ErrInUse`，添加 sink 返回 0。未 detach 时，`AgentServerShutDown` 会永久关闭服务，即使在首次启动前调用也是如此：之后启动和自定义注册返回 `ErrClosed`，添加 sink 返回 0。原生通信上下文无法重建，因此 `Release` 后再次 `Init` 也不会恢复启动或配置能力。未 detach 的服务关闭后可以 `Release`，重复关闭不会再次调用原生接口。配置与启动会串行执行；启动、关闭、join 和 detach 之间仍需由调用方串行协调。detach 后，关闭无法确认服务已静止，`Release` 仍不可用。
-
-回调在原生调用线程上同步执行，多个回调可能重叠。处理函数中的共享状态需要同步保护，也不要等待必须由当前回调返回后才能完成的工作。不要在 AgentServer 回调中调用其生命周期方法。`Destroy` 成功返回时，原生清理已经完成，之后不会再调用用户回调；回调仍在执行时，销毁返回 `ErrInCallback`。自定义 Controller 的 `KeyUp` 和 `TouchUp` 回调可能在原生析构期间执行，此时 `Destroy` 尚未返回。
-
-`PostStop` 之后，旧 Job 的 `Wait` 可能因 ID 失效而返回，此时原生工作仍在执行，不能据此认定所有回调已经结束。`Destroy` 会保留这一未确认状态，直到 worker 静止。对于 Controller，它可能提交一个 inactive 动作、调用自定义 `Inactive` 处理函数，并在动作完成之前返回 `ErrInUse`。请在工作和回调结束后重试销毁。
-
-## 📖 示例
+## 示例
 
 更多示例请查看 [examples](examples) 目录：
 
@@ -229,22 +155,27 @@ func main() {
 - [agent-client](examples/agent-client) - Agent 客户端
 - [agent-server](examples/agent-server) - Agent 服务端
 
-## 📚 文档
+## 文档
 
+- [运行时库加载](docs/zh/guides/library-loading.md)
+- [Android 构建指南](docs/zh/guides/android.md)
+- [常见问题](docs/zh/guides/faq.md)
+- 迁移指南：[v3 → v4](docs/zh/migration/from-v3.md)、[beta.18 → beta.19](docs/zh/migration/from-v4.0.0-beta.18.md)、[beta.19 → v4](docs/zh/migration/from-v4.0.0-beta.19.md)。v4.0.0 指南是基于固定提交的发布准备草稿，正式版 tag 尚未创建。
+- [变更记录](CHANGELOG.md)
 - [MaaFramework 快速开始](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md)
 - [任务流水线协议](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.1-%E4%BB%BB%E5%8A%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%8D%8F%E8%AE%AE.md)
 - [集成文档](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/2.1-%E9%9B%86%E6%88%90%E6%96%87%E6%A1%A3.md)
 - [Go 包文档](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4)
 
-## 🤝 贡献
+## 贡献
 
-欢迎提交 Issue 与 Pull Request。
+欢迎提交问题报告、功能建议和 Pull Request。开发环境、检查命令和 Pull Request 要求见[贡献指南](docs/zh/contributing.md)。
 
-## 📄 许可证
+## 许可证
 
 本项目采用 [LGPL-3.0 许可证](LICENSE.md)。
 
-## 💬 社区
+## 社区
 
 - **QQ 群**: 595990173
 - **GitHub Discussions**: [MaaFramework Discussions](https://github.com/MaaXYZ/MaaFramework/discussions)

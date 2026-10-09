@@ -24,8 +24,10 @@ func initControllerStore(handle uintptr) {
 	store.CtrlStore.Unlock()
 }
 
-// Controller is an owned or borrowed native controller. Handle lifetime is
-// guarded across calls; callers must coordinate configuration and execution.
+// Controller is an owned or borrowed native controller: controllers returned
+// by the controller constructors own their native handles, while views
+// obtained from getters and callbacks do not. Handle lifetime is guarded
+// across calls; callers must coordinate configuration and execution.
 type Controller struct {
 	handle uintptr
 	state  *handleState
@@ -318,13 +320,17 @@ func NewCustomController(
 // Do NOT add a Go binding for MaaDbgControllerCreate or NewDbgController here.
 // The api-check CI tool also blacklists MaaDbgControllerCreate for the same reason.
 
-// Destroy closes the controller once. It returns ErrBound while a tasker uses
-// it or an AgentClient retains it, ErrInUse while a call or job is active,
-// ErrBorrowed when called on a getter or callback view, and ErrInCallback when
-// called from inside one of the controller's own callbacks.
-// After a stop invalidates action IDs, Destroy may post an inactive action and
-// return ErrInUse until it completes; retry afterward. Native destruction may
-// call custom KeyUp/TouchUp methods before Destroy returns successfully.
+// Destroy closes the controller once; repeated successful calls are safe. It
+// returns ErrBound while a tasker uses it or an AgentClient retains it,
+// ErrInUse while a call or job is active — even if the returned Job was
+// discarded — ErrBorrowed when called on a getter or callback view, and
+// ErrInCallback when called from inside one of the controller's own
+// callbacks. After a stop invalidates action IDs, Destroy may post an
+// inactive action, invoking a custom controller's Inactive handler, and
+// return ErrInUse until it completes; retry afterward. Native destruction
+// may call custom KeyUp/TouchUp methods before Destroy returns successfully.
+// A successful Destroy returns after native cleanup and prevents subsequent
+// user callbacks.
 func (c *Controller) Destroy() error {
 	if c == nil || !c.owned {
 		return ErrBorrowed
@@ -1168,7 +1174,8 @@ func (c *Controller) GetInfo() (string, error) {
 
 // AddSink adds an event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 // It returns 0 if registration fails or the object is closed.
 func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 	_, done, useErr := c.state.begin()
@@ -1201,8 +1208,10 @@ func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 	return sinkId
 }
 
-// RemoveSink removes an event callback sink by sink ID.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// RemoveSink removes an event callback sink by sink ID. Removing an unknown
+// or already-removed sink ID is a no-op.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (c *Controller) RemoveSink(sinkId int64) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -1224,7 +1233,8 @@ func (c *Controller) RemoveSink(sinkId int64) {
 }
 
 // ClearSinks clears all event callback sinks.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (c *Controller) ClearSinks() {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -1250,6 +1260,9 @@ func (c *Controller) ClearSinks() {
 // ControllerEventSink is the sink for controller action events
 // (Controller.Action.* messages), delivered with a borrowed *Controller view
 // of the controller that posted the event.
+// Handler methods run synchronously on native calling threads, may overlap
+// with other callbacks, and must not wait for work that requires them to
+// return.
 // See Controller.OnControllerAction for a single-event convenience wrapper.
 type ControllerEventSink interface {
 	OnControllerAction(ctrl *Controller, event EventStatus, detail ControllerActionDetail)

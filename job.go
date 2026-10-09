@@ -8,7 +8,9 @@ import (
 
 // Job represents an asynchronous job with status tracking capabilities.
 // It provides methods to check the job status and wait for completion.
-// Wait and status queries may be called concurrently. A Job must not be copied.
+// Wait, status queries and predicates, and Error may be called concurrently.
+// Multiple waiters share the completed result, and status queries remain
+// available while a wait is in progress. A Job must not be copied.
 type Job struct {
 	id          int64
 	finalStatus atomic.Int32
@@ -138,7 +140,9 @@ func failTaskJob(err error) (*TaskJob, error) {
 
 // TaskJob extends Job with task-specific functionality.
 // It provides additional methods to retrieve task details.
-// Wait and status queries may be called concurrently. A TaskJob must not be copied.
+// Wait, status queries and predicates, and Error may be called concurrently.
+// Multiple waiters share the completed result, and status queries remain
+// available while a wait is in progress. A TaskJob must not be copied.
 type TaskJob struct {
 	job                  *Job
 	getTaskDetailFunc    func(id int64) (*TaskDetail, error)

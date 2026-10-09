@@ -1,7 +1,11 @@
 {
     "Startup": {
-        "recognition": "Custom",
-        "custom_recognition": "MyRec"
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "MyRec"
+            }
+        }
     },
     "TaskA": {
         "doc": "do something"

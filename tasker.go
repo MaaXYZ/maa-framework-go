@@ -12,7 +12,8 @@ import (
 )
 
 // Tasker is the main task executor that coordinates resources and controllers
-// to perform automated tasks.
+// to perform automated tasks. A Tasker created with NewTasker owns its native
+// handle; taskers obtained from getters and callbacks are borrowed views.
 type Tasker struct {
 	handle uintptr
 	state  *taskerState
@@ -70,11 +71,16 @@ func NewTasker() (*Tasker, error) {
 	return &Tasker{handle: handle, state: state, owned: true}, nil
 }
 
-// Destroy closes the tasker once. Borrowed taskers cannot be destroyed.
+// Destroy closes the tasker once; repeated successful calls are safe.
+// Borrowed taskers cannot be destroyed.
 // Destroy returns ErrBound while an AgentClient is registered as a sink,
-// ErrInUse while a method or asynchronous job is active, and ErrInCallback
-// when called from inside one of the tasker's own callbacks.
-// Destroy the tasker before destroying its bound resource and controller.
+// ErrInUse while a method or asynchronous job is active — even if the
+// returned Job was discarded — and ErrInCallback when called from inside one
+// of the tasker's own callbacks. After PostStop invalidated job IDs, Destroy
+// keeps returning ErrInUse until the native workers are idle. A successful
+// Destroy returns after native cleanup and prevents subsequent user
+// callbacks. Destroy the tasker before destroying its bound resource and
+// controller.
 func (t *Tasker) Destroy() error {
 	if t == nil || !t.owned {
 		return ErrBorrowed
@@ -915,7 +921,8 @@ func (t *Tasker) GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error) {
 }
 
 // AddSink adds an event listener and returns the sink ID for later removal.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 // It returns 0 if registration fails or the object is closed.
 func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
 	_, done, useErr := t.state.begin()
@@ -948,8 +955,10 @@ func (t *Tasker) AddSink(sink TaskerEventSink) int64 {
 	return sinkId
 }
 
-// RemoveSink removes an event listener by sink ID.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// RemoveSink removes an event listener by sink ID. Removing an unknown or
+// already-removed sink ID is a no-op.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (t *Tasker) RemoveSink(sinkId int64) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -971,7 +980,8 @@ func (t *Tasker) RemoveSink(sinkId int64) {
 }
 
 // ClearSinks clears all instance event listeners.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (t *Tasker) ClearSinks() {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -995,7 +1005,8 @@ func (t *Tasker) ClearSinks() {
 }
 
 // AddContextSink adds a context event listener and returns the sink ID for later removal.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 // It returns 0 if registration fails or the object is closed.
 func (t *Tasker) AddContextSink(sink ContextEventSink) int64 {
 	_, done, useErr := t.state.begin()
@@ -1028,8 +1039,10 @@ func (t *Tasker) AddContextSink(sink ContextEventSink) int64 {
 	return sinkId
 }
 
-// RemoveContextSink removes a context event listener by sink ID.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// RemoveContextSink removes a context event listener by sink ID. Removing an
+// unknown or already-removed sink ID is a no-op.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (t *Tasker) RemoveContextSink(sinkId int64) {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -1051,7 +1064,8 @@ func (t *Tasker) RemoveContextSink(sinkId int64) {
 }
 
 // ClearContextSinks clears all context event listeners.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (t *Tasker) ClearContextSinks() {
 	_, done, useErr := t.state.begin()
 	if useErr != nil {
@@ -1075,6 +1089,9 @@ func (t *Tasker) ClearContextSinks() {
 }
 
 // TaskerEventSink is the interface for receiving tasker-level events.
+// Handler methods run synchronously on native calling threads, may overlap
+// with other callbacks, and must not wait for work that requires them to
+// return.
 type TaskerEventSink interface {
 	OnTaskerTask(tasker *Tasker, event EventStatus, detail TaskerTaskDetail)
 }
@@ -1107,6 +1124,9 @@ func (t *Tasker) OnTaskerTask(fn func(EventStatus, TaskerTaskDetail)) int64 {
 }
 
 // ContextEventSink is the interface for receiving context-level events.
+// Handler methods run synchronously on native calling threads, may overlap
+// with other callbacks, and must not wait for work that requires them to
+// return.
 type ContextEventSink interface {
 	OnNodePipelineNode(ctx *Context, event EventStatus, detail NodePipelineNodeDetail)
 	OnNodeRecognitionNode(ctx *Context, event EventStatus, detail NodeRecognitionNodeDetail)

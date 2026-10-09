@@ -1,6 +1,10 @@
 {
     "Startup": {
-        "action": "Custom",
-        "custom_action": "MyAct"
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "MyAct"
+            }
+        }
     }
 }

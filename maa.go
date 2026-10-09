@@ -177,14 +177,27 @@ func WithJSONDecoder(decoder JSONDecoder) InitOption {
 	}
 }
 
-// Init loads the dynamic library related to the MAA framework and registers its related functions.
+// Init loads MaaFramework, MaaToolkit, MaaAgentServer, and MaaAgentClient and
+// registers their functions. All four libraries must come from the same
+// MaaFramework release compatible with this binding.
+//
 // It must be called before invoking any other MAA-related functions.
 // Once Init has succeeded, later calls to Init are no-ops and any options
 // passed to them are discarded.
+//
+// A missing library is reported by [LibraryLoadError], and a missing required
+// symbol by [SymbolLookupError]. Use errors.As to inspect these errors.
+// On failure, Init attempts to unload the libraries it opened. If cleanup
+// fails, its error is included in the returned error, and handles for libraries
+// that could not be unloaded are retained. Call [Release] to retry cleanup
+// before calling Init again.
+//
 // Calls to Init and Release are serialized. Other MAA-related functions must
 // not run concurrently with Init or Release.
+//
 // On Windows, DLL search configuration changed through WithLibDir is not
 // restored if initialization fails; see [WithLibDir] for its process-wide scope.
+//
 // Note: If this function is not called before other MAA functions, it will trigger a null pointer panic.
 func Init(opts ...InitOption) (err error) {
 	lifecycleMu.Lock()

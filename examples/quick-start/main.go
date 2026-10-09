@@ -1,31 +1,37 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/MaaXYZ/maa-framework-go/v4"
 )
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func run() (err error) {
 	if err := maa.Init(); err != nil {
-		fmt.Println("Failed to init MAA:", err)
-		os.Exit(1)
+		return fmt.Errorf("init MAA: %w", err)
 	}
-	if err := maa.ConfigInitOption("./", "{}"); err != nil {
-		fmt.Println("Failed to init config:", err)
-		os.Exit(1)
-	}
-	tasker, err := maa.NewTasker()
-	if err != nil {
-		fmt.Println("Failed to create tasker")
-		os.Exit(1)
-	}
+	defer func() {
+		if releaseErr := maa.Release(); releaseErr != nil {
+			err = errors.Join(err, fmt.Errorf("release MAA: %w", releaseErr))
+		}
+	}()
 
 	devices, err := maa.FindAdbDevices()
 	if err != nil {
-		fmt.Println("Failed to find adb devices:", err)
-		os.Exit(1)
+		return fmt.Errorf("find ADB devices: %w", err)
+	}
+	if len(devices) == 0 {
+		return errors.New("no ADB devices found; connect a device or start an emulator")
 	}
 	device := devices[0]
 	ctrl, err := maa.NewAdbController(
@@ -37,46 +43,76 @@ func main() {
 		"path/to/MaaAgentBinary",
 	)
 	if err != nil {
-		fmt.Println("Failed to create ADB controller")
-		os.Exit(1)
+		return fmt.Errorf("create ADB controller: %w", err)
 	}
-	defer ctrl.Destroy()
+	defer func() {
+		if destroyErr := ctrl.Destroy(); destroyErr != nil {
+			err = errors.Join(err, fmt.Errorf("destroy ADB controller: %w", destroyErr))
+		}
+	}()
+
 	connectJob, err := ctrl.PostConnect()
 	if err != nil {
-		fmt.Println("Failed to post connect:", err)
-		os.Exit(1)
+		return fmt.Errorf("post connect: %w", err)
 	}
-	connectJob.Wait()
-	tasker.BindController(ctrl)
+	if !connectJob.Wait().Success() {
+		return errors.New("ADB controller connection failed")
+	}
 
 	res, err := maa.NewResource()
 	if err != nil {
-		fmt.Println("Failed to create resource")
-		os.Exit(1)
+		return fmt.Errorf("create resource: %w", err)
 	}
-	defer res.Destroy()
+	defer func() {
+		if destroyErr := res.Destroy(); destroyErr != nil {
+			err = errors.Join(err, fmt.Errorf("destroy resource: %w", destroyErr))
+		}
+	}()
+
 	bundleJob, err := res.PostBundle("./resource")
 	if err != nil {
-		fmt.Println("Failed to post bundle:", err)
-		os.Exit(1)
+		return fmt.Errorf("post resource bundle: %w", err)
 	}
-	bundleJob.Wait()
-	tasker.BindResource(res)
-	defer tasker.Destroy()
+	if !bundleJob.Wait().Success() {
+		return errors.New("resource bundle loading failed")
+	}
+
+	// Create the tasker last so deferred cleanup destroys it before its bindings.
+	tasker, err := maa.NewTasker()
+	if err != nil {
+		return fmt.Errorf("create tasker: %w", err)
+	}
+	defer func() {
+		// Wait can return just before the native task runner becomes idle.
+		for tasker.Running() {
+			time.Sleep(time.Millisecond)
+		}
+		if destroyErr := tasker.Destroy(); destroyErr != nil {
+			err = errors.Join(err, fmt.Errorf("destroy tasker: %w", destroyErr))
+		}
+	}()
+
+	if err := tasker.BindController(ctrl); err != nil {
+		return fmt.Errorf("bind controller: %w", err)
+	}
+	if err := tasker.BindResource(res); err != nil {
+		return fmt.Errorf("bind resource: %w", err)
+	}
 	if !tasker.Initialized() {
-		fmt.Println("Failed to init MAA.")
-		os.Exit(1)
+		return errors.New("tasker initialization check failed")
 	}
 
 	taskJob, err := tasker.PostTask("Startup")
 	if err != nil {
-		fmt.Println("Failed to post task:", err)
-		os.Exit(1)
+		return fmt.Errorf("post task: %w", err)
 	}
-	detail, err := taskJob.Wait().GetDetail()
+	if !taskJob.Wait().Success() {
+		return errors.New("Startup task failed")
+	}
+	detail, err := taskJob.GetDetail()
 	if err != nil {
-		fmt.Println("Failed to get task detail:", err)
-		os.Exit(1)
+		return fmt.Errorf("get task detail: %w", err)
 	}
 	fmt.Println(detail)
+	return nil
 }

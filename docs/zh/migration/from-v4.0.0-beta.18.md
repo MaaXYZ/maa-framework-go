@@ -1,5 +1,9 @@
 # v4.0.0-beta.18 → v4.0.0-beta.19 迁移指南
 
+[English](../../en/migration/from-v4.0.0-beta.18.md) | 简体中文
+
+本指南只覆盖 **v4.0.0-beta.18 → v4.0.0-beta.19** 的迁移。继续升级时，请阅读 [beta.19 → v4.0.0 指南](from-v4.0.0-beta.19.md)。
+
 本版本的核心变化是**明确了原生句柄的所有权与生命周期**，并让 `Init` / `Release` 在并发与异常路径下安全。多数代码无需改动即可编译，但以下几类写法在运行时的行为会改变，请逐项检查。
 
 ## 升级前检查清单
@@ -16,7 +20,7 @@
 
 beta.19 绑定了 MaaFramework v5.13.0 新增的导出符号（`MaaLinuxControllerCreate`、`MaaToolkitGamescopeInstance*`、`MaaToolkitPortalHelper*`），这些符号在所有平台的动态库中都会导出，因此**任何平台**都需要 MaaFramework ≥ v5.13.0。
 
-`Init` 现在会在注册前一次性解析全部符号，缺失时返回 `*SymbolLookupError`（此前会在调用到缺失函数时才出问题）：
+`Init` 现在会逐库在注册前解析全部符号，缺失时返回 `*SymbolLookupError`（此前会在调用到缺失函数时才出问题）：
 
 ```go
 if err := maa.Init(maa.WithLibDir(libDir)); err != nil {
@@ -29,7 +33,7 @@ if err := maa.Init(maa.WithLibDir(libDir)); err != nil {
 }
 ```
 
-## Breaking Change
+## 破坏性变更
 
 ### API 变更概览
 
@@ -65,14 +69,14 @@ if err := maa.Init(maa.WithLibDir(libDir)); err != nil {
 旧版本中先销毁被绑定的对象也会释放原生对象；新版本会返回 `ErrBound`，对象**不会被释放**，并进一步导致 `Release` 返回 `ErrLibraryInUse`。
 
 ```go
-// ❌ 旧写法：defer 按 LIFO 执行，res 会先于 tasker 销毁
+// 迁移前：defer 按 LIFO 执行，res 会先于 tasker 销毁
 tasker, _ := maa.NewTasker()
 defer tasker.Destroy()
 res, _ := maa.NewResource()
 defer res.Destroy() // 执行时 tasker 仍绑定 res → ErrBound，被静默忽略
 tasker.BindResource(res)
 
-// ✅ 新写法：先创建并 defer 被绑定的对象，最后 defer tasker
+// 迁移后：先创建并 defer 被绑定的对象，最后 defer tasker
 ctrl, _ := maa.NewAdbController(...)
 defer ctrl.Destroy()
 res, _ := maa.NewResource()
@@ -117,7 +121,7 @@ if err := tasker.Destroy(); err != nil {
 - `GetTaskJob()` 返回一个失败的 Job，其 `Error()` 为 `ErrClosed`
 
 ```go
-// ❌ 回调返回后继续使用 ctx
+// 迁移前：回调返回后继续使用 ctx
 func (a *MyAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	go func() {
 		ctx.RunTask("Next") // 回调已返回 → ErrClosed
@@ -125,7 +129,7 @@ func (a *MyAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	return true
 }
 
-// ✅ 在回调内完成对 ctx 的使用
+// 迁移后：在回调内完成对 ctx 的使用
 func (a *MyAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	_, err := ctx.RunTask("Next")
 	return err == nil
@@ -183,7 +187,7 @@ ctrl, err := maa.NewLinuxController(`{
 - **自定义识别未命中时保留结果**：`CustomRecognitionRunner.Run` 返回 `(result, false)` 且 `result` 非 nil 时，`Box` 与 `Detail` 现在会传给 MaaFramework，出现在识别详情中（此前被丢弃）。识别是否命中仍只由第二个返回值决定；返回 nil 始终视为未命中。若旧代码在未命中时随手返回了占位结果，请改为返回 `nil, false`。
 - **动作详情为 `null` 时视为空**：`ActionDetail` 解析时 `"null"` 与 `""`、`"{}"` 一样得到 nil 结果，不再报解析错误。
 
-## Added
+## 新增
 
 | 类别 | 新增 API | 说明 |
 |------|---------|------|
@@ -197,7 +201,7 @@ ctrl, err := maa.NewLinuxController(`{
 | 错误 | `SymbolLookupError` | `Init` 找不到所需导出符号时返回 |
 | 平台 | Android | `GOOS=android` 时加载 `lib*.so`；需要 `CGO_ENABLED=1` 并使用 Android NDK 工具链编译 |
 
-## Fixed
+## 修复
 
 - 明确原生句柄的所有权，修复借用对象被重复释放、对象销毁后仍被回调访问等问题（#46）
 - `Init` / `Release` 在并发调用和加载失败路径下安全，失败后可重试（#47）

@@ -1,469 +1,231 @@
-## Breaking Change
+# Changelog
 
-### API 变更概览
+## 变更总览（v3.6.0-beta.5 → v4.0.0，发布准备草稿）
 
-本次重大变更将所有方法的返回类型从 `bool` 或 `(T, bool)` 改为标准的 Go 错误处理模式：
+本总览及下一节以提交 [`fb84de6`](https://github.com/MaaXYZ/maa-framework-go/tree/fb84de66f3db7514b15d0063d515cd1272d558ff) 为固定核验终点。`v4.0.0` 尚未打 tag；正式版确定后需复核终点差异，再冻结这份里程碑记录。
 
-- **构造函数**：`*T` → `(*T, error)`
-- **设置方法**：`bool` → `error`
-- **查询方法**：`(T, bool)` → `(T, error)`
-- **运行方法**：`T` → `(T, error)`
-- **提交方法**：`*Job` / `*TaskJob` → `(*Job, error)` / `(*TaskJob, error)`
+### 破坏性变更与升级入口
 
-### 受影响的组件
+- Go 模块由 `/v3` 升为 `/v4`；构造、配置、查询与运行接口采用 Go `error`，异步 `Post*` 也直接报告提交错误。升级时分别检查调用错误与 Job 的执行状态。
+- 原生对象明确所有者与借用视图，`Destroy` 返回错误并保护仍被持有或使用的句柄；回调的 Context 仅在该次回调内有效。
+- Pipeline 构造器移除 `Node` 类型前缀与大量配置 option，改用参数结构及节点链式设置。时间、可选指针、类别选择、锚点与列表编码均有需要迁移的变化。
+- v3 用户见 [v3 → v4 迁移指南](docs/zh/migration/from-v3.md)；v4 用户按起点选择 [beta.18 → beta.19](docs/zh/migration/from-v4.0.0-beta.18.md) 或 [beta.19 → 发布准备快照](docs/zh/migration/from-v4.0.0-beta.19.md)。
 
-#### AgentClient
+### 错误处理模型
 
-| 变更类型 | 旧 API | 新 API |
-|---------|--------|--------|
-| 构造函数 | `NewAgentClient(string)` <br> `NewAgentClientTcp(uint16)` | `NewAgentClient(opts ...AgentClientOption)` |
-| 设置方法 | `bool` 返回型 | `error` 返回型 |
-| 查询方法 | `(T, bool)` 返回型 | `(T, error)` 返回型 |
+- 构造失败、参数编码失败、原生提交失败及详情不可用通过 `error` 报告；`Job.Error` 保留提交和生命周期诊断，异步执行结果仍由状态表示。
+- 初始化提供库加载与符号缺失诊断，失败时尝试清理，卸载失败可重试。详单见下方「模块路径与错误返回」、beta.19 节及发布准备节的破坏性变更与修复。
 
-**受影响的方法**：
-- 设置方法：`BindResource`, `Connect`, `Disconnect`, `SetTimeout`, `RegisterResourceSink`, `RegisterControllerSink`, `RegisterTaskerSink`
-- 查询方法：`Identifier`, `GetCustomRecognitionList`, `GetCustomActionList`
+### 所有权、生命周期与回调
 
-**新增选项函数**：
-- `WithIdentifier(identifier string) AgentClientOption`
-- `WithTcpPort(port uint16) AgentClientOption`
+- 按对象依赖收束工作并销毁，再卸载动态库；借用对象、绑定关系、活动调用、Job 与回调均参与销毁保护。
+- 后续修复加强 Job 并发等待、停止后的空闲确认、回调清理与注册串行化。行为契约见固定快照的 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/doc.go)，区间详单见 beta.19 与发布准备节。
 
-#### Context
+### Pipeline 配置与详情
 
-| 变更类型 | 受影响的方法 |
-|---------|-------------|
-| 运行方法 | `RunTask`, `RunRecognition`, `RunAction`, `RunRecognitionDirect`, `RunActionDirect` |
-| 设置方法 | `OverridePipeline`, `OverrideNext`, `OverrideImage`, `SetAnchor`, `ClearHitCount` |
-| 查询方法 | `GetNodeJSON`, `GetAnchor`, `GetHitCount` |
+- 类型化构造器生成嵌套 Pipeline v2 JSON，读取兼容 v1 与协议简写；未知类型可保存原始参数，原生支持仍由所加载库决定。
+- 配置补齐 OCR 颜色过滤、Screencap、压力、自动抬起、Shell 超时、DirectHit ROI、检测阈值和标签类别选择，明确省略、显式零与空集合的区别。
+- 节点详情改为按需查询，补齐画面稳定等待的详情与事件，并修复任务、图像、结果及参数编解码。详单分别见三个区间的 Pipeline、详情、新增与修复条目。
 
-**补充说明**：`OverrideNext` 现改为接收 `[]NextItem`。
+### 控制器与平台
 
-#### Tasker / Controller / Resource
+- 增加 macOS、Android Native、Linux、录制与回放控制器及权限、gamescope、portal 工具；Linux 的终点入口为 `NewLinuxController`，中途新增的 `NewWlRootsController` 已移除。
+- 扩展相对移动、窗口恢复、控制器信息与 Win32 输入能力；截图设置支持组合、验证与覆盖参考宽高。Android 增加动态库加载分支。
+- 图像使用 RGBA，提供可复用截图内存与像素转换快速路径。详单见早期区间的控制器与性能、beta.19 的平台条目及发布准备节。
 
-| 变更类型 | 受影响的方法 |
-|---------|-------------|
-| 提交方法 | Tasker：`PostTask`, `PostRecognition`, `PostAction`, `PostStop`；Controller：`PostConnect`, `PostClick`, `PostSwipe`, `PostScreencap` 等全部 `Post*`；Resource：`PostBundle`, `PostOcrModel`, `PostPipeline`, `PostImage` |
+### 命名对齐与开发工具
 
-**提交错误语义**：所有 `Post*` 方法统一返回 `(Job, error)`。提交失败分为两类：
-- wrapper 预检失败（如 JSON 序列化失败、对象已关闭）：不会调用原生提交接口，直接返回一个终态失败的 Job 和非 nil 的 error
-- 原生提交接口返回 invalid ID：原生接口已被调用但拒绝了本次提交，Go 侧将其转换为同样的终态失败 Job 和 error
+- 修正节点、图像覆盖、推理设备与 Win32 枚举命名，任务和识别结果结构对齐原生 API；详单见早期区间的「详情、回调与命名」。
+- API 检查工具覆盖原生符号与签名、回调 ABI、常量、事件和可选 Pipeline schema，使用同一原生版本的输入核验绑定；详单见早期区间的开发工具及发布准备节。
 
-两种失败的共同行为：
-- 返回的 `error` 非 nil 当且仅当提交失败
-- 忽略 error 的调用方在 `Status()` / `Wait()` 上得到失败终态，而不是一个永远 pending 的 Job
-- `Error()` 保留为镜像访问器：对提交失败的 Job 读取同一提交错误；成功提交的 Job 在拥有者关闭后也会返回 `ErrClosed`（Job 不再可用）
-
-Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `WaitFreezes` 的参数序列化失败同样返回错误，此时不会提交到原生层。
+## v4.0.0（发布准备草稿）
 
-**图像参数校验**：`Tasker.PostRecognition`、`Context.RunRecognition`、`Context.RunRecognitionDirect`、`Context.OverrideImage`、`Resource.OverrideImage` 现在会校验图像参数，图像为 nil 或宽高为 0 时返回错误，不会调用原生接口（旧版对空图静默清空 buffer，对 nil 图直接 panic）。
+本节记录 `v4.0.0-beta.19` → `fb84de6` 的净变化，完整差异见 [固定提交对比](https://github.com/MaaXYZ/maa-framework-go/compare/v4.0.0-beta.19...fb84de66f3db7514b15d0063d515cd1272d558ff)。这不是已发布正式版记录。升级操作见 [迁移指南](docs/zh/migration/from-v4.0.0-beta.19.md)；API 契约链接固定快照源码，正式 tag 确定后再切换到对应 godoc。
 
-**并发与回调约定**：
+### 破坏性变更
 
-- `Job` / `TaskJob` 的等待与状态查询可以并发执行，多个等待者共享完成结果；对象不可复制。Tasker 绑定 getter 可与绑定变更并发调用。
-- sink 与自定义识别、动作的注册变更必须在实例及关联 tasker 静止时执行，不得在回调中变更。配置事务会串行化，原生注册失败会回滚 Go 回调；`Add*Sink` 失败仍返回 0。
-- 自定义 Controller 的回调保留至原生析构完成，析构期间的 `KeyUp` / `TouchUp` 可正常执行。`Destroy` 成功返回后不再调用用户回调；回调内销毁返回 `ErrInCallback`。
-- stop 使旧 Job ID 失效时，`Wait` 返回不代表原生工作已经结束。Controller 销毁可能提交 inactive 动作并暂时返回 `ErrInUse`，需等待后重试。
-- AgentServer 只允许在启动前配置；活动阶段的自定义注册和再次启动返回 `ErrInUse`，添加 sink 返回 0。未 detach 的服务关闭后不支持重启：启动和自定义注册返回 `ErrClosed`，添加 sink 返回 0，`Release` 后再次 `Init` 也不会恢复服务，但仍可 `Release`，重复关闭不再调用原生接口。自定义识别与动作共用名称，重名注册返回错误并保留已有注册。生命周期操作需由调用方串行协调。
+- Controller 的全部 `Post*` 与 Resource 的 `PostBundle`、`PostOcrModel`、`PostPipeline`、`PostImage` 由 `*Job` 改为 `(*Job, error)`；Tasker 的 `PostTask`、`PostRecognition`、`PostAction`、`PostStop` 由 `*TaskJob` 改为 `(*TaskJob, error)`。提交失败同时返回非 nil 的终态失败 Job 和 `error`，原生返回无效提交 ID 也立即报告错误。
+- `Tasker.PostTask` 及 `Context.RunTask`、`RunRecognition`、`RunAction`、`WaitFreezes` 不再把参数编码失败静默替换为 `{}`，改为返回错误并跳过原生执行。
+- `LongPressParam.Duration`、`LongPressKeyParam.Duration` 由 `time.Duration` 改为 `*time.Duration`；神经网络分类与检测的 `Expected` 由 `[]int` 改为 `ClassSelectors`。
+- TemplateMatch / FeatureMatch 的 `Template`、OCR 的 `Expected`、神经网络分类/检测的 `Labels` 由 `[]string` 改为 `StringList`。这些字段及神经网络 `Expected`、TemplateMatch `Threshold`、Swipe `End` 的非 nil 空列表现在写出 `[]`；`Node.Anchor` 的非 nil 空 map 写出 `{}`。
+- 动作/识别的值类型 offset 与 `WaitFreezesParam.TargetOffset` 的零 `Rect` 现在省略，不再写出零数组；`Rect` 解码限定为 2 或 4 个整数，点简写扩展为 1×1 框。`Target` 编解码拒绝 false、null 与无效形状。
+- `Node.UnmarshalJSON` 替换整个节点，未出现字段及 `Name` 重置；`CustomActionParam.CustomActionParam` 中的数字解码为 `json.Number`，不再使用 `float64`。
+- `SetScreenshot` 从仅应用最后一项改为组合设置，拒绝重复/冲突选项、非正目标尺寸和无效插值方法。
+- `GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 无可用详情时由 `(nil, nil)` 改为返回错误。
+- Agent Server 增加生命周期与配置状态检查：运行、已 Join 或已 detach 时不允许重新启动或配置；未 detach 时关闭后进入永久关闭态，不能通过 `Release` / `Init` 重启。具体边界见 [Agent Server API](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/agent_server.go)。
 
-完整使用边界见 [并发与回调](README_zh.md#并发与回调)。
+### 新增
 
-#### TaskJob
+- `RawActionParam`、`RawRecognitionParam` 保留未知类型的参数 JSON；已知类型的参数错误仍报告失败，不回退到 raw。
+- `ClassSelector`、`ClassSelectors`、`ClassIndex`、`ClassLabel`，支持整数或标签及混合类别列表；`StringList` 支持单字符串输入。
+- Click / LongPress / Swipe / MultiSwipe 的 `Pressure *int`；TouchDown / TouchMove / KeyDown / KeyUp 的 `AutoUp *bool`；`ShellParam.ShellTimeout *time.Duration`；`DirectHitParam.ROI` / `ROIOffset`；`NeuralNetworkDetectParam.Threshold`。
+- `TemplateMatchMethodSQDIFF_NORMED`、`FeatureMatchMethodSURF`；SURF 需要原生库支持 OpenCV xfeatures2d。
+- `Pipeline.UnmarshalJSON` 从节点名映射读取 Pipeline、补上 `Node.Name`、跳过 `$` 元数据并规范化锚点简写；Node 与参数解码兼容 v1 扁平格式及协议的单项/列表简写，编码统一为规范 v2。
+- `WithScreenshotTargetExpand` 按比例覆盖参考宽高；`Controller.SetBackgroundManagedKeys` 配置 Win32 后台托管键；`ControllerFeatureNoScalingTouchPoints` 禁用自定义控制器的触摸点自动缩放。
+- `EventNodeWaitFreezes`、`NodeWaitFreezesDetail`、可选 `ContextWaitFreezesEventSink` 与 `OnNodeWaitFreezesInContext`；`ResourceLoadingDetail.Type` 区分加载类型。
+- API 检查工具扩展回调 ABI、结构布局与 trampoline、更多常量组、事件分发及可选 Pipeline v2 类型/字段检查；新增 `--pipeline-schema` 与带理由的 exclusions，强化配置和输入验证。
 
-| 变更类型 | 受影响的方法 |
-|---------|-------------|
-| 查询方法 | `GetDetail` |
-| 设置方法 | `OverridePipeline` |
-| 新增方法 | `Error() error` |
+### 修复
 
-**错误处理增强**：当任务提交过程中发生错误（如 JSON 序列化失败）时，`PostTask` 会返回终态失败的 `TaskJob` 和对应的 error。此时：
-- `Status()` 返回 `StatusFailure`
-- `Error()` 返回具体的错误信息
-- `Wait()` 会跳过等待直接返回
-- `GetDetail()` 和 `OverridePipeline()` 会返回保存的错误
+- Job / TaskJob 的等待与状态查询增加并发保护，多个等待者共享完成结果；停止使 Job ID 无效后，销毁仍需确认原生工作空闲，避免提前释放。契约见 [Job](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/job.go) 与各对象的 Destroy 注释。
+- 事件与自定义控制器回调关联所有者，销毁等待已接纳回调结束并阻止后续用户回调；自定义控制器回调保留至原生销毁完成，使 KeyUp / TouchUp 可在清理阶段释放输入。
+- sink 与 Resource runner 注册操作串行化；原生注册失败时清理 Go 回调记录。Resource / AgentServer 拒绝 nil runner；Resource 注销未知名称成为成功空操作，外部注册的名称保留并返回错误。
+- 图像、矩形等缓冲区创建和写入失败传播到调用方；空图像返回错误，空 buffer 读取返回真正的 nil 图像。
+- Action / Recognition 缺少 `param` 时读取对象内平铺参数；And / Or 内联识别输出正确的 `recognition` 嵌套对象；补齐 `key_code`、OCR `text` 兼容及简写解码，修复复用参数对象时的旧值残留。Swipe 动作结果解析失败时不再部分修改接收值。
+- 无节点任务保留 Entry / Status，节点详情跳过 ID 为 0 的子详情；Shell 输出及自定义识别 detail 保留内嵌 NUL。
+- AgentClient 正的不足 1ms 通信超时向上取整为 1ms；Windows 空库目录初始化保留当前 DLL 搜索配置；Win32 截图方式输出对齐 `DXGI_DesktopDup` / `DXGI_DesktopDup_Window`，解析兼容旧名称。
 
-#### Controller
-
-| 变更类型 | 受影响的方法 |
-|---------|-------------|
-| 构造函数 | `NewAdbController`, `NewPlayCoverController`, `NewWin32Controller`, `NewLinuxController`, `NewMacOSController`, `NewAndroidNativeController`, `NewReplayController`, `NewRecordController`, `NewGamepadController`, `NewCustomController`, `NewBlankController`, `NewCarouselImageController` |
-| 设置方法 | `SetScreenshot`（改用 Option 模式）, `SetMouseLockFollow` |
-| 查询方法 | `GetShellOutput`, `CacheImage`, `CacheImageInto`, `GetUUID`, `GetResolution`, `GetInfo` |
-
-**移除方法**：`SetScreenshotTargetLongSide`, `SetScreenshotTargetShortSide`, `SetScreenshotUseRawSize`
-**移除构造函数**：`NewCarouselImageController` 已移除。若仅需空操作控制器，请使用 `NewBlankController()`；若需基于录制数据回放，请使用 `NewReplayController(recordingPath)`，录制入口为 `NewRecordController(inner, recordingPath)`。
-**新增**：`SetScreenshot(opts ...ScreenshotOption) error` 与配套选项函数；新增 `WithScreenshotResizeMethod(...)` / `ScreenshotResizeMethod*` 常量，以及 `SetMouseLockFollow(enabled bool) error`
-**截图选项组合与校验**：`SetScreenshot` 现在应用全部可组合的选项，不再只应用最后一个。长边、短边、Expand 目标在同次调用中互斥，原始尺寸 `true` 与尺寸目标互斥，同一设置重复指定也返回错误；尺寸须为正数，插值只允许 0 到 4。参数错误在任何原生修改之前返回；原生 setter 失败时保留此前成功的修改并跳过后续设置。分次调用仍保留原始尺寸模式下的目标与插值，关闭该模式后恢复缩放。示例及完整规则见 [Controller.SetScreenshot](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#Controller.SetScreenshot)。
-**新增控制器构造函数**：`NewLinuxController(configJson string)`、`NewMacOSController(...)`、`NewAndroidNativeController(...)`、`NewReplayController(...)`、`NewRecordController(...)`
-**接口变更**：
-- `CustomController` 接口新增 `RelativeMove(dx, dy int32) bool`、`Shell(cmd string, timeout int64) (string, bool)`、`GetInfo() (string, bool)` 必须实现方法。已有实现若无需支持，可返回 no-op 成功值
-- `NewWlRootsController` 已移除，改用 `NewLinuxController(configJson string)`；通过 JSON 配置选择截图与输入方式，Wlr 输入可用 `use_win32_vk_code` 将按键视为 Win32 VK 键码。
-**Win32 InputMethod 命名对齐**：
-- `InputSendMessageWithCursorPosAndBlockInput` → `InputSendMessageWithWindowPos`
-- `InputPostMessageWithCursorPosAndBlockInput` → `InputPostMessageWithWindowPos`
-**截图缓存类型变更**：`Controller.CacheImageInto` 入参与返回值由 `*image.NRGBA` 调整为 `*image.RGBA`
-
-#### Tasker
-
-| 变更类型 | 受影响的方法 |
-|---------|-------------|
-| 构造函数 | `NewTasker` |
-| 查询方法 | `GetLatestNode`, `GetNodeDetail`, `GetTaskDetail`, `GetWaitFreezesDetail` |
-| 设置方法 | `BindResource`, `BindController`, `ClearCache` |
-
-**补充说明**：`TaskDetail` 不再预取完整 `NodeDetail` 列表，现改为返回懒加载的 `Nodes []NodeRef`；可通过 `NodeRef.GetDetail()` 或 `Tasker.GetNodeDetail(nodeId)` 按需获取节点详情。
-**新增 WaitFreezes 查询**：`Tasker.GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error)` 可根据回调中的 `wf_id` 查询阶段、耗时、识别 ID 列表和 ROI。
-**详情查询错误语义**：`GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 在无对应详情时返回非 nil 的 error，不再返回 `(nil, nil)`。
-**任务详情修复**：`GetTaskDetail` 在没有记录节点时仍返回原生任务的 `Entry` 和 `Status`，不再返回空入口和 `StatusInvalid`。
-
-#### Resource
-
-| 变更类型 | 受影响的方法 |
-|---------|-------------|
-| 构造函数 | `NewResource` |
-| 设置方法 | `UseCPU`, `UseDirectml`, `UseCoreml`, `UseAutoExecutionProvider`, `RegisterCustomRecognition`, `UnregisterCustomRecognition`, `ClearCustomRecognition`, `RegisterCustomAction`, `UnregisterCustomAction`, `ClearCustomAction`, `OverridePipeline`, `OverrideNext`, `OverrideImage`, `Clear` |
-| 查询方法 | `GetNodeJSON`, `GetHash`, `GetNodeList`, `GetCustomRecognitionList`, `GetCustomActionList`, `GetDefaultRecognitionParam`, `GetDefaultActionParam` |
-
-**补充说明**：`OverrideNext` 现改为接收 `[]NextItem`。
-
-#### Custom Action and Recognition
-
-| 变更类型 | 旧 API | 新 API |
-|---------|--------|--------|
-| 类型别名 | `CustomAction` | `CustomActionRunner` |
-| 类型别名 | `CustomRecognition` | `CustomRecognitionRunner` |
-| 回调参数 | `CustomActionArg.TaskDetail *TaskDetail` | `CustomActionArg.TaskID int64` |
-| 回调参数 | `CustomRecognitionArg.TaskDetail *TaskDetail` | `CustomRecognitionArg.TaskID int64` |
-
-**补充说明**：自定义识别与动作回调默认不再预取任务详情。若确有需要，请通过 `Tasker.GetTaskDetail(taskId int64)` 按需查询。
-`CustomActionFunc` 与 `CustomRecognitionFunc` 可将普通函数直接适配为对应 Runner，并传给 `Resource.RegisterCustomAction` / `Resource.RegisterCustomRecognition`。
-
-#### Global Configuration
-
-| 变更类型 | 受影响的方法 |
-|---------|-------------|
-| 设置方法 | `SetLogDir`, `SetSaveDraw`, `SetStdoutLevel`, `SetDebugMode`, `SetSaveOnError`, `SetDrawQuality`, `SetRecoImageCacheLimit`, `LoadPlugin` |
-
-**补充说明**：
-- `InitConfig` 已改为私有类型 `initConfig`，不再对外暴露。
-- `InitOption` 签名改为 `type InitOption func(*initConfig)`，由于参数类型私有，包外不再支持自定义 `InitOption`，请使用 `WithXxx` 函数。
-- `Init()` 不再隐式应用默认全局配置，仅在显式传入对应 `WithXxx` 时才会调用设置。
-- `defaultInitConfig()` 已移除，`Init()` 现在直接使用 `initConfig{}` 初始化。
-- `WithPluginPaths` 会对输入切片进行拷贝，避免外部后续修改影响已构建的选项。
-- `Init()` 与 `Release()` 现为幂等操作：重复初始化或在未初始化状态下释放都会直接返回 `nil`；原导出的 `ErrAlreadyInitialized`、`ErrNotInitialized` 已移除。
-- `Init()` 过程中若某个原生库加载失败，会自动释放此前已成功加载的库，避免残留半初始化状态。
-- `LibraryLoadError` 现在会稳定包含库名与尝试加载的完整路径，便于排查动态库装载问题。
-
-#### Toolkit
-
-| 变更类型 | 受影响的方法 |
-|---------|-------------|
-| 设置方法 | `ConfigInitOption` |
-| 查询方法 | `FindAdbDevices`, `FindDesktopWindows` |
-
-**新增 macOS 权限接口**：`MacOSCheckPermission`、`MacOSRequestPermission`、`MacOSRevealPermissionSettings`，用于查询/申请权限并跳转系统设置。
-
-### 类型名称修正
-
-| 旧 API | 新 API |
-|--------|--------|
-| `InterenceDevice` | `InferenceDevice` |
-| `InterenceDeviceAuto` | `InferenceDeviceAuto` |
-| `OverriderImage` | `OverrideImage` |
-
-### 方法重命名
-
-- `Context.GetNodeData` → `Context.GetNode`
-
-### 类型与 API 重命名（refactor/node）
-
-| 旧名称 | 新名称 |
-|--------|--------|
-| `NodeNextItem` | `NextItem` |
-| `NodeMultiSwipeItem` | `MultiSwipeItem` |
-| `NodeAction` | `Action` |
-| `NodeRecognition` | `Recognition` |
-| 各 `Node*Param`（如 `NodeCustomActionParam`） | 去掉 `Node` 前缀（如 `CustomActionParam`、`ClickParam`、`OCRParam` 等） |
-
-**Action 相关**：动作定义由 `node_action.go` 迁移至 `action.go`；构造函数统一为单参数（如 `ActClick(p ClickParam)`），不再使用 variadic。`ActMultiSwipe` 使用 `MultiSwipeItem`（原 `NodeMultiSwipeItem`）。
-
-**Recognition 相关**：识别定义由 `node_recognition.go` 迁移至 `recognition.go`。`WithBoxIndex` 重命名为链式方法 `SetBoxIndex`（如 `RecAnd(...).SetBoxIndex(2)`）。`RecOCR` 由 variadic 改为单参：`RecOCR(p OCRParam)`。各算法的 `OrderBy` 枚举按算法拆分为独立类型（与 C++ 对齐）。
-
-**Context**：`Context.WaitFreezes` 参数收窄为 `*WaitFreezesParam`。
-
-**行为说明**：动作/识别构造函数会对 slice 等参数做 clone，避免与调用方共享底层数组。
-
-### Node Anchor API 变更
-
-- `Node.Anchor`：`[]string` → `map[string]string`（与 C++ `GetNodeData` 输出一致，`anchor` 为对象）
-- `Node.SetAnchor`：`SetAnchor([]string)` → `SetAnchor(map[string]string)`
-- `Pipeline.UnmarshalJSON` 接受 `anchor` 字符串或字符串数组，并将每个锚点解析为包含它的节点名（pipeline 的 map key）；单独解码 `Node` 只接受对象形式，即使其 `Name` 已设置。对象形式保留目标节点名，不检查目标是否存在：
-  - `{"A":"CurrentNode"}` 表示锚点指向目标节点
-  - `{"A":""}` 表示显式清除锚点
-- `Node.Anchor` 为 nil 时编码省略 `anchor`，覆盖已有原生节点时继承其配置；非 nil 空 map 编码为 `"anchor": {}`，清空该节点的 anchor 配置。`Pipeline` 解码 `"anchor": []` / `"anchor": {}` 时保留非 nil 空 map。清空配置不会移除已登记的运行时锚点，运行时清除仍使用对象中的空目标字符串。
-- `Node.AddAnchor(anchor)` 语义明确为快捷写法：设置 `anchor -> 当前节点名`
-- `Node.RemoveAnchor(anchor)` 保持为删除该配置项（移除 key）
-
-### NodeRecognition API 变更
-
-#### And/Or 识别：SubRecognitionItem 与 C++ GetNodeData 对齐
-
-与 C++ 端 `GetNodeData` 输出一致：`all_of` / `any_of` 数组元素为 **节点名字符串** 或 **内联识别对象**。Go 侧引入统一类型并调整 And/Or 构造方式。
-
-| 变更类型 | 旧 API | 新 API |
-|---------|--------|--------|
-| 子项类型（And） | `AllOf []*NodeAndRecognitionItem` | `AllOf []SubRecognitionItem` |
-| 子项类型（Or） | `AnyOf []*NodeRecognition` | `AnyOf []SubRecognitionItem` |
-| 内联项类型名 | `NodeAndRecognitionItem` | `InlineSubRecognition`（And/Or 通用） |
-| RecAnd 签名 | `RecAnd([]*NodeAndRecognitionItem, opts ...)` | `RecAnd(items ...SubRecognitionItem)`，BoxIndex 用链式 `.SetBoxIndex(n)` |
-| RecOr 签名 | `RecOr(anyOf []SubRecognitionItem)` | `RecOr(anyOf ...SubRecognitionItem)` |
-
-**新增类型与函数**：
-- `SubRecognitionItem`：表示一项子识别，可为节点名引用（`NodeName`）或内联识别（`Inline *InlineSubRecognition`），JSON 为 string 或 object。
-- `InlineSubRecognition`：v2 内联子识别（含 `sub_name` 与嵌套的 `recognition: {type, param}`），与 C++ `InlineSubRecognition` 对应。
-- `Ref(nodeName string) SubRecognitionItem`：按节点名引用。
-- `Inline(rec *Recognition, name ...string) SubRecognitionItem`：内联识别，`name` 可选（Or 常省略）。
-
-**受影响的方法与字段**：
-- `RecAnd(items ...SubRecognitionItem)`、`RecOr(anyOf ...SubRecognitionItem)`
-- `AndRecognitionParam.AllOf`、`OrRecognitionParam.AnyOf`
-- `Ref` / `Inline` 为子识别项构造的推荐写法（原 `AndItem`、`SubRecognitionRef`/`SubRecognitionInline` 已移除）。
-
-### Pipeline v2 协议对齐
-
-类型化的 pipeline 模型与构造器统一编码为 v2 的嵌套 `type` / `param` 对象格式。解码同时接受 v1 扁平识别/动作字段，以及省略 `param` 的识别/动作对象，并规范化为 v2 模型。此次同步 MaaFramework v5.14.2 的协议行为：
-
-- `next` / `on_error` 可解码单个节点值、节点名字符串，以及混合字符串和对象的数组；重编码为节点对象数组。成功解码会替换已有 `Node` / `Pipeline` 状态，失败则保留原状态；`Pipeline` 根据 map key 设置每个节点的 `Name`。
-- `Target` 的二维坐标 `[x, y]` 规范化为 `[x, y, 1, 1]`；`false`、坐标数量或类型不合法的 target 会被拒绝。
-- `Click`、`LongPress`、`Swipe` 和 `MultiSwipe` 补齐可区分继承与显式零值的 `pressure`；`ShellParam.ShellTimeout` 使用 `*time.Duration` 配置，JSON 编码为毫秒，支持显式 `0` 及 `-time.Millisecond` 无限等待。
-- `TouchMoveParam` 与 `KeyUpParam` 对齐共享的 `auto_up` JSON 字段，但该字段仅在 `TouchDown` / `KeyDown` 执行时生效。
-- `DirectHitParam` 支持 `ROI` 与 `ROIOffset`；`NeuralNetworkDetectParam` 支持 `Threshold`；新增 `TemplateMatchMethodSQDIFF_NORMED`（值 `1`）。
-- And/Or 的内联识别使用嵌套的 `recognition` 字段：`{ "sub_name": "...", "recognition": { "type": "...", "param": { ... } } }`。
-- 未知 Action/Recognition 类型的参数可通过 [`RawActionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawActionParam) / [`RawRecognitionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawRecognitionParam) 保留原始 JSON，用于读取和回写；这只是 Go 侧的透传能力，不代表 MaaFramework 原生库支持该未知类型。
-- `tools/api-check` 可根据同一发行版的 pipeline schema 检查 v2 类型、解码分支和字段覆盖，CI 可据此及时发现协议漂移。
-
-### 迁移示例
-
-#### Init 选项迁移（隐式默认 -> 显式传参）
-
-```go
-// 旧行为：Init() 会隐式应用部分默认全局配置
-_ = maa.Init()
-
-// 新行为：如需保持旧默认配置，请显式传入 WithXxx
-err := maa.Init(
-    maa.WithLogDir("./debug"),
-    maa.WithStdoutLevel(maa.LoggingLevelInfo),
-    maa.WithSaveDraw(false),
-    maa.WithDebugMode(false),
-)
-if err != nil {
-    // 处理错误
-}
-```
-
-#### InitOption 迁移（包外自定义 -> 内置 WithXxx）
-
-原来在包外自定义 `InitOption` 的代码需迁移为内置 `WithXxx` 函数。
-
-#### 构造函数迁移
-
-```go
-// 旧 API
-client := maa.NewAgentClient("7788")
-
-// 新 API
-client, err := maa.NewAgentClient(maa.WithIdentifier("7788"))
-if err != nil {
-    // 处理错误
-}
-```
-
-#### 调试控制器迁移（CarouselImageController → Blank / Replay）
-
-```go
-// 旧 API
-ctrl, err := maa.NewCarouselImageController("./images")
-
-// 新 API：仅需空操作 / 生命周期测试
-ctrl, err := maa.NewBlankController()
-
-// 新 API：需要基于录制文件回放截图与操作
-ctrl, err := maa.NewReplayController("./MaaRecording.jsonl")
-```
-
-#### 设置方法迁移（bool → error）
-
-```go
-// 旧 API
-ok := maa.SetLogDir("./logs")
-
-// 新 API
-err := maa.SetLogDir("./logs")
-if err != nil {
-    // 处理错误
-}
-```
-
-#### 查询方法迁移（(T, bool) → (T, error)）
-
-```go
-// 旧 API
-id, ok := client.Identifier()
-
-// 新 API
-id, err := client.Identifier()
-if err != nil {
-    // 处理错误
-}
-```
-
-#### 运行方法迁移（T → (T, error)）
-
-```go
-// 旧 API
-detail := ctx.RunTask("MyTask", pipeline)
-
-// 新 API
-detail, err := ctx.RunTask("MyTask", pipeline)
-if err != nil {
-    // 处理错误
-}
-```
-
-#### OverrideNext 迁移（[]string → []NextItem）
-
-```go
-// 旧 API
-err := ctx.OverrideNext("Entry", []string{"TaskA", "[JumpBack]TaskB"})
-
-// 新 API
-err := ctx.OverrideNext("Entry", []maa.NextItem{
-    {Name: "TaskA"},
-    {Name: "TaskB", JumpBack: true},
-})
-```
-
-#### 任务创建错误处理
-
-```go
-// 新 API：提交失败直接返回 error；wrapper 预检失败时不会提交到原生层
-taskJob, err := tasker.PostTask("entry", invalidOverride)
-if err != nil {
-    // 处理任务提交错误（如 JSON 序列化失败）；taskJob 为终态失败的 Job
-}
-```
-
-#### And/Or Recognition 迁移（SubRecognitionItem + Ref/Inline）
-
-```go
-// 旧 API（指针数组 + AndItem）
-rec := maa.RecAnd([]*maa.NodeAndRecognitionItem{
-    maa.AndItem("template", maa.RecTemplateMatch(...)),
-    maa.AndItem("color", maa.RecColorMatch(...)),
-}, maa.WithAndRecognitionBoxIndex(0))
-
-orRec := maa.RecOr([]maa.SubRecognitionItem{
-    maa.SubRecognitionInline(maa.AndItem("", maa.RecTemplateMatch(...))),
-})
-
-// 新 API（variadic + Ref/Inline）
-rec := maa.RecAnd(
-    maa.Ref("OtherNode"),                           // 节点名引用
-    maa.Inline(maa.RecTemplateMatch(...), "template"),
-    maa.Inline(maa.RecColorMatch(...), "color"),
-).SetBoxIndex(0)
-
-orRec := maa.RecOr(
-    maa.Inline(maa.RecTemplateMatch(...)),   // 无 sub_name 时省略第二参数
-    maa.Inline(maa.RecColorMatch(...)),
-)
-```
-
-#### Node Anchor 迁移（[]string → map[string]string）
-
-```go
-// 旧 API
-node.SetAnchor([]string{"X", "Y"})
-
-// 新 API（指向当前节点）
-node.SetAnchor(map[string]string{
-    "X": node.Name,
-    "Y": node.Name,
-})
-
-// 新 API（指向指定节点）
-node.SetAnchorTarget("X", "TargetNode")
-
-// 新 API（显式清除锚点）
-node.ClearAnchor("X") // 等价于 node.SetAnchorTarget("X", "")
-```
-
-### RecognitionResults.Best 类型修正
-
-`RecognitionResults.Best` 字段从 `[]*RecognitionResult` 修正为 `*RecognitionResult`，与 C++ 端 `best_result_`（`std::optional<Result>`）对齐。JSON 中 `best` 为单个对象或 `null`，而非数组。
-
-```go
-// 旧 API
-best := results.Best[0] // 按数组索引访问
-
-// 新 API
-best := results.Best // 直接使用，可能为 nil
-if best != nil {
-    // 使用 best
-}
-```
-
-### 字段名与 JSON Tag 对齐 C++
-
-以下字段名和 JSON tag 修正为与 C++ 序列化输出一致：
-
-| 结构体 | 旧字段 / JSON tag | 新字段 / JSON tag | C++ 对照 |
-|--------|-------------------|-------------------|----------|
-| `ShellActionResult` | `Timeout` / `"timeout"` | `ShellTimeout` / `"shell_timeout"` | `Actuator.cpp` |
-| `NodeNextListDetail` | `NextList` / `"next_list"` | `List` / `"list"` | `PipelineTask.cpp` |
-
-### NeuralNetworkClassifyResult 移除多余字段
-
-移除 `Raw []float64` 和 `Probs []float64` 字段。C++ 端 `NeuralNetworkClassifierResult` 的 `MEO_JSONIZATION` 仅导出 `cls_index, label, box, score`，`raw` 和 `probs` 不参与 JSON 序列化，Go 侧保留会导致永远为零值。
-
-## Added
-
-- `Tasker.GetRecognitionDetail(recId int64) (*RecognitionDetail, error)`
-- `Tasker.GetActionDetail(actionId int64) (*ActionDetail, error)`
-- `Tasker.GetWaitFreezesDetail(wfId int64) (*WaitFreezesDetail, error)` 与 `WaitFreezesDetail`
-- `CustomActionFunc`、`CustomRecognitionFunc`，用于将普通函数适配为 `CustomActionRunner` / `CustomRecognitionRunner`，可直接传给 `Resource.RegisterCustomAction` / `Resource.RegisterCustomRecognition`
-- `Resource.GetNode`
-- `Pipeline.GetNode`
-- `Pipeline.HasNode`
-- `Pipeline.RemoveNode`
-- `Pipeline.Len`
-- `Node.SetAnchorTarget`
-- `Node.ClearAnchor`
-- And/Or 识别：`SubRecognitionItem`、`InlineSubRecognition`、`Ref`、`Inline`（与 C++ GetNodeData 的 all_of/any_of 对齐；`RecAnd`/`RecOr` 均为 variadic）
-- `Recognition.SetBoxIndex`：链式方法，替代原 `WithBoxIndex`，指定 And 识别使用哪个子结果的 box
-- `WaitFreezesParam` 与 `Context.WaitFreezes(duration, box, *WaitFreezesParam)`：等待画面稳定
-- `NewMacOSController(windowID uint32, screencapMethod macos.ScreencapMethod, inputMethod macos.InputMethod) (*Controller, error)`，以及 `controller/macos` 子包中的 `ScreencapMethod` / `InputMethod` 枚举
-- `NewAndroidNativeController(configJson string) (*Controller, error)`
-- `NewReplayController(recordingPath string) (*Controller, error)`
-- `NewRecordController(inner *Controller, recordingPath string) (*Controller, error)`
-- OCR 颜色过滤：`OCRParam.ColorFilter` 字段 & `WithOCRColorFilter` 选项函数，指定 ColorMatch 节点名对图像进行颜色二值化后再送入 OCR 识别（适配 [MaaFramework#1145](https://github.com/MaaXYZ/MaaFramework/pull/1145)）
-- Controller inactive：`Controller.PostInactive() (*Job, error)` 与 `CustomController.Inactive() bool`，用于在任务结束后恢复窗口/输入状态（适配 [MaaFramework#1155](https://github.com/MaaXYZ/MaaFramework/pull/1155)；Win32 控制器会恢复窗口与解除输入阻塞，其他控制器为 no-op）
-- Screencap Action：新增 `ActionTypeScreencap` / `ActScreencap(ScreencapParam)`，支持在流水线动作中保存当前截图（适配 [MaaFramework#1165](https://github.com/MaaXYZ/MaaFramework/pull/1165)）
-- Win32 截图方式：`ScreencapMethod` 新增 `ScreencapAll`、`ScreencapForeground`、`ScreencapBackground`，并支持对应字符串解析/序列化
-- `Controller.SetMouseLockFollow(enabled bool) error`
-- `ScreenshotResizeMethod` / `WithScreenshotResizeMethod(method)`，用于指定截图缩放插值方式
-- Controller info：新增 `Controller.GetInfo() (string, error)`，以 JSON 格式获取控制器结构化信息（类型、构造参数、当前状态等）（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
-- `CustomController` 接口新增 `GetInfo() (string, bool)` 方法，自定义控制器可提供额外信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
-- `ControllerActionDetail` 新增 `Info map[string]any` 字段，控制器动作事件回调中包含控制器信息（适配 [MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）
-- WlRoots Controller：新增 NewWlRootsController(wlrSocketPath string) (*Controller, error)，支持通过 Wayland socket 创建 WlRoots 控制器（适配 [MaaFramework#1131](https://github.com/MaaXYZ/MaaFramework/pull/1131)）
-- Controller relative move：新增 `Controller.PostRelativeMove(dx, dy int32) (*Job, error)`，支持提交相对光标移动事件（适配 [MaaFramework#1189](https://github.com/MaaXYZ/MaaFramework/pull/1189)）
-- `CustomController.RelativeMove(dx, dy int32) bool` 与 `CustomController.Shell(cmd string, timeout int64) (string, bool)`，补齐自定义控制器的相对移动与 shell 能力
-- `MacOSPermission`、`MacOSCheckPermission`、`MacOSRequestPermission`、`MacOSRevealPermissionSettings`，用于检查或申请 macOS Screen Recording / Accessibility 权限
-
-## Fixed
-
-- `Context.GetTasker`、`Tasker.GetController`、`Tasker.GetResource` 现在会缓存返回的 Go wrapper，避免重复调用后旧 wrapper 的方法调用崩溃 ([#41](https://github.com/MaaXYZ/maa-framework-go/issues/41))
-
-## Performance
-
-- ImageBuffer RGBA 路径优化：`Set` 对 `*image.RGBA` 走直通转换路径，减少高频图像写入时的额外转换与分配开销
+## [v4.0.0-beta.19](https://github.com/MaaXYZ/maa-framework-go/compare/v4.0.0-beta.18...v4.0.0-beta.19)
+
+本节记录 v4.0.0-beta.18 → v4.0.0-beta.19 的净变化。升级操作见 [迁移指南](docs/zh/migration/from-v4.0.0-beta.18.md)。
+
+### 破坏性变更
+
+- `Tasker.Destroy()`、`Resource.Destroy()`、`Controller.Destroy()`、`AgentClient.Destroy()` 由无返回值改为返回 `error`。
+- 原生对象引入所有者与借用视图区分，并增加销毁保护：借用对象、仍被绑定或持有的对象、存在活动调用或未完成 Job 的对象、回调中的对象不再直接释放，分别通过 `ErrBorrowed`、`ErrBound`、`ErrInUse`、`ErrInCallback` 报告。销毁后的访问增加 `ErrClosed` 检查。具体边界见 [Tasker.Destroy](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.19#Tasker.Destroy)、[Resource.Destroy](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.19#Resource.Destroy)、[Controller.Destroy](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.19#Controller.Destroy)、[AgentClient.Destroy](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.19#AgentClient.Destroy)。
+- 回调收到的 `Context` 及其 `Clone` 在回调返回后失效，后续操作受到生命周期检查；使用边界见 [Context](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.19#Context)。
+- Tasker 有待执行或运行中的任务时，`BindResource`、`BindController` 改为返回 `ErrTaskerRunning`。
+- `Release` 在原生对象仍存活、Agent Server 尚未关闭或已 detach 时改为返回 `ErrLibraryInUse`；detach 后的卸载限制见 [Release](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.19#Release)。
+- 移除 `NewWlRootsController` 及对应原生绑定，新增 `NewLinuxController(configJson string) (*Controller, error)`，通过 JSON 配置选择 Linux 截图与输入方式，包括 WlRoots、PipeWire 和 libei。
+
+### 新增
+
+- `Job.Error() error`，提供提交或生命周期错误查询；`TaskJob.Error()` 扩展为报告所属对象的生命周期错误。接口说明见 [Job](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.19#Job)。
+- `SymbolLookupError`，提供缺失原生符号的库名、库路径、符号名、版本匹配说明和底层错误。
+- `GamescopeInstance` 与 `FindGamescopeInstances() ([]*GamescopeInstance, error)`，提供运行中实例的显示编号、PipeWire 节点 ID 和 EIS socket 路径。
+- `PortalHelper` 与 `NewPortalHelper() (*PortalHelper, error)`，支持打开 xdg-desktop-portal ScreenCast 流；提供 `OpenStream`、`Persist` / `SetPersist`、`PipeWireFD`、`PipeWireNodeID`、`RestoreToken` / `SetRestoreToken` 和 `Destroy`。接口说明见 [PortalHelper](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.19#PortalHelper)。
+- Win32 `InputAnchoredTouch` 输入方式，支持不移动光标或窗口的触摸点击与滑动，补充对应的字符串转换与解析。
+- Android 动态库加载支持：四个 MaaFramework 库的名称选择增加 `GOOS=android` 分支，加载对应的 `.so` 文件。
+- `ClickKeyActionResult.AutoUp`、`TouchActionResult.AutoUp`，补充原生动作详情中的 JSON `auto_up` 字段。
+
+### 修复
+
+- 原生对象的重复或并发销毁只执行一次清理，避免重复释放原生句柄。
+- Tasker 的绑定与提交操作串行化，避免任务提交与重新绑定交错；AgentClient 保留绑定资源和已注册 sink 对象的句柄引用。
+- `Init`、`Release` 互相串行化，`IsInited` 增加同步保护；并发边界见 [Init](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.19#Init)。
+- 动态库逐库预检所需符号后再注册，缺失符号与注册 panic 转为初始化错误；失败时清理当前库及此前加载的库，并保留清理失败的句柄，修正部分初始化或卸载状态影响后续初始化的问题。
+- 非空库目录先解析为绝对路径，修复 `WithLibDir(".")` 在 Unix 上退化为默认搜索路径的问题；macOS 显式指定的库文件不存在时返回加载错误，并将符号查找限定到目标库。
+- 自定义识别未命中时保留非空结果中的 Box 与 Detail，支持返回未命中诊断信息；结果语义见 [CustomRecognitionRunner](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.19#CustomRecognitionRunner)。
+- `InlineSubRecognition` 解码兼容包含 `recognition` 嵌套对象的子识别 JSON。
+- 动作详情为 JSON 字面值 `null` 时返回空动作结果，避免继续按具体动作类型解码。
+- API 检查工具将 C `int` 与 Go `int32` 对齐，修正原生函数签名检查误报。
+
+## v3.6.0-beta.5 → v4.0.0-beta.18 的变更
+
+本节记录两个 tag 之间的净变化，完整差异见 [v3.6.0-beta.5…v4.0.0-beta.18](https://github.com/MaaXYZ/maa-framework-go/compare/v3.6.0-beta.5...v4.0.0-beta.18)。
+
+### 破坏性变更
+
+#### 模块路径与错误返回
+
+- Go 模块路径由 `github.com/MaaXYZ/maa-framework-go/v3` 改为 `github.com/MaaXYZ/maa-framework-go/v4`。
+- `NewTasker`、`NewResource`、`NewAdbController`、`NewPlayCoverController`、`NewWin32Controller`、`NewGamepadController`、`NewCustomController`、`NewBlankController` 的返回值由 `*T` 改为 `(*T, error)`。
+- Agent 客户端构造入口合并为 `NewAgentClient(opts ...AgentClientOption) (*AgentClient, error)`，原标识符参数和 `NewAgentClientTcp` 入口由 `WithIdentifier`、`WithTcpPort` 选项替代。
+- 下列设置、查询与运行接口改用 Go 的 `error` 返回失败原因：
+
+| 组件 | 返回值变化与涉及接口 |
+| --- | --- |
+| AgentClient | `BindResource`、`RegisterResourceSink`、`RegisterControllerSink`、`RegisterTaskerSink`、`Connect`、`Disconnect`、`SetTimeout`：`bool` → `error`；`Identifier`、`GetCustomRecognitionList`、`GetCustomActionList`：`(T, bool)` → `(T, error)` |
+| AgentServer | `AgentServerRegisterCustomRecognition`、`AgentServerRegisterCustomAction`、`AgentServerStartUp`：`bool` → `error` |
+| Context | `RunTask`、`RunRecognition`、`RunAction`、`RunRecognitionDirect`、`RunActionDirect`：`*Detail` → `(*Detail, error)`；`OverridePipeline`、`OverrideNext`、`OverrideImage`、`SetAnchor`、`ClearHitCount`：`bool` → `error`；`GetNodeJSON`、`GetAnchor`、`GetHitCount`：`(T, bool)` → `(T, error)` |
+| Controller | `GetShellOutput`、`GetUUID`：`(string, bool)` → `(string, error)`；`GetResolution` 的 `ok bool` 改为 `err error`；`CacheImage`：`image.Image` → `(image.Image, error)` |
+| Resource | `UseCPU`、`UseDirectml`、`UseCoreml`、`UseAutoExecutionProvider`、`RegisterCustomRecognition`、`UnregisterCustomRecognition`、`ClearCustomRecognition`、`RegisterCustomAction`、`UnregisterCustomAction`、`ClearCustomAction`、`OverridePipeline`、`OverrideNext`、`Clear`：`bool` → `error`；`GetNodeJSON`、`GetHash`、`GetNodeList`、`GetCustomRecognitionList`、`GetCustomActionList`、`GetDefaultRecognitionParam`、`GetDefaultActionParam`：`(T, bool)` → `(T, error)` |
+| Tasker / TaskJob | `BindResource`、`BindController`、`ClearCache`、`TaskJob.OverridePipeline`：`bool` → `error`；`GetLatestNode`、`TaskJob.GetDetail`：`*Detail` → `(*Detail, error)` |
+| 全局配置 / Toolkit | `SetLogDir`、`SetSaveDraw`、`SetStdoutLevel`、`SetDebugMode`、`SetSaveOnError`、`SetDrawQuality`、`SetRecoImageCacheLimit`、`LoadPlugin`、`ConfigInitOption`：`bool` → `error`；`FindAdbDevices`、`FindDesktopWindows`：列表返回值 → `(列表, error)` |
+
+#### 初始化与控制器配置
+
+- `InitConfig` 改为未导出的配置类型，`InitOption` 不再支持包外自行定义配置函数。`Init` 只应用显式传入的日志、调试与插件选项，不再隐式设置日志目录、日志级别等全局选项；重复 `Init` 和未初始化时的 `Release` 改为返回 `nil`，移除 `ErrAlreadyInitialized`、`ErrNotInitialized`。接口说明见 [Init](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.18#Init) 与 [InitOption](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.18#InitOption)。
+- 移除 `Controller.SetScreenshotTargetLongSide`、`SetScreenshotTargetShortSide`、`SetScreenshotUseRawSize`，统一为 `SetScreenshot(opts ...ScreenshotOption) error`，由对应的 `WithScreenshotTargetLongSide`、`WithScreenshotTargetShortSide`、`WithScreenshotUseRawSize` 配置；新增 `ScreenshotResizeMethod` 和 `WithScreenshotResizeMethod`，支持最近邻、线性、三次、区域和 Lanczos4 插值。beta.18 的选项应用规则见 [ScreenshotOption](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.18#ScreenshotOption)。
+- `CustomController` 接口新增必须实现的 `RelativeMove(dx, dy int32) bool`、`Shell(cmd string, timeout int64) (string, bool)`、`Inactive() bool`、`GetInfo() (string, bool)`。
+- 移除 `CarouselImageController` 与 `NewCarouselImageController`。
+- 图像读取返回的具体类型由 `*image.NRGBA` 改为 `*image.RGBA`，影响 `Controller.CacheImage`、识别详情中的 `Raw` / `Draws` 等图像。
+
+#### Pipeline 配置 API
+
+| 原 API | 新 API |
+| --- | --- |
+| `NodeAction` / `NodeActionType` / `NodeActionParam` | `Action` / `ActionType` / `ActionParam` |
+| `NodeRecognition` / `NodeRecognitionType` / `NodeRecognitionParam` | `Recognition` / `RecognitionType` / `RecognitionParam` |
+| 带 `Node` 前缀的动作参数、识别参数、排序/方法/检测器类型及枚举常量 | 去掉 `Node` 前缀的对应名称，例如 `NodeClickParam` → `ClickParam`、`NodeOCROrderBy` → `OCROrderBy` |
+| `NodeMultiSwipeItem` / `NodeNextItem` | `MultiSwipeItem` / `NextItem` |
+| `NodeWaitFreezes` | `WaitFreezesParam` |
+
+- `NewNode(name, opts...)` 改为 `NewNode(name)`，移除 `NodeOption` 及节点配置的 `WithRecognition`、`WithAction`、`WithNext` 等选项函数。
+- 动作构造函数 `ActClick`、`ActLongPress`、`ActSwipe`、`ActTouchDown`、`ActTouchMove`、`ActLongPressKey`、`ActScroll`、`ActCommand`、`ActCustom` 改为接收对应参数结构的值；`ActTouchUp` 改为接收 `contact int`。移除对应的配置 option 类型与 `With*` 函数，以及 `NewMultiSwipeItem`。
+- 识别构造函数 `RecTemplateMatch`、`RecFeatureMatch`、`RecColorMatch`、`RecOCR`、`RecNeuralNetworkClassify`、`RecNeuralNetworkDetect`、`RecCustom` 改为接收对应参数结构的值，移除对应的配置 option 类型与 `With*` 函数。
+- `LongPressParam.Duration`、`LongPressKeyParam.Duration`、`SwipeParam.Duration` / `EndHold`、`MultiSwipeItem.Duration` / `EndHold` / `Starting`，以及 `WaitFreezesParam.Time` / `RateLimit` / `Timeout` 从整数毫秒改为 `time.Duration` 或其切片；JSON 编码仍使用整数毫秒。
+- 移除 `WaitFreezes` 构造函数、`WaitFreezesOption` 及 `WithWaitFreezes*`。`Context.WaitFreezes` 的可选 `...any` 参数改为固定的 `*WaitFreezesParam`，返回值由 `bool` 改为 `error`。
+- `Node.Anchor` 字段及 `Node.SetAnchor` 的参数由 `[]string` 改为 `map[string]string`；`AddAnchor` 改为建立锚点到当前节点的映射，并新增 `SetAnchorTarget`、`ClearAnchor`。
+- `Context.OverrideNext`、`Resource.OverrideNext` 的参数由 `[]string` 改为 `[]NextItem`；新增 `NextItem.FormatName()`，将跳回和锚点属性编码为原生接口使用的节点名称。
+- And/Or 子识别统一为 `SubRecognitionItem`：`RecAnd`、`RecOr` 改为变参形式，`AndRecognitionParam.AllOf`、`OrRecognitionParam.AnyOf` 均为 `[]SubRecognitionItem`；新增 `Ref`、`Inline` 和 `InlineSubRecognition` 表达节点引用或内联识别。移除 `NodeAndRecognitionItem`、`AndItem`、`AndRecognitionOption`、`WithAndRecognitionBoxIndex`，新增 `Recognition.SetBoxIndex` 设置 box 索引。数据格式见 [SubRecognitionItem](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.18#SubRecognitionItem)。
+
+#### 详情、回调与命名
+
+- `TaskDetail.NodeDetails []*NodeDetail` 改为 `Nodes []NodeRef`，从立即展开全部节点详情改为按需查询；`NodeRef` 提供 `ID()` 与 `GetDetail()`。
+- `TaskJob` 不再嵌入导出的 `*Job`，移除可直接访问的 `Job` 字段。
+- `CustomActionArg.TaskDetail`、`CustomRecognitionArg.TaskDetail` 改为 `TaskID int64`；移除 `CustomAction`、`CustomRecognition` 别名。
+- `ControllerEventSinkAdapter`、`ResourceEventSinkAdapter`、`TaskerEventSinkAdapter`、`ContextEventSinkAdapter` 改为未导出的内部类型。
+- 以下名称和结果结构与原生 API 对齐：
+
+| 原名称 / 字段 | 新名称 / 字段 |
+| --- | --- |
+| `Context.GetNodeData` | `Context.GetNode` |
+| `Resource.OverriderImage` | `Resource.OverrideImage`，并由 `bool` 返回值改为 `error` |
+| `InterenceDevice` / `InterenceDeviceAuto` | `InferenceDevice` / `InferenceDeviceAuto`，设备常量改为 `InferenceDevice` 类型 |
+| Win32 `InputSendMessageWithCursorPosAndBlockInput` / `InputPostMessageWithCursorPosAndBlockInput` | `InputSendMessageWithWindowPos` / `InputPostMessageWithWindowPos`，对应字符串名称同步调整 |
+| `RecognitionResults.Best []*RecognitionResult` | `Best *RecognitionResult` |
+| `ShellActionResult.Timeout` / JSON `timeout` | `ShellTimeout` / JSON `shell_timeout` |
+| `NodeNextListDetail.NextList` / JSON `next_list` | `List []NextItem` / JSON `list` |
+| `NeuralNetworkClassifyResult.Raw` / `Probs` | 移除这两个字段 |
+
+### 新增
+
+#### 任务、节点与识别
+
+- 公开 `Tasker.GetRecognitionDetail`、`GetActionDetail`、`GetNodeDetail`、`GetTaskDetail`，增加 `GetWaitFreezesDetail` 与 `WaitFreezesDetail`，可查询画面稳定等待的阶段、耗时、关联识别 ID 和 ROI。详情可用性与错误语义见 [Tasker](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.18#Tasker)。
+- `Resource.GetNode`，以及 `Pipeline.GetNode`、`HasNode`、`RemoveNode`、`Clear`、`Len`，补充节点读取和管理能力。
+- `CustomActionFunc`、`CustomRecognitionFunc`，将普通函数适配为自定义动作或识别 runner。
+- 通用排序类型 `OrderBy`；OCR、神经网络分类与检测新增 `Expected` 排序常量。
+- `OCRParam.ColorFilter`，通过引用 ColorMatch 节点配置支持 OCR 前的颜色二值化（[MaaFramework#1145](https://github.com/MaaXYZ/MaaFramework/pull/1145)）。
+- Screencap 动作：`ActionTypeScreencap`、`ActScreencap`、`ScreencapParam`，以及 `ScreencapActionResult`、`ActionResult.AsScreencap`，支持在流水线动作中保存截图（[MaaFramework#1165](https://github.com/MaaXYZ/MaaFramework/pull/1165)）。
+
+#### 控制器与平台
+
+- `NewWlRootsController(wlrSocketPath string, useWin32VkCode bool) (*Controller, error)`，支持通过 Wayland socket 创建 WlRoots 控制器，并可使用 Win32 VK 键码（[MaaFramework#1131](https://github.com/MaaXYZ/MaaFramework/pull/1131)）。
+- `NewMacOSController(windowID uint32, screencapMethod macos.ScreencapMethod, inputMethod macos.InputMethod) (*Controller, error)`，以及 `controller/macos` 包中的截图与输入方式枚举。
+- `NewAndroidNativeController(configJson string) (*Controller, error)`，支持 Android 原生截图与输入。
+- `NewRecordController(inner *Controller, recordingPath string) (*Controller, error)`、`NewReplayController(recordingPath string) (*Controller, error)`，支持控制器操作录制与回放。
+- `Controller.PostRelativeMove(dx, dy int32) *Job`，支持提交相对光标移动（[MaaFramework#1189](https://github.com/MaaXYZ/MaaFramework/pull/1189)）；平台支持范围见 [PostRelativeMove](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.18#Controller.PostRelativeMove)。
+- `Controller.PostInactive() *Job`，支持恢复 Win32 窗口与输入状态（[MaaFramework#1155](https://github.com/MaaXYZ/MaaFramework/pull/1155)）。
+- `Controller.GetInfo() (string, error)` 与 `ControllerActionDetail.Info map[string]any`，提供控制器结构化信息（[MaaFramework#1167](https://github.com/MaaXYZ/MaaFramework/pull/1167)）。
+- `Controller.SetMouseLockFollow(enabled bool) error`，支持 Win32 消息输入方式的鼠标锁定跟随；Win32 新增 `ScreencapAll`、`ScreencapForeground`、`ScreencapBackground` 截图方式与 `InputInterception` 输入方式。
+- `MacOSPermission`、`MacOSCheckPermission`、`MacOSRequestPermission`、`MacOSRevealPermissionSettings`，支持检查或申请屏幕录制、辅助功能权限。
+
+#### 全局配置与开发工具
+
+- 可配置的 `JSONEncoder`、`JSONDecoder`，以及 `SetJSONEncoder`、`SetJSONDecoder`、`GetJSONEncoder`、`GetJSONDecoder`、`ResetJSONCodec`；初始化选项增加 `WithJSONEncoder`、`WithJSONDecoder`。
+- `LibraryLoadError`，提供动态库加载失败时的库名、路径与底层错误。
+- 参数校验错误 `ErrInvalidAgentClient`、`ErrInvalidResource`、`ErrInvalidController`、`ErrInvalidTasker`、`ErrInvalidTimeout`；全局配置与插件错误 `ErrEmptyLogDir`、`ErrSetLogDir`、`ErrSetSaveDraw`、`ErrSetStdoutLevel`、`ErrSetDebugMode`、`ErrSetSaveOnError`、`ErrSetDrawQuality`、`ErrSetRecoImageCacheLimit`、`ErrLoadPlugin`。
+- `tools/api-check`，检查原生符号覆盖与签名、自定义控制器回调接口、ADB / Win32 控制方式枚举的一致性，并接入 CI。
+
+### 修复
+
+- `Context.GetNodeJSON` 改用 `MaaContextGetNodeData`，`Resource.OverrideNext` 改用 `MaaResourceOverrideNext`，修正调用了另一类句柄接口的问题。
+- `Context.GetTasker`、`Tasker.GetController`、`Tasker.GetResource` 缓存返回的 Go 包装对象，修复重复获取后旧包装对象调用崩溃的问题（[#41](https://github.com/MaaXYZ/maa-framework-go/issues/41)）。
+- Resource 自定义动作/识别的注册、替换、注销、清空在原生操作失败时保留已有 Go 注册记录，并清理失败的新回调；AgentServer 注册失败时也清理新回调。
+- Controller sink 的移除和清空同步释放对应的 Go 回调记录。
+- 自定义识别返回空结果时避免解引用空指针；自定义动作在 `reco_id == 0` 时跳过识别详情查询。
+- 自定义识别结果的 `detail` 同时支持 JSON 字符串与对象；识别结果解析返回未知算法和 JSON 解码错误，并规范处理空内容与 `null`。
+- `Tasker.GetNodeDetail` 在缺少识别或动作详情时保留节点详情。
+- Context 运行方法与 `Tasker.PostTask` 的覆盖参数统一处理普通 nil、带类型的 nil 和序列化失败，回退为 `{}`；Context 增加原始 `[]byte` 覆盖参数透传。
+- `Tasker.PostRecognition`、`PostAction` 在参数或识别详情序列化失败时保留错误并生成失败的 `TaskJob`，通过新增的 `TaskJob.Error()` 提供错误查询。接口说明见 [TaskJob](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4@v4.0.0-beta.18#TaskJob)。
+- `NewNode` 初始化 `Attach`，`SetAttach` 浅复制传入的 map；`ActMultiSwipe` 深复制各项的切片，`RecColorMatch` 深复制颜色上下界的内层切片，减少调用方后续修改对配置的影响。
+- 图像写入正确处理非零原点和带额外行间距的子图像；零宽或零高图像改为清空 buffer，避免索引空像素切片。
+- 初始化加载库或应用选项失败时尝试卸载已加载的库；`Release` 按加载逆序卸载，收集卸载错误，并在卸载成功后清空绑定函数。
+
+### 性能
+
+- 新增 `Controller.CacheImageInto(dst *image.RGBA) (*image.RGBA, error)`，尺寸相同时复用图像内存。
+- 图像读写改用直接像素转换，针对 RGBA / NRGBA、连续内存与不透明图像增加快速路径，减少通用转换与分配开销。
+- 内部事件消息即时解析减少字符串复制；识别详情改用字节切片解析，减少结果解码时的重复转换。
