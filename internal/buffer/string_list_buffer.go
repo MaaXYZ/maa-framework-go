@@ -23,19 +23,14 @@ func NewStringListBuffer() *StringListBuffer {
 	}
 }
 
-// NewStringListBufferByHandle wraps an existing native string list buffer
-// handle without taking ownership. The caller keeps owning the handle and
-// stays responsible for destroying it exactly once; the wrapper is a shared
-// view of the same list.
+// NewStringListBufferByHandle wraps a borrowed native string list buffer handle.
 func NewStringListBufferByHandle(handle uintptr) *StringListBuffer {
 	return &StringListBuffer{
 		handle: handle,
 	}
 }
 
-// Destroy releases the underlying native list buffer. The owner must call it
-// exactly once and not use the wrapper afterwards; a borrowed wrapper must
-// not destroy the shared handle.
+// Destroy releases the underlying native string list buffer.
 func (sl *StringListBuffer) Destroy() {
 	native.MaaStringListBufferDestroy(sl.handle)
 }

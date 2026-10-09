@@ -26,19 +26,14 @@ func NewRectBuffer() (*RectBuffer, error) {
 	}, nil
 }
 
-// NewRectBufferByHandle wraps an existing native rect buffer handle without
-// taking ownership. The caller keeps owning the handle and stays responsible
-// for destroying it exactly once; the wrapper is a shared view of the same
-// buffer.
+// NewRectBufferByHandle wraps a borrowed native rect buffer handle.
 func NewRectBufferByHandle(handle uintptr) *RectBuffer {
 	return &RectBuffer{
 		handle: handle,
 	}
 }
 
-// Destroy releases the underlying native rect buffer. The owner must call it
-// exactly once and not use the wrapper afterwards; a borrowed wrapper must
-// not destroy the shared handle.
+// Destroy releases the underlying native rect buffer.
 func (r *RectBuffer) Destroy() {
 	native.MaaRectDestroy(r.handle)
 }

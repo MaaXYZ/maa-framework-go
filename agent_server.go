@@ -178,15 +178,11 @@ func addAgentServerSink(sink any, add func(native.MaaEventCallback, uintptr) int
 // it connect to 127.0.0.1 on that port instead; an AgentClient must be
 // listening there, see WithTcpPort. An empty identifier makes startup fail.
 //
-// Server lifecycle operations are serialized internally to protect the native
-// service thread. A blocking [AgentServerJoin] prevents [AgentServerShutDown]
-// and [AgentServerDetach] from running until Join returns; see AgentServerJoin
-// for shutdown ordering. Do not call lifecycle operations from server callbacks.
+// Lifecycle operations are serialized. See [AgentServerJoin] for shutdown
+// ordering. Do not call lifecycle operations from server callbacks.
 // After an attached server's ShutDown, StartUp returns ErrClosed for the rest
-// of the process, even after
-// Release and Init, because the native singleton's communication context
-// cannot be reset. It returns ErrInUse while the server is running, joined,
-// or detached.
+// of the process, including after Release and Init. It returns ErrInUse while
+// the server is running, joined, or detached.
 func AgentServerStartUp(identifier string) error {
 	unlock, err := lockAgentServerConfiguration()
 	if err != nil {
@@ -220,12 +216,8 @@ func AgentServerStartUp(identifier string) error {
 // Without prior Detach, ShutDown permanently prevents startup and
 // configuration, even if called before StartUp; repeated calls are no-ops.
 //
-// ShutDown waits for any concurrent [AgentServerJoin] to return before it can
-// request a stop. It cannot interrupt a blocking Join. For client-controlled
-// shutdown, have the paired client Disconnect, let Join return, then call
-// ShutDown to close the sockets. To request a stop from the server process,
-// call ShutDown without an outstanding blocking Join; it still waits for the
-// native service thread to exit.
+// ShutDown cannot interrupt a blocking [AgentServerJoin]; see that method
+// for shutdown ordering.
 func AgentServerShutDown() {
 	agentServerLifecycleMu.Lock()
 	defer agentServerLifecycleMu.Unlock()
@@ -239,17 +231,15 @@ func AgentServerShutDown() {
 	}
 }
 
-// AgentServerJoin waits for an attached agent service thread to end. It does
-// not request that the service stop, so it may block while the service runs.
-// After AgentServerDetach, it returns without waiting. Even after Join returns
-// for an attached thread, AgentServerShutDown must be called before Release.
+// AgentServerJoin waits for the attached service thread to end without
+// requesting a stop. After [AgentServerDetach], it returns without waiting.
 //
-// Join holds the lifecycle lock while waiting, so concurrent [AgentServerShutDown]
-// and [AgentServerDetach] calls wait for Join to return and cannot interrupt it.
-// Call Join only when the service will end independently, such as when the
-// paired client calls Disconnect. Once Join returns, call AgentServerShutDown
-// to close the sockets. To request a stop from the server process, call
-// AgentServerShutDown without first entering a blocking Join.
+// Join holds the lifecycle lock, so concurrent [AgentServerShutDown] and
+// [AgentServerDetach] calls wait until it returns. For client-controlled
+// shutdown, let the paired client Disconnect, wait for Join to return, then
+// call AgentServerShutDown to close the sockets before Release. For
+// server-controlled shutdown, call AgentServerShutDown without entering
+// a blocking Join.
 func AgentServerJoin() {
 	agentServerLifecycleMu.Lock()
 	defer agentServerLifecycleMu.Unlock()
@@ -265,8 +255,7 @@ func AgentServerJoin() {
 // After Detach, AgentServerJoin cannot wait for the thread, and
 // AgentServerShutDown cannot confirm its exit. Release returns ErrLibraryInUse
 // for the rest of the process, even after Join or ShutDown.
-// Detach waits for any concurrent [AgentServerJoin] to return; it cannot
-// interrupt a blocking Join.
+// Detach waits for a concurrent [AgentServerJoin]; see that method.
 func AgentServerDetach() {
 	agentServerLifecycleMu.Lock()
 	defer agentServerLifecycleMu.Unlock()

@@ -25,19 +25,14 @@ func NewImageListBuffer() *ImageListBuffer {
 	}
 }
 
-// NewImageListBufferByHandle wraps an existing native image list buffer
-// handle without taking ownership. The caller keeps owning the handle and
-// stays responsible for destroying it exactly once; the wrapper is a shared
-// view of the same list.
+// NewImageListBufferByHandle wraps a borrowed native image list buffer handle.
 func NewImageListBufferByHandle(handle uintptr) *ImageListBuffer {
 	return &ImageListBuffer{
 		handle: handle,
 	}
 }
 
-// Destroy releases the underlying native list buffer. The owner must call it
-// exactly once and not use the wrapper afterwards; a borrowed wrapper must
-// not destroy the shared handle.
+// Destroy releases the underlying native image list buffer.
 func (il *ImageListBuffer) Destroy() {
 	native.MaaImageListBufferDestroy(il.handle)
 }

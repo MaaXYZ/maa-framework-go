@@ -1,22 +1,8 @@
-// Package buffer provides Go wrappers for the MaaFramework buffer C API
-// (MaaBuffer.h): image, image-list, string, string-list, and rect buffers
-// exchanged with framework functions by handle.
+// Package buffer wraps MaaFramework image, string, rect, and list buffers.
 //
-// Each buffer is owned by the wrapper that created it and must be destroyed
-// exactly once through Destroy. The ByHandle constructors instead borrow a
-// handle owned elsewhere (typically a framework callback argument): the
-// wrapper is a shared view, and the owner stays responsible for destroying.
-// List buffers return copies from their element accessors, keep appended
-// elements valid independently of the source value, and surface an
-// out-of-range index as a zero value ("" or nil) and false from Remove,
-// matching the native side. Image buffers hold raw
-// BGR pixels in OpenCV's CV_8UC3 layout: Get decodes them into a fresh
-// opaque image.RGBA and Set encodes an image.Image back, while the native
-// PNG encoding API is intentionally unbound because Go handles image files
-// natively. StringBuffer.Set copies a NUL-terminated C string and truncates
-// at the first NUL; SetWithSize copies an exact byte count and preserves
-// embedded NULs. Get truncates at the first NUL, while GetWithSize copies
-// the full content, preserving embedded NULs.
+// Constructors create owned buffers that must be destroyed exactly once and
+// not used afterwards. ByHandle constructors borrow existing handles;
+// borrowed wrappers share the same buffer and must not call Destroy.
 package buffer
 
 import (
@@ -55,19 +41,14 @@ func NewImageBuffer() (*ImageBuffer, error) {
 	}, nil
 }
 
-// NewImageBufferByHandle wraps an existing native image buffer handle without
-// taking ownership. The caller keeps owning the handle and stays responsible
-// for destroying it exactly once; the wrapper is a shared view of the same
-// buffer.
+// NewImageBufferByHandle wraps a borrowed native image buffer handle.
 func NewImageBufferByHandle(handle uintptr) *ImageBuffer {
 	return &ImageBuffer{
 		handle: handle,
 	}
 }
 
-// Destroy releases the underlying native buffer. The owner must call it
-// exactly once and not use the wrapper afterwards; a borrowed wrapper must
-// not destroy the shared handle.
+// Destroy releases the underlying native image buffer.
 func (i *ImageBuffer) Destroy() {
 	native.MaaImageBufferDestroy(i.handle)
 }

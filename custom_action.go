@@ -67,11 +67,8 @@ type CustomActionArg struct {
 	// RecognitionDetail may be nil when the custom action runs on an action-only
 	// node (e.g. invoked via Context.RunAction), where reco_id is invalid.
 	RecognitionDetail *RecognitionDetail
-	// Box is the action's resolved target rect, the position the action
-	// should act on. It equals the preceding recognition's hit box only when
-	// the action target is Self (the default); with other targets it is the
-	// resolved target rect instead, and it may be empty when that rect is
-	// empty.
+	// Box is the action's resolved target rect. It equals the preceding
+	// recognition's hit box when the target is Self (the default).
 	Box Rect
 }
 

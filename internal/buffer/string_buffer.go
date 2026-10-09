@@ -26,19 +26,14 @@ func NewStringBuffer() *StringBuffer {
 	}
 }
 
-// NewStringBufferByHandle wraps an existing native string buffer handle
-// without taking ownership. The caller keeps owning the handle and stays
-// responsible for destroying it exactly once; the wrapper is a shared view of
-// the same buffer.
+// NewStringBufferByHandle wraps a borrowed native string buffer handle.
 func NewStringBufferByHandle(handle uintptr) *StringBuffer {
 	return &StringBuffer{
 		handle: handle,
 	}
 }
 
-// Destroy releases the underlying native string buffer. The owner must call
-// it exactly once and not use the wrapper afterwards; a borrowed wrapper must
-// not destroy the shared handle.
+// Destroy releases the underlying native string buffer.
 func (s *StringBuffer) Destroy() {
 	native.MaaStringBufferDestroy(s.handle)
 }
