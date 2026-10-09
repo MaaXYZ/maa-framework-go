@@ -49,9 +49,12 @@
 - **异步任务与事件** - 轮询 Job 状态与任务详情，或订阅 Resource、Controller、Tasker 事件
 - **Pipeline v2 模型 API** - 类型化构造器生成嵌套 v2 JSON
 
-## 安装
+## 要求
 
-需要 Go 1.24 及以上。
+- **Go 1.24 及以上**
+- **MaaFramework** - 本绑定跟踪最新的 MaaFramework 版本（包括预发布版），不保证兼容更早的版本。头部徽章记录的是本绑定发布前通过单元测试的 MaaFramework 版本，是验证基线，不是版本要求。
+
+## 安装
 
 ### 1. 安装 Go 包
 
@@ -92,7 +95,7 @@ go get github.com/MaaXYZ/maa-framework-go/v4
 
 ### MaaFramework 兼容性
 
-本绑定跟踪最新的 MaaFramework 版本（包括预发布版），不保证兼容更早的版本。缺少库或符号通常意味着已安装的 MaaFramework 早于本绑定所跟踪的版本。
+缺少库或符号通常意味着已安装的 MaaFramework 早于本绑定所跟踪的版本。
 
 `Init` 需要来自同一兼容版本的四个库：`MaaFramework`、`MaaToolkit`、`MaaAgentServer` 和 `MaaAgentClient`。缺少库或符号时，`Init` 会返回可诊断的错误，而不会遗留部分初始化状态。
 

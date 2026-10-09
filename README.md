@@ -49,9 +49,12 @@ Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-p
 - **Async Jobs and Events** - Poll job status and task details, or subscribe to resource, controller, and tasker events
 - **Pipeline v2 model APIs** - Typed builders emit nested v2 JSON
 
-## Installation
+## Requirements
 
-Requires Go 1.24 or later.
+- **Go 1.24 or later**
+- **MaaFramework** - Tracks the latest MaaFramework release, including prereleases; compatibility with older releases is not guaranteed. The header badge records the MaaFramework release that passed unit tests before this binding's latest release; it is a tested baseline, not a version requirement.
+
+## Installation
 
 ### 1. Install Go Package
 
@@ -92,7 +95,7 @@ Programs built with maa-framework-go require MaaFramework dynamic libraries at r
 
 ### MaaFramework Compatibility
 
-This binding tracks the latest MaaFramework release, including prereleases; compatibility with older releases is not guaranteed. A missing library or symbol generally means the installed MaaFramework is older than the release this binding targets.
+A missing library or symbol generally means the installed MaaFramework is older than the release this binding targets.
 
 `Init` requires all four libraries from one compatible release: `MaaFramework`, `MaaToolkit`, `MaaAgentServer`, and `MaaAgentClient`. Missing libraries or symbols make `Init` fail with a diagnostic error instead of leaving partial state behind.
 
