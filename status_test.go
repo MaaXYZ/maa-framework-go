@@ -250,3 +250,56 @@ func TestStatus_Done(t *testing.T) {
 		})
 	}
 }
+
+func TestStatus_String(t *testing.T) {
+	testCases := []struct {
+		name   string
+		status Status
+		expect string
+	}{
+		{
+			name:   "StatusInvalid",
+			status: StatusInvalid,
+			expect: "invalid",
+		},
+		{
+			name:   "StatusPending",
+			status: StatusPending,
+			expect: "pending",
+		},
+		{
+			name:   "StatusRunning",
+			status: StatusRunning,
+			expect: "running",
+		},
+		{
+			name:   "StatusSuccess",
+			status: StatusSuccess,
+			expect: "success",
+		},
+		{
+			name:   "StatusFailure",
+			status: StatusFailure,
+			expect: "failure",
+		},
+		{
+			name:   "UnknownValue",
+			status: Status(9999),
+			expect: "invalid",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.status.String()
+			require.Equal(t, tc.expect, got)
+		})
+	}
+
+	t.Run("UnknownValueDoesNotSatisfyInvalid", func(t *testing.T) {
+		unknown := Status(9999)
+		require.Equal(t, "invalid", unknown.String())
+		require.False(t, unknown.Invalid())
+		require.False(t, unknown.Done())
+	})
+}

@@ -130,6 +130,20 @@ func assertAllHandlesCleared(t *testing.T) {
 	}
 }
 
+// assertEveryFuncVarRegistered fails the test if any function variable of any
+// mandatory library is still nil after a successful Initialize.
+func assertEveryFuncVarRegistered(t *testing.T) {
+	t.Helper()
+	for _, lib := range libraries {
+		for _, entry := range lib.entries {
+			value := reflect.ValueOf(entry.ptrToFunc).Elem()
+			if value.IsNil() {
+				t.Errorf("function variable for %q was not registered", entry.name)
+			}
+		}
+	}
+}
+
 func TestInitializeMissingLibrary(t *testing.T) {
 	dir := t.TempDir()
 	f := newFakePlatform()
@@ -454,9 +468,7 @@ func TestRepeatedInitializeShutdown(t *testing.T) {
 		if err := Initialize(dir); err != nil {
 			t.Fatalf("round %d Initialize: %v", round, err)
 		}
-		if MaaVersion == nil {
-			t.Fatalf("round %d: MaaVersion was not registered", round)
-		}
+		assertEveryFuncVarRegistered(t)
 		if len(loadedLibs) != len(libraries) {
 			t.Fatalf("round %d: loadedLibs = %d, want %d", round, len(loadedLibs), len(libraries))
 		}
@@ -503,6 +515,7 @@ func TestShutdownPartialFailureCanBeRetried(t *testing.T) {
 	if err := Initialize(dir); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
+	assertEveryFuncVarRegistered(t)
 
 	handles := []uintptr{maaFramework, maaToolkit, maaAgentServer, maaAgentClient}
 	failed := map[uintptr]bool{maaToolkit: true, maaAgentClient: true}
@@ -552,9 +565,7 @@ func TestShutdownPartialFailureCanBeRetried(t *testing.T) {
 	if err := Initialize(dir); err != nil {
 		t.Fatalf("Initialize after cleanup: %v", err)
 	}
-	if MaaVersion == nil {
-		t.Fatal("MaaVersion was not registered after recovery")
-	}
+	assertEveryFuncVarRegistered(t)
 }
 
 func TestInitializeBlockedAfterRetainedHandlesFromFailedLoad(t *testing.T) {
@@ -599,9 +610,7 @@ func TestInitializeBlockedAfterRetainedHandlesFromFailedLoad(t *testing.T) {
 	if err := Initialize(dir); err != nil {
 		t.Fatalf("Initialize after cleanup: %v", err)
 	}
-	if MaaVersion == nil {
-		t.Error("MaaVersion was not registered after recovery")
-	}
+	assertEveryFuncVarRegistered(t)
 }
 
 func TestInitializeRepeatedAfterSuccessIsNoOp(t *testing.T) {
@@ -612,6 +621,7 @@ func TestInitializeRepeatedAfterSuccessIsNoOp(t *testing.T) {
 	if err := Initialize(dir); err != nil {
 		t.Fatalf("first Initialize: %v", err)
 	}
+	assertEveryFuncVarRegistered(t)
 	opened := len(f.opened)
 
 	if err := Initialize(dir); err != nil {
@@ -620,9 +630,7 @@ func TestInitializeRepeatedAfterSuccessIsNoOp(t *testing.T) {
 	if len(f.opened) != opened {
 		t.Errorf("second Initialize opened %d libraries, want %d", len(f.opened), opened)
 	}
-	if MaaVersion == nil {
-		t.Error("function variables were disturbed by the second Initialize")
-	}
+	assertEveryFuncVarRegistered(t)
 }
 
 func TestInitializeRelativeLibDirFormsAbsoluteLibraryPaths(t *testing.T) {
@@ -658,6 +666,7 @@ func TestInitializeRelativeLibDirFormsAbsoluteLibraryPaths(t *testing.T) {
 			if err := Initialize(tt.libDir); err != nil {
 				t.Fatalf("Initialize(%q): %v", tt.libDir, err)
 			}
+			assertEveryFuncVarRegistered(t)
 
 			if len(f.opened) != len(libraries) {
 				t.Fatalf("opened = %d libraries, want %d", len(f.opened), len(libraries))
@@ -686,6 +695,7 @@ func TestInitializeEmptyLibDirUsesBareLoaderSearchNames(t *testing.T) {
 	if err := Initialize(""); err != nil {
 		t.Fatalf("Initialize(\"\"): %v", err)
 	}
+	assertEveryFuncVarRegistered(t)
 
 	if len(f.opened) != len(libraries) {
 		t.Fatalf("opened = %d libraries, want %d", len(f.opened), len(libraries))

@@ -4,23 +4,32 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 )
 
 // Recognition defines a node's recognition using the pipeline v2 type/param object format.
-// Known types decode to their typed parameters. Unrecognized type names retain
-// their parameter JSON as *RawRecognitionParam; this does not establish native support.
-// Unknown fields outside param, and unmodeled fields of known parameters, are not retained.
+// Known types decode to their typed parameters. Unrecognized type names —
+// including the lowercase aliases the native parser accepts, such as "ocr" —
+// retain their parameter JSON as *RawRecognitionParam; this does not establish
+// native support. Unknown fields outside param, and unmodeled fields of known
+// parameters, are not retained. Like the native parser, a recognition object
+// without a param key reads its parameters from the whole object.
 type Recognition struct {
 	// Type specifies the recognition algorithm type.
 	Type RecognitionType `json:"type,omitempty"`
 	// Param specifies the recognition parameters.
 	// A nil Param omits param when encoding. For unknown types, an explicit JSON null is retained.
+	// When decoding, an absent "param" reads parameters from the whole
+	// recognition object, so flat fields are preserved instead of lost.
 	Param RecognitionParam `json:"param,omitempty"`
 }
 
 // UnmarshalJSON decodes a pipeline v2 recognition. Errors in known parameter types
 // are returned without falling back to raw JSON. On error the recognition is unchanged.
+// When "param" is absent, parameters are decoded from the whole recognition
+// object, matching the native parser, so flat fields such as
+// {"type":"ColorMatch","lower":...} are preserved instead of silently lost.
 func (nr *Recognition) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Type  RecognitionType `json:"type,omitempty"`
@@ -30,7 +39,11 @@ func (nr *Recognition) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	param, err := decodeRecognitionParam(raw.Type, raw.Param)
+	paramData := raw.Param
+	if len(paramData) == 0 {
+		paramData = data
+	}
+	param, err := decodeRecognitionParam(raw.Type, paramData)
 	if err != nil {
 		return err
 	}
@@ -78,7 +91,8 @@ func decodeRecognitionParam(recognitionType RecognitionType, data []byte) (Recog
 }
 
 // SetBoxIndex sets which sub-recognition result's box to use as the final box.
-// Only effective when the recognition type is And.
+// Only effective when the recognition type is And. The native parser requires
+// 0 <= idx < len(all_of) and fails to load the node otherwise.
 func (nr *Recognition) SetBoxIndex(idx int) *Recognition {
 	if p, ok := nr.Param.(*AndRecognitionParam); ok {
 		p.BoxIndex = idx
@@ -90,6 +104,7 @@ func (nr *Recognition) SetBoxIndex(idx int) *Recognition {
 // modeled by this package; other names may be used with RawRecognitionParam if the native library supports them.
 type RecognitionType string
 
+// Recognition algorithm type names used by the pipeline v2 protocol.
 const (
 	RecognitionTypeDirectHit             RecognitionType = "DirectHit"
 	RecognitionTypeTemplateMatch         RecognitionType = "TemplateMatch"
@@ -104,14 +119,22 @@ const (
 )
 
 // RecognitionParam is the interface for typed recognition parameters and RawRecognitionParam.
+// Builders and decoders do not validate protocol constraints such as threshold
+// ranges, list-length agreements, or required fields; the native parser
+// rejects invalid combinations when the pipeline is posted.
 type RecognitionParam interface {
 	isRecognitionParam()
 }
 
 // OrderBy defines the ordering options for recognition results.
-// Different recognition types support different subsets of these values.
+// Different recognition types support different subsets of these values; the
+// per-type OrderBy constants declare the values each parser accepts. The
+// native parser also reads the "order" key as an alias for "order_by" and
+// accepts all-lowercase spellings and "Default" (the default ordering); this
+// model only uses the canonical key, and values pass through unchanged.
 type OrderBy string
 
+// Result ordering options shared across recognition types.
 const (
 	OrderByHorizontal OrderBy = "Horizontal"
 	OrderByVertical   OrderBy = "Vertical"
@@ -147,6 +170,8 @@ func RecDirectHit() *Recognition {
 // TemplateMatchOrderBy defines the ordering options for template matching results.
 type TemplateMatchOrderBy OrderBy
 
+// Template match result ordering options the native parser accepts:
+// Horizontal, Vertical, Score, and Random.
 const (
 	TemplateMatchOrderByHorizontal = TemplateMatchOrderBy(OrderByHorizontal)
 	TemplateMatchOrderByVertical   = TemplateMatchOrderBy(OrderByVertical)
@@ -157,6 +182,9 @@ const (
 // TemplateMatchMethod defines the template matching algorithm (cv::TemplateMatchModes).
 type TemplateMatchMethod int
 
+// Template matching algorithms. The native parser forwards any integer to
+// OpenCV; adding 10000 to a method inverts its score, so the inverted
+// SQDIFF_NORMED is 10001. Default: 5 (CCOEFF_NORMED).
 const (
 	TemplateMatchMethodSQDIFF_NORMED          TemplateMatchMethod = 1     // Normalized squared difference
 	TemplateMatchMethodSQDIFF_NORMED_Inverted TemplateMatchMethod = 10001 // Normalized squared difference (Inverted)
@@ -168,12 +196,21 @@ const (
 type TemplateMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Template specifies the template image paths. Required.
-	Template []string `json:"template,omitempty"`
+	// JSON input may be a single string or an array of strings; a scalar
+	// normalizes to a one-element list. Nil is omitted to inherit the
+	// existing/default templates; an empty non-nil list clears them.
+	Template StringList `json:"template,omitzero"`
 	// Threshold specifies the matching threshold [0-1.0]. Default: 0.7.
-	Threshold []float64 `json:"threshold,omitempty"`
+	// JSON input may be a number or an array of numbers; a scalar normalizes
+	// to a one-element list. Nil is omitted to inherit the existing/default
+	// thresholds; an empty non-nil list clears them (matching fails at run
+	// time when templates or thresholds are empty).
+	Threshold []float64 `json:"threshold,omitzero"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Random.
 	OrderBy TemplateMatchOrderBy `json:"order_by,omitempty"`
 	// Index specifies which match to select from results.
@@ -198,9 +235,79 @@ func RecTemplateMatch(p TemplateMatchParam) *Recognition {
 	}
 }
 
+// UnmarshalJSON normalizes a scalar template and a scalar threshold to
+// one-element lists. Invalid parameter values leave the receiver unchanged.
+func (p *TemplateMatchParam) UnmarshalJSON(data []byte) error {
+	raw := struct {
+		ROI       Target                  `json:"roi,omitzero"`
+		ROIOffset Rect                    `json:"roi_offset,omitzero"`
+		Template  StringList              `json:"template,omitzero"`
+		Threshold templateMatchThresholds `json:"threshold,omitzero"`
+		OrderBy   TemplateMatchOrderBy    `json:"order_by,omitempty"`
+		Index     int                     `json:"index,omitempty"`
+		Method    TemplateMatchMethod     `json:"method,omitempty"`
+		GreenMask bool                    `json:"green_mask,omitempty"`
+	}{
+		ROI:       p.ROI,
+		ROIOffset: p.ROIOffset,
+		Template:  slices.Clone(p.Template),
+		Threshold: templateMatchThresholds(slices.Clone(p.Threshold)),
+		OrderBy:   p.OrderBy,
+		Index:     p.Index,
+		Method:    p.Method,
+		GreenMask: p.GreenMask,
+	}
+	if err := unmarshalJSON(data, &raw); err != nil {
+		return err
+	}
+	*p = TemplateMatchParam{
+		ROI:       raw.ROI,
+		ROIOffset: raw.ROIOffset,
+		Template:  raw.Template,
+		Threshold: []float64(raw.Threshold),
+		OrderBy:   raw.OrderBy,
+		Index:     raw.Index,
+		Method:    raw.Method,
+		GreenMask: raw.GreenMask,
+	}
+	return nil
+}
+
+type templateMatchThresholds []float64
+
+// UnmarshalJSON accepts a JSON number or an array of numbers and normalizes
+// a scalar to a one-element list. Invalid input, including null items,
+// leaves the receiver unchanged.
+func (t *templateMatchThresholds) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	var values []*float64
+	if len(data) > 0 && data[0] == '[' {
+		if err := unmarshalJSON(data, &values); err != nil {
+			return err
+		}
+	} else {
+		var value *float64
+		if err := unmarshalJSON(data, &value); err != nil {
+			return err
+		}
+		values = []*float64{value}
+	}
+	thresholds := make(templateMatchThresholds, len(values))
+	for i, value := range values {
+		if value == nil {
+			return errors.New("template match threshold must contain only numbers")
+		}
+		thresholds[i] = *value
+	}
+	*t = thresholds
+	return nil
+}
+
 // FeatureMatchOrderBy defines the ordering options for feature matching results.
 type FeatureMatchOrderBy OrderBy
 
+// Feature match result ordering options the native parser accepts:
+// Horizontal, Vertical, Score, Area, and Random.
 const (
 	FeatureMatchOrderByHorizontal = FeatureMatchOrderBy(OrderByHorizontal)
 	FeatureMatchOrderByVertical   = FeatureMatchOrderBy(OrderByVertical)
@@ -212,22 +319,32 @@ const (
 // FeatureMatchDetector defines the feature detection algorithms.
 type FeatureMatchDetector string
 
+// Feature detection algorithms. The native parser accepts the CamelCase and
+// all-lowercase spellings of these names, plus "Default" (keep the existing
+// detector) and "SURF", which fails node load on builds without OpenCV
+// xfeatures2d. Default: SIFT.
 const (
 	FeatureMatchMethodSIFT  FeatureMatchDetector = "SIFT"  // Scale-Invariant Feature Transform (default, most accurate)
-	FeatureMatchMethodKAZE  FeatureMatchDetector = "KAZE"  // KAZE features for 2D/3D images
+	FeatureMatchMethodKAZE  FeatureMatchDetector = "KAZE"  // KAZE features
 	FeatureMatchMethodAKAZE FeatureMatchDetector = "AKAZE" // Accelerated KAZE
 	FeatureMatchMethodBRISK FeatureMatchDetector = "BRISK" // Binary Robust Invariant Scalable Keypoints (fast)
-	FeatureMatchMethodORB   FeatureMatchDetector = "ORB"   // Oriented FAST and Rotated BRIEF (fast, no scale invariance)
+	FeatureMatchMethodORB   FeatureMatchDetector = "ORB"   // Oriented FAST and Rotated BRIEF (fast)
+	FeatureMatchMethodSURF  FeatureMatchDetector = "SURF"  // Speeded-Up Robust Features; requires OpenCV xfeatures2d
 )
 
 // FeatureMatchParam defines parameters for feature matching recognition.
 type FeatureMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Template specifies the template image paths. Required.
-	Template []string `json:"template,omitempty"`
+	// JSON input may be a single string or an array of strings; a scalar
+	// normalizes to a one-element list. Nil is omitted to inherit the
+	// existing/default templates; an empty non-nil list clears them.
+	Template StringList `json:"template,omitzero"`
 	// Count specifies the minimum number of feature points required (threshold). Default: 4.
 	Count int `json:"count,omitempty"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Score | Area | Random.
@@ -236,7 +353,9 @@ type FeatureMatchParam struct {
 	Index int `json:"index,omitempty"`
 	// GreenMask enables green color masking for transparent areas.
 	GreenMask bool `json:"green_mask,omitempty"`
-	// Detector specifies the feature detector algorithm. Options: SIFT, KAZE, AKAZE, BRISK, ORB. Default: SIFT.
+	// Detector specifies the feature detector algorithm. Options: SIFT, KAZE,
+	// AKAZE, BRISK, ORB, and SURF (requires an OpenCV build with xfeatures2d).
+	// Default: SIFT.
 	Detector FeatureMatchDetector `json:"detector,omitempty"`
 	// Ratio specifies the matching ratio threshold [0-1.0]. Default: 0.6.
 	Ratio float64 `json:"ratio,omitempty"`
@@ -258,6 +377,8 @@ func RecFeatureMatch(p FeatureMatchParam) *Recognition {
 // ColorMatchMethod defines the color space for color matching (cv::ColorConversionCodes).
 type ColorMatchMethod int
 
+// Color spaces with the channel count each implies for the lower/upper
+// bounds. Default: 4 (RGB).
 const (
 	ColorMatchMethodRGB  ColorMatchMethod = 4  // RGB color space, 3 channels (default)
 	ColorMatchMethodHSV  ColorMatchMethod = 40 // HSV color space, 3 channels
@@ -267,6 +388,8 @@ const (
 // ColorMatchOrderBy defines the ordering options for color matching results.
 type ColorMatchOrderBy OrderBy
 
+// Color match result ordering options the native parser accepts: Horizontal,
+// Vertical, Score, Area, and Random.
 const (
 	ColorMatchOrderByHorizontal = ColorMatchOrderBy(OrderByHorizontal)
 	ColorMatchOrderByVertical   = ColorMatchOrderBy(OrderByVertical)
@@ -279,13 +402,19 @@ const (
 type ColorMatchParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Method specifies the color space. 4: RGB (default), 40: HSV, 6: GRAY.
 	Method ColorMatchMethod `json:"method,omitempty"`
 	// Lower specifies the color lower bounds. Required. Inner array length must match method channels.
+	// JSON input may be a single flat row of channel values; a flat row
+	// normalizes to one row.
 	Lower [][]int `json:"lower,omitempty"`
 	// Upper specifies the color upper bounds. Required. Inner array length must match method channels.
+	// JSON input may be a single flat row of channel values; a flat row
+	// normalizes to one row.
 	Upper [][]int `json:"upper,omitempty"`
 	// Count specifies the minimum pixel count required (threshold). Default: 1.
 	Count int `json:"count,omitempty"`
@@ -295,6 +424,76 @@ type ColorMatchParam struct {
 	Index int `json:"index,omitempty"`
 	// Connected enables connected component analysis. Default: false.
 	Connected bool `json:"connected,omitempty"`
+}
+
+// UnmarshalJSON normalizes the flat single-row lower/upper form to one row,
+// matching the native parser. Omitted fields retain their existing values.
+// On error the param is unchanged.
+func (p *ColorMatchParam) UnmarshalJSON(data []byte) error {
+	decoded := struct {
+		ROI       Target            `json:"roi,omitzero"`
+		ROIOffset Rect              `json:"roi_offset,omitzero"`
+		Method    ColorMatchMethod  `json:"method,omitempty"`
+		Lower     intRows           `json:"lower,omitempty"`
+		Upper     intRows           `json:"upper,omitempty"`
+		Count     int               `json:"count,omitempty"`
+		OrderBy   ColorMatchOrderBy `json:"order_by,omitempty"`
+		Index     int               `json:"index,omitempty"`
+		Connected bool              `json:"connected,omitempty"`
+	}{
+		ROI:       p.ROI,
+		ROIOffset: p.ROIOffset,
+		Method:    p.Method,
+		Lower:     clone2DInt(p.Lower),
+		Upper:     clone2DInt(p.Upper),
+		Count:     p.Count,
+		OrderBy:   p.OrderBy,
+		Index:     p.Index,
+		Connected: p.Connected,
+	}
+	if err := unmarshalJSON(data, &decoded); err != nil {
+		return err
+	}
+	*p = ColorMatchParam{
+		ROI:       decoded.ROI,
+		ROIOffset: decoded.ROIOffset,
+		Method:    decoded.Method,
+		Lower:     decoded.Lower,
+		Upper:     decoded.Upper,
+		Count:     decoded.Count,
+		OrderBy:   decoded.OrderBy,
+		Index:     decoded.Index,
+		Connected: decoded.Connected,
+	}
+	return nil
+}
+
+// intRows decodes a list of integer rows, accepting a single flat row as a
+// one-row list, matching the native parser's get_and_check_array_or_2darray.
+type intRows [][]int
+
+// UnmarshalJSON accepts a flat integer row or a list of integer rows.
+// Null clears the list. On error the receiver is unchanged.
+func (r *intRows) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		*r = nil
+		return nil
+	}
+	if trimmed[0] != '[' {
+		return fmt.Errorf("color bounds must be an array of rows or a single row, got %s", trimmed)
+	}
+	var rows [][]int
+	if err := unmarshalJSON(data, &rows); err == nil {
+		*r = rows
+		return nil
+	}
+	var flat []int
+	if err := unmarshalJSON(data, &flat); err == nil {
+		*r = intRows{flat}
+		return nil
+	}
+	return fmt.Errorf("color bounds must be an array of rows or a single row, got %s", trimmed)
 }
 
 func (n ColorMatchParam) isRecognitionParam() {}
@@ -325,6 +524,9 @@ func RecColorMatch(p ColorMatchParam) *Recognition {
 // OCROrderBy defines the ordering options for OCR results.
 type OCROrderBy OrderBy
 
+// OCR result ordering options the native parser accepts: Horizontal,
+// Vertical, Area, Length, Random, and Expected. Expected orders results by
+// their position in the Expected list, Length by matched text length.
 const (
 	OCROrderByHorizontal = OCROrderBy(OrderByHorizontal)
 	OCROrderByVertical   = OCROrderBy(OrderByVertical)
@@ -338,13 +540,23 @@ const (
 type OCRParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Expected specifies the expected text results, supports regex.
-	Expected []string `json:"expected,omitempty"`
+	// JSON input may be a single string or an array of strings.
+	// Nil is omitted to inherit the existing/default value; an empty
+	// non-nil list clears it.
+	// The deprecated upstream "text" alias decodes into Expected when
+	// "expected" is absent; encoding always uses "expected".
+	Expected StringList `json:"expected,omitzero"`
 	// Threshold specifies the model confidence threshold [0-1.0]. Default: 0.3.
 	Threshold float64 `json:"threshold,omitempty"`
-	// Replace specifies text replacement rules for correcting OCR errors.
+	// Replace specifies text replacement rules for correcting OCR errors,
+	// applied as regex replacements. JSON input may be a single
+	// ["pattern","replacement"] pair; a single pair normalizes to a
+	// one-pair list.
 	Replace [][2]string `json:"replace,omitempty"`
 	// OrderBy specifies how results are sorted. Default: Horizontal. Options: Horizontal | Vertical | Area | Length | Random | Expected.
 	OrderBy OCROrderBy `json:"order_by,omitempty"`
@@ -356,10 +568,122 @@ type OCRParam struct {
 	Model string `json:"model,omitempty"`
 	// ColorFilter specifies a ColorMatch node name whose color parameters (method, lower, upper)
 	// are used to binarize the image before OCR. Nodes with this field set will not participate in batch optimization.
+	// Recognition fails at run time if the referenced node does not exist or is not a ColorMatch node.
 	ColorFilter string `json:"color_filter,omitempty"`
 }
 
 func (n OCRParam) isRecognitionParam() {}
+
+// UnmarshalJSON maps the deprecated "text" alias to Expected when "expected"
+// is absent and normalizes a single replace pair to a one-pair list,
+// matching the native parser. A single pair must contain exactly two non-null
+// strings. Omitted fields retain their existing values.
+// On error the param is unchanged.
+func (p *OCRParam) UnmarshalJSON(data []byte) error {
+	decoded := struct {
+		ROI         Target         `json:"roi,omitzero"`
+		ROIOffset   Rect           `json:"roi_offset,omitzero"`
+		Expected    StringList     `json:"expected,omitzero"`
+		Threshold   float64        `json:"threshold,omitempty"`
+		Replace     ocrReplaceList `json:"replace,omitempty"`
+		OrderBy     OCROrderBy     `json:"order_by,omitempty"`
+		Index       int            `json:"index,omitempty"`
+		OnlyRec     bool           `json:"only_rec,omitempty"`
+		Model       string         `json:"model,omitempty"`
+		ColorFilter string         `json:"color_filter,omitempty"`
+	}{
+		ROI:         p.ROI,
+		ROIOffset:   p.ROIOffset,
+		Expected:    slices.Clone(p.Expected),
+		Threshold:   p.Threshold,
+		Replace:     slices.Clone(p.Replace),
+		OrderBy:     p.OrderBy,
+		Index:       p.Index,
+		OnlyRec:     p.OnlyRec,
+		Model:       p.Model,
+		ColorFilter: p.ColorFilter,
+	}
+	if err := unmarshalJSON(data, &decoded); err != nil {
+		return err
+	}
+	expected := decoded.Expected
+	text, present, err := ocrTextAliasJSON(data)
+	if err != nil {
+		return err
+	}
+	if present {
+		expected = text
+	}
+	*p = OCRParam{
+		ROI:         decoded.ROI,
+		ROIOffset:   decoded.ROIOffset,
+		Expected:    expected,
+		Threshold:   decoded.Threshold,
+		Replace:     decoded.Replace,
+		OrderBy:     decoded.OrderBy,
+		Index:       decoded.Index,
+		OnlyRec:     decoded.OnlyRec,
+		Model:       decoded.Model,
+		ColorFilter: decoded.ColorFilter,
+	}
+	return nil
+}
+
+// ocrReplaceList decodes OCR replacement rules, accepting a single pair
+// shorthand only when it contains exactly two non-null strings.
+type ocrReplaceList [][2]string
+
+// UnmarshalJSON validates and normalizes a single replacement pair.
+// Nested arrays decode as [][2]string; null sets the slice to nil.
+// On error the receiver is unchanged.
+func (r *ocrReplaceList) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) > 0 && trimmed[0] == '[' {
+		inner := bytes.TrimSpace(trimmed[1:])
+		if len(inner) > 0 && inner[0] != '[' && inner[0] != ']' {
+			var pair []*string
+			if err := unmarshalJSON(trimmed, &pair); err != nil {
+				return fmt.Errorf("OCR replacement pair must contain exactly two strings: %w", err)
+			}
+			if len(pair) != 2 || pair[0] == nil || pair[1] == nil {
+				return errors.New("OCR replacement pair must contain exactly two non-null strings")
+			}
+			*r = ocrReplaceList{{*pair[0], *pair[1]}}
+			return nil
+		}
+	}
+	var list orSingleList[[2]string]
+	if err := list.UnmarshalJSON(data); err != nil {
+		return err
+	}
+	*r = ocrReplaceList(list)
+	return nil
+}
+
+// ocrTextAliasJSON decodes the deprecated "text" member only when "expected"
+// is absent. The boolean reports an explicit text member, including null.
+func ocrTextAliasJSON(data []byte) (StringList, bool, error) {
+	var alias struct {
+		Expected json.RawMessage `json:"expected,omitempty"`
+		Text     json.RawMessage `json:"text,omitempty"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(&alias); err != nil {
+		return nil, false, err
+	}
+	if len(alias.Expected) != 0 || len(alias.Text) == 0 {
+		return nil, false, nil
+	}
+	trimmed := bytes.TrimSpace(alias.Text)
+	if bytes.Equal(trimmed, []byte("null")) {
+		return nil, true, nil
+	}
+	var list StringList
+	if err := unmarshalJSON(trimmed, &list); err != nil {
+		return nil, false, err
+	}
+	return list, true, nil
+}
 
 // RecOCR creates an OCR recognition with the given parameters.
 // All fields are optional; pass OCRParam{} for defaults.
@@ -376,6 +700,8 @@ func RecOCR(p OCRParam) *Recognition {
 // NeuralNetworkClassifyOrderBy defines the ordering options for neural network classification results.
 type NeuralNetworkClassifyOrderBy OrderBy
 
+// Neural network classification result ordering options the native parser
+// accepts: Horizontal, Vertical, Score, Random, and Expected.
 const (
 	NeuralNetworkClassifyOrderByHorizontal = NeuralNetworkClassifyOrderBy(OrderByHorizontal)
 	NeuralNetworkClassifyOrderByVertical   = NeuralNetworkClassifyOrderBy(OrderByVertical)
@@ -388,10 +714,15 @@ const (
 type NeuralNetworkClassifyParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Labels specifies class names for label selection, debugging, and logging. Fills "Unknown" if not provided.
-	Labels []string `json:"labels,omitempty"`
+	// JSON input may be a single string or an array of strings.
+	// Nil is omitted to inherit the existing/default labels; an empty
+	// non-nil list clears them.
+	Labels StringList `json:"labels,omitzero"`
 	// Model specifies the model folder path relative to model/classify directory. Required. Only ONNX models supported.
 	Model string `json:"model,omitempty"`
 	// Expected selects class indices or labels, preserving their order.
@@ -420,6 +751,8 @@ func RecNeuralNetworkClassify(p NeuralNetworkClassifyParam) *Recognition {
 // NeuralNetworkDetectOrderBy defines the ordering options for neural network detection results.
 type NeuralNetworkDetectOrderBy OrderBy
 
+// Neural network detection result ordering options the native parser
+// accepts: Horizontal, Vertical, Score, Area, Random, and Expected.
 const (
 	NeuralNetworkDetectOrderByHorizontal = NeuralNetworkDetectOrderBy(OrderByHorizontal)
 	NeuralNetworkDetectOrderByVertical   = NeuralNetworkDetectOrderBy(OrderByVertical)
@@ -433,14 +766,20 @@ const (
 type NeuralNetworkDetectParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// Labels specifies class names for label selection, debugging, and logging. Auto-reads from model metadata if not provided.
-	Labels []string `json:"labels,omitempty"`
+	// JSON input may be a single string or an array of strings.
+	// Nil is omitted to inherit the existing/default labels; an empty
+	// non-nil list clears them.
+	Labels StringList `json:"labels,omitzero"`
 	// Model specifies the model folder path relative to model/detect directory. Required. Supports YOLOv8/YOLOv11 ONNX models.
 	Model string `json:"model,omitempty"`
 	// Expected selects class indices or labels, preserving their order.
-	// Nil inherits the existing/default selection; an empty list matches all classes.
+	// Nil inherits the existing/default selection; an empty list matches all
+	// classes, subject to Threshold.
 	Expected ClassSelectors `json:"expected,omitzero"`
 	// Threshold specifies confidence thresholds in [0, 1], in Expected order.
 	// Nil or an empty list inherits the existing thresholds or defaults to 0.3.
@@ -461,8 +800,8 @@ func (n NeuralNetworkDetectParam) isRecognitionParam() {}
 func (p *NeuralNetworkDetectParam) UnmarshalJSON(data []byte) error {
 	raw := struct {
 		ROI       Target                        `json:"roi,omitzero"`
-		ROIOffset Rect                          `json:"roi_offset,omitempty"`
-		Labels    []string                      `json:"labels,omitempty"`
+		ROIOffset Rect                          `json:"roi_offset,omitzero"`
+		Labels    StringList                    `json:"labels,omitzero"`
 		Model     string                        `json:"model,omitempty"`
 		Expected  ClassSelectors                `json:"expected,omitzero"`
 		Threshold neuralNetworkDetectThresholds `json:"threshold,omitempty"`
@@ -496,6 +835,9 @@ func (p *NeuralNetworkDetectParam) UnmarshalJSON(data []byte) error {
 
 type neuralNetworkDetectThresholds []float64
 
+// UnmarshalJSON accepts a JSON number or an array of numbers and normalizes
+// a scalar to a one-element list. Invalid input, including null items,
+// leaves the receiver unchanged.
 func (t *neuralNetworkDetectThresholds) UnmarshalJSON(data []byte) error {
 	data = bytes.TrimSpace(data)
 	var values []*float64
@@ -572,7 +914,8 @@ func (s *SubRecognitionItem) UnmarshalJSON(data []byte) error {
 	return errors.New("SubRecognitionItem: expected string or object")
 }
 
-// MarshalJSON outputs a string when NodeName is set, otherwise the inline object.
+// MarshalJSON outputs a string when NodeName is set, the inline object when
+// Inline is set, and null when both are zero values.
 func (s SubRecognitionItem) MarshalJSON() ([]byte, error) {
 	if s.NodeName != "" {
 		return marshalJSON(s.NodeName)
@@ -590,7 +933,7 @@ func Ref(nodeName string) SubRecognitionItem {
 
 // Inline builds a SubRecognitionItem from a recognition; optional name is the sub_name.
 // Example: RecOr(Inline(RecTemplateMatch(...)), Inline(RecColorMatch(...)))
-// Example: RecAnd(Ref("A"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(2)
+// Example: RecAnd(Ref("A"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(1)
 func Inline(rec *Recognition, name ...string) SubRecognitionItem {
 	subName := ""
 	if len(name) > 0 {
@@ -600,9 +943,15 @@ func Inline(rec *Recognition, name ...string) SubRecognitionItem {
 }
 
 // InlineSubRecognition is a v2 inline sub-recognition in all_of/any_of.
-// JSON uses {"sub_name": "...", "recognition": {"type": "...", "param": {...}}}.
+// Input accepts the protocol envelope {"sub_name": "...", "recognition": {type, param}},
+// the v1 form with "recognition" holding a bare type name (parameters flat
+// on the sub item), and the flat native dump {"sub_name", "type", "param"};
+// all of them normalize into this v2 model, and encoding always emits the
+// envelope.
 // SubName is retained by both And and Or; only And uses it to resolve later sub-recognition ROIs.
 type InlineSubRecognition struct {
+	// SubName names the inline sub-recognition. Only And uses it, to resolve
+	// the ROIs of later sub-recognitions.
 	SubName string `json:"sub_name,omitempty"`
 	Recognition
 }
@@ -615,6 +964,10 @@ func (n InlineSubRecognition) MarshalJSON() ([]byte, error) {
 	}{SubName: n.SubName, Recognition: n.Recognition})
 }
 
+// UnmarshalJSON decodes the protocol envelope, the v1 form where
+// "recognition" holds a bare type name (parameters flat on the sub item, as
+// the native parser reads them), and the flat native dump form when the
+// recognition key is absent. On error the receiver is unchanged.
 func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
 	type Alias struct {
 		SubName     string          `json:"sub_name,omitempty"`
@@ -624,14 +977,30 @@ func (n *InlineSubRecognition) UnmarshalJSON(data []byte) error {
 	if err := unmarshalJSON(data, &alias); err != nil {
 		return err
 	}
-	n.SubName = alias.SubName
 
-	if len(alias.Recognition) > 0 {
-		return unmarshalJSON(alias.Recognition, &n.Recognition)
+	decoded := *n
+	decoded.SubName = alias.SubName
+	switch {
+	case len(alias.Recognition) == 0:
+		if err := unmarshalJSON(data, &decoded.Recognition); err != nil {
+			return err
+		}
+	case bytes.TrimSpace(alias.Recognition)[0] == '"':
+		if err := unmarshalJSON(alias.Recognition, &decoded.Recognition.Type); err != nil {
+			return err
+		}
+		// v1 form: the native parser reads parameters from the whole sub item.
+		param, err := decodeRecognitionParam(decoded.Recognition.Type, data)
+		if err != nil {
+			return err
+		}
+		decoded.Recognition.Param = param
+	default:
+		if err := unmarshalJSON(alias.Recognition, &decoded.Recognition); err != nil {
+			return err
+		}
 	}
-	if err := unmarshalJSON(data, &n.Recognition); err != nil {
-		return err
-	}
+	*n = decoded
 	return nil
 }
 
@@ -645,15 +1014,20 @@ func newInlineSub(subName string, recognition *Recognition) *InlineSubRecognitio
 // AndRecognitionParam defines parameters for AND recognition.
 // AllOf elements are either node name strings or inline recognitions.
 type AndRecognitionParam struct {
-	AllOf    []SubRecognitionItem `json:"all_of,omitempty"`
-	BoxIndex int                  `json:"box_index,omitempty"`
+	// AllOf lists the sub-recognitions that must all succeed. Elements are
+	// node name references or inline recognitions (SubRecognitionItem).
+	AllOf []SubRecognitionItem `json:"all_of,omitempty"`
+	// BoxIndex selects which all_of result's box to use as the final box.
+	// The native parser requires 0 <= box_index < len(all_of); the default 0
+	// uses the first result.
+	BoxIndex int `json:"box_index,omitempty"`
 }
 
 func (n AndRecognitionParam) isRecognitionParam() {}
 
 // RecAnd creates an AND recognition that requires all sub-recognitions to succeed.
 // Use SetBoxIndex to set which result's box to use.
-// Example: RecAnd(Ref("NodeA"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(2)
+// Example: RecAnd(Ref("NodeA"), Inline(RecDirectHit(), "sub1")).SetBoxIndex(1)
 func RecAnd(items ...SubRecognitionItem) *Recognition {
 	param := &AndRecognitionParam{AllOf: slices.Clone(items)}
 	return &Recognition{Type: RecognitionTypeAnd, Param: param}
@@ -662,6 +1036,8 @@ func RecAnd(items ...SubRecognitionItem) *Recognition {
 // OrRecognitionParam defines parameters for OR recognition.
 // AnyOf elements are either node name strings or inline recognitions.
 type OrRecognitionParam struct {
+	// AnyOf lists the sub-recognitions, one of which must succeed. Elements
+	// are node name references or inline recognitions (SubRecognitionItem).
 	AnyOf []SubRecognitionItem `json:"any_of,omitempty"`
 }
 
@@ -682,8 +1058,10 @@ func RecOr(anyOf ...SubRecognitionItem) *Recognition {
 type CustomRecognitionParam struct {
 	// ROI specifies the region of interest for recognition.
 	ROI Target `json:"roi,omitzero"`
-	// ROIOffset specifies the offset applied to ROI.
-	ROIOffset Rect `json:"roi_offset,omitempty"`
+	// ROIOffset specifies an offset applied to ROI. The zero value is omitted
+	// to inherit the existing/default offset; an explicit zero offset cannot
+	// be expressed with this value-type field.
+	ROIOffset Rect `json:"roi_offset,omitzero"`
 	// CustomRecognition specifies the recognizer name registered via MaaResourceRegisterCustomRecognition. Required.
 	CustomRecognition string `json:"custom_recognition,omitempty"`
 	// CustomRecognitionParam specifies custom parameters passed to the recognition callback.

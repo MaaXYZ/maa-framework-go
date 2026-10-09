@@ -56,6 +56,11 @@ func TestEvent_String(t *testing.T) {
 			event:  EventNodeAction,
 			expect: "Node.Action",
 		},
+		{
+			name:   "NodeWaitFreezes",
+			event:  EventNodeWaitFreezes,
+			expect: "Node.WaitFreezes",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -81,6 +86,11 @@ func TestEvent_Starting(t *testing.T) {
 			name:   "NodeAction",
 			event:  EventNodeAction,
 			expect: "Node.Action.Starting",
+		},
+		{
+			name:   "NodeWaitFreezes",
+			event:  EventNodeWaitFreezes,
+			expect: "Node.WaitFreezes.Starting",
 		},
 	}
 
@@ -108,6 +118,11 @@ func TestEvent_Succeeded(t *testing.T) {
 			event:  EventNodeAction,
 			expect: "Node.Action.Succeeded",
 		},
+		{
+			name:   "NodeWaitFreezes",
+			event:  EventNodeWaitFreezes,
+			expect: "Node.WaitFreezes.Succeeded",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -133,6 +148,11 @@ func TestEvent_Failed(t *testing.T) {
 			name:   "NodeAction",
 			event:  EventNodeAction,
 			expect: "Node.Action.Failed",
+		},
+		{
+			name:   "NodeWaitFreezes",
+			event:  EventNodeWaitFreezes,
+			expect: "Node.WaitFreezes.Failed",
 		},
 	}
 

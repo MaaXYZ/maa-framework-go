@@ -87,7 +87,7 @@ func checkNativeAPICoverage(headerDir string, nativeFiles map[string][]string, b
 				})
 				continue
 			}
-			if !sameStringSlice(goSig.params, cSig.params) || !sameStringSlice(goSig.returns, cSig.returns) {
+			if !sameStringSlice(goSig.params, cSig.params) || !nativeReturnTypesMatch(goSig.returns, cSig.returns) {
 				locLine := formatLocationLine(goDeclLocs[module][fn], goRegisterLocs[module][fn])
 				issues = append(issues, issue{
 					section: sectionNativeAPI,
@@ -126,6 +126,20 @@ func checkNativeAPICoverage(headerDir string, nativeFiles map[string][]string, b
 		}
 	}
 	return filtered, nil
+}
+
+// nativeReturnTypesMatch allows C char* returns to stay as raw Go pointers
+// when the caller needs to read a byte count instead of a NUL-terminated string.
+func nativeReturnTypesMatch(goTypes, cTypes []string) bool {
+	if len(goTypes) != len(cTypes) {
+		return false
+	}
+	for i, goType := range goTypes {
+		if goType != cTypes[i] && !(goType == "ptr" && cTypes[i] == "cstring") {
+			return false
+		}
+	}
+	return true
 }
 
 func parseGoRegistrations(nativeFiles map[string][]string) (map[string]map[string]struct{}, map[string]map[string]methodSig, map[string]map[string]goRegistrationLoc, map[string]map[string]goVarDeclLoc, []issue, error) {

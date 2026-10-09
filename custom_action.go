@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -13,14 +14,30 @@ var (
 	customActionRunnerCallbackAgentsMutex sync.RWMutex
 )
 
-func registerCustomAction(action CustomActionRunner) uint64 {
+func registerCustomAction(action CustomActionRunner) (uint64, error) {
+	if isNilCustomActionRunner(action) {
+		return 0, errors.New("custom action runner is nil")
+	}
+
 	id := atomic.AddUint64(&customActionRunnerCallbackID, 1)
 
 	customActionRunnerCallbackAgentsMutex.Lock()
 	customActionRunnerCallbackAgents[id] = action
 	customActionRunnerCallbackAgentsMutex.Unlock()
 
-	return id
+	return id, nil
+}
+
+func isNilCustomActionRunner(action CustomActionRunner) bool {
+	if action == nil {
+		return true
+	}
+	// A typed-nil CustomActionFunc is a non-nil interface whose callback
+	// would panic; upstream rejects null callbacks at registration.
+	if f, ok := action.(CustomActionFunc); ok {
+		return f == nil
+	}
+	return false
 }
 
 func unregisterCustomAction(id uint64) bool {
@@ -34,18 +51,34 @@ func unregisterCustomAction(id uint64) bool {
 	return true
 }
 
+// CustomActionArg is the argument passed to CustomActionRunner.Run when the
+// framework executes a node with a Custom action.
 type CustomActionArg struct {
-	TaskID            int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
-	CurrentTaskName   string
-	CustomActionName  string
+	TaskID int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
+	// CurrentTaskName is the name of the node currently executing. Entries
+	// run via Context.RunActionDirect use a synthesized name
+	// ("action/<type>/<uuid>") instead of a pipeline node name.
+	CurrentTaskName string
+	// CustomActionName is the registered name of this custom action.
+	CustomActionName string
+	// CustomActionParam is the node's custom_action_param, serialized as a
+	// JSON string.
 	CustomActionParam string
 	// RecognitionDetail may be nil when the custom action runs on an action-only
 	// node (e.g. invoked via Context.RunAction), where reco_id is invalid.
 	RecognitionDetail *RecognitionDetail
-	Box               Rect
+	// Box is the action's resolved target rect. It equals the preceding
+	// recognition's hit box when the target is Self (the default).
+	Box Rect
 }
 
+// CustomActionRunner performs the action for nodes registered under a name
+// via Resource.RegisterCustomAction.
 type CustomActionRunner interface {
+	// Run reports whether the action succeeded. Returning false marks the
+	// node's action as failed; for a pipeline node the task then continues
+	// from the node's on_error list, while action-only runs (e.g. via
+	// Context.RunAction) only report the failure in their ActionDetail.
 	Run(ctx *Context, arg *CustomActionArg) bool
 }
 
@@ -54,6 +87,7 @@ type CustomActionRunner interface {
 // CustomActionRunner that calls f.
 type CustomActionFunc func(ctx *Context, arg *CustomActionArg) bool
 
+// Run calls f(ctx, arg).
 func (f CustomActionFunc) Run(ctx *Context, arg *CustomActionArg) bool {
 	return f(ctx, arg)
 }

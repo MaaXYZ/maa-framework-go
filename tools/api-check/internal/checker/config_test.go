@@ -24,6 +24,8 @@ func TestLoadConfigFromPathValid(t *testing.T) {
 		"blacklist:",
 		"  - MaaFoo",
 		"  - MaaBar",
+		"native_exclusions:",
+		"  MaaBaz: Intentional native difference",
 		"pipeline_schema: tools/pipeline.schema.json",
 		"pipeline_exclusions:",
 		"  action.Click.param.pressure: Intentional test omission",
@@ -39,6 +41,9 @@ func TestLoadConfigFromPathValid(t *testing.T) {
 	}
 	if len(cfg.Blacklist) != 2 || cfg.Blacklist[0] != "MaaFoo" || cfg.Blacklist[1] != "MaaBar" {
 		t.Errorf("Blacklist = %v, want [MaaFoo MaaBar]", cfg.Blacklist)
+	}
+	if got := cfg.NativeExclusions["MaaBaz"]; got != "Intentional native difference" {
+		t.Errorf("NativeExclusions = %v, want MaaBaz reason", cfg.NativeExclusions)
 	}
 	if cfg.PipelineSchema != "tools/pipeline.schema.json" {
 		t.Errorf("PipelineSchema = %q", cfg.PipelineSchema)
@@ -66,7 +71,7 @@ func TestLoadConfigFromPathEmptyAllowed(t *testing.T) {
 			if err != nil {
 				t.Fatalf("loadConfigFromPath() error = %v", err)
 			}
-			if cfg.HeaderDir != "" || len(cfg.Blacklist) != 0 || cfg.PipelineSchema != "" || len(cfg.PipelineExclusions) != 0 {
+			if cfg.HeaderDir != "" || len(cfg.Blacklist) != 0 || len(cfg.NativeExclusions) != 0 || cfg.PipelineSchema != "" || len(cfg.PipelineExclusions) != 0 {
 				t.Fatalf("expected zero Config, got %+v", cfg)
 			}
 		})
@@ -80,6 +85,7 @@ func TestLoadConfigFromPathRejectsInvalidYAML(t *testing.T) {
 		want string
 	}{
 		{"unknown key", "unknown_key: value\n", "field unknown_key not found"},
+		{"wrong-case key", "Header_Dir: deps/include\n", "field Header_Dir not found"},
 		{"unknown nested key", "pipeline_exclusions:\n  a: b\nunknown: 1\n", "field unknown not found"},
 		{"mistyped scalar as list", "blacklist: not-a-list\n", "cannot unmarshal"},
 		{"mistyped list as scalar", "header_dir:\n  - a\n", "cannot unmarshal"},

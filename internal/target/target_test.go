@@ -75,11 +75,6 @@ func TestTarget_UnmarshalJSON(t *testing.T) {
 			JSON:   "[100, 200]",
 			Expect: NewRect(rect.Rect{100, 200, 1, 1}),
 		},
-		{
-			Name:   "Unknown",
-			JSON:   "null",
-			Expect: Target{},
-		},
 	}
 
 	for _, tc := range cases {
@@ -93,7 +88,7 @@ func TestTarget_UnmarshalJSON(t *testing.T) {
 }
 
 func TestTarget_UnmarshalJSON_InvalidPreservesValue(t *testing.T) {
-	for _, input := range []string{"false", "[]", "[1]", "[1,2,3]", "[1,2,3,4,5]", "[1,null]", "[1,2.5]", "{}", "123"} {
+	for _, input := range []string{"null", "false", "[]", "[1]", "[1,2,3]", "[1,2,3,4,5]", "[1,null]", "[1,2.5]", "{}", "123"} {
 		t.Run(input, func(t *testing.T) {
 			original := NewString("[Anchor]Previous")
 			got := original
@@ -105,5 +100,57 @@ func TestTarget_UnmarshalJSON_InvalidPreservesValue(t *testing.T) {
 
 func TestTarget_MarshalJSON_RejectsFalse(t *testing.T) {
 	_, err := json.Marshal(NewBool(false))
+	require.Error(t, err)
+}
+
+func TestTarget_MarshalJSON_Forms(t *testing.T) {
+	type Case struct {
+		Name   string
+		Target Target
+		Expect string
+	}
+
+	cases := []Case{
+		{
+			Name:   "Bool",
+			Target: NewBool(true),
+			Expect: "true",
+		},
+		{
+			Name:   "String",
+			Target: NewString("NodeA"),
+			Expect: `"NodeA"`,
+		},
+		{
+			Name:   "AnchorString",
+			Target: NewString("[Anchor]MyAnchor"),
+			Expect: `"[Anchor]MyAnchor"`,
+		},
+		{
+			Name:   "Rect",
+			Target: NewRect(rect.Rect{1, 2, 3, 4}),
+			Expect: "[1,2,3,4]",
+		},
+		{
+			Name:   "PointRectEncodesFourElements",
+			Target: NewRect(rect.Rect{100, 200, 1, 1}),
+			Expect: "[100,200,1,1]",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.Name, func(t *testing.T) {
+			data, err := json.Marshal(tc.Target)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.Expect, string(data))
+		})
+	}
+}
+
+func TestTarget_MarshalJSON_RejectsZero(t *testing.T) {
+	_, err := json.Marshal(Target{})
+	require.Error(t, err)
+
+	_, err = json.Marshal([]Target{{}})
 	require.Error(t, err)
 }

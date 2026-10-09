@@ -372,3 +372,69 @@ func TestImageBuffer_GetInto(t *testing.T) {
 		}
 	})
 }
+
+// bufferDims reports the width and height a buffer currently decodes to.
+func bufferDims(t *testing.T, imageBuffer *ImageBuffer) (int, int) {
+	t.Helper()
+	img := imageBuffer.GetInto(nil)
+	require.NotNil(t, img)
+	bounds := img.Bounds()
+	return bounds.Dx(), bounds.Dy()
+}
+
+// TestImageBuffer_Resize pins the native resize contract: an empty buffer
+// fails, both dimensions zero fails, a zero dimension scales proportionally,
+// and success updates the stored dimensions.
+func TestImageBuffer_Resize(t *testing.T) {
+	empty := createImageBuffer(t)
+	defer empty.Destroy()
+	require.False(t, empty.Resize(8, 4))
+
+	imageBuffer := createImageBuffer(t)
+	defer imageBuffer.Destroy()
+	require.NoError(t, imageBuffer.Set(solidTestImage()))
+	w, h := bufferDims(t, imageBuffer)
+	require.Equal(t, 2, w)
+	require.Equal(t, 2, h)
+
+	require.True(t, imageBuffer.Resize(4, 2))
+	w, h = bufferDims(t, imageBuffer)
+	require.Equal(t, 4, w)
+	require.Equal(t, 2, h)
+
+	// A zero width scales from the requested height.
+	require.True(t, imageBuffer.Resize(0, 4))
+	w, h = bufferDims(t, imageBuffer)
+	require.Equal(t, 8, w)
+	require.Equal(t, 4, h)
+
+	// A zero height scales from the requested width.
+	require.True(t, imageBuffer.Resize(4, 0))
+	w, h = bufferDims(t, imageBuffer)
+	require.Equal(t, 4, w)
+	require.Equal(t, 2, h)
+
+	require.False(t, imageBuffer.Resize(0, 0))
+	w, h = bufferDims(t, imageBuffer)
+	require.Equal(t, 4, w)
+	require.Equal(t, 2, h)
+}
+
+// TestImageBuffer_ByHandle pins the borrowed-handle wrapper contract: the
+// ByHandle wrapper shares the owner's native buffer, so images written by the
+// owner are visible through the wrapper.
+func TestImageBuffer_ByHandle(t *testing.T) {
+	imageBuffer := createImageBuffer(t)
+	defer imageBuffer.Destroy()
+	img := solidTestImage()
+	require.NoError(t, imageBuffer.Set(img))
+
+	borrowed := NewImageBufferByHandle(imageBuffer.Handle())
+	require.NotNil(t, borrowed)
+	require.Equal(t, imageBuffer.Handle(), borrowed.Handle())
+	requireImagesEqual(t, img, borrowed.Get())
+
+	require.NoError(t, imageBuffer.Set(solidTestImage()))
+	borrowedImg := borrowed.Get()
+	require.Equal(t, 2, borrowedImg.Bounds().Dx())
+}

@@ -71,26 +71,32 @@ func unregisterCustomControllerCallbacks(id uint64) {
 	customControllerCallbacksAgentsMutex.Unlock()
 }
 
+// ControllerFeature is the feature bitmask returned by CustomController.GetFeature.
+// The flags indicate which input methods the controller supports or prefers.
 type ControllerFeature uint64
 
 const (
-	ControllerFeatureNone                               ControllerFeature = 0
-	ControllerFeatureUseMouseDownAndUpInsteadOfClick    ControllerFeature = 1
+	// ControllerFeatureNone reports no special features: the controller
+	// supports Click, Swipe, and ClickKey directly.
+	ControllerFeatureNone ControllerFeature = 0
+	// ControllerFeatureUseMouseDownAndUpInsteadOfClick makes the framework
+	// route clicks and swipes through TouchDown/TouchMove/TouchUp instead of
+	// Click and Swipe, so contact and pressure are forwarded.
+	ControllerFeatureUseMouseDownAndUpInsteadOfClick ControllerFeature = 1
+	// ControllerFeatureUseKeyboardDownAndUpInsteadOfClick makes the framework
+	// route ClickKey through KeyDown plus KeyUp instead of ClickKey.
 	ControllerFeatureUseKeyboardDownAndUpInsteadOfClick ControllerFeature = 1 << 1
 	// ControllerFeatureNoScalingTouchPoints disables automatic touch coordinate scaling.
 	ControllerFeatureNoScalingTouchPoints ControllerFeature = 1 << 2
 )
 
-// CustomController defines an interface for custom controller.
-// Implementers of this interface must embed a CustomControllerHandler struct
-// and provide implementations for the following methods:
-// Connect, RequestUUID, StartApp, StopApp,
-// Screencap, Click, Swipe, TouchDown, TouchMove, TouchUp,
-// ClickKey, InputText, KeyDown, KeyUp, Scroll, RelativeMove, Shell and Inactive.
+// CustomController defines the operations of a custom controller.
 // Methods can be called concurrently from native threads; implementations must
 // synchronize shared state. KeyUp and TouchUp can be called during destruction.
 type CustomController interface {
 	Connect() bool
+	// Connected reports whether the controller is ready. Return true when
+	// no connection check is needed.
 	Connected() bool
 	RequestUUID() (string, bool)
 	GetFeature() ControllerFeature
@@ -109,16 +115,23 @@ type CustomController interface {
 	Scroll(dx, dy int32) bool
 	RelativeMove(dx, dy int32) bool
 	// Shell runs a controller-side shell command and returns its textual output.
+	// timeout is measured in milliseconds.
+	// Embedded NUL bytes in the output are preserved.
 	// Return ("", true) if the command succeeded but produced no output.
 	Shell(cmd string, timeout int64) (string, bool)
 	// Inactive is called when the framework requests restoring controller/window state (e.g. after tasks finish).
 	// Return true for success or when no action is needed.
 	Inactive() bool
 	// GetInfo returns custom controller information as a JSON string.
-	// Return ("", true) if no extra info is needed.
+	// Return ("{}", true) if no extra info is needed; an empty string is not
+	// valid JSON and logs a framework warning on every controller action.
 	GetInfo() (string, bool)
 }
 
+// MaaCustomControllerCallbacks is the purego mirror of the C
+// MaaCustomControllerCallbacks struct. Its field order and signatures must
+// match MaaCustomController.h exactly: the struct layout is the ABI that the
+// native MaaCustomControllerCreate reads.
 type MaaCustomControllerCallbacks struct {
 	Connect      uintptr
 	Connected    uintptr
@@ -512,7 +525,9 @@ func _ShellAgent(cmd *byte, timeout int64, handleArg uintptr, outputBuffer uintp
 	output, ok := ctrl.Shell(cStringToString(cmd), timeout)
 	if ok {
 		buf := buffer.NewStringBufferByHandle(outputBuffer)
-		buf.Set(output)
+		if !buf.SetWithSize(output, uint64(len(output))) {
+			return uintptr(0)
+		}
 		return uintptr(1)
 	}
 	return uintptr(0)
@@ -525,8 +540,10 @@ func _InactiveAgent(handleArg uintptr) uintptr {
 
 	ctrl, done, exists := acquireCustomControllerCallback(id)
 
-	// For Win32 controllers, this restores window position (removes topmost) and unblocks user input.
-	// For other controllers, this is a no-op that always succeeds.
+	// For Win32 controllers, the inactive action restores window position (removes topmost) and unblocks user input.
+	// Here, success is decided by the custom controller's Inactive return value;
+	// the native default of true for a NULL inactive callback does not apply,
+	// because this bridge always registers the callback.
 	if !exists {
 		return uintptr(1)
 	}

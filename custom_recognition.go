@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"errors"
 	"image"
 	"sync"
 	"sync/atomic"
@@ -14,14 +15,30 @@ var (
 	customRecognitionRunnerCallbackAgentsMutex sync.RWMutex
 )
 
-func registerCustomRecognition(recognizer CustomRecognitionRunner) uint64 {
+func registerCustomRecognition(recognizer CustomRecognitionRunner) (uint64, error) {
+	if isNilCustomRecognitionRunner(recognizer) {
+		return 0, errors.New("custom recognition runner is nil")
+	}
+
 	id := atomic.AddUint64(&customRecognitionRunnerCallbackID, 1)
 
 	customRecognitionRunnerCallbackAgentsMutex.Lock()
 	customRecognitionRunnerCallbackAgents[id] = recognizer
 	customRecognitionRunnerCallbackAgentsMutex.Unlock()
 
-	return id
+	return id, nil
+}
+
+func isNilCustomRecognitionRunner(recognizer CustomRecognitionRunner) bool {
+	if recognizer == nil {
+		return true
+	}
+	// A typed-nil CustomRecognitionFunc is a non-nil interface whose callback
+	// would panic; upstream rejects null callbacks at registration.
+	if f, ok := recognizer.(CustomRecognitionFunc); ok {
+		return f == nil
+	}
+	return false
 }
 
 func unregisterCustomRecognition(id uint64) bool {
@@ -35,13 +52,25 @@ func unregisterCustomRecognition(id uint64) bool {
 	return true
 }
 
+// CustomRecognitionArg is the argument passed to CustomRecognitionRunner.Run
+// when the framework executes a node with a Custom recognition.
 type CustomRecognitionArg struct {
-	TaskID                 int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
-	CurrentTaskName        string
-	CustomRecognitionName  string
+	TaskID int64 // Task ID. Task details can be retrieved via Tasker.GetTaskDetail.
+	// CurrentTaskName is the name of the node currently executing. Entries
+	// run via Context.RunRecognitionDirect use a synthesized name
+	// ("recognition/<type>/<uuid>") instead of a pipeline node name.
+	CurrentTaskName string
+	// CustomRecognitionName is the registered name of this custom recognizer.
+	CustomRecognitionName string
+	// CustomRecognitionParam is the node's custom_recognition_param,
+	// serialized as a JSON string.
 	CustomRecognitionParam string
-	Img                    image.Image
-	Roi                    Rect
+	// Img is the current frame to recognize, decoded into a copy that stays
+	// valid after Run returns.
+	Img image.Image
+	// Roi is the region of interest the recognizer should search, resolved
+	// from the node's roi.
+	Roi Rect
 }
 
 // CustomRecognitionResult contains the box and detail returned by a custom recognizer.
@@ -64,6 +93,7 @@ type CustomRecognitionRunner interface {
 // CustomRecognitionRunner that calls f.
 type CustomRecognitionFunc func(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool)
 
+// Run calls f(ctx, arg).
 func (f CustomRecognitionFunc) Run(ctx *Context, arg *CustomRecognitionArg) (*CustomRecognitionResult, bool) {
 	return f(ctx, arg)
 }
@@ -115,7 +145,9 @@ func _MaaCustomRecognitionCallbackAgent(
 	outBoxRect := buffer.NewRectBufferByHandle(outBox)
 	outBoxRect.Set(box)
 	outDetailString := buffer.NewStringBufferByHandle(outDetail)
-	outDetailString.Set(ret.Detail)
+	// SetWithSize instead of Set: Detail may contain embedded NULs, which
+	// Set truncates at the first one (upstream strlen conversion).
+	outDetailString.SetWithSize(ret.Detail, uint64(len(ret.Detail)))
 	if ok {
 		return 1
 	}

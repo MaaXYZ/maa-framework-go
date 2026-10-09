@@ -40,6 +40,7 @@ func newFailedJob(err error) *Job {
 
 // failJob pairs a terminal-failed job with its submission error so callers
 // that check the error and callers that ignore it observe the same failure.
+// The failed job has no native id; its status is fixed at StatusFailure.
 func failJob(err error) (*Job, error) {
 	return newFailedJob(err), err
 }
@@ -55,7 +56,10 @@ func (j *Job) Error() error {
 	return nil
 }
 
-// Status returns the current status of the job.
+// Status returns the current status of the job. It reports StatusFailure when
+// the job carries an error and no terminal status has been cached yet, for
+// example after a failed submission or after the owning handle has been
+// closed.
 func (j *Job) Status() Status {
 	if status := Status(j.finalStatus.Load()); !status.Invalid() {
 		return status
@@ -103,7 +107,11 @@ func (j *Job) Done() bool {
 	return j.Status().Done()
 }
 
-// Wait blocks until the job completes and returns the job instance.
+// Wait blocks until the job completes and returns the job instance. It
+// returns immediately without waiting for native work when the job carries
+// an error, such as a failed submission or a closed owning handle. The
+// terminal status reported by Wait is cached: later Status calls return it
+// instead of querying the native layer again.
 func (j *Job) Wait() *Job {
 	j.waitMu.Lock()
 	defer j.waitMu.Unlock()
@@ -122,7 +130,8 @@ func newFailedTaskJob(err error) *TaskJob {
 
 // failTaskJob pairs a terminal-failed task job with its submission error so
 // callers that check the error and callers that ignore it observe the same
-// failure.
+// failure. The failed task job has no native id; its status is fixed at
+// StatusFailure.
 func failTaskJob(err error) (*TaskJob, error) {
 	return newFailedTaskJob(err), err
 }
@@ -221,8 +230,10 @@ func (j *TaskJob) GetDetail() (*TaskDetail, error) {
 	return j.getTaskDetailFunc(j.job.id)
 }
 
-// OverridePipeline overrides the pipeline for a running task.
-// The `override` parameter can be a JSON string or any data type that can be marshaled to JSON.
+// OverridePipeline overrides the pipeline of a queued or running task; it
+// fails once the task has completed. The override parameter can be a JSON
+// string, []byte, or any JSON-marshalable value; nil marshals to an empty
+// override object, which the native layer treats as a no-op success.
 func (j *TaskJob) OverridePipeline(override any) error {
 	if err := j.Error(); err != nil {
 		return err

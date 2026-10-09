@@ -109,9 +109,7 @@ func TestFixtureInitializeAndShutdown(t *testing.T) {
 	if err := Initialize(dir); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
-	if MaaVersion == nil {
-		t.Fatal("MaaVersion was not registered")
-	}
+	assertEveryFuncVarRegistered(t)
 	if maaFramework == 0 || maaToolkit == 0 || maaAgentServer == 0 || maaAgentClient == 0 {
 		t.Fatal("not all library handles were recorded")
 	}

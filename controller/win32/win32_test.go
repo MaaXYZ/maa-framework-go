@@ -13,10 +13,13 @@ func TestScreencapMethod_String(t *testing.T) {
 		{"None", ScreencapNone, ""},
 		{"GDI", ScreencapGDI, "GDI"},
 		{"FramePool", ScreencapFramePool, "FramePool"},
-		{"DXGIDesktopDup", ScreencapDXGIDesktopDup, "DXGIDesktopDup"},
-		{"DXGIDesktopDupWindow", ScreencapDXGIDesktopDupWindow, "DXGIDesktopDupWindow"},
+		{"DXGI_DesktopDup", ScreencapDXGIDesktopDup, "DXGI_DesktopDup"},
+		{"DXGI_DesktopDup_Window", ScreencapDXGIDesktopDupWindow, "DXGI_DesktopDup_Window"},
 		{"PrintWindow", ScreencapPrintWindow, "PrintWindow"},
 		{"ScreenDC", ScreencapScreenDC, "ScreenDC"},
+		{"All", ScreencapAll, "All"},
+		{"Foreground", ScreencapForeground, "Foreground"},
+		{"Background", ScreencapBackground, "Background"},
 		{"Unknown", ScreencapMethod(999), "999"},
 	}
 
@@ -71,6 +74,11 @@ func TestParseScreencapMethod(t *testing.T) {
 		{"FramePool", "FramePool", ScreencapFramePool, false},
 		{"DXGIDesktopDup", "DXGIDesktopDup", ScreencapDXGIDesktopDup, false},
 		{"DXGIDesktopDupWindow", "DXGIDesktopDupWindow", ScreencapDXGIDesktopDupWindow, false},
+		{"DXGI_DesktopDup", "DXGI_DesktopDup", ScreencapDXGIDesktopDup, false},
+		{"DXGI_DesktopDup_Window", "DXGI_DesktopDup_Window", ScreencapDXGIDesktopDupWindow, false},
+		{"All", "All", ScreencapAll, false},
+		{"Foreground", "Foreground", ScreencapForeground, false},
+		{"Background", "Background", ScreencapBackground, false},
 		{"PrintWindow", "PrintWindow", ScreencapPrintWindow, false},
 		{"ScreenDC", "ScreenDC", ScreencapScreenDC, false},
 		// Case insensitive

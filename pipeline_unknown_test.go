@@ -97,11 +97,13 @@ func TestPipelineV2UnknownRecognitionParamRoundTrip(t *testing.T) {
 }
 
 func TestPipelineV2UnknownParamMissingAndNullSemantics(t *testing.T) {
-	t.Run("missing action parameter remains nil", func(t *testing.T) {
+	t.Run("missing action parameter falls back to the whole object", func(t *testing.T) {
 		var action Action
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"FutureAction"}`), &action))
 		require.Equal(t, ActionType("FutureAction"), action.Type)
-		require.Nil(t, action.Param)
+		raw, ok := action.Param.(*RawActionParam)
+		require.True(t, ok, "missing param should decode the whole object for unknown types, got %T", action.Param)
+		require.JSONEq(t, `{"type":"FutureAction"}`, string(*raw))
 	})
 
 	t.Run("explicit null action parameter is retained", func(t *testing.T) {
@@ -112,11 +114,13 @@ func TestPipelineV2UnknownParamMissingAndNullSemantics(t *testing.T) {
 		require.Equal(t, []byte("null"), []byte(*raw))
 	})
 
-	t.Run("missing recognition parameter remains nil", func(t *testing.T) {
+	t.Run("missing recognition parameter falls back to the whole object", func(t *testing.T) {
 		var recognition Recognition
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"FutureRecognition"}`), &recognition))
 		require.Equal(t, RecognitionType("FutureRecognition"), recognition.Type)
-		require.Nil(t, recognition.Param)
+		raw, ok := recognition.Param.(*RawRecognitionParam)
+		require.True(t, ok, "missing param should decode the whole object for unknown types, got %T", recognition.Param)
+		require.JSONEq(t, `{"type":"FutureRecognition"}`, string(*raw))
 	})
 
 	t.Run("explicit null recognition parameter is retained", func(t *testing.T) {
@@ -129,11 +133,11 @@ func TestPipelineV2UnknownParamMissingAndNullSemantics(t *testing.T) {
 }
 
 func TestPipelineV2UnknownParamDecodeErrorsAndDestinationReuse(t *testing.T) {
-	t.Run("missing known action parameter clears an existing parameter", func(t *testing.T) {
+	t.Run("missing known action parameter resets to a zero parameter", func(t *testing.T) {
 		action := Action{Type: ActionTypeClick, Param: &ClickParam{Contact: 7}}
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"Click"}`), &action))
 		require.Equal(t, ActionTypeClick, action.Type)
-		require.Nil(t, action.Param)
+		require.Equal(t, &ClickParam{}, action.Param)
 	})
 
 	t.Run("null known action parameter clears an existing parameter", func(t *testing.T) {
@@ -143,11 +147,11 @@ func TestPipelineV2UnknownParamDecodeErrorsAndDestinationReuse(t *testing.T) {
 		require.Nil(t, action.Param)
 	})
 
-	t.Run("missing known recognition parameter clears an existing parameter", func(t *testing.T) {
+	t.Run("missing known recognition parameter resets to a zero parameter", func(t *testing.T) {
 		recognition := Recognition{Type: RecognitionTypeTemplateMatch, Param: &TemplateMatchParam{Template: []string{"old.png"}}}
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"TemplateMatch"}`), &recognition))
 		require.Equal(t, RecognitionTypeTemplateMatch, recognition.Type)
-		require.Nil(t, recognition.Param)
+		require.Equal(t, &TemplateMatchParam{}, recognition.Param)
 	})
 
 	t.Run("null known recognition parameter clears an existing parameter", func(t *testing.T) {
@@ -157,14 +161,16 @@ func TestPipelineV2UnknownParamDecodeErrorsAndDestinationReuse(t *testing.T) {
 		require.Nil(t, recognition.Param)
 	})
 
-	t.Run("missing parameter clears an existing action parameter", func(t *testing.T) {
+	t.Run("missing parameter replaces an existing action parameter with the whole object", func(t *testing.T) {
 		action := Action{
 			Type:  ActionTypeClick,
 			Param: &ClickParam{Contact: 7},
 		}
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"FutureAction"}`), &action))
 		require.Equal(t, ActionType("FutureAction"), action.Type)
-		require.Nil(t, action.Param)
+		raw, ok := action.Param.(*RawActionParam)
+		require.True(t, ok, "missing param should decode the whole object for unknown types, got %T", action.Param)
+		require.JSONEq(t, `{"type":"FutureAction"}`, string(*raw))
 	})
 
 	t.Run("null parameter replaces an existing recognition parameter", func(t *testing.T) {
@@ -228,7 +234,7 @@ func TestPipelineV2KnownParamsRemainTypedAndValidate(t *testing.T) {
 		require.NoError(t, unmarshalJSON([]byte(`{"type":"TemplateMatch","param":{"template":["icon.png"]}}`), &recognition))
 		param, ok := recognition.Param.(*TemplateMatchParam)
 		require.True(t, ok, "known recognition should remain typed, got %T", recognition.Param)
-		require.Equal(t, []string{"icon.png"}, param.Template)
+		require.Equal(t, StringList{"icon.png"}, param.Template)
 
 		beforeParam := *param
 		err := unmarshalJSON([]byte(`{"type":"ColorMatch","param":{"lower":["bad"]}}`), &recognition)
@@ -341,7 +347,7 @@ func TestDecodeRecognitionParamUnknownAndKnown(t *testing.T) {
 	require.NoError(t, err)
 	knownTemplate, ok := known.(*TemplateMatchParam)
 	require.True(t, ok, "known helper result should remain typed, got %T", known)
-	require.Equal(t, []string{"icon.png"}, knownTemplate.Template)
+	require.Equal(t, StringList{"icon.png"}, knownTemplate.Template)
 
 	_, err = decodeRecognitionParam(RecognitionTypeTemplateMatch, []byte(`{"threshold":["bad"]}`))
 	require.Error(t, err, "known helper errors must not fall back to RawRecognitionParam")

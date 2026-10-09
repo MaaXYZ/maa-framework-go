@@ -30,13 +30,24 @@ var (
 	agentServerActionIDs       = make(map[string]uint64)
 )
 
+// agentServerLifecycleMu serializes the server lifecycle operations (StartUp,
+// ShutDown, Join, Detach) so concurrent callers cannot double-join the native
+// service thread or race its state transitions. A blocking Join keeps ShutDown
+// and Detach waiting until the service ends independently. Only StartUp also
+// holds agentServerConfigurationMu, always acquired first.
+var agentServerLifecycleMu sync.Mutex
+
 func lockAgentServerConfiguration() (func(), error) {
 	agentServerConfigurationMu.Lock()
-	if agentServerState.Load() == uint32(agentServerClosed) {
+	// A single load keeps the decision consistent when a racing ShutDown
+	// closes the server mid-check; otherwise Closed can be misreported as
+	// ErrInUse.
+	state := agentServerState.Load()
+	if state == uint32(agentServerClosed) {
 		agentServerConfigurationMu.Unlock()
 		return nil, ErrClosed
 	}
-	if agentServerState.Load() != uint32(agentServerStopped) {
+	if state != uint32(agentServerStopped) {
 		agentServerConfigurationMu.Unlock()
 		return nil, ErrInUse
 	}
@@ -46,7 +57,11 @@ func lockAgentServerConfiguration() (func(), error) {
 // AgentServerRegisterCustomRecognition registers a custom recognition runner.
 // The name should match the custom_recognition field in Pipeline.
 // Configure before StartUp. It returns ErrInUse while the server is active,
-// joined, or detached, and ErrClosed after an attached server has shut down.
+// joined, or detached, and ErrClosed after AgentServerShutDown of an
+// attached or never-started server; a detached server keeps returning
+// ErrInUse even after ShutDown. The native layer also rejects a name that
+// is already registered, as a recognition or an action, surfaced as a
+// generic error.
 func AgentServerRegisterCustomRecognition(name string, recognition CustomRecognitionRunner) error {
 	unlock, err := lockAgentServerConfiguration()
 	if err != nil {
@@ -54,7 +69,10 @@ func AgentServerRegisterCustomRecognition(name string, recognition CustomRecogni
 	}
 	defer unlock()
 
-	id := registerCustomRecognition(recognition)
+	id, err := registerCustomRecognition(recognition)
+	if err != nil {
+		return err
+	}
 
 	ok := native.MaaAgentServerRegisterCustomRecognition(
 		name,
@@ -77,7 +95,11 @@ func AgentServerRegisterCustomRecognition(name string, recognition CustomRecogni
 // AgentServerRegisterCustomAction registers a custom action runner.
 // The name should match the custom_action field in Pipeline.
 // Configure before StartUp. It returns ErrInUse while the server is active,
-// joined, or detached, and ErrClosed after an attached server has shut down.
+// joined, or detached, and ErrClosed after AgentServerShutDown of an
+// attached or never-started server; a detached server keeps returning
+// ErrInUse even after ShutDown. The native layer also rejects a name that
+// is already registered, as a recognition or an action, surfaced as a
+// generic error.
 func AgentServerRegisterCustomAction(name string, action CustomActionRunner) error {
 	unlock, err := lockAgentServerConfiguration()
 	if err != nil {
@@ -85,7 +107,10 @@ func AgentServerRegisterCustomAction(name string, action CustomActionRunner) err
 	}
 	defer unlock()
 
-	id := registerCustomAction(action)
+	id, err := registerCustomAction(action)
+	if err != nil {
+		return err
+	}
 
 	ok := native.MaaAgentServerRegisterCustomAction(
 		name,
@@ -145,19 +170,34 @@ func addAgentServerSink(sink any, add func(native.MaaEventCallback, uintptr) int
 
 // AgentServerStartUp starts the MAA Agent Server in a separate native thread.
 // It returns after starting the thread; call AgentServerJoin only when the
-// caller needs to wait for the service to end. The identifier is used to match
-// with AgentClient.
-// Callers must serialize server lifecycle operations and must not call them
-// from server callbacks. After an attached server's ShutDown, StartUp returns
-// ErrClosed for the rest of the process, even after Release and Init, because
-// the native singleton's communication context cannot be reset. It returns
-// ErrInUse while the server is running, joined, or detached.
+// caller needs to wait for the service to end.
+//
+// The identifier is the rendezvous name used to match with AgentClient: the
+// server connects to an IPC socket whose filename embeds the identifier,
+// which the AgentClient binds. A purely numeric identifier in 1-65535 makes
+// it connect to 127.0.0.1 on that port instead; an AgentClient must be
+// listening there, see WithTcpPort. An empty identifier makes startup fail.
+//
+// Lifecycle operations are serialized. See [AgentServerJoin] for shutdown
+// ordering. Do not call lifecycle operations from server callbacks.
+// After an attached server's ShutDown, StartUp returns ErrClosed for the rest
+// of the process, including after Release and Init. It returns ErrInUse while
+// the server is running, joined, or detached.
 func AgentServerStartUp(identifier string) error {
 	unlock, err := lockAgentServerConfiguration()
 	if err != nil {
 		return err
 	}
 	defer unlock()
+
+	agentServerLifecycleMu.Lock()
+	defer agentServerLifecycleMu.Unlock()
+
+	// A ShutDown that raced in after the configuration check closed the
+	// singleton; starting on it would abort inside the native layer.
+	if agentServerState.Load() == uint32(agentServerClosed) {
+		return ErrClosed
+	}
 
 	if !native.MaaAgentServerStartUp(identifier) {
 		return fmt.Errorf("failed to start agent server: %s", identifier)
@@ -175,7 +215,13 @@ func AgentServerStartUp(identifier string) error {
 // safe after Detach.
 // Without prior Detach, ShutDown permanently prevents startup and
 // configuration, even if called before StartUp; repeated calls are no-ops.
+//
+// ShutDown cannot interrupt a blocking [AgentServerJoin]; see that method
+// for shutdown ordering.
 func AgentServerShutDown() {
+	agentServerLifecycleMu.Lock()
+	defer agentServerLifecycleMu.Unlock()
+
 	if agentServerState.Load() == uint32(agentServerClosed) {
 		return
 	}
@@ -185,11 +231,19 @@ func AgentServerShutDown() {
 	}
 }
 
-// AgentServerJoin waits for an attached agent service thread to end. It does
-// not request that the service stop, so it may block while the service runs.
-// After AgentServerDetach, it returns without waiting. Even after Join returns
-// for an attached thread, AgentServerShutDown must be called before Release.
+// AgentServerJoin waits for the attached service thread to end without
+// requesting a stop. After [AgentServerDetach], it returns without waiting.
+//
+// Join holds the lifecycle lock, so concurrent [AgentServerShutDown] and
+// [AgentServerDetach] calls wait until it returns. For client-controlled
+// shutdown, let the paired client Disconnect, wait for Join to return, then
+// call AgentServerShutDown to close the sockets before Release. For
+// server-controlled shutdown, call AgentServerShutDown without entering
+// a blocking Join.
 func AgentServerJoin() {
+	agentServerLifecycleMu.Lock()
+	defer agentServerLifecycleMu.Unlock()
+
 	native.MaaAgentServerJoin()
 	agentServerState.CompareAndSwap(uint32(agentServerRunningAttached), uint32(agentServerJoined))
 }
@@ -201,7 +255,11 @@ func AgentServerJoin() {
 // After Detach, AgentServerJoin cannot wait for the thread, and
 // AgentServerShutDown cannot confirm its exit. Release returns ErrLibraryInUse
 // for the rest of the process, even after Join or ShutDown.
+// Detach waits for a concurrent [AgentServerJoin]; see that method.
 func AgentServerDetach() {
+	agentServerLifecycleMu.Lock()
+	defer agentServerLifecycleMu.Unlock()
+
 	agentServerState.CompareAndSwap(uint32(agentServerRunningAttached), uint32(agentServerDetached))
 	native.MaaAgentServerDetach()
 }

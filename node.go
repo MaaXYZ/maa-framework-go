@@ -1,37 +1,58 @@
 package maa
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"time"
 )
 
 // Node represents a single task node using pipeline v2 JSON.
-// Action and Recognition use nested type/param objects; legacy flat pipeline input is not supported by this model.
+// Action and Recognition use nested type/param objects; a recognition or
+// action object without "param" decodes its parameters from the whole
+// object, and the v1 flat form (string recognition/action with parameters
+// flat on the node) normalizes into this v2 model, matching the native
+// parser. Encoding always emits v2.
 // Omitted fields are resolved by MaaFramework using the existing node or its defaults.
 type Node struct {
 	Name string `json:"-"`
 
-	// Anchor maps anchor name to target node name. This matches GetNodeData output format.
-	Anchor map[string]string `json:"anchor,omitempty"`
+	// Anchor maps anchor names to target node names, matching GetNodeData output.
+	// Target names are retained without checking whether they exist.
+	// A nil map is omitted to inherit the existing configuration or defaults.
+	// A non-nil empty map encodes as an empty object and clears the node's
+	// configuration, leaving runtime anchors intact.
+	// An empty target name clears that runtime anchor after the node is hit and
+	// its action returns. Direct Node decoding accepts only the object form;
+	// see [Pipeline.UnmarshalJSON] for shorthand input.
+	Anchor map[string]string `json:"anchor,omitzero"`
 
 	// Recognition defines how this node recognizes targets on screen.
 	Recognition *Recognition `json:"recognition,omitempty"`
 	// Action defines what action to perform when recognition succeeds.
 	Action *Action `json:"action,omitempty"`
 	// Next specifies the list of possible next nodes to execute.
+	// Decoding also accepts the protocol's shorthand: a single node value in
+	// place of the list, and bare node-name strings in place of objects.
 	Next []NextItem `json:"next,omitempty"`
 	// RateLimit sets the minimum interval between recognition attempts in milliseconds. Default: 1000.
 	RateLimit *int64 `json:"rate_limit,omitempty"`
 	// Timeout sets the maximum time to wait for recognition in milliseconds. Default: 20000; -1 waits indefinitely.
 	Timeout *int64 `json:"timeout,omitempty"`
 	// OnError specifies nodes to execute when recognition times out or action execution fails.
+	// Decoding accepts the same shorthand forms as Next.
 	OnError []NextItem `json:"on_error,omitempty"`
 	// Inverse inverts the recognition result. Default: false.
 	Inverse bool `json:"inverse,omitempty"`
 	// Enabled determines whether this node is active. Default: true.
+	// The native parser also accepts the legacy "enable" alias; this model
+	// only decodes "enabled".
 	Enabled *bool `json:"enabled,omitempty"`
 	// MaxHit sets the maximum hit count of the node. Default: unlimited.
+	// The native parser stores this as a 32-bit unsigned int.
 	MaxHit *uint64 `json:"max_hit,omitempty"`
 	// PreDelay sets the delay before action execution in milliseconds. Default: 200.
 	PreDelay *int64 `json:"pre_delay,omitempty"`
@@ -42,6 +63,7 @@ type Node struct {
 	// PostWaitFreezes waits for screen to stabilize after action.
 	PostWaitFreezes *WaitFreezesParam `json:"post_wait_freezes,omitempty"`
 	// Repeat specifies the number of times to repeat the node. Default: 1.
+	// The native parser stores this as a 32-bit unsigned int.
 	Repeat *uint64 `json:"repeat,omitempty"`
 	// RepeatDelay sets the delay between repetitions in milliseconds. Default: 0.
 	RepeatDelay *int64 `json:"repeat_delay,omitempty"`
@@ -51,6 +73,152 @@ type Node struct {
 	Focus any `json:"focus,omitempty"`
 	// Attach provides additional custom data for the node.
 	Attach map[string]any `json:"attach,omitempty"`
+}
+
+// UnmarshalJSON decodes the formats described by [Node] and its fields.
+// Fields absent from the input, including Name, are reset to their zero
+// values; decoding replaces the node rather than merging into it. On error
+// the node is unchanged.
+func (n *Node) UnmarshalJSON(data []byte) error {
+	normalized, err := normalizeNodeShorthand(data)
+	if err != nil {
+		return err
+	}
+	type Alias Node
+	var decoded Alias
+	if err := unmarshalJSON(normalized, &decoded); err != nil {
+		return err
+	}
+	*n = Node(decoded)
+	return nil
+}
+
+// normalizeNodeShorthand rewrites input forms this model does not decode
+// directly into their canonical v2 shape: v1 string recognition/action and
+// shorthand next/on_error values. Every other key is left untouched, except
+// that an explicit null for a wait-freezes field is rejected here, because
+// decoding null into the pointer fields would silently produce nil instead
+// of the native parser's error.
+func normalizeNodeShorthand(data []byte) ([]byte, error) {
+	var fields map[string]json.RawMessage
+	if err := unmarshalJSON(data, &fields); err != nil {
+		return nil, err
+	}
+	for _, key := range [...]string{"pre_wait_freezes", "post_wait_freezes", "repeat_wait_freezes"} {
+		if value, ok := fields[key]; ok && bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+			return nil, fmt.Errorf("%s must not be null", key)
+		}
+	}
+	changed := false
+	for _, key := range [...]string{"recognition", "action"} {
+		value, ok := fields[key]
+		if !ok {
+			continue
+		}
+		trimmed := bytes.TrimSpace(value)
+		if len(trimmed) == 0 || trimmed[0] != '"' {
+			continue
+		}
+		// v1 form: "recognition": "ColorMatch" with parameters flat on the
+		// node. The native parser reads parameters from the whole node in
+		// this case, so wrap the string into the v2 envelope with the node
+		// itself as the param input.
+		envelope, err := marshalJSON(struct {
+			Type  json.RawMessage `json:"type"`
+			Param json.RawMessage `json:"param"`
+		}{Type: json.RawMessage(trimmed), Param: json.RawMessage(data)})
+		if err != nil {
+			return nil, err
+		}
+		fields[key] = envelope
+		changed = true
+	}
+	for _, key := range [...]string{"next", "on_error"} {
+		value, ok := fields[key]
+		if !ok {
+			continue
+		}
+		normalized, err := normalizeNextValue(value)
+		if err != nil {
+			return nil, err
+		}
+		fields[key] = normalized
+		changed = true
+	}
+	if !changed {
+		return data, nil
+	}
+	return marshalJSON(fields)
+}
+
+// normalizeNextValue converts one next/on_error value — a single node value or
+// an array mixing name strings and objects — into an array of node objects.
+func normalizeNextValue(data []byte) ([]byte, error) {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return data, nil
+	}
+	var items []json.RawMessage
+	if trimmed[0] == '[' {
+		if err := unmarshalJSON(data, &items); err != nil {
+			return nil, err
+		}
+	} else {
+		items = []json.RawMessage{trimmed}
+	}
+	list := make([]json.RawMessage, 0, len(items))
+	for _, item := range items {
+		item = bytes.TrimSpace(item)
+		switch {
+		case len(item) == 0:
+			return nil, fmt.Errorf("next entry must be a string or object, got empty")
+		case item[0] == '"':
+			var name string
+			if err := unmarshalJSON(item, &name); err != nil {
+				return nil, err
+			}
+			next, err := parseNextName(name)
+			if err != nil {
+				return nil, err
+			}
+			encoded, err := marshalJSON(next)
+			if err != nil {
+				return nil, err
+			}
+			list = append(list, encoded)
+		case item[0] == '{':
+			list = append(list, item)
+		default:
+			return nil, fmt.Errorf("next entry must be a string or object, got %s", item)
+		}
+	}
+	return marshalJSON(list)
+}
+
+// parseNextName parses a shorthand next name with optional [JumpBack] and
+// [Anchor] prefixes, mirroring the native parser: an unclosed prefix or an
+// empty remaining name is an error; unrecognized prefixes are ignored.
+func parseNextName(raw string) (NextItem, error) {
+	var item NextItem
+	remaining := raw
+	for strings.HasPrefix(remaining, "[") {
+		end := strings.IndexByte(remaining, ']')
+		if end < 0 {
+			return NextItem{}, fmt.Errorf("invalid node attribute format, missing ']': %q", raw)
+		}
+		switch remaining[:end+1] {
+		case "[JumpBack]":
+			item.JumpBack = true
+		case "[Anchor]":
+			item.Anchor = true
+		}
+		remaining = remaining[end+1:]
+	}
+	if remaining == "" {
+		return NextItem{}, fmt.Errorf("invalid node format, missing node name or anchor name: %q", raw)
+	}
+	item.Name = remaining
+	return item, nil
 }
 
 // NewNode creates a new Node with the given name.
@@ -200,6 +368,11 @@ func (n *Node) SetAttach(attach map[string]any) *Node {
 
 // NextItem is one item in the list of nodes to run next.
 // It is used in Node.Next (on success) and Node.OnError (on failure).
+// Node.UnmarshalJSON accepts bare node-name strings in these fields; direct
+// decoding into NextItem does not support this shorthand. A string may carry
+// [JumpBack] and [Anchor] prefixes, and unrecognized prefixes are ignored,
+// matching the native parser. Shorthand entries re-encode as objects,
+// matching native output.
 type NextItem struct {
 	// Name is the name of the target node.
 	Name string `json:"name"`
@@ -226,6 +399,7 @@ type NodeAttributeOption func(*NextItem)
 
 // WithJumpBack enables the jump-back mechanism. When this node matches, the system returns
 // to the parent node after completing this node's chain, and continues recognizing from the start of next list.
+// Jump-back is not performed while running the on_error chain.
 func WithJumpBack() NodeAttributeOption {
 	return func(i *NextItem) {
 		i.JumpBack = true

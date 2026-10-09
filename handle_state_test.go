@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -140,6 +141,104 @@ func TestHandleState_PrunesDiscardedCompletedJobs(t *testing.T) {
 		return len(state.jobs) == 0
 	}, 3*time.Second, 10*time.Millisecond)
 	require.NoError(t, state.close())
+}
+
+func TestHandleState_ExpireWaitsForInFlightCall(t *testing.T) {
+	state := newExternalHandleState(123)
+	handle, done, err := state.begin()
+	require.NoError(t, err)
+	require.Equal(t, uintptr(123), handle)
+
+	expired := make(chan struct{})
+	go func() {
+		state.expire()
+		close(expired)
+	}()
+	require.Never(t, func() bool {
+		select {
+		case <-expired:
+			return true
+		default:
+			return false
+		}
+	}, 50*time.Millisecond, 5*time.Millisecond, "expire must wait for the in-flight call")
+
+	done()
+	select {
+	case <-expired:
+	case <-time.After(3 * time.Second):
+		t.Fatal("expire did not return after the in-flight call finished")
+	}
+	_, _, err = state.begin()
+	require.ErrorIs(t, err, ErrClosed)
+	require.ErrorIs(t, state.check(), ErrClosed)
+}
+
+func TestHandleState_ReaperExitsWhenJobsComplete(t *testing.T) {
+	state := newHandleState(123, func(uintptr) {})
+	state.jobStatus = func(uintptr, int64) Status { return StatusSuccess }
+	baseline := runtime.NumGoroutine()
+	for id := int64(1); id <= 4; id++ {
+		state.trackJob(id)
+	}
+	require.Eventually(t, func() bool {
+		state.mu.Lock()
+		defer state.mu.Unlock()
+		return len(state.jobs) == 0 && !state.reapingJobs
+	}, 3*time.Second, 10*time.Millisecond)
+	waitForGoroutinesToSettle(t, baseline)
+}
+
+func TestHandleState_ReaperExitsWhenClosed(t *testing.T) {
+	state := newHandleState(123, func(uintptr) {})
+	state.jobStatus = func(uintptr, int64) Status { return StatusRunning }
+	baseline := runtime.NumGoroutine()
+	state.trackJob(1)
+	require.Eventually(t, func() bool {
+		state.mu.Lock()
+		defer state.mu.Unlock()
+		return state.reapingJobs
+	}, 3*time.Second, 10*time.Millisecond)
+
+	// External invalidation closes the state without running cleanup, the
+	// same closed flag the reaper checks on its next tick.
+	state.expire()
+	require.Eventually(t, func() bool {
+		state.mu.Lock()
+		defer state.mu.Unlock()
+		return !state.reapingJobs
+	}, 3*time.Second, 10*time.Millisecond)
+	waitForGoroutinesToSettle(t, baseline)
+}
+
+// waitForGoroutinesToSettle polls in the test goroutine: require.Eventually
+// runs its condition on a helper goroutine, which NumGoroutine would count.
+func waitForGoroutinesToSettle(t *testing.T, baseline int) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for runtime.NumGoroutine() > baseline {
+		if time.Now().After(deadline) {
+			t.Fatalf("goroutine count did not settle to baseline %d (now %d)", baseline, runtime.NumGoroutine())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestHandleState_RejectsUseAfterClose(t *testing.T) {
+	state := newHandleState(123, func(uintptr) {})
+	require.NoError(t, state.close())
+	_, _, err := state.begin()
+	require.ErrorIs(t, err, ErrClosed)
+	_, err = state.beginCallback()
+	require.ErrorIs(t, err, ErrClosed)
+	require.ErrorIs(t, state.check(), ErrClosed)
+}
+
+func TestHandleState_AddBindingRejectedAfterClose(t *testing.T) {
+	state := newHandleState(123, func(uintptr) {})
+	require.NoError(t, state.close())
+	_, err := state.addBinding()
+	require.ErrorIs(t, err, ErrClosed)
 }
 
 func TestTasker_BorrowedBindingsAndRebinding(t *testing.T) {

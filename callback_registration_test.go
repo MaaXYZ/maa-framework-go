@@ -136,7 +136,9 @@ func TestResource_CustomRegistrationTransactions(t *testing.T) {
 		stored     func() uint64
 		stub       func(*testing.T, func(uintptr) bool, func() bool)
 	}{
-		{"Action", func() error { return res.RegisterCustomAction("test", nil) },
+		{"Action", func() error {
+			return res.RegisterCustomAction("test", CustomActionFunc(func(*Context, *CustomActionArg) bool { return true }))
+		},
 			func() error { return res.UnregisterCustomAction("test") }, res.ClearCustomAction,
 			func(id uint64) bool {
 				customActionRunnerCallbackAgentsMutex.RLock()
@@ -153,7 +155,9 @@ func TestResource_CustomRegistrationTransactions(t *testing.T) {
 				replaceNativeForTest(t, &native.MaaResourceUnregisterCustomAction, func(uintptr, string) bool { return accept() })
 				replaceNativeForTest(t, &native.MaaResourceClearCustomAction, func(uintptr) bool { return accept() })
 			}},
-		{"Recognition", func() error { return res.RegisterCustomRecognition("test", nil) },
+		{"Recognition", func() error {
+			return res.RegisterCustomRecognition("test", CustomRecognitionFunc(func(*Context, *CustomRecognitionArg) (*CustomRecognitionResult, bool) { return nil, true }))
+		},
 			func() error { return res.UnregisterCustomRecognition("test") }, res.ClearCustomRecognition,
 			func(id uint64) bool {
 				customRecognitionRunnerCallbackAgentsMutex.RLock()
@@ -186,10 +190,12 @@ func TestResource_CustomRegistrationTransactions(t *testing.T) {
 			require.True(t, tc.exists(first))
 			accept = true
 			require.NoError(t, tc.register())
-			require.False(t, tc.exists(first))
+			// The stub bypasses the upstream duplicate-name rejection, so the
+			// first runner's agent entry is left registered.
+			require.True(t, tc.exists(first))
 			require.Equal(t, attempted, tc.stored())
 			require.NoError(t, tc.unregister())
-			require.Error(t, tc.unregister())
+			require.NoError(t, tc.unregister())
 			require.False(t, tc.exists(attempted))
 			require.NoError(t, tc.register())
 			require.NoError(t, tc.clear())
@@ -318,7 +324,9 @@ func TestAgentServer_CustomReplacement(t *testing.T) {
 		remove   func(uint64)
 		stub     func(*testing.T, func(uintptr) bool)
 	}{
-		{"Action", func(name string) error { return AgentServerRegisterCustomAction(name, nil) }, agentServerActionIDs,
+		{"Action", func(name string) error {
+			return AgentServerRegisterCustomAction(name, CustomActionFunc(func(*Context, *CustomActionArg) bool { return true }))
+		}, agentServerActionIDs,
 			func(id uint64) bool {
 				customActionRunnerCallbackAgentsMutex.RLock()
 				defer customActionRunnerCallbackAgentsMutex.RUnlock()
@@ -329,7 +337,9 @@ func TestAgentServer_CustomReplacement(t *testing.T) {
 			func(t *testing.T, f func(uintptr) bool) {
 				replaceNativeForTest(t, &native.MaaAgentServerRegisterCustomAction, func(_ string, _ native.MaaCustomActionCallback, id uintptr) bool { return f(id) })
 			}},
-		{"Recognition", func(name string) error { return AgentServerRegisterCustomRecognition(name, nil) }, agentServerRecognitionIDs,
+		{"Recognition", func(name string) error {
+			return AgentServerRegisterCustomRecognition(name, CustomRecognitionFunc(func(*Context, *CustomRecognitionArg) (*CustomRecognitionResult, bool) { return nil, true }))
+		}, agentServerRecognitionIDs,
 			func(id uint64) bool {
 				customRecognitionRunnerCallbackAgentsMutex.RLock()
 				defer customRecognitionRunnerCallbackAgentsMutex.RUnlock()
@@ -383,7 +393,9 @@ func TestAgentServer_ConfigurationBeforeStartUp(t *testing.T) {
 		return true
 	})
 	registered, started := make(chan error, 1), make(chan error, 1)
-	go func() { registered <- AgentServerRegisterCustomAction(name, nil) }()
+	go func() {
+		registered <- AgentServerRegisterCustomAction(name, CustomActionFunc(func(*Context, *CustomActionArg) bool { return true }))
+	}()
 	jobConcurrencyAwait(t, entered)
 	go func() { started <- AgentServerStartUp(name) }()
 	unblock()

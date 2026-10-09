@@ -63,7 +63,7 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 - sink 与自定义识别、动作的注册变更必须在实例及关联 tasker 静止时执行，不得在回调中变更。配置事务会串行化，原生注册失败会回滚 Go 回调；`Add*Sink` 失败仍返回 0。
 - 自定义 Controller 的回调保留至原生析构完成，析构期间的 `KeyUp` / `TouchUp` 可正常执行。`Destroy` 成功返回后不再调用用户回调；回调内销毁返回 `ErrInCallback`。
 - stop 使旧 Job ID 失效时，`Wait` 返回不代表原生工作已经结束。Controller 销毁可能提交 inactive 动作并暂时返回 `ErrInUse`，需等待后重试。
-- AgentServer 只允许在启动前配置；活动阶段的自定义注册和再次启动返回 `ErrInUse`，添加 sink 返回 0。未 detach 的服务关闭后不支持重启：启动和自定义注册返回 `ErrClosed`，添加 sink 返回 0，`Release` 后再次 `Init` 也不会恢复服务，但仍可 `Release`，重复关闭不再调用原生接口。成功的同名注册会替换旧 Go 回调，失败则保留旧注册。生命周期操作需由调用方串行协调。
+- AgentServer 只允许在启动前配置；活动阶段的自定义注册和再次启动返回 `ErrInUse`，添加 sink 返回 0。未 detach 的服务关闭后不支持重启：启动和自定义注册返回 `ErrClosed`，添加 sink 返回 0，`Release` 后再次 `Init` 也不会恢复服务，但仍可 `Release`，重复关闭不再调用原生接口。自定义识别与动作共用名称，重名注册返回错误并保留已有注册。生命周期操作需由调用方串行协调。
 
 完整使用边界见 [并发与回调](README_zh.md#并发与回调)。
 
@@ -85,7 +85,7 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 
 | 变更类型 | 受影响的方法 |
 |---------|-------------|
-| 构造函数 | `NewAdbController`, `NewPlayCoverController`, `NewWin32Controller`, `NewWlRootsController`, `NewMacOSController`, `NewAndroidNativeController`, `NewReplayController`, `NewRecordController`, `NewGamepadController`, `NewCustomController`, `NewBlankController`, `NewCarouselImageController` |
+| 构造函数 | `NewAdbController`, `NewPlayCoverController`, `NewWin32Controller`, `NewLinuxController`, `NewMacOSController`, `NewAndroidNativeController`, `NewReplayController`, `NewRecordController`, `NewGamepadController`, `NewCustomController`, `NewBlankController`, `NewCarouselImageController` |
 | 设置方法 | `SetScreenshot`（改用 Option 模式）, `SetMouseLockFollow` |
 | 查询方法 | `GetShellOutput`, `CacheImage`, `CacheImageInto`, `GetUUID`, `GetResolution`, `GetInfo` |
 
@@ -93,10 +93,10 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 **移除构造函数**：`NewCarouselImageController` 已移除。若仅需空操作控制器，请使用 `NewBlankController()`；若需基于录制数据回放，请使用 `NewReplayController(recordingPath)`，录制入口为 `NewRecordController(inner, recordingPath)`。
 **新增**：`SetScreenshot(opts ...ScreenshotOption) error` 与配套选项函数；新增 `WithScreenshotResizeMethod(...)` / `ScreenshotResizeMethod*` 常量，以及 `SetMouseLockFollow(enabled bool) error`
 **截图选项组合与校验**：`SetScreenshot` 现在应用全部可组合的选项，不再只应用最后一个。长边、短边、Expand 目标在同次调用中互斥，原始尺寸 `true` 与尺寸目标互斥，同一设置重复指定也返回错误；尺寸须为正数，插值只允许 0 到 4。参数错误在任何原生修改之前返回；原生 setter 失败时保留此前成功的修改并跳过后续设置。分次调用仍保留原始尺寸模式下的目标与插值，关闭该模式后恢复缩放。示例及完整规则见 [Controller.SetScreenshot](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#Controller.SetScreenshot)。
-**新增控制器构造函数**：`NewMacOSController(...)`、`NewAndroidNativeController(...)`、`NewReplayController(...)`、`NewRecordController(...)`
+**新增控制器构造函数**：`NewLinuxController(configJson string)`、`NewMacOSController(...)`、`NewAndroidNativeController(...)`、`NewReplayController(...)`、`NewRecordController(...)`
 **接口变更**：
 - `CustomController` 接口新增 `RelativeMove(dx, dy int32) bool`、`Shell(cmd string, timeout int64) (string, bool)`、`GetInfo() (string, bool)` 必须实现方法。已有实现若无需支持，可返回 no-op 成功值
-- WlRoots 支持将按键视为 Win32 VK 键码：`NewWlRootsController(wlrSocketPath string, useWin32VkCode bool)`
+- `NewWlRootsController` 已移除，改用 `NewLinuxController(configJson string)`；通过 JSON 配置选择截图与输入方式，Wlr 输入可用 `use_win32_vk_code` 将按键视为 Win32 VK 键码。
 **Win32 InputMethod 命名对齐**：
 - `InputSendMessageWithCursorPosAndBlockInput` → `InputSendMessageWithWindowPos`
 - `InputPostMessageWithCursorPosAndBlockInput` → `InputPostMessageWithWindowPos`
@@ -196,9 +196,10 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 
 - `Node.Anchor`：`[]string` → `map[string]string`（与 C++ `GetNodeData` 输出一致，`anchor` 为对象）
 - `Node.SetAnchor`：`SetAnchor([]string)` → `SetAnchor(map[string]string)`
-- 不再兼容旧的 `anchor` 字符串/字符串数组语义，统一为对象语义：
+- `Pipeline.UnmarshalJSON` 接受 `anchor` 字符串或字符串数组，并将每个锚点解析为包含它的节点名（pipeline 的 map key）；单独解码 `Node` 只接受对象形式，即使其 `Name` 已设置。对象形式保留目标节点名，不检查目标是否存在：
   - `{"A":"CurrentNode"}` 表示锚点指向目标节点
   - `{"A":""}` 表示显式清除锚点
+- `Node.Anchor` 为 nil 时编码省略 `anchor`，覆盖已有原生节点时继承其配置；非 nil 空 map 编码为 `"anchor": {}`，清空该节点的 anchor 配置。`Pipeline` 解码 `"anchor": []` / `"anchor": {}` 时保留非 nil 空 map。清空配置不会移除已登记的运行时锚点，运行时清除仍使用对象中的空目标字符串。
 - `Node.AddAnchor(anchor)` 语义明确为快捷写法：设置 `anchor -> 当前节点名`
 - `Node.RemoveAnchor(anchor)` 保持为删除该配置项（移除 key）
 
@@ -229,8 +230,9 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 
 ### Pipeline v2 协议对齐
 
-类型化的 pipeline 模型与构造器统一使用 v2 的嵌套 `type` / `param` 对象格式，不解码旧版扁平字段格式。此次同步 MaaFramework v5.14.2 的协议行为：
+类型化的 pipeline 模型与构造器统一编码为 v2 的嵌套 `type` / `param` 对象格式。解码同时接受 v1 扁平识别/动作字段，以及省略 `param` 的识别/动作对象，并规范化为 v2 模型。此次同步 MaaFramework v5.14.2 的协议行为：
 
+- `next` / `on_error` 可解码单个节点值、节点名字符串，以及混合字符串和对象的数组；重编码为节点对象数组。成功解码会替换已有 `Node` / `Pipeline` 状态，失败则保留原状态；`Pipeline` 根据 map key 设置每个节点的 `Name`。
 - `Target` 的二维坐标 `[x, y]` 规范化为 `[x, y, 1, 1]`；`false`、坐标数量或类型不合法的 target 会被拒绝。
 - `Click`、`LongPress`、`Swipe` 和 `MultiSwipe` 补齐可区分继承与显式零值的 `pressure`；`ShellParam.ShellTimeout` 使用 `*time.Duration` 配置，JSON 编码为毫秒，支持显式 `0` 及 `-time.Millisecond` 无限等待。
 - `TouchMoveParam` 与 `KeyUpParam` 对齐共享的 `auto_up` JSON 字段，但该字段仅在 `TouchDown` / `KeyDown` 执行时生效。

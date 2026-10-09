@@ -31,7 +31,7 @@ func TestAction_AutoUpJSON(t *testing.T) {
 			t.Run(string(actionType)+"/"+name, func(t *testing.T) {
 				param := `{"key":65}`
 				if actionType == ActionTypeTouchDown {
-					param = `{"contact":1,"target_offset":[0,0,0,0]}`
+					param = `{"contact":1,"target_offset":[3,4,1,1]}`
 				}
 				if value != "" {
 					param = param[:len(param)-1] + `,"auto_up":` + value + `}`

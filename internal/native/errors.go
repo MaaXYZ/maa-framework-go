@@ -14,10 +14,13 @@ type LibraryLoadError struct {
 	Err error
 }
 
+// Error implements the error interface.
 func (e *LibraryLoadError) Error() string {
 	return fmt.Sprintf("failed to load library %q (path: %q): %v", e.LibraryName, e.LibraryPath, e.Err)
 }
 
+// Unwrap returns the underlying error from the system's library loading
+// mechanism.
 func (e *LibraryLoadError) Unwrap() error {
 	return e.Err
 }
@@ -48,6 +51,7 @@ type SymbolLookupError struct {
 	Err error
 }
 
+// Error implements the error interface.
 func (e *SymbolLookupError) Error() string {
 	return fmt.Sprintf(
 		"failed to find symbol %q in library %q (path: %q): %v; %s",
@@ -55,6 +59,7 @@ func (e *SymbolLookupError) Error() string {
 	)
 }
 
+// Unwrap returns the underlying error from the platform symbol lookup.
 func (e *SymbolLookupError) Unwrap() error {
 	return e.Err
 }

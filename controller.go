@@ -67,6 +67,11 @@ func newOwnedController(handle uintptr) *Controller {
 }
 
 // NewAdbController creates a new ADB controller.
+// config must be a valid JSON object; use "{}" for defaults. It is normally
+// obtained from AdbDevice.Config (see FindAdbDevices). Its "command.<Name>"
+// arrays override the built-in adb command templates.
+// agentPath is the directory holding the agent binaries; the minitouch and
+// maatouch input methods require their binaries to exist there.
 func NewAdbController(
 	adbPath, address string,
 	screencapMethod adb.ScreencapMethod,
@@ -91,6 +96,10 @@ func NewAdbController(
 }
 
 // NewPlayCoverController creates a new PlayCover controller.
+// address is the PlayTools service address in "host:port" format.
+// uuid is the bundle identifier of the target application
+// (e.g. "com.hypergryph.arknights").
+// start_app, input_text, click_key, key_down, key_up, and scroll are not supported.
 func NewPlayCoverController(
 	address, uuid string,
 ) (*Controller, error) {
@@ -129,8 +138,10 @@ func NewWin32Controller(
 // NewLinuxController creates a Linux controller from a JSON configuration.
 // configJson must specify screencap_method and input_method, plus the fields
 // required by the selected methods (such as wlr_socket_path for wlroots,
-// pw_node_id for PipeWire, or eis_socket_path for libei). See the MaaFramework
-// MaaLinuxControllerCreate documentation for the complete configuration format.
+// pw_node_id for PipeWire, or eis_socket_path for libei). The PipeWire portal
+// screencap method requires both pw_socket_fd and pw_node_id. See the
+// MaaFramework MaaLinuxControllerCreate documentation for the complete
+// configuration format.
 // This controller is only available on Linux.
 func NewLinuxController(configJson string) (*Controller, error) {
 	handle := native.MaaLinuxControllerCreate(configJson)
@@ -182,6 +193,8 @@ func NewMacOSController(
 //
 // Note: This controller is only available on Android.
 // The configured screen_resolution must match the control unit's raw screenshot/touch coordinate space.
+// Multi-touch is supported: contact is the finger id (0 for the first finger).
+// The external library's TouchArgs must carry contact.
 func NewAndroidNativeController(configJson string) (*Controller, error) {
 	handle := native.MaaAndroidNativeControllerCreate(configJson)
 	if handle == 0 {
@@ -248,7 +261,9 @@ const (
 // screencapMethod: Win32 screencap method to use. Ignored if hWnd is nil.
 //
 // Note: Requires ViGEm Bus Driver to be installed on the system.
-// For gamepad button and touch constants, import "github.com/MaaXYZ/maa-framework-go/v3/controller/gamepad".
+// click and swipe are not directly supported; input_text, start_app,
+// stop_app, and scroll are not supported.
+// For gamepad button and touch constants, import "github.com/MaaXYZ/maa-framework-go/v4/controller/gamepad".
 func NewGamepadController(
 	hWnd unsafe.Pointer,
 	gamepadType GamepadType,
@@ -296,15 +311,17 @@ func NewCustomController(
 }
 
 // NOTE: MaaDbgController (MaaDbgControllerCreate) is intentionally NOT implemented in the Go binding.
-// MaaDbgControllerCreate has been superseded by more specific alternatives:
+// MaaDbgControllerCreate remains a current, non-deprecated API upstream; the
+// Go binding offers these alternatives instead:
 //   - BlankController (blank_controller.go): no-op stub that always succeeds
 //   - NewReplayController: replay recorded operations from a JSONL file
 // Do NOT add a Go binding for MaaDbgControllerCreate or NewDbgController here.
 // The api-check CI tool also blacklists MaaDbgControllerCreate for the same reason.
 
 // Destroy closes the controller once. It returns ErrBound while a tasker uses
-// it or an AgentClient retains it, ErrInUse while a call or job is active, and
-// ErrBorrowed when called on a getter or callback view.
+// it or an AgentClient retains it, ErrInUse while a call or job is active,
+// ErrBorrowed when called on a getter or callback view, and ErrInCallback when
+// called from inside one of the controller's own callbacks.
 // After a stop invalidates action IDs, Destroy may post an inactive action and
 // return ErrInUse until it completes; retry afterward. Native destruction may
 // call custom KeyUp/TouchUp methods before Destroy returns successfully.
@@ -349,6 +366,7 @@ type screenshotOptionConfig struct {
 	targetExpand    [2]int32
 }
 
+// String returns a human-readable name for the screenshot option kind.
 func (kind screenshotOptionKind) String() string {
 	switch kind {
 	case screenshotOptionLongSide:
@@ -397,11 +415,17 @@ func (cfg screenshotOptionConfig) validate() error {
 type ScreenshotResizeMethod int32
 
 const (
-	ScreenshotResizeMethodNearestNeighbor ScreenshotResizeMethod = 0 // cv::INTER_NEAREST
-	ScreenshotResizeMethodLinear          ScreenshotResizeMethod = 1 // cv::INTER_LINEAR
-	ScreenshotResizeMethodCubic           ScreenshotResizeMethod = 2 // cv::INTER_CUBIC
-	ScreenshotResizeMethodArea            ScreenshotResizeMethod = 3 // cv::INTER_AREA (default)
-	ScreenshotResizeMethodLanczos4        ScreenshotResizeMethod = 4 // cv::INTER_LANCZOS4
+	// ScreenshotResizeMethodNearestNeighbor selects nearest-neighbor interpolation (cv::INTER_NEAREST).
+	ScreenshotResizeMethodNearestNeighbor ScreenshotResizeMethod = 0
+	// ScreenshotResizeMethodLinear selects bilinear interpolation (cv::INTER_LINEAR).
+	ScreenshotResizeMethodLinear ScreenshotResizeMethod = 1
+	// ScreenshotResizeMethodCubic selects bicubic interpolation (cv::INTER_CUBIC).
+	ScreenshotResizeMethodCubic ScreenshotResizeMethod = 2
+	// ScreenshotResizeMethodArea selects pixel-area interpolation (cv::INTER_AREA).
+	// This is the default method.
+	ScreenshotResizeMethodArea ScreenshotResizeMethod = 3
+	// ScreenshotResizeMethodLanczos4 selects 8x8 Lanczos interpolation (cv::INTER_LANCZOS4).
+	ScreenshotResizeMethodLanczos4 ScreenshotResizeMethod = 4
 )
 
 // ScreenshotOption configures how the screenshot is resized.
@@ -473,13 +497,17 @@ func WithScreenshotResizeMethod(method ScreenshotResizeMethod) ScreenshotOption 
 // combined in any order. Long-side, short-side, and expand targets are mutually
 // exclusive within one call, as are a target and WithScreenshotUseRawSize(true).
 // Target dimensions must be positive, and the interpolation method must be one
-// of the five ScreenshotResizeMethod constants (0 through 4).
+// of the five ScreenshotResizeMethod constants (0 through 4). The native API
+// treats a target value of 0 as clearing the target; this Go wrapper
+// deliberately rejects non-positive values instead.
 // Repeated settings are rejected even when their values are identical. Nil
 // options are ignored; an empty call leaves the settings unchanged.
 //
 // Omitted settings are retained. Across separate calls, a new target replaces
 // the previous target without disabling raw-size mode. Disabling raw-size mode
-// resumes resizing with the retained target and interpolation method.
+// resumes resizing with the retained target and interpolation method. If no
+// target has ever been set, the native default target scales the short side
+// to 720.
 //
 // Rejecting raw-size true with a target is a Go API guard against ambiguous
 // screenshot-size intent: the target would be inactive in raw-size mode. The
@@ -688,6 +716,9 @@ func (c *Controller) PostClickV2(x, y, contact, pressure int32) (*Job, error) {
 }
 
 // PostSwipe posts a swipe.
+// The duration is converted to int32 milliseconds for the native API, so
+// durations beyond the int32 millisecond range (about 24.8 days) wrap around,
+// matching the C API's own limit.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (c *Controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) (*Job, error) {
@@ -707,6 +738,9 @@ func (c *Controller) PostSwipe(x1, y1, x2, y2 int32, duration time.Duration) (*J
 // PostSwipeV2 posts a swipe with contact and pressure.
 // For adb controller, contact means finger id (0 for first finger, 1 for second finger, etc).
 // For win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle).
+// The duration is converted to int32 milliseconds for the native API, so
+// durations beyond the int32 millisecond range (about 24.8 days) wrap around,
+// matching the C API's own limit.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (c *Controller) PostSwipeV2(x1, y1, x2, y2 int32, duration time.Duration, contact, pressure int32) (*Job, error) {
@@ -844,8 +878,14 @@ func (c *Controller) PostTouchUp(contact int32) (*Job, error) {
 
 // PostRelativeMove posts a relative cursor move.
 // dx and dy are the horizontal and vertical move offsets.
-// This is currently only supported by Win32 controllers.
-// If the controller does not support relative move, the posted action will fail.
+// Supported by Win32 controllers using Seize or message-based mouse input,
+// by Linux controllers (uinput/wlroots/libei input), and by custom controllers
+// implementing RelativeMove; macOS controllers do not support it.
+// Win32 message-based mouse input requires mouse-lock-follow mode to be active
+// when the action executes; enable it with [Controller.SetMouseLockFollow].
+// Seize mouse input does not require this mode.
+// Relative move failures are reported by the submitted job's final status;
+// use [Job.Wait] or [Job.Status] to check the result.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (c *Controller) PostRelativeMove(dx, dy int32) (*Job, error) {
@@ -914,6 +954,13 @@ func (c *Controller) PostScreencap() (*Job, error) {
 }
 
 // PostScroll posts a scroll.
+// dx and dy are the horizontal and vertical scroll deltas: positive dx scrolls
+// right, positive dy scrolls up.
+// Scroll is supported by Win32, macOS, and Linux controllers when their input
+// method supports scrolling, and by custom controllers implementing Scroll.
+// Scroll failures are reported by the submitted job's final status;
+// use [Job.Wait] or [Job.Status] to check the result.
+// On Win32 the amounts are wheel-delta units, so multiples of 120 are recommended.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (c *Controller) PostScroll(dx, dy int32) (*Job, error) {
@@ -949,8 +996,12 @@ func (c *Controller) PostInactive() (*Job, error) {
 	return newJob(id, c.status, c.wait, c.state), nil
 }
 
-// PostShell posts a adb shell command.
-// This is only valid for ADB controllers. If the controller is not an ADB controller, the action will fail.
+// PostShell posts a shell command.
+// Supported by ADB controllers and by custom controllers that implement the
+// Shell method; for other controller types the action fails.
+// The timeout is passed to the native API in milliseconds: a negative timeout
+// waits indefinitely, and zero returns immediately. No default applies, as the
+// Go wrapper always passes an explicit value.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
 func (c *Controller) PostShell(cmd string, timeout time.Duration) (*Job, error) {
@@ -967,7 +1018,7 @@ func (c *Controller) PostShell(cmd string, timeout time.Duration) (*Job, error) 
 	return newJob(id, c.status, c.wait, c.state), nil
 }
 
-// GetShellOutput gets the output of the last shell command.
+// GetShellOutput gets the output of the last shell command, including embedded NUL bytes.
 func (c *Controller) GetShellOutput() (string, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -982,7 +1033,7 @@ func (c *Controller) GetShellOutput() (string, error) {
 	if !got {
 		return "", errors.New("failed to get shell output")
 	}
-	return output.Get(), nil
+	return output.GetWithSize(), nil
 }
 
 // status gets the status of a request identified by the given id.
@@ -1018,6 +1069,8 @@ func (c *Controller) Connected() bool {
 }
 
 // CacheImage gets the image buffer of the last screencap request.
+// The cached image is scaled to the configured screenshot target size, so its
+// dimensions may differ from the raw device resolution (see GetResolution).
 func (c *Controller) CacheImage() (image.Image, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -1075,7 +1128,8 @@ func (c *Controller) GetUUID() (string, error) {
 }
 
 // GetResolution gets the raw (unscaled) device resolution.
-// Returns the width and height. Returns an error if the resolution is not available.
+// Returns the width and height. Returns an error if the resolution is not
+// available yet, for example before connecting or before the first screencap.
 // Note: This returns the actual device screen resolution before any scaling.
 // The screenshot obtained via CacheImage is scaled according to the screenshot target size settings.
 func (c *Controller) GetResolution() (width, height int32, err error) {
@@ -1094,6 +1148,8 @@ func (c *Controller) GetResolution() (width, height int32, err error) {
 
 // GetInfo gets controller information as a JSON string.
 // Returns controller-specific information including type, constructor parameters and current state.
+// The returned JSON always contains a "type" key identifying the controller
+// kind; for custom controllers it is always "custom".
 func (c *Controller) GetInfo() (string, error) {
 	_, done, useErr := c.state.begin()
 	if useErr != nil {
@@ -1110,7 +1166,7 @@ func (c *Controller) GetInfo() (string, error) {
 	return buf.Get(), nil
 }
 
-// AddSink adds a event callback sink and returns the sink ID.
+// AddSink adds an event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
 // The instance and associated taskers must be idle. Do not call this from a callback.
 // It returns 0 if registration fails or the object is closed.
@@ -1145,7 +1201,7 @@ func (c *Controller) AddSink(sink ControllerEventSink) int64 {
 	return sinkId
 }
 
-// RemoveSink removes a event callback sink by sink ID.
+// RemoveSink removes an event callback sink by sink ID.
 // The instance and associated taskers must be idle. Do not call this from a callback.
 func (c *Controller) RemoveSink(sinkId int64) {
 	_, done, useErr := c.state.begin()
@@ -1191,6 +1247,10 @@ func (c *Controller) ClearSinks() {
 	native.MaaControllerClearSinks(c.handle)
 }
 
+// ControllerEventSink is the sink for controller action events
+// (Controller.Action.* messages), delivered with a borrowed *Controller view
+// of the controller that posted the event.
+// See Controller.OnControllerAction for a single-event convenience wrapper.
 type ControllerEventSink interface {
 	OnControllerAction(ctrl *Controller, event EventStatus, detail ControllerActionDetail)
 }
@@ -1201,6 +1261,7 @@ type ctrlEventSinkAdapter struct {
 	onControllerAction func(EventStatus, ControllerActionDetail)
 }
 
+// OnControllerAction forwards the event to the wrapped handler function.
 func (a *ctrlEventSinkAdapter) OnControllerAction(
 	ctrl *Controller,
 	status EventStatus,

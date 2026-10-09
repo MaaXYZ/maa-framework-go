@@ -65,6 +65,42 @@ func TestJob_Status(t *testing.T) {
 	}
 }
 
+func TestJob_Wait(t *testing.T) {
+	t.Run("ReturnsSameInstance", func(t *testing.T) {
+		job := newJob(1,
+			func(id int64) Status { return StatusSuccess },
+			func(id int64) Status { return StatusSuccess },
+		)
+		require.Same(t, job, job.Wait())
+		require.Equal(t, StatusSuccess, job.Status())
+	})
+
+	t.Run("FailedJobReturnsSameInstance", func(t *testing.T) {
+		job, err := failJob(errors.New("failed to post"))
+		require.Error(t, err)
+		require.Same(t, job, job.Wait())
+		require.Equal(t, StatusFailure, job.Status())
+	})
+
+	t.Run("ClosedOwnerSkipsWait", func(t *testing.T) {
+		waitCalled := false
+		waitFunc := func(id int64) Status {
+			waitCalled = true
+			return StatusSuccess
+		}
+		state := newHandleState(1, func(uintptr) {})
+		statusFunc := func(id int64) Status { return StatusSuccess }
+		job := newJob(1, statusFunc, waitFunc, state)
+		// Observing the terminal status through Status untracks the job, so
+		// the owner can be closed while Wait has never cached a status.
+		require.Equal(t, StatusSuccess, job.Status())
+		require.NoError(t, state.close())
+		require.Same(t, job, job.Wait())
+		require.False(t, waitCalled, "Wait should not call waitFunc when the owning handle is closed")
+		require.Equal(t, StatusFailure, job.Status())
+	})
+}
+
 func TestJob_Invalid(t *testing.T) {
 	testCases := []struct {
 		name       string
@@ -632,13 +668,16 @@ func TestTaskJob_GetDetail(t *testing.T) {
 
 	t.Run("NoError_WithFunc", func(t *testing.T) {
 		expectedDetail := &TaskDetail{ID: 1, Entry: "test"}
+		var gotID int64
 		getDetailFunc := func(id int64) (*TaskDetail, error) {
+			gotID = id
 			return expectedDetail, nil
 		}
 		job := newTaskJob(1, nil, nil, getDetailFunc, nil, nil)
 		detail, err := job.GetDetail()
 		require.NoError(t, err)
 		require.Equal(t, expectedDetail, detail)
+		require.EqualValues(t, 1, gotID)
 	})
 }
 

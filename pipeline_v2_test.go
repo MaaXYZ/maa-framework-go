@@ -80,7 +80,7 @@ func TestPipelineV2NeuralNetworkDetectThresholdJSON(t *testing.T) {
 	encoded, err := marshalJSON(recognition)
 	require.NoError(t, err)
 	require.JSONEq(t,
-		`{"type":"NeuralNetworkDetect","param":{"model":"detector.onnx","roi_offset":[0,0,0,0],"threshold":[0.25,0]}}`,
+		`{"type":"NeuralNetworkDetect","param":{"model":"detector.onnx","threshold":[0.25,0]}}`,
 		string(encoded),
 	)
 
@@ -112,7 +112,7 @@ func TestPipelineV2NativePressureRoundTrip(t *testing.T) {
 			build: func(pressure *int) *Action {
 				return ActLongPress(LongPressParam{
 					Target:   NewTargetRect(Rect{1, 2, 3, 4}),
-					Duration: 10 * time.Millisecond,
+					Duration: durationPointer(10 * time.Millisecond),
 					Pressure: pressure,
 				})
 			},
@@ -283,6 +283,317 @@ func TestPipelineV2NativeAndOrInlineRoundTrip(t *testing.T) {
 				require.Equal(t, Rect{50, 60, 70, 80}, gotROI)
 			default:
 				t.Fatalf("unexpected recognition type %q", node.Recognition.Type)
+			}
+		})
+	}
+}
+
+func TestPipelineUnmarshalIgnoresMetadata(t *testing.T) {
+	const input = `{
+		"$schema": "pipeline.schema.json",
+		"$comment": "ignored metadata",
+		"$disabled": {"anchor": null},
+		"$empty": null,
+		"A": {"anchor": "Start"}
+	}`
+	var pipeline Pipeline
+	require.NoError(t, json.Unmarshal([]byte(input), &pipeline))
+	require.Equal(t, 1, pipeline.Len())
+	node, ok := pipeline.GetNode("A")
+	require.True(t, ok)
+	require.Equal(t, &Node{Name: "A", Anchor: map[string]string{"Start": "A"}}, node)
+
+	encoded, err := json.Marshal(&pipeline)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"A":{"anchor":{"Start":"A"}}}`, string(encoded))
+}
+
+func TestPipelineUnmarshalAnchorShorthand(t *testing.T) {
+	t.Run("string and list forms resolve against the node name", func(t *testing.T) {
+		var pipeline Pipeline
+		require.NoError(t, json.Unmarshal([]byte(`{
+			"A": {"anchor": "Anchor1"},
+			"B": {"anchor": ["Anchor1", "Anchor2"]}
+		}`), &pipeline))
+		node, ok := pipeline.GetNode("A")
+		require.True(t, ok)
+		require.Equal(t, "A", node.Name)
+		require.Equal(t, map[string]string{"Anchor1": "A"}, node.Anchor)
+		node, ok = pipeline.GetNode("B")
+		require.True(t, ok)
+		require.Equal(t, "B", node.Name)
+		require.Equal(t, map[string]string{"Anchor1": "B", "Anchor2": "B"}, node.Anchor)
+	})
+
+	t.Run("nodes without anchors still take their name from the key", func(t *testing.T) {
+		var pipeline Pipeline
+		require.NoError(t, json.Unmarshal([]byte(`{"Plain": {}}`), &pipeline))
+		node, ok := pipeline.GetNode("Plain")
+		require.True(t, ok)
+		require.Equal(t, "Plain", node.Name)
+		require.Nil(t, node.Anchor)
+	})
+
+	t.Run("object form preserves absent targets and empty target clears", func(t *testing.T) {
+		var pipeline Pipeline
+		require.NoError(t, json.Unmarshal([]byte(`{"N": {"anchor": {"A": "M", "B": ""}}}`), &pipeline))
+		node, ok := pipeline.GetNode("N")
+		require.True(t, ok)
+		require.Equal(t, "N", node.Name)
+		require.Equal(t, map[string]string{"A": "M", "B": ""}, node.Anchor)
+		require.False(t, pipeline.HasNode("M"), "target existence is not validated during decoding")
+	})
+
+	t.Run("empty names lists and duplicates match the native parser", func(t *testing.T) {
+		for _, tc := range []struct {
+			name   string
+			anchor string
+			want   map[string]string
+		}{
+			{name: "empty string", anchor: `""`, want: map[string]string{"": "N"}},
+			{name: "empty list", anchor: `[]`, want: map[string]string{}},
+			{name: "duplicates and empty string", anchor: `["A", "", "A"]`, want: map[string]string{"A": "N", "": "N"}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				var pipeline Pipeline
+				require.NoError(t, json.Unmarshal([]byte(`{"N": {"anchor": `+tc.anchor+`}}`), &pipeline))
+				node, ok := pipeline.GetNode("N")
+				require.True(t, ok)
+				require.Equal(t, tc.want, node.Anchor)
+			})
+		}
+	})
+
+	t.Run("v1 flat nodes resolve anchors the same way and re-encode as v2", func(t *testing.T) {
+		var pipeline Pipeline
+		require.NoError(t, json.Unmarshal([]byte(`{
+			"N": {"recognition": "DirectHit", "action": "Command", "exec": "sh", "args": "-c", "anchor": "A"}
+		}`), &pipeline))
+		node, ok := pipeline.GetNode("N")
+		require.True(t, ok)
+		require.Equal(t, map[string]string{"A": "N"}, node.Anchor)
+		cmd, ok := node.Action.Param.(*CommandParam)
+		require.True(t, ok)
+		require.Equal(t, []string{"-c"}, cmd.Args)
+		encoded, err := json.Marshal(&pipeline)
+		require.NoError(t, err)
+		require.JSONEq(t, `{"N": {
+			"recognition": {"type": "DirectHit", "param": {}},
+			"action": {"type": "Command", "param": {"exec": "sh", "args": ["-c"]}},
+			"anchor": {"A": "N"}
+		}}`, string(encoded), "re-encoding emits the object form")
+	})
+
+	t.Run("standalone Node still rejects the shorthand forms", func(t *testing.T) {
+		for _, payload := range []string{`{"anchor": "A"}`, `{"anchor": ["A", "B"]}`} {
+			node := Node{Name: "keep", Anchor: map[string]string{"A": "M"}}
+			require.Error(t, json.Unmarshal([]byte(payload), &node))
+			require.Equal(t, Node{Name: "keep", Anchor: map[string]string{"A": "M"}}, node)
+		}
+	})
+
+	t.Run("null and malformed anchors are rejected with invariance", func(t *testing.T) {
+		seedPipeline := func() *Pipeline {
+			return NewPipeline().AddNode(NewNode("Keep").
+				SetAnchor(map[string]string{"A": "M"}).
+				SetRecognition(RecDirectHit()).
+				SetAction(ActDoNothing()).
+				SetNext([]NextItem{{Name: "Next", Anchor: true}}).
+				SetEnabled(false).
+				SetRateLimit(10 * time.Millisecond).
+				SetFocus("keep focus").
+				SetAttach(map[string]any{"keep": "value"}))
+		}
+		for name, payload := range map[string]string{
+			"null anchor":   `{"N": {"anchor": null}}`,
+			"number anchor": `{"N": {"anchor": 1}}`,
+			"bool anchor":   `{"N": {"anchor": true}}`,
+			"null entry":    `{"N": {"anchor": ["A", null]}}`,
+			"number entry":  `{"N": {"anchor": ["A", 1]}}`,
+			"bool entry":    `{"N": {"anchor": ["A", true]}}`,
+			"object entry":  `{"N": {"anchor": ["A", {}]}}`,
+			"array entry":   `{"N": {"anchor": ["A", []]}}`,
+			"bad node":      `{"N": {"anchor": "A", "next": "X", "rate_limit": "fast"}}`,
+			"not an object": `{"N": 5}`,
+			"mixed nodes":   `{"Good": {"anchor": "A"}, "N": {"anchor": ["A", true]}}`,
+		} {
+			t.Run(name, func(t *testing.T) {
+				seeded := seedPipeline()
+				before := seedPipeline()
+				originalNode, ok := seeded.GetNode("Keep")
+				require.True(t, ok)
+				require.Error(t, json.Unmarshal([]byte(payload), seeded), payload)
+				require.Equal(t, before, seeded, "all state, including Name, must be preserved")
+				node, ok := seeded.GetNode("Keep")
+				require.True(t, ok)
+				require.Same(t, originalNode, node)
+			})
+		}
+	})
+
+	t.Run("successful decoding replaces existing nodes", func(t *testing.T) {
+		pipeline := NewPipeline().AddNode(NewNode("Keep").SetAnchor(map[string]string{"Old": "Keep"}))
+		require.NoError(t, json.Unmarshal([]byte(`{"N": {"anchor": "A"}}`), pipeline))
+		require.False(t, pipeline.HasNode("Keep"))
+		require.Equal(t, 1, pipeline.Len())
+		node, ok := pipeline.GetNode("N")
+		require.True(t, ok)
+		require.Equal(t, &Node{Name: "N", Anchor: map[string]string{"A": "N"}}, node)
+
+		require.NoError(t, json.Unmarshal([]byte(`{"N": {"anchor": ["B", "C"]}, "Plain": {}}`), pipeline))
+		require.Equal(t, 2, pipeline.Len())
+		node, ok = pipeline.GetNode("N")
+		require.True(t, ok)
+		require.Equal(t, &Node{Name: "N", Anchor: map[string]string{"B": "N", "C": "N"}}, node)
+		node, ok = pipeline.GetNode("Plain")
+		require.True(t, ok)
+		require.Equal(t, &Node{Name: "Plain"}, node)
+	})
+
+	t.Run("null decodes to an empty pipeline", func(t *testing.T) {
+		var pipeline Pipeline
+		require.NoError(t, json.Unmarshal([]byte(`null`), &pipeline))
+		require.Equal(t, 0, pipeline.Len())
+	})
+}
+
+func TestNodeAnchorJSONPresence(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		input  string
+		anchor map[string]string
+	}{
+		{name: "omitted", input: `{}`},
+		{name: "empty object", input: `{"anchor":{}}`, anchor: map[string]string{}},
+		{name: "nonempty object", input: `{"anchor":{"A":"N","B":""}}`, anchor: map[string]string{"A": "N", "B": ""}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			decoded := Node{Name: "Old", Anchor: map[string]string{"Old": "Old"}}
+			require.NoError(t, json.Unmarshal([]byte(tc.input), &decoded))
+			require.Equal(t, Node{Anchor: tc.anchor}, decoded, "decoding replaces prior state and preserves anchor presence")
+			for name, node := range map[string]*Node{
+				"decoded": &decoded,
+				"built":   NewNode("N").SetAnchor(tc.anchor),
+			} {
+				t.Run(name, func(t *testing.T) {
+					encoded, err := json.Marshal(node)
+					require.NoError(t, err)
+					require.JSONEq(t, tc.input, string(encoded))
+				})
+			}
+		})
+	}
+}
+
+func TestPipelineAnchorJSONPresence(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		input   string
+		anchor  map[string]string
+		encoded string
+	}{
+		{name: "omitted", input: `{"N":{}}`, encoded: `{"N":{}}`},
+		{name: "empty list", input: `{"N":{"anchor":[]}}`, anchor: map[string]string{}, encoded: `{"N":{"anchor":{}}}`},
+		{name: "empty object", input: `{"N":{"anchor":{}}}`, anchor: map[string]string{}, encoded: `{"N":{"anchor":{}}}`},
+		{name: "nonempty object", input: `{"N":{"anchor":{"A":"N"}}}`, anchor: map[string]string{"A": "N"}, encoded: `{"N":{"anchor":{"A":"N"}}}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var pipeline Pipeline
+			require.NoError(t, json.Unmarshal([]byte(tc.input), &pipeline))
+			node, ok := pipeline.GetNode("N")
+			require.True(t, ok)
+			require.Equal(t, tc.anchor, node.Anchor)
+			encoded, err := json.Marshal(&pipeline)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.encoded, string(encoded))
+			var roundTrip Pipeline
+			require.NoError(t, json.Unmarshal(encoded, &roundTrip))
+			require.Equal(t, pipeline, roundTrip)
+		})
+	}
+}
+
+func TestPipelineV2NativeAnchorOverrides(t *testing.T) {
+	rawResource := createResource(t)
+	t.Cleanup(func() { require.NoError(t, rawResource.Destroy()) })
+	pipelineResource := createResource(t)
+	t.Cleanup(func() { require.NoError(t, pipelineResource.Destroy()) })
+	nodeResource := createResource(t)
+	t.Cleanup(func() { require.NoError(t, nodeResource.Destroy()) })
+
+	for _, tc := range []struct {
+		name   string
+		input  string
+		anchor map[string]string
+	}{
+		{name: "omitted inherits", input: `{"N":{}}`, anchor: map[string]string{"Old": "N"}},
+		{name: "empty list clears configuration", input: `{"N":{"anchor":[]}}`, anchor: map[string]string{}},
+		{name: "empty object clears configuration", input: `{"N":{"anchor":{}}}`, anchor: map[string]string{}},
+		{name: "nonempty object replaces configuration", input: `{"N":{"anchor":{"New":"Missing","Clear":""}}}`, anchor: map[string]string{"New": "Missing", "Clear": ""}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, resource := range []*Resource{rawResource, pipelineResource, nodeResource} {
+				require.NoError(t, resource.OverridePipeline(`{"N":{"anchor":{"Old":"N"}}}`))
+			}
+			require.NoError(t, rawResource.OverridePipeline(tc.input))
+			var pipeline Pipeline
+			require.NoError(t, json.Unmarshal([]byte(tc.input), &pipeline))
+			require.NoError(t, pipelineResource.OverridePipeline(&pipeline))
+			node, ok := pipeline.GetNode("N")
+			require.True(t, ok)
+			encodedNode, err := json.Marshal(node)
+			require.NoError(t, err)
+			require.NoError(t, nodeResource.OverridePipeline(map[string]json.RawMessage{"N": encodedNode}))
+
+			rawNode, err := rawResource.GetNode("N")
+			require.NoError(t, err)
+			require.Equal(t, tc.anchor, rawNode.Anchor, "native input establishes inheritance or replacement")
+			for name, resource := range map[string]*Resource{
+				"Pipeline encoding":        pipelineResource,
+				"standalone Node encoding": nodeResource,
+			} {
+				typedNode, err := resource.GetNode("N")
+				require.NoError(t, err)
+				require.Equal(t, rawNode, typedNode, "%s must preserve the native override behavior", name)
+			}
+		})
+	}
+}
+
+func TestPipelineV2NativeAnchorShorthandRoundTrip(t *testing.T) {
+	const payload = `{
+		"String": {"anchor": "A"},
+		"List": {"anchor": ["A", "B"]},
+		"Object": {"anchor": {"A": "Missing", "B": ""}},
+		"EmptyName": {"anchor": ""},
+		"EmptyList": {"anchor": []},
+		"Duplicate": {"anchor": ["A", "", "A"]},
+		"Plain": {}
+	}`
+	var pipeline Pipeline
+	require.NoError(t, json.Unmarshal([]byte(payload), &pipeline))
+
+	rawResource := createResource(t)
+	t.Cleanup(func() { require.NoError(t, rawResource.Destroy()) })
+	typedResource := createResource(t)
+	t.Cleanup(func() { require.NoError(t, typedResource.Destroy()) })
+	require.NoError(t, rawResource.OverridePipeline(payload))
+	require.NoError(t, typedResource.OverridePipeline(&pipeline))
+
+	for _, name := range []string{"String", "List", "Object", "EmptyName", "EmptyList", "Duplicate", "Plain"} {
+		t.Run(name, func(t *testing.T) {
+			rawNode, err := rawResource.GetNode(name)
+			require.NoError(t, err)
+			typedNode, err := typedResource.GetNode(name)
+			require.NoError(t, err)
+			require.Equal(t, rawNode, typedNode, "typed normalization must preserve native behavior")
+			decoded, ok := pipeline.GetNode(name)
+			require.True(t, ok)
+			require.Equal(t, name, decoded.Name)
+			if len(decoded.Anchor) == 0 {
+				require.Empty(t, rawNode.Anchor)
+			} else {
+				require.Equal(t, decoded.Anchor, rawNode.Anchor)
 			}
 		})
 	}

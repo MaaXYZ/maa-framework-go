@@ -3,8 +3,11 @@ package maa
 import "github.com/MaaXYZ/maa-framework-go/v4/internal/target"
 
 // Target identifies a pipeline v2 ROI or action position: true for the current
-// recognition box (or the full image for an ROI), a node or [Anchor] name, or a rectangle.
-// JSON points [x, y] are normalized to [x, y, 1, 1]. A zero Target is unspecified.
+// recognition box (or the full image for an ROI), a node or [Anchor] name, or
+// a rectangle. JSON points [x, y] are normalized to [x, y, 1, 1]. Names are
+// passed through unvalidated: an empty name or a malformed [Anchor] prefix
+// fails when the pipeline is parsed. A zero Target is unspecified and cannot
+// be encoded; decoding an explicit JSON null target is an error.
 type Target = target.Target
 
 // NewTargetBool creates the current-result/full-image target when val is true.

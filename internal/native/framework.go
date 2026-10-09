@@ -10,17 +10,33 @@ var maaFramework uintptr
 
 const maaFrameworkName = "MaaFramework"
 
+// MaaVersion returns the version string of the loaded MaaFramework library.
 var (
 	MaaVersion func() string
 )
 
+// MaaEventCallback is the Go form of the C MaaEventCallback function pointer.
+// handle is the event source handle: a MaaTasker, MaaResource, MaaController,
+// or MaaContext; message and detailsJson point to NUL-terminated UTF-8
+// strings, and transArg receives the trans_arg value passed at registration.
 type MaaEventCallback func(handle uintptr, message, detailsJson *byte, transArg uintptr) uintptr
 
+// MaaTaskerOption is a tasker option key passed to MaaTaskerSetOption.
+// Upstream currently defines only MaaTaskerOption_Invalid.
 type MaaTaskerOption int32
 
 // MaaTaskerOption_Invalid is the reserved invalid tasker option.
 const MaaTaskerOption_Invalid MaaTaskerOption = 0
 
+// MaaTasker API bindings (MaaTasker.h). MaaTaskerCreate creates a tasker
+// handle released by MaaTaskerDestroy. Post* functions post work
+// asynchronously and return an id that MaaTaskerStatus and MaaTaskerWait
+// accept, and sink registration returns a sink id for MaaTaskerRemoveSink and
+// MaaTaskerRemoveContextSink. MaaTaskerSetOption reads the option from the
+// value buffer of valSize bytes. The detail getters write through
+// caller-supplied output pointers; MaaTaskerGetWaitFreezesDetail and
+// MaaTaskerGetTaskDetail take their *Size arguments by pointer, with the
+// buffer capacity passed in and the actual element count filled back.
 var (
 	MaaTaskerCreate               func() uintptr
 	MaaTaskerDestroy              func(tasker uintptr)
@@ -54,66 +70,89 @@ var (
 	MaaTaskerOverridePipeline     func(tasker uintptr, taskId int64, pipelineOverride string) bool
 )
 
+// MaaCustomRecognitionCallback is the Go form of the C custom recognition
+// callback registered through MaaResourceRegisterCustomRecognition. It gets
+// the context, task id, node name, recognition name and parameters, image,
+// roi, and trans_arg; return non-zero on a hit, writing outBox and outDetail.
 type MaaCustomRecognitionCallback func(context uintptr, taskId int64, currentTaskName, customRecognitionName, customRecognitionParam *byte, image, roi, transArg, outBox, outDetail uintptr) uintptr
 
+// MaaCustomActionCallback is the Go form of the C custom action callback
+// registered through MaaResourceRegisterCustomAction. It gets the context,
+// task id, node name, action name and parameters, the recognition id, the
+// recognition box, and trans_arg; return non-zero to report success.
 type MaaCustomActionCallback func(context uintptr, taskId int64, currentTaskName, customActionName, customActionParam *byte, recoId int64, box, transArg uintptr) uintptr
 
+// MaaInferenceDevice is an inference device selector used with
+// MaaResOption_InferenceDevice: a GPU id (0, 1, ...) or a negative constant.
 type MaaInferenceDevice int32
 
+// Inference device values for MaaResOption_InferenceDevice.
 const (
 	MaaInferenceDevice_CPU  MaaInferenceDevice = -2
 	MaaInferenceDevice_Auto MaaInferenceDevice = -1
 	MaaInferenceDevice_0    MaaInferenceDevice = 0
 	MaaInferenceDevice_1    MaaInferenceDevice = 1
-	// and more gpu id or flag...
+	// MaaInferenceDevice values continue with more GPU ids or flags.
 )
 
+// MaaInferenceExecutionProvider is an execution provider selector used with
+// MaaResOption_InferenceExecutionProvider.
 type MaaInferenceExecutionProvider int32
 
+// Execution provider values for MaaResOption_InferenceExecutionProvider.
 const (
 
-	// I don't recommend setting up MaaResOption_InferenceDevice in this case,
-	// because you don't know which EP will be used on different user devices.
+	// MaaInferenceExecutionProvider_Auto lets MaaFramework choose the execution
+	// provider; MaaResOption_InferenceDevice is not recommended with it because
+	// the provider used varies across user devices.
 	MaaInferenceExecutionProvider_Auto = 0
 
-	// MaaResOption_InferenceDevice will not work.
+	// MaaInferenceExecutionProvider_CPU selects the CPU execution provider;
+	// MaaResOption_InferenceDevice has no effect with it.
 	MaaInferenceExecutionProvider_CPU = 1
 
-	// MaaResOption_InferenceDevice will be used to set adapter id,
-	// It's from Win32 API `EnumAdapters1`.
+	// MaaInferenceExecutionProvider_DirectML selects DirectML;
+	// MaaResOption_InferenceDevice sets the adapter id from the Win32 API
+	// EnumAdapters1.
 	MaaInferenceExecutionProvider_DirectML = 2
 
-	// MaaResOption_InferenceDevice will be used to set coreml_flag,
-	// Reference to
-	// https://github.com/microsoft/onnxruntime/blob/main/include/onnxruntime/core/providers/coreml/coreml_provider_factory.h
-	// But you need to pay attention to the onnxruntime version we use, the latest flag may not be supported.
+	// MaaInferenceExecutionProvider_CoreML selects CoreML;
+	// MaaResOption_InferenceDevice sets the coreml_flag documented in the ONNX
+	// Runtime CoreML provider factory header; note that the ONNX Runtime version
+	// used by MaaFramework may not support the latest flags.
 	MaaInferenceExecutionProvider_CoreML = 3
 
-	// MaaResOption_InferenceDevice will be used to set NVIDIA GPU ID
-	// TODO!
+	// MaaInferenceExecutionProvider_CUDA selects CUDA; MaaResOption_InferenceDevice
+	// sets the NVIDIA GPU id.
 	MaaInferenceExecutionProvider_CUDA = 4
 )
 
+// MaaResOption is a resource option key passed to MaaResourceSetOption.
 type MaaResOption int32
 
+// Resource option values for MaaResourceSetOption.
 const (
 	MaaResOption_Invalid MaaResOption = 0
 
-	/// Use the specified inference device.
-	/// Please set this option before loading the model.
-	///
-	/// value: MaaInferenceDevice, eg: 0; val_size: sizeof(MaaInferenceDevice)
-	/// default value is MaaInferenceDevice_Auto
+	// MaaResOption_InferenceDevice uses the specified inference device. Set it
+	// before loading the model.
+	// value: MaaInferenceDevice, eg: 0; val_size: sizeof(MaaInferenceDevice)
+	// default value is MaaInferenceDevice_Auto
 	MaaResOption_InferenceDevice MaaResOption = 1
 
-	/// Use the specified inference execution provider
-	/// Please set this option before loading the model.
-	///
-	/// value: MaaInferenceExecutionProvider, eg: 0; val_size: sizeof(MaaInferenceExecutionProvider)
-	/// default value is MaaInferenceExecutionProvider_Auto
+	// MaaResOption_InferenceExecutionProvider uses the specified inference
+	// execution provider. Set it before loading the model.
+	// value: MaaInferenceExecutionProvider, eg: 0; val_size: sizeof(MaaInferenceExecutionProvider)
+	// default value is MaaInferenceExecutionProvider_Auto
 	MaaResOption_InferenceExecutionProvider MaaResOption = 2
 )
 
+// MaaResource API bindings (MaaResource.h). MaaResourceCreate creates a
+// resource handle released by MaaResourceDestroy. Post* functions load
+// content asynchronously and return a resource id that MaaResourceStatus and
+// MaaResourceWait accept, and custom recognition and action callbacks are
+// registered and unregistered by name. Getters such as GetHash, GetNodeList,
+// and GetDefaultRecognitionParam write into caller-created buffer handles.
 var (
 	MaaResourceCreate                      func() uintptr
 	MaaResourceDestroy                     func(res uintptr)
@@ -147,21 +186,28 @@ var (
 	MaaResourceGetDefaultActionParam       func(res uintptr, actionType string, buffer uintptr) bool
 )
 
+// MaaCtrlOption is a controller option key passed to MaaControllerSetOption.
 type MaaCtrlOption int32
 
+// Controller option values for MaaControllerSetOption. Upstream value 5
+// (MaaCtrlOption_Recording) is omitted because it is commented out as
+// deprecated in MaaDef.h.
 const (
 	MaaCtrlOption_Invalid MaaCtrlOption = 0
 
-	// MaaCtrlOptionScreenshotTargetLongSide specifies that only the long side can be set, and the short side
+	// MaaCtrlOption_ScreenshotTargetLongSide specifies that only the long side can be set, and the short side
 	// is automatically scaled according to the aspect ratio.
+	// value: int, eg: 1280; val_size: sizeof(int)
 	MaaCtrlOption_ScreenshotTargetLongSide MaaCtrlOption = 1
 
-	// MaaCtrlOptionScreenshotTargetShortSide specifies that only the short side can be set, and the long side
+	// MaaCtrlOption_ScreenshotTargetShortSide specifies that only the short side can be set, and the long side
 	// is automatically scaled according to the aspect ratio.
+	// value: int, eg: 720; val_size: sizeof(int)
 	MaaCtrlOption_ScreenshotTargetShortSide MaaCtrlOption = 2
 
-	// MaaCtrlOptionScreenshotUseRawSize specifies that the screenshot uses the raw size without scaling.
+	// MaaCtrlOption_ScreenshotUseRawSize specifies that the screenshot uses the raw size without scaling.
 	// Note that this option may cause incorrect coordinates on user devices with different resolutions if scaling is not performed.
+	// value: bool, eg: true; val_size: sizeof(bool)
 	MaaCtrlOption_ScreenshotUseRawSize MaaCtrlOption = 3
 
 	// MaaCtrlOption_MouseLockFollow enables or disables mouse-lock-follow mode for Win32 controllers.
@@ -189,8 +235,11 @@ const (
 	MaaCtrlOption_ScreenshotTargetExpand MaaCtrlOption = 8
 )
 
+// MaaGamepadType is a virtual gamepad type for MaaGamepadControllerCreate;
+// select one type only.
 type MaaGamepadType uint64
 
+// Virtual gamepad type values for MaaGamepadControllerCreate.
 const (
 	MaaGamepadType_Xbox360    MaaGamepadType = 0
 	MaaGamepadType_DualShock4 MaaGamepadType = 1
@@ -200,6 +249,7 @@ const (
 // Select ONE method only.
 type MaaMacOSScreencapMethod uint64
 
+// macOS screencap method values for MaaMacOSControllerCreate.
 const (
 	MaaMacOSScreencapMethod_None             MaaMacOSScreencapMethod = 0
 	MaaMacOSScreencapMethod_ScreenCaptureKit MaaMacOSScreencapMethod = 1
@@ -209,6 +259,7 @@ const (
 // Select ONE method only.
 type MaaMacOSInputMethod uint64
 
+// macOS input method values for MaaMacOSControllerCreate.
 const (
 	MaaMacOSInputMethod_None        MaaMacOSInputMethod = 0
 	MaaMacOSInputMethod_GlobalEvent MaaMacOSInputMethod = 1
@@ -216,12 +267,23 @@ const (
 )
 
 // NOTE: MaaDbgControllerCreate is intentionally NOT implemented in the Go binding.
-// MaaDbgControllerCreate has been superseded by more specific alternatives:
+// MaaDbgControllerCreate remains a current, non-deprecated API upstream; the
+// Go binding offers these alternatives instead:
 //   - BlankController (blank_controller.go): no-op stub that always succeeds
 //   - NewReplayController: replay recorded operations from a JSONL file
-// Do NOT add a Go binding for MaaDbgControllerCreate or MaaDbgControllerType here.
+// Do NOT add a Go binding for MaaDbgControllerCreate here.
 // The api-check CI tool also blacklists MaaDbgControllerCreate for the same reason.
 
+// MaaController API bindings (MaaController.h). The Create functions build the
+// platform controllers: adb, PlayCover (macOS), Win32, Linux, custom callback,
+// gamepad (Windows), macOS native, and Android native, plus a record wrapper
+// that logs operations to a JSONL file and a replay wrapper that replays one;
+// MaaControllerDestroy releases the handle. Post* functions post operations
+// asynchronously and return a control id that MaaControllerStatus and
+// MaaControllerWait accept, and MaaControllerPostShell takes its timeout in
+// milliseconds. GetShellOutput, CachedImage, GetUuid, and GetInfo write into
+// caller-created buffers, and GetResolution writes the raw device resolution
+// through its width and height pointers.
 var (
 	MaaAdbControllerCreate           func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
 	MaaPlayCoverControllerCreate     func(address, uuid string) uintptr
@@ -240,8 +302,9 @@ var (
 	MaaControllerSetOption           func(ctrl uintptr, key MaaCtrlOption, value unsafe.Pointer, valSize uint64) bool
 	MaaControllerPostConnection      func(ctrl uintptr) int64
 	MaaControllerPostClick           func(ctrl uintptr, x, y int32) int64
-	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc)
-	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle)
+	// MaaControllerPostClickV2 posts a click with explicit contact and pressure:
+	// for adb controller, contact means finger id (0 for first finger, 1 for second finger, etc);
+	// for win32 controller, contact means mouse button id (0 for left, 1 for right, 2 for middle).
 	MaaControllerPostClickV2      func(ctrl uintptr, x, y, contact, pressure int32) int64
 	MaaControllerPostSwipe        func(ctrl uintptr, x1, y1, x2, y2, duration int32) int64
 	MaaControllerPostSwipeV2      func(ctrl uintptr, x1, y1, x2, y2, duration, contact, pressure int32) int64
@@ -269,6 +332,15 @@ var (
 	MaaControllerGetInfo          func(ctrl uintptr, buffer uintptr) bool
 )
 
+// MaaContext API bindings (MaaContext.h). Context handles are supplied to
+// custom recognition and action callbacks and run nested pipeline work:
+// RunTask, RunRecognition, and RunAction return the corresponding task,
+// recognition, or action id, while RunRecognitionDirect and RunActionDirect
+// run by type and parameters without a pipeline entry.
+// MaaContextWaitFreezes waits until the box region stops changing for the
+// given time; Override* functions adjust pipeline and node data for the
+// running task, and the remaining functions query task and tasker state,
+// clone the context, and manage node anchors and hit counters.
 var (
 	MaaContextRunTask              func(context uintptr, entry, pipelineOverride string) int64
 	MaaContextRunRecognition       func(context uintptr, entry, pipelineOverride string, image uintptr) int64
@@ -289,12 +361,20 @@ var (
 	MaaContextClearHitCount        func(context uintptr, nodeName string) bool
 )
 
+// Buffer bindings (MaaBuffer.h). Each buffer is created with its Create
+// function, released with its Destroy function, and passed by handle to other
+// framework functions that produce string, image, or geometry results.
+// MaaStringBufferGet returns borrowed storage valid until the buffer is
+// modified or destroyed; MaaStringBufferSize gives its byte length. The list
+// At functions return a borrowed element view that must not be destroyed,
+// while Append copies the element value with an independent buffer lifetime.
+// Appended image elements may share pixel storage with the source image.
 var (
 	MaaStringBufferCreate  func() uintptr
 	MaaStringBufferDestroy func(handle uintptr)
 	MaaStringBufferIsEmpty func(handle uintptr) bool
 	MaaStringBufferClear   func(handle uintptr) bool
-	MaaStringBufferGet     func(handle uintptr) string
+	MaaStringBufferGet     func(handle uintptr) unsafe.Pointer
 	MaaStringBufferSize    func(handle uintptr) uint64
 	MaaStringBufferSet     func(handle uintptr, str string) bool
 	MaaStringBufferSetEx   func(handle uintptr, str string, size uint64) bool
@@ -341,8 +421,12 @@ var (
 	MaaRectSet     func(handle uintptr, x, y, w, h int32) bool
 )
 
+// MaaGlobalOption is a global option key passed to MaaGlobalSetOption.
 type MaaGlobalOption int32
 
+// Global option values for MaaGlobalSetOption. Upstream values 3
+// (MaaGlobalOption_Recording) and 5 (MaaGlobalOption_ShowHitDraw) are omitted
+// because they are commented out as deprecated in MaaDef.h.
 const (
 	MaaGlobalOption_Invalid MaaGlobalOption = 0
 
@@ -385,6 +469,10 @@ const (
 	MaaGlobalOption_RecoImageCacheLimit MaaGlobalOption = 9
 )
 
+// Global functions (MaaGlobal.h). MaaGlobalSetOption reads the option from
+// the value buffer of valSize bytes. MaaGlobalLoadPlugin loads a plugin from
+// a full library path, by name searched in the system and current directories,
+// or from a directory searched recursively.
 var (
 	MaaGlobalSetOption  func(key MaaGlobalOption, value unsafe.Pointer, valSize uint64) bool
 	MaaGlobalLoadPlugin func(path string) bool

@@ -42,11 +42,14 @@ var moduleOrder = []string{"framework", "toolkit", "agent_server", "agent_client
 var sectionOrder = []string{sectionNativeAPI, sectionController, sectionControllerMethod, sectionConstants, sectionEvents, sectionPipeline}
 
 // Config selects the native headers and optional pipeline v2 schema to check.
-// Paths are resolved relative to the detected repository root.
+// Relative paths are resolved against the detected repository root; absolute
+// paths are used as-is.
 type Config struct {
 	HeaderDir string   `yaml:"header_dir"`
 	Blacklist []string `yaml:"blacklist"`
-	// NativeExclusions records intentional native symbol differences with reasons.
+	// NativeExclusions records intentional native symbol differences with
+	// reasons. Keys are exact symbol names and reasons must be nonempty;
+	// entries without a current difference are stale.
 	NativeExclusions map[string]string `yaml:"native_exclusions"`
 	// PipelineSchema enables pipeline v2 type and field-name coverage when set.
 	// Use the schema supplied by the same MaaFramework release as HeaderDir.
@@ -58,10 +61,12 @@ type Config struct {
 
 type stringSliceFlag []string
 
+// String joins the accumulated values with commas for flag usage output.
 func (s *stringSliceFlag) String() string {
 	return strings.Join(*s, ",")
 }
 
+// Set appends one trimmed value per flag occurrence; empty values are ignored.
 func (s *stringSliceFlag) Set(value string) error {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 )
 
 // ClassSelector selects a neural network class by index or label.
@@ -22,7 +23,10 @@ func ClassLabel(label string) ClassSelector {
 	return ClassSelector{label: label, isLabel: true}
 }
 
+// IsIndex reports whether the selector selects by class index.
 func (c ClassSelector) IsIndex() bool { return !c.isLabel }
+
+// IsLabel reports whether the selector selects by class label.
 func (c ClassSelector) IsLabel() bool { return c.isLabel }
 
 // AsIndex returns the index, or an error if the selector holds a label.
@@ -42,14 +46,20 @@ func (c ClassSelector) AsLabel() (string, error) {
 }
 
 // MarshalJSON encodes a selector as an integer or string.
+// It returns an error for an index outside the int32 range, which the
+// pipeline parser rejects.
 func (c ClassSelector) MarshalJSON() ([]byte, error) {
 	if c.isLabel {
 		return marshalJSON(c.label)
 	}
+	if c.index < math.MinInt32 || c.index > math.MaxInt32 {
+		return nil, fmt.Errorf("class selector: index %d outside the int32 range", c.index)
+	}
 	return marshalJSON(c.index)
 }
 
-// UnmarshalJSON accepts only an integer or string and leaves c unchanged on error.
+// UnmarshalJSON accepts only an integer or string and leaves c unchanged on
+// error. Indexes are limited to the int32 range the pipeline parser accepts.
 func (c *ClassSelector) UnmarshalJSON(data []byte) error {
 	data = bytes.TrimSpace(data)
 	if len(data) == 0 || bytes.Equal(data, []byte("null")) {
@@ -67,6 +77,9 @@ func (c *ClassSelector) UnmarshalJSON(data []byte) error {
 	if err := unmarshalJSON(data, &index); err != nil {
 		return fmt.Errorf("class selector: expected an integer or string: %w", err)
 	}
+	if index < math.MinInt32 || index > math.MaxInt32 {
+		return fmt.Errorf("class selector: index %d outside the int32 range", index)
+	}
 	*c = ClassIndex(index)
 	return nil
 }
@@ -74,7 +87,8 @@ func (c *ClassSelector) UnmarshalJSON(data []byte) error {
 // ClassSelectors is an ordered list of class indices and labels.
 // JSON input may be a single integer or string, or an array of either.
 // Non-nil lists marshal as arrays. In neural network parameters, nil is omitted
-// to inherit the existing/default selection; an empty non-nil list clears it.
+// to inherit the existing/default selection; an empty non-nil list clears the
+// selection, matching all classes (detection results are still threshold-filtered).
 type ClassSelectors []ClassSelector
 
 // UnmarshalJSON normalizes a scalar to a one-element list. Invalid input,

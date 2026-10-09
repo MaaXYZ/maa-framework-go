@@ -66,8 +66,9 @@ func NewResource() (*Resource, error) {
 }
 
 // Destroy closes the resource once. It returns ErrBound while a tasker uses it
-// or an AgentClient retains it, ErrInUse while a call or job is active, and
-// ErrBorrowed when called on a getter or callback view.
+// or an AgentClient retains it, ErrInUse while a call or job is active,
+// ErrInCallback when called from one of its callbacks, and ErrBorrowed when
+// called on a getter or callback view.
 func (r *Resource) Destroy() error {
 	if r == nil || !r.owned {
 		return ErrBorrowed
@@ -143,7 +144,13 @@ func (r *Resource) setInference(ep native.MaaInferenceExecutionProvider, deviceI
 	return nil
 }
 
-// UseCPU uses CPU for inference.
+// UseCPU selects the CPU execution provider for inference.
+//
+// Inference options are applied when a Post* load runs, so set them before
+// loading a model. A later change takes effect at the next load for model
+// sessions created afterwards; already created sessions keep their provider.
+// When the selected provider cannot be initialized, loading falls back to
+// CPU.
 func (r *Resource) UseCPU() error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -154,17 +161,27 @@ func (r *Resource) UseCPU() error {
 	return r.setInference(native.MaaInferenceExecutionProvider_CPU, native.MaaInferenceDevice_CPU)
 }
 
+// InferenceDevice identifies the device used for inference: a GPU index or
+// provider-specific id, or one of the InferenceDevice constants below. It is
+// an alias of the native MaaInferenceDevice (int32 in MaaDef.h).
 type InferenceDevice = native.MaaInferenceDevice
 
+// Inference device values accepted by UseDirectml and UseCoreml, mirroring
+// MaaInferenceDeviceEnum in MaaDef.h. InferenceDeviceAuto asks the provider
+// to select a device; UseDirectml interprets the other values as the
+// DirectML adapter id from Win32 EnumAdapters1, and UseCoreml as the
+// CoreML flag of the bundled onnxruntime. GPU ids beyond 1 are expressed
+// as plain integers. The upstream CPU value is not exported here; UseCPU
+// selects that combination.
 const (
 	InferenceDeviceAuto InferenceDevice = -1
 	InferenceDevice0    InferenceDevice = 0
 	InferenceDevice1    InferenceDevice = 1
-	// and more gpu id or flag...
 )
 
-// UseDirectml uses DirectML for inference.
-// deviceID is the device id; use InferenceDeviceAuto for auto selection.
+// UseDirectml selects the DirectML execution provider. deviceID is the
+// DirectML adapter id from Win32 EnumAdapters1; use InferenceDeviceAuto for
+// auto selection. See UseCPU for when the option takes effect.
 func (r *Resource) UseDirectml(deviceID InferenceDevice) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -175,8 +192,9 @@ func (r *Resource) UseDirectml(deviceID InferenceDevice) error {
 	return r.setInference(native.MaaInferenceExecutionProvider_DirectML, deviceID)
 }
 
-// UseCoreml uses CoreML for inference.
-// coremlFlag is the CoreML flag; use InferenceDeviceAuto for auto selection.
+// UseCoreml selects the CoreML execution provider. coremlFlag is the CoreML
+// flag accepted by the bundled onnxruntime; use InferenceDeviceAuto for auto
+// selection. See UseCPU for when the option takes effect.
 func (r *Resource) UseCoreml(coremlFlag InferenceDevice) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -187,7 +205,9 @@ func (r *Resource) UseCoreml(coremlFlag InferenceDevice) error {
 	return r.setInference(native.MaaInferenceExecutionProvider_CoreML, coremlFlag)
 }
 
-// UseAutoExecutionProvider automatically selects the inference execution provider and device.
+// UseAutoExecutionProvider lets the native library select the execution
+// provider from the available hardware providers, falling back to CPU when
+// none can be initialized. See UseCPU for when the option takes effect.
 func (r *Resource) UseAutoExecutionProvider() error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -233,6 +253,12 @@ func (r *Resource) UseAutoExecutionProvider() error {
 // Use UnregisterCustomRecognition or ClearCustomRecognition to remove
 // registrations. Use GetCustomRecognitionList to inspect the currently
 // registered names.
+//
+// Registering a name that is already taken — by either a recognition or an
+// action — is rejected by the native library and reported as an error. A nil
+// runner, including a typed-nil CustomRecognitionFunc, is rejected before
+// reaching the native library.
+//
 // The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognitionRunner) error {
 	_, done, useErr := r.state.begin()
@@ -246,7 +272,10 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 	r.state.registrationMu.Lock()
 	defer r.state.registrationMu.Unlock()
 
-	id := registerCustomRecognition(recognition)
+	id, err := registerCustomRecognition(recognition)
+	if err != nil {
+		return err
+	}
 
 	ok := native.MaaResourceRegisterCustomRecognition(
 		r.handle,
@@ -261,22 +290,17 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 		return fmt.Errorf("failed to register custom recognition: %s", name)
 	}
 
-	var oldID uint64
-	var hadOld bool
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
-		if existing, ok := v.CustomRecognizersCallbackID[name]; ok {
-			oldID = existing
-			hadOld = true
-		}
 		v.CustomRecognizersCallbackID[name] = id
 	})
-	if hadOld {
-		unregisterCustomRecognition(oldID)
-	}
 	return nil
 }
 
-// UnregisterCustomRecognition unregisters a custom recognition runner from the resource.
+// UnregisterCustomRecognition unregisters a runner added with RegisterCustomRecognition.
+// A name absent from both the Go registry and the native resource is a no-op
+// and returns nil. A name registered outside this wrapper returns an error
+// and remains registered. In particular, registrations added by AgentClient.Connect
+// are managed by the client and removed by AgentClient.Disconnect.
 // The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) UnregisterCustomRecognition(name string) error {
 	_, done, useErr := r.state.begin()
@@ -301,7 +325,16 @@ func (r *Resource) UnregisterCustomRecognition(name string) error {
 		}
 	})
 	if !found {
-		return fmt.Errorf("custom recognition not found: %s", name)
+		names, err := r.GetCustomRecognitionList()
+		if err != nil {
+			return err
+		}
+		for _, registered := range names {
+			if registered == name {
+				return fmt.Errorf("custom recognition is registered outside the Go resource wrapper: %s", name)
+			}
+		}
+		return nil
 	}
 	if !native.MaaResourceUnregisterCustomRecognition(r.handle, name) {
 		return fmt.Errorf("failed to unregister custom recognition: %s", name)
@@ -314,7 +347,7 @@ func (r *Resource) UnregisterCustomRecognition(name string) error {
 	return nil
 }
 
-// ClearCustomRecognition clears all custom recognitions runner registered from the resource.
+// ClearCustomRecognition clears all custom recognition runners registered on the resource.
 // The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) ClearCustomRecognition() error {
 	_, done, useErr := r.state.begin()
@@ -379,6 +412,12 @@ func (r *Resource) ClearCustomRecognition() error {
 //
 // Use UnregisterCustomAction or ClearCustomAction to remove registrations.
 // Use GetCustomActionList to inspect the currently registered names.
+//
+// Registering a name that is already taken — by either a recognition or an
+// action — is rejected by the native library and reported as an error. A nil
+// runner, including a typed-nil CustomActionFunc, is rejected before reaching
+// the native library.
+//
 // The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) error {
 	_, done, useErr := r.state.begin()
@@ -392,7 +431,10 @@ func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) 
 	r.state.registrationMu.Lock()
 	defer r.state.registrationMu.Unlock()
 
-	id := registerCustomAction(action)
+	id, err := registerCustomAction(action)
+	if err != nil {
+		return err
+	}
 
 	ok := native.MaaResourceRegisterCustomAction(
 		r.handle,
@@ -407,22 +449,17 @@ func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) 
 		return fmt.Errorf("failed to register custom action: %s", name)
 	}
 
-	var oldID uint64
-	var hadOld bool
 	store.ResStore.Update(r.handle, func(v *store.ResStoreValue) {
-		if existing, ok := v.CustomActionsCallbackID[name]; ok {
-			oldID = existing
-			hadOld = true
-		}
 		v.CustomActionsCallbackID[name] = id
 	})
-	if hadOld {
-		unregisterCustomAction(oldID)
-	}
 	return nil
 }
 
-// UnregisterCustomAction unregisters a custom action runner from the resource.
+// UnregisterCustomAction unregisters a runner added with RegisterCustomAction.
+// A name absent from both the Go registry and the native resource is a no-op
+// and returns nil. A name registered outside this wrapper returns an error
+// and remains registered. In particular, registrations added by AgentClient.Connect
+// are managed by the client and removed by AgentClient.Disconnect.
 // The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) UnregisterCustomAction(name string) error {
 	_, done, useErr := r.state.begin()
@@ -447,7 +484,16 @@ func (r *Resource) UnregisterCustomAction(name string) error {
 		}
 	})
 	if !found {
-		return fmt.Errorf("custom action not found: %s", name)
+		names, err := r.GetCustomActionList()
+		if err != nil {
+			return err
+		}
+		for _, registered := range names {
+			if registered == name {
+				return fmt.Errorf("custom action is registered outside the Go resource wrapper: %s", name)
+			}
+		}
+		return nil
 	}
 	if !native.MaaResourceUnregisterCustomAction(r.handle, name) {
 		return fmt.Errorf("failed to unregister custom action: %s", name)
@@ -460,7 +506,7 @@ func (r *Resource) UnregisterCustomAction(name string) error {
 	return nil
 }
 
-// ClearCustomAction clears all custom actions runners registered from the resource.
+// ClearCustomAction clears all custom action runners registered on the resource.
 // The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) ClearCustomAction() error {
 	_, done, useErr := r.state.begin()
@@ -495,6 +541,8 @@ func (r *Resource) ClearCustomAction() error {
 // This is an async operation that immediately returns a Job, which can be queried via status/wait.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
+// Submitting a load clears the loaded state and the resource hash until the
+// load completes.
 func (r *Resource) PostBundle(path string) (*Job, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -513,6 +561,8 @@ func (r *Resource) PostBundle(path string) (*Job, error) {
 // This is an async operation that immediately returns a Job, which can be queried via status/wait.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
+// Submitting a load clears the loaded state and the resource hash until the
+// load completes.
 func (r *Resource) PostOcrModel(path string) (*Job, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -532,6 +582,8 @@ func (r *Resource) PostOcrModel(path string) (*Job, error) {
 // This is an async operation that immediately returns a Job, which can be queried via status/wait.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
+// Submitting a load clears the loaded state and the resource hash until the
+// load completes.
 func (r *Resource) PostPipeline(path string) (*Job, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -551,6 +603,8 @@ func (r *Resource) PostPipeline(path string) (*Job, error) {
 // This is an async operation that immediately returns a Job, which can be queried via status/wait.
 // It returns an error and a terminal-failed job when the request cannot
 // be submitted, for example when the underlying object is closed.
+// Submitting a load clears the loaded state and the resource hash until the
+// load completes.
 func (r *Resource) PostImage(path string) (*Job, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -578,8 +632,13 @@ func (r *Resource) overridePipeline(override string) error {
 	return errors.New("failed to override pipeline")
 }
 
-// OverridePipeline overrides the pipeline.
+// OverridePipeline overrides pipeline nodes.
 // override can be a JSON string or any value that can be marshaled to JSON.
+// The top level must be a JSON object keyed by node name; each value is a
+// node definition object whose unspecified fields inherit the node's
+// currently loaded definition. Keys starting with "$" are skipped, and
+// defining the same node twice in one call is rejected. Invalid input returns
+// an error.
 func (r *Resource) OverridePipeline(override any) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -652,7 +711,8 @@ func (r *Resource) OverrideImage(imageName string, image image.Image) error {
 	return errors.New("failed to override image")
 }
 
-// GetNodeJSON gets the task definition JSON by name.
+// GetNodeJSON gets the task definition JSON of a node by name.
+// It returns an error when the name is unknown.
 func (r *Resource) GetNodeJSON(name string) (string, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -670,7 +730,9 @@ func (r *Resource) GetNodeJSON(name string) (string, error) {
 }
 
 // GetNode returns the node definition by name.
-// It fetches the node JSON via GetNodeJSON and unmarshals it into a Node struct.
+// It fetches the node JSON via GetNodeJSON and unmarshals it into a Node
+// struct. The returned node has Name set to the requested name and Attach
+// non-nil, an empty map when the definition has no attach fields.
 func (r *Resource) GetNode(name string) (*Node, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -730,7 +792,9 @@ func (r *Resource) wait(resId int64) Status {
 	return Status(native.MaaResourceWait(r.handle, resId))
 }
 
-// Loaded checks if resources are loaded.
+// Loaded reports the validity flag of the loaded resource content. A newly
+// created resource reports true; submitting a load flips the flag to false
+// until the load completes.
 func (r *Resource) Loaded() bool {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -741,7 +805,9 @@ func (r *Resource) Loaded() bool {
 	return native.MaaResourceLoaded(r.handle)
 }
 
-// GetHash returns the hash of the resource.
+// GetHash returns the hash of the loaded resource content.
+// It fails while the hash is empty, for example on a newly created resource
+// that has never posted a load.
 func (r *Resource) GetHash() (string, error) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -879,7 +945,7 @@ func (r *Resource) GetDefaultActionParam(actionType ActionType) (ActionParam, er
 	return param, nil
 }
 
-// AddSink adds a event callback sink and returns the sink ID.
+// AddSink adds an event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
 // The instance and associated taskers must be idle. Do not call this from a callback.
 // It returns 0 if registration fails or the object is closed.
@@ -914,7 +980,7 @@ func (r *Resource) AddSink(sink ResourceEventSink) int64 {
 	return sinkId
 }
 
-// RemoveSink removes a event callback sink by sink ID.
+// RemoveSink removes an event callback sink by sink ID.
 // The instance and associated taskers must be idle. Do not call this from a callback.
 func (r *Resource) RemoveSink(sinkId int64) {
 	_, done, useErr := r.state.begin()
@@ -960,7 +1026,12 @@ func (r *Resource) ClearSinks() {
 	native.MaaResourceClearSinks(r.handle)
 }
 
+// ResourceEventSink is the interface for receiving resource-level events.
 type ResourceEventSink interface {
+	// OnResourceLoading receives Resource.Loading events: status is
+	// EventStatusStarting before the load runs, then EventStatusSucceeded or
+	// EventStatusFailed with the outcome, and detail describes the submitted
+	// path.
 	OnResourceLoading(res *Resource, event EventStatus, detail ResourceLoadingDetail)
 }
 
@@ -970,6 +1041,8 @@ type resourceEventSinkAdapter struct {
 	onResourceLoading func(EventStatus, ResourceLoadingDetail)
 }
 
+// OnResourceLoading implements ResourceEventSink by forwarding
+// Resource.Loading events to the registered callback, if any.
 func (a *resourceEventSinkAdapter) OnResourceLoading(res *Resource, status EventStatus, detail ResourceLoadingDetail) {
 	if a == nil || a.onResourceLoading == nil {
 		return

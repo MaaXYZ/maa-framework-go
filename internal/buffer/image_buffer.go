@@ -1,3 +1,8 @@
+// Package buffer wraps MaaFramework image, string, rect, and list buffers.
+//
+// Constructors create owned buffers that must be destroyed exactly once and
+// not used afterwards. ByHandle constructors borrow existing handles;
+// borrowed wrappers share the same buffer and must not call Destroy.
 package buffer
 
 import (
@@ -11,6 +16,8 @@ import (
 	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 )
 
+// ImageBuffer wraps a native image buffer holding raw BGR pixels. Create one
+// with NewImageBuffer, or borrow an existing handle with NewImageBufferByHandle.
 type ImageBuffer struct {
 	handle uintptr
 }
@@ -34,30 +41,39 @@ func NewImageBuffer() (*ImageBuffer, error) {
 	}, nil
 }
 
+// NewImageBufferByHandle wraps a borrowed native image buffer handle.
 func NewImageBufferByHandle(handle uintptr) *ImageBuffer {
 	return &ImageBuffer{
 		handle: handle,
 	}
 }
 
+// Destroy releases the underlying native image buffer.
 func (i *ImageBuffer) Destroy() {
 	native.MaaImageBufferDestroy(i.handle)
 }
 
+// Handle returns the underlying native buffer handle for passing to framework
+// functions that take an image buffer.
 func (i *ImageBuffer) Handle() uintptr {
 	return i.handle
 }
 
+// IsEmpty reports whether the buffer holds no image.
 func (i *ImageBuffer) IsEmpty() bool {
 	return native.MaaImageBufferIsEmpty(i.handle)
 }
 
+// Clear releases the stored image and reports whether the native call
+// succeeded.
 func (i *ImageBuffer) Clear() bool {
 	return native.MaaImageBufferClear(i.handle)
 }
 
-// Get retrieves the image from raw data stored in the buffer.
-// It returns a nil interface when the buffer has no raw image data.
+// Get retrieves the image from raw data stored in the buffer, interpreted as
+// the CV_8UC3 BGR layout Set produces. It returns a fresh opaque *image.RGBA
+// copy each call (alpha fixed to 255) and never shares memory with the
+// buffer; it returns a nil interface when the buffer has no raw image data.
 func (i *ImageBuffer) Get() image.Image {
 	img := i.GetInto(nil)
 	if img == nil {
@@ -66,8 +82,11 @@ func (i *ImageBuffer) Get() image.Image {
 	return img
 }
 
-// GetInto retrieves the image from raw data stored in the buffer and writes into dst when possible.
-// If dst is nil or size mismatched, a new *image.RGBA is allocated and returned.
+// GetInto retrieves the image from raw data stored in the buffer and writes
+// into dst when possible, interpreted as the CV_8UC3 BGR layout Set produces.
+// The pixels are copied into dst, which is reallocated when dst is nil or
+// sized for a different image; it returns nil and leaves dst unchanged when
+// the buffer has no raw image data.
 func (i *ImageBuffer) GetInto(dst *image.RGBA) *image.RGBA {
 	rawData := i.getRawData()
 	if rawData == nil {
@@ -130,9 +149,11 @@ func isNilImage(img image.Image) bool {
 	}
 }
 
-// Set converts an image.Image to raw data and sets it in the buffer.
-// The buffer is left unchanged and an error is returned when img is nil,
-// has a non-positive dimension, or the underlying write fails.
+// Set converts an image.Image to raw data and sets it in the buffer. Alpha is
+// dropped: non-opaque RGBA pixels are exactly unpremultiplied before the BGR
+// conversion, and the stored data has no alpha channel. The buffer is left
+// unchanged and an error is returned when img is nil, has a non-positive
+// dimension, or the underlying write fails.
 func (i *ImageBuffer) Set(img image.Image) error {
 	if isNilImage(img) {
 		return errors.New("image is nil")
@@ -322,8 +343,10 @@ func (i *ImageBuffer) setRawData(data unsafe.Pointer, width, height, imageType i
 	return native.MaaImageBufferSetRawData(i.handle, data, width, height, imageType)
 }
 
-// Resize resizes the image buffer to the specified width and height.
-// It returns true if the operation was successful, otherwise false.
+// Resize resizes the image buffer to the specified width and height. It
+// returns true if the operation was successful, otherwise false. An empty
+// buffer and a zero width together with a zero height fail; a single zero
+// dimension is computed proportionally from the other one.
 func (i *ImageBuffer) Resize(width, height int32) bool {
 	return native.MaaImageBufferResize(i.handle, width, height)
 }

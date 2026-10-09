@@ -4,11 +4,20 @@ package maa
 type Status int32
 
 const (
-	StatusInvalid Status = 0    // Unknown or uninitialized state
-	StatusPending Status = 1000 // Queued but not yet started
-	StatusRunning Status = 2000 // Work is in progress
-	StatusSuccess Status = 3000 // Completed successfully
-	StatusFailure Status = 4000 // Completed with failure
+	// StatusInvalid is the unknown or uninitialized state, matching
+	// MaaStatus_Invalid in the native API. It is the zero value.
+	StatusInvalid Status = 0
+	// StatusPending means the item is queued but not yet started, matching
+	// MaaStatus_Pending.
+	StatusPending Status = 1000
+	// StatusRunning means work is in progress, matching MaaStatus_Running.
+	StatusRunning Status = 2000
+	// StatusSuccess means the item completed successfully, matching
+	// MaaStatus_Succeeded.
+	StatusSuccess Status = 3000
+	// StatusFailure means the item completed with failure, matching
+	// MaaStatus_Failed.
+	StatusFailure Status = 4000
 )
 
 // Invalid reports whether the status is StatusInvalid.
@@ -41,7 +50,9 @@ func (s Status) Done() bool {
 	return s.Success() || s.Failure()
 }
 
-// String returns the human-readable representation of the Status.
+// String returns the human-readable representation of the Status. Unknown
+// values render as "invalid", while Invalid only reports true for the exact
+// StatusInvalid value.
 func (s Status) String() string {
 	switch s {
 	case StatusInvalid:

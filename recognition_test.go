@@ -40,7 +40,7 @@ func TestSubRecognitionItem_UnmarshalJSON_NestedRecognition(t *testing.T) {
 	require.Equal(t, RecognitionTypeTemplateMatch, item.Inline.Type)
 	param, ok := item.Inline.Param.(*TemplateMatchParam)
 	require.True(t, ok)
-	require.Equal(t, []string{"a.png"}, param.Template)
+	require.Equal(t, StringList{"a.png"}, param.Template)
 }
 
 func TestSubRecognitionItem_UnmarshalJSON_Invalid(t *testing.T) {
@@ -49,6 +49,52 @@ func TestSubRecognitionItem_UnmarshalJSON_Invalid(t *testing.T) {
 	err := json.Unmarshal(data, &item)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "expected string or object")
+}
+
+func TestSubRecognitionItem_MarshalJSON_ZeroValueIsNull(t *testing.T) {
+	data, err := json.Marshal(SubRecognitionItem{})
+	require.NoError(t, err)
+	require.Equal(t, "null", string(data))
+}
+
+func TestSubRecognitionItem_UnmarshalJSON_FailureLeavesItemUnchanged(t *testing.T) {
+	t.Run("string ref", func(t *testing.T) {
+		seeded := SubRecognitionItem{NodeName: "keep"}
+		for name, payload := range map[string]string{
+			"number":  `123`,
+			"boolean": `true`,
+			"array":   `[]`,
+		} {
+			t.Run(name, func(t *testing.T) {
+				require.Error(t, json.Unmarshal([]byte(payload), &seeded))
+				require.Equal(t, SubRecognitionItem{NodeName: "keep"}, seeded)
+			})
+		}
+	})
+	t.Run("inline", func(t *testing.T) {
+		seeded := SubRecognitionItem{Inline: &InlineSubRecognition{
+			SubName:     "old",
+			Recognition: *RecOCR(OCRParam{Threshold: 0.5}),
+		}}
+		before := *seeded.Inline
+		require.Error(t, json.Unmarshal(
+			[]byte(`{"sub_name":"new","recognition":{"type":"OCR","param":{"replace":5}}}`), &seeded))
+		require.Equal(t, before, *seeded.Inline)
+	})
+}
+
+func TestInlineSubRecognition_UnmarshalJSON_FailureLeavesReceiverUnchanged(t *testing.T) {
+	seeded := InlineSubRecognition{
+		SubName:     "old",
+		Recognition: *RecOCR(OCRParam{Threshold: 0.5}),
+	}
+	before := seeded
+	oldParam := *seeded.Recognition.Param.(*OCRParam)
+	require.Error(t, json.Unmarshal(
+		[]byte(`{"sub_name":"new","recognition":{"type":"OCR","param":{"replace":5}}}`), &seeded))
+	require.Equal(t, "old", seeded.SubName)
+	require.Equal(t, before, seeded)
+	require.Equal(t, oldParam, *seeded.Recognition.Param.(*OCRParam))
 }
 
 func TestSubRecognitionItem_MarshalJSON(t *testing.T) {

@@ -9,6 +9,12 @@ var maaAgentClient uintptr
 
 const maaAgentClientName = "MaaAgentClient"
 
+// Agent client C API bindings (MaaAgentClient.h).
+// MaaAgentClientCreateV2 reads the identifier from a caller-owned MaaStringBuffer;
+// MaaAgentClientIdentifier writes the effective identifier to such a buffer.
+// The Get*List functions fill a caller-owned MaaStringListBuffer.
+// MaaAgentClientSetTimeout takes milliseconds per communication wait.
+// Create functions return owned handles released by MaaAgentClientDestroy.
 var (
 	MaaAgentClientCreateV2                 func(identifier uintptr) uintptr
 	MaaAgentClientCreateTcp                func(port uint16) uintptr
