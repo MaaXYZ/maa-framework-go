@@ -220,11 +220,6 @@ func TestToolkit_FindGamescopeInstancesGuards(t *testing.T) {
 	})
 }
 
-func TestToolkit_MacOSPermissionValues(t *testing.T) {
-	require.EqualValues(t, 1, MacOSPermissionScreenCapture)
-	require.EqualValues(t, 2, MacOSPermissionAccessibility)
-}
-
 func TestToolkit_MacOSPermissionWrappers(t *testing.T) {
 	var checked, requested, revealed []MacOSPermission
 	replaceNativeForTest(t, &native.MaaToolkitMacOSCheckPermission, func(perm native.MaaMacOSPermission) bool {

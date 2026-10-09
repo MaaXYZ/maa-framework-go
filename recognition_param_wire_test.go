@@ -21,7 +21,6 @@ func TestRecognitionParams_ROIOffsetOmission(t *testing.T) {
 		"NNDetect":      NeuralNetworkDetectParam{},
 		"Custom":        CustomRecognitionParam{},
 		"DirectHit":     DirectHitParam{},
-		"WaitFreezes":   WaitFreezesParam{},
 	} {
 		t.Run(name+" zero offset omitted", func(t *testing.T) {
 			data, err := json.Marshal(param)

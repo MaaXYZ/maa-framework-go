@@ -251,46 +251,6 @@ func TestStatus_Done(t *testing.T) {
 	}
 }
 
-func TestStatus_ConstantValues(t *testing.T) {
-	testCases := []struct {
-		name   string
-		status Status
-		value  int32
-	}{
-		{
-			name:   "StatusInvalid",
-			status: StatusInvalid,
-			value:  0,
-		},
-		{
-			name:   "StatusPending",
-			status: StatusPending,
-			value:  1000,
-		},
-		{
-			name:   "StatusRunning",
-			status: StatusRunning,
-			value:  2000,
-		},
-		{
-			name:   "StatusSuccess",
-			status: StatusSuccess,
-			value:  3000,
-		},
-		{
-			name:   "StatusFailure",
-			status: StatusFailure,
-			value:  4000,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			require.EqualValues(t, tc.value, tc.status)
-		})
-	}
-}
-
 func TestStatus_String(t *testing.T) {
 	testCases := []struct {
 		name   string

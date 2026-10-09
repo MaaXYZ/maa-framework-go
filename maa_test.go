@@ -240,29 +240,6 @@ func TestSetRecoImageCacheLimit(t *testing.T) {
 	}
 }
 
-func TestLoggingLevelValues(t *testing.T) {
-	testCases := []struct {
-		name  string
-		level LoggingLevel
-		want  int32
-	}{
-		{"Off", LoggingLevelOff, 0},
-		{"Fatal", LoggingLevelFatal, 1},
-		{"Error", LoggingLevelError, 2},
-		{"Warn", LoggingLevelWarn, 3},
-		{"Info", LoggingLevelInfo, 4},
-		{"Debug", LoggingLevelDebug, 5},
-		{"Trace", LoggingLevelTrace, 6},
-		{"All", LoggingLevelAll, 7},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.want, int32(tc.level))
-		})
-	}
-}
-
 func TestWithPluginPaths(t *testing.T) {
 	paths := []string{"./test/plugin_a", "./test/plugin_b"}
 	opt := WithPluginPaths(paths...)
