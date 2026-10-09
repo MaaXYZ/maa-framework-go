@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // Pipeline represents a collection of nodes that define a task flow. A task
@@ -33,6 +34,7 @@ func (p *Pipeline) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON replaces the pipeline with a JSON object keyed by node name.
+// Keys starting with "$" are ignored, matching the native parser.
 // Each node decodes via [Node.UnmarshalJSON] and takes its Name from the map key.
 // An anchor string or list of strings sets each named anchor to the containing
 // node, matching the native parser. Object-form targets pass through without
@@ -48,6 +50,9 @@ func (p *Pipeline) UnmarshalJSON(data []byte) error {
 	}
 	decoded := make(map[string]*Node, len(nodes))
 	for name, raw := range nodes {
+		if strings.HasPrefix(name, "$") {
+			continue
+		}
 		normalized, err := normalizeNodeAnchor(raw, name)
 		if err != nil {
 			return err

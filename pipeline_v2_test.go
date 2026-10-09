@@ -288,6 +288,26 @@ func TestPipelineV2NativeAndOrInlineRoundTrip(t *testing.T) {
 	}
 }
 
+func TestPipelineUnmarshalIgnoresMetadata(t *testing.T) {
+	const input = `{
+		"$schema": "pipeline.schema.json",
+		"$comment": "ignored metadata",
+		"$disabled": {"anchor": null},
+		"$empty": null,
+		"A": {"anchor": "Start"}
+	}`
+	var pipeline Pipeline
+	require.NoError(t, json.Unmarshal([]byte(input), &pipeline))
+	require.Equal(t, 1, pipeline.Len())
+	node, ok := pipeline.GetNode("A")
+	require.True(t, ok)
+	require.Equal(t, &Node{Name: "A", Anchor: map[string]string{"Start": "A"}}, node)
+
+	encoded, err := json.Marshal(&pipeline)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"A":{"anchor":{"Start":"A"}}}`, string(encoded))
+}
+
 func TestPipelineUnmarshalAnchorShorthand(t *testing.T) {
 	t.Run("string and list forms resolve against the node name", func(t *testing.T) {
 		var pipeline Pipeline
