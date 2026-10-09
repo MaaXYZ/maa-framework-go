@@ -47,7 +47,7 @@ Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-p
 - **Custom Extensions** - Custom recognitions, actions, and controllers in pure Go
 - **Agent Support** - Run custom recognition and action logic from an external process
 - **Async Jobs and Events** - Poll job status and task details, or subscribe to resource, controller, and tasker events
-- **Pipeline v2 model and runtime APIs** - Typed `Pipeline`, `Node`, `Action`, and `Recognition` builders emit nested v2 JSON and support runtime execution from a `Context`. Unknown parameters can be retained as raw JSON with [`RawActionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawActionParam) and [`RawRecognitionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawRecognitionParam); this fallback does not add native support for unknown types.
+- **Pipeline v2 model APIs** - Typed builders emit nested v2 JSON
 
 ## Installation
 

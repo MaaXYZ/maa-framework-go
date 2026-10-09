@@ -47,7 +47,7 @@
 - **自定义扩展** - 以纯 Go 编写自定义识别、动作和控制器
 - **Agent 支持** - 从外部进程执行自定义识别与动作逻辑
 - **异步任务与事件** - 轮询 Job 状态与任务详情，或订阅 Resource、Controller、Tasker 事件
-- **Pipeline v2 模型与运行时 API** - 类型化的 `Pipeline`、`Node`、`Action` 和 `Recognition` 构造器生成嵌套 v2 JSON，并支持从 `Context` 运行任务、识别和动作。未知参数可通过 [`RawActionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawActionParam) 与 [`RawRecognitionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawRecognitionParam) 保留原始 JSON；这不会让原生库支持未知类型。
+- **Pipeline v2 模型 API** - 类型化构造器生成嵌套 v2 JSON
 
 ## 安装
 
