@@ -1,8 +1,83 @@
 # Changelog
 
+## 变更总览（v3.6.0-beta.5 → v4.0.0，发布准备草稿）
+
+本总览及下一节以提交 [`fb84de6`](https://github.com/MaaXYZ/maa-framework-go/tree/fb84de66f3db7514b15d0063d515cd1272d558ff) 为固定核验终点。`v4.0.0` 尚未打 tag；正式版确定后需复核终点差异，再冻结这份里程碑记录。
+
+### 破坏性变更与升级入口
+
+- Go 模块由 `/v3` 升为 `/v4`；构造、配置、查询与运行接口采用 Go `error`，异步 `Post*` 也直接报告提交错误。升级时分别检查调用错误与 Job 的执行状态。
+- 原生对象明确所有者与借用视图，`Destroy` 返回错误并保护仍被持有或使用的句柄；回调的 Context 仅在该次回调内有效。
+- Pipeline 构造器移除 `Node` 类型前缀与大量配置 option，改用参数结构及节点链式设置。时间、可选指针、类别选择、锚点与列表编码均有需要迁移的变化。
+- v3 用户见 [v3 → v4 迁移指南](docs/zh/migration/from-v3.md)；v4 用户按起点选择 [beta.18 → beta.19](docs/zh/migration/from-v4.0.0-beta.18.md) 或 [beta.19 → 发布准备快照](docs/zh/migration/from-v4.0.0-beta.19.md)。
+
+### 错误处理模型
+
+- 构造失败、参数编码失败、原生提交失败及详情不可用通过 `error` 报告；`Job.Error` 保留提交和生命周期诊断，异步执行结果仍由状态表示。
+- 初始化提供库加载与符号缺失诊断，失败时尝试清理，卸载失败可重试。详单见下方「模块路径与错误返回」、beta.19 节及发布准备节的破坏性变更与修复。
+
+### 所有权、生命周期与回调
+
+- 按对象依赖收束工作并销毁，再卸载动态库；借用对象、绑定关系、活动调用、Job 与回调均参与销毁保护。
+- 后续修复加强 Job 并发等待、停止后的空闲确认、回调清理与注册串行化。行为契约见固定快照的 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/doc.go)，区间详单见 beta.19 与发布准备节。
+
+### Pipeline 配置与详情
+
+- 类型化构造器生成嵌套 Pipeline v2 JSON，读取兼容 v1 与协议简写；未知类型可保存原始参数，原生支持仍由所加载库决定。
+- 配置补齐 OCR 颜色过滤、Screencap、压力、自动抬起、Shell 超时、DirectHit ROI、检测阈值和标签类别选择，明确省略、显式零与空集合的区别。
+- 节点详情改为按需查询，补齐画面稳定等待的详情与事件，并修复任务、图像、结果及参数编解码。详单分别见三个区间的 Pipeline、详情、新增与修复条目。
+
+### 控制器与平台
+
+- 增加 macOS、Android Native、Linux、录制与回放控制器及权限、gamescope、portal 工具；Linux 的终点入口为 `NewLinuxController`，中途新增的 `NewWlRootsController` 已移除。
+- 扩展相对移动、窗口恢复、控制器信息与 Win32 输入能力；截图设置支持组合、验证与覆盖参考宽高。Android 增加动态库加载分支。
+- 图像使用 RGBA，提供可复用截图内存与像素转换快速路径。详单见早期区间的控制器与性能、beta.19 的平台条目及发布准备节。
+
+### 命名对齐与开发工具
+
+- 修正节点、图像覆盖、推理设备与 Win32 枚举命名，任务和识别结果结构对齐原生 API；详单见早期区间的「详情、回调与命名」。
+- API 检查工具覆盖原生符号与签名、回调 ABI、常量、事件和可选 Pipeline schema，使用同一原生版本的输入核验绑定；详单见早期区间的开发工具及发布准备节。
+
+## v4.0.0（发布准备草稿）
+
+本节记录 `v4.0.0-beta.19` → `fb84de6` 的净变化，完整差异见 [固定提交对比](https://github.com/MaaXYZ/maa-framework-go/compare/v4.0.0-beta.19...fb84de66f3db7514b15d0063d515cd1272d558ff)。这不是已发布正式版记录。升级操作见 [迁移指南](docs/zh/migration/from-v4.0.0-beta.19.md)；API 契约链接固定快照源码，正式 tag 确定后再切换到对应 godoc。
+
+### 破坏性变更
+
+- Controller 的全部 `Post*` 与 Resource 的 `PostBundle`、`PostOcrModel`、`PostPipeline`、`PostImage` 由 `*Job` 改为 `(*Job, error)`；Tasker 的 `PostTask`、`PostRecognition`、`PostAction`、`PostStop` 由 `*TaskJob` 改为 `(*TaskJob, error)`。提交失败同时返回非 nil 的终态失败 Job 和 `error`，原生返回无效提交 ID 也立即报告错误。
+- `Tasker.PostTask` 及 `Context.RunTask`、`RunRecognition`、`RunAction`、`WaitFreezes` 不再把参数编码失败静默替换为 `{}`，改为返回错误并跳过原生执行。
+- `LongPressParam.Duration`、`LongPressKeyParam.Duration` 由 `time.Duration` 改为 `*time.Duration`；神经网络分类与检测的 `Expected` 由 `[]int` 改为 `ClassSelectors`。
+- TemplateMatch / FeatureMatch 的 `Template`、OCR 的 `Expected`、神经网络分类/检测的 `Labels` 由 `[]string` 改为 `StringList`。这些字段及神经网络 `Expected`、TemplateMatch `Threshold`、Swipe `End` 的非 nil 空列表现在写出 `[]`；`Node.Anchor` 的非 nil 空 map 写出 `{}`。
+- 动作/识别的值类型 offset 与 `WaitFreezesParam.TargetOffset` 的零 `Rect` 现在省略，不再写出零数组；`Rect` 解码限定为 2 或 4 个整数，点简写扩展为 1×1 框。`Target` 编解码拒绝 false、null 与无效形状。
+- `Node.UnmarshalJSON` 替换整个节点，未出现字段及 `Name` 重置；`CustomActionParam.CustomActionParam` 中的数字解码为 `json.Number`，不再使用 `float64`。
+- `SetScreenshot` 从仅应用最后一项改为组合设置，拒绝重复/冲突选项、非正目标尺寸和无效插值方法。
+- `GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 无可用详情时由 `(nil, nil)` 改为返回错误。
+- Agent Server 增加生命周期与配置状态检查：运行、已 Join 或已 detach 时不允许重新启动或配置；未 detach 时关闭后进入永久关闭态，不能通过 `Release` / `Init` 重启。具体边界见 [Agent Server API](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/agent_server.go)。
+
+### 新增
+
+- `RawActionParam`、`RawRecognitionParam` 保留未知类型的参数 JSON；已知类型的参数错误仍报告失败，不回退到 raw。
+- `ClassSelector`、`ClassSelectors`、`ClassIndex`、`ClassLabel`，支持整数或标签及混合类别列表；`StringList` 支持单字符串输入。
+- Click / LongPress / Swipe / MultiSwipe 的 `Pressure *int`；TouchDown / TouchMove / KeyDown / KeyUp 的 `AutoUp *bool`；`ShellParam.ShellTimeout *time.Duration`；`DirectHitParam.ROI` / `ROIOffset`；`NeuralNetworkDetectParam.Threshold`。
+- `TemplateMatchMethodSQDIFF_NORMED`、`FeatureMatchMethodSURF`；SURF 需要原生库支持 OpenCV xfeatures2d。
+- `Pipeline.UnmarshalJSON` 从节点名映射读取 Pipeline、补上 `Node.Name`、跳过 `$` 元数据并规范化锚点简写；Node 与参数解码兼容 v1 扁平格式及协议的单项/列表简写，编码统一为规范 v2。
+- `WithScreenshotTargetExpand` 按比例覆盖参考宽高；`Controller.SetBackgroundManagedKeys` 配置 Win32 后台托管键；`ControllerFeatureNoScalingTouchPoints` 禁用自定义控制器的触摸点自动缩放。
+- `EventNodeWaitFreezes`、`NodeWaitFreezesDetail`、可选 `ContextWaitFreezesEventSink` 与 `OnNodeWaitFreezesInContext`；`ResourceLoadingDetail.Type` 区分加载类型。
+- API 检查工具扩展回调 ABI、结构布局与 trampoline、更多常量组、事件分发及可选 Pipeline v2 类型/字段检查；新增 `--pipeline-schema` 与带理由的 exclusions，强化配置和输入验证。
+
+### 修复
+
+- Job / TaskJob 的等待与状态查询增加并发保护，多个等待者共享完成结果；停止使 Job ID 无效后，销毁仍需确认原生工作空闲，避免提前释放。契约见 [Job](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/job.go) 与各对象的 Destroy 注释。
+- 事件与自定义控制器回调关联所有者，销毁等待已接纳回调结束并阻止后续用户回调；自定义控制器回调保留至原生销毁完成，使 KeyUp / TouchUp 可在清理阶段释放输入。
+- sink 与 Resource runner 注册操作串行化；原生注册失败时清理 Go 回调记录。Resource / AgentServer 拒绝 nil runner；Resource 注销未知名称成为成功空操作，外部注册的名称保留并返回错误。
+- 图像、矩形等缓冲区创建和写入失败传播到调用方；空图像返回错误，空 buffer 读取返回真正的 nil 图像。
+- Action / Recognition 缺少 `param` 时读取对象内平铺参数；And / Or 内联识别输出正确的 `recognition` 嵌套对象；补齐 `key_code`、OCR `text` 兼容及简写解码，修复复用参数对象时的旧值残留。Swipe 动作结果解析失败时不再部分修改接收值。
+- 无节点任务保留 Entry / Status，节点详情跳过 ID 为 0 的子详情；Shell 输出及自定义识别 detail 保留内嵌 NUL。
+- AgentClient 正的不足 1ms 通信超时向上取整为 1ms；Windows 空库目录初始化保留当前 DLL 搜索配置；Win32 截图方式输出对齐 `DXGI_DesktopDup` / `DXGI_DesktopDup_Window`，解析兼容旧名称。
+
 ## [v4.0.0-beta.19](https://github.com/MaaXYZ/maa-framework-go/compare/v4.0.0-beta.18...v4.0.0-beta.19)
 
-本节记录 v4.0.0-beta.18 → v4.0.0-beta.19 的净变化。升级操作见 [迁移指南](docs/migration/v4.0.0-beta.19.md)。
+本节记录 v4.0.0-beta.18 → v4.0.0-beta.19 的净变化。升级操作见 [迁移指南](docs/zh/migration/from-v4.0.0-beta.18.md)。
 
 ### 破坏性变更
 

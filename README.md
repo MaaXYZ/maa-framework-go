@@ -209,6 +209,8 @@ For more examples, see the [examples](examples) directory:
 
 ## Documentation
 
+- Migration guides: [v3 to v4](docs/en/migration/from-v3.md), [beta.18 to beta.19](docs/en/migration/from-v4.0.0-beta.18.md), [beta.19 to v4](docs/en/migration/from-v4.0.0-beta.19.md). The v4.0.0 guides are release preparation drafts based on a fixed commit; the final tag has not been created.
+- [Changelog](CHANGELOG.md)
 - [MaaFramework Quick Start](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/1.1-QuickStarted.md)
 - [Pipeline Protocol](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md)
 - [Integration Guide](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/2.1-Integration.md)

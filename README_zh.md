@@ -209,6 +209,8 @@ func main() {
 
 ## 文档
 
+- 迁移指南：[v3 → v4](docs/zh/migration/from-v3.md)、[beta.18 → beta.19](docs/zh/migration/from-v4.0.0-beta.18.md)、[beta.19 → v4](docs/zh/migration/from-v4.0.0-beta.19.md)。v4.0.0 指南是基于固定提交的发布准备草稿，正式版 tag 尚未创建。
+- [变更记录](CHANGELOG.md)
 - [MaaFramework 快速开始](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md)
 - [任务流水线协议](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.1-%E4%BB%BB%E5%8A%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%8D%8F%E8%AE%AE.md)
 - [集成文档](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/2.1-%E9%9B%86%E6%88%90%E6%96%87%E6%A1%A3.md)
