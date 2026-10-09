@@ -77,21 +77,25 @@ Download the [MaaFramework Release](https://github.com/MaaXYZ/MaaFramework/relea
 | Android  | amd64        | `MAA-android-x86_64-*.zip`  |
 | Android  | arm64        | `MAA-android-aarch64-*.zip` |
 
-## Runtime Requirements
+### 3. Load Runtime Libraries
 
-Programs built with maa-framework-go require MaaFramework dynamic libraries at runtime. Provide them in one of these ways:
+Programs built with maa-framework-go require MaaFramework dynamic libraries at runtime. Two common loading methods are shown below; see the [runtime library loading guide](docs/en/guides/library-loading.md) for additional methods using environment variables or system library directories, and for the library file list.
 
-1. **Via `Init()` Option** - Specify library path programmatically:
+1. **Library Directory** - Point `WithLibDir` at the directory containing the libraries:
 
    ```go
-   maa.Init(maa.WithLibDir("path/to/MaaFramework/bin"))
+   if err := maa.Init(maa.WithLibDir("path/to/MaaFramework/bin")); err != nil {
+       return err
+   }
    ```
 
-2. **Working Directory** - Place MaaFramework libraries in your program's working directory
+2. **Working Directory** - Place the libraries and their dependencies in the program's working directory and select it explicitly:
 
-3. **Environment Variables** - Add library path to `PATH` (Windows), `LD_LIBRARY_PATH` (Linux), or `DYLD_LIBRARY_PATH` (macOS)
-
-4. **System Library Path** - Install libraries to system library directories
+   ```go
+   if err := maa.Init(maa.WithLibDir(".")); err != nil {
+       return err
+   }
+   ```
 
 ## Quick Start
 
@@ -196,6 +200,9 @@ For more examples, see the [examples](examples) directory:
 
 ## Documentation
 
+- [Runtime library loading](docs/en/guides/library-loading.md)
+- [Android build guide](docs/en/guides/android.md)
+- [Frequently asked questions](docs/en/guides/faq.md)
 - Migration guides: [v3 to v4](docs/en/migration/from-v3.md), [beta.18 to beta.19](docs/en/migration/from-v4.0.0-beta.18.md), [beta.19 to v4](docs/en/migration/from-v4.0.0-beta.19.md). The v4.0.0 guides are release preparation drafts based on a fixed commit; the final tag has not been created.
 - [Changelog](CHANGELOG.md)
 - [MaaFramework Quick Start](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/1.1-QuickStarted.md)
@@ -205,7 +212,7 @@ For more examples, see the [examples](examples) directory:
 
 ## Contributing
 
-Bug reports, feature suggestions, and pull requests are welcome.
+Bug reports, feature suggestions, and pull requests are welcome. See the [contribution guide](CONTRIBUTING.md) for development setup, checks, and pull request guidelines.
 
 ## License
 

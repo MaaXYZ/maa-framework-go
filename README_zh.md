@@ -77,21 +77,25 @@ go get github.com/MaaXYZ/maa-framework-go/v4
 | Android  | amd64       | `MAA-android-x86_64-*.zip` |
 | Android  | arm64       | `MAA-android-aarch64-*.zip` |
 
-## 运行时要求
+### 3. 加载运行时库
 
-使用 maa-framework-go 构建的程序需要 MaaFramework 动态库才能运行。可通过以下任一方式提供：
+使用 maa-framework-go 构建的程序需要 MaaFramework 动态库才能运行。这里列出两种常用的加载方式；环境变量、系统库目录等其他方式及库文件清单见[运行时库加载指南](docs/zh/guides/library-loading.md)。
 
-1. **通过 `Init()` 选项** - 在代码中指定库文件路径：
+1. **库目录** - 通过 `WithLibDir` 指定包含库文件的目录：
 
    ```go
-   maa.Init(maa.WithLibDir("path/to/MaaFramework/bin"))
+   if err := maa.Init(maa.WithLibDir("path/to/MaaFramework/bin")); err != nil {
+       return err
+   }
    ```
 
-2. **工作目录** - 将 MaaFramework 库文件放在程序的工作目录中
+2. **工作目录** - 将库及其依赖放入程序的工作目录，并显式选择该目录：
 
-3. **环境变量** - 将库文件路径添加到 `PATH`（Windows）、`LD_LIBRARY_PATH`（Linux）或 `DYLD_LIBRARY_PATH`（macOS）
-
-4. **系统库路径** - 将库文件安装到系统库目录
+   ```go
+   if err := maa.Init(maa.WithLibDir(".")); err != nil {
+       return err
+   }
+   ```
 
 ## 快速开始
 
@@ -197,6 +201,9 @@ func main() {
 
 ## 文档
 
+- [运行时库加载](docs/zh/guides/library-loading.md)
+- [Android 构建指南](docs/zh/guides/android.md)
+- [常见问题](docs/zh/guides/faq.md)
 - 迁移指南：[v3 → v4](docs/zh/migration/from-v3.md)、[beta.18 → beta.19](docs/zh/migration/from-v4.0.0-beta.18.md)、[beta.19 → v4](docs/zh/migration/from-v4.0.0-beta.19.md)。v4.0.0 指南是基于固定提交的发布准备草稿，正式版 tag 尚未创建。
 - [变更记录](CHANGELOG.md)
 - [MaaFramework 快速开始](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md)
@@ -206,7 +213,7 @@ func main() {
 
 ## 贡献
 
-欢迎提交 Issue 与 Pull Request。
+欢迎提交问题报告、功能建议和 Pull Request。开发环境、检查命令和 Pull Request 要求见[贡献指南](docs/zh/contributing.md)。
 
 ## 许可证
 
