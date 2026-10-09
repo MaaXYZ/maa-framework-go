@@ -213,10 +213,9 @@ func TestResource_OverridePipelineInputForms(t *testing.T) {
 	require.NoError(t, res.OverridePipeline([]byte(`{"OverridePipelineBytesForm": {"timeout": 20000}}`)))
 	require.NoError(t, res.OverridePipeline("{}"))
 
-	// Only a JSON object keyed by node name is accepted; arrays, scalars,
-	// null, and an untyped nil must be rejected by the local pre-validation.
+	// Only a JSON object keyed by node name is accepted.
 	for _, invalid := range []any{"[]", "null", "42", nil} {
-		require.ErrorContains(t, res.OverridePipeline(invalid), "JSON object")
+		require.Error(t, res.OverridePipeline(invalid))
 	}
 }
 
