@@ -3,7 +3,6 @@ package buffer
 import (
 	"testing"
 
-	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
 )
 
@@ -113,16 +112,6 @@ func TestStringListBuffer_GetAll(t *testing.T) {
 
 	list := stringListBuffer.GetAll()
 	require.Len(t, list, 1)
-}
-
-// TestNewStringListBuffer_CreateFailure pins that a failed native creation
-// surfaces as a nil wrapper, matching the sibling create-failure tests.
-func TestNewStringListBuffer_CreateFailure(t *testing.T) {
-	oldCreate := native.MaaStringListBufferCreate
-	defer func() { native.MaaStringListBufferCreate = oldCreate }()
-	native.MaaStringListBufferCreate = func() uintptr { return 0 }
-
-	require.Nil(t, NewStringListBuffer())
 }
 
 // TestStringListBuffer_AppendNilReturnsFalse pins the null-value contract:

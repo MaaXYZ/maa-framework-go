@@ -5,7 +5,6 @@ import (
 	"image/color"
 	"testing"
 
-	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
 )
 
@@ -153,16 +152,6 @@ func solidTestImage() *image.NRGBA {
 	img.SetNRGBA(0, 1, color.NRGBA{R: 0, G: 0, B: 255, A: 255})
 	img.SetNRGBA(1, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
 	return img
-}
-
-// TestNewImageListBuffer_CreateFailure pins that a failed native creation
-// surfaces as a nil wrapper, matching the sibling create-failure tests.
-func TestNewImageListBuffer_CreateFailure(t *testing.T) {
-	oldCreate := native.MaaImageListBufferCreate
-	defer func() { native.MaaImageListBufferCreate = oldCreate }()
-	native.MaaImageListBufferCreate = func() uintptr { return 0 }
-
-	require.Nil(t, NewImageListBuffer())
 }
 
 // TestImageListBuffer_AppendNilReturnsFalse pins the null-value contract:

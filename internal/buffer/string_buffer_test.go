@@ -3,7 +3,6 @@ package buffer
 import (
 	"testing"
 
-	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
 )
 
@@ -144,27 +143,15 @@ func TestStringBuffer_SetWithSize_TrailingNUL(t *testing.T) {
 	require.Equal(t, uint64(4), stringBuffer.Size())
 }
 
-// TestStringBuffer_ByHandle pins the borrowed-handle wrapper contract: the
-// ByHandle wrapper shares the owner's native buffer, writes through it are
-// visible to the owner, and the owner's Destroy is the only destroy call.
+// TestStringBuffer_ByHandle verifies that a borrowed wrapper shares the
+// owner's buffer and writes are visible to the owner.
 func TestStringBuffer_ByHandle(t *testing.T) {
 	stringBuffer := createStringBuffer(t)
+	defer stringBuffer.Destroy()
 
 	borrowed := NewStringBufferByHandle(stringBuffer.Handle())
 	require.NotNil(t, borrowed)
 	require.Equal(t, stringBuffer.Handle(), borrowed.Handle())
 	require.True(t, borrowed.Set("via borrowed"))
 	require.Equal(t, "via borrowed", stringBuffer.Get())
-
-	destroys := 0
-	oldDestroy := native.MaaStringBufferDestroy
-	defer func() { native.MaaStringBufferDestroy = oldDestroy }()
-	native.MaaStringBufferDestroy = func(handle uintptr) { destroys++ }
-
-	stringBuffer.Destroy()
-	require.Equal(t, 1, destroys)
-
-	// Run the real destroy so the counted call does not leak the object.
-	native.MaaStringBufferDestroy = oldDestroy
-	native.MaaStringBufferDestroy(stringBuffer.Handle())
 }

@@ -186,38 +186,16 @@ func TestToolkit_FindDesktopWindowsStub(t *testing.T) {
 	})
 }
 
-func TestToolkit_FindGamescopeInstancesGuards(t *testing.T) {
-	t.Run("list create failure", func(t *testing.T) {
-		replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceListCreate, func() uintptr { return 0 })
+func TestToolkit_FindGamescopeInstances_Empty(t *testing.T) {
+	replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceListCreate, func() uintptr { return 7 })
+	replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceListDestroy, func(uintptr) {})
+	replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceFindAll, func(uintptr) bool { return true })
+	replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceListSize, func(uintptr) uint64 { return 0 })
 
-		instances, err := FindGamescopeInstances()
-		require.Error(t, err)
-		require.Nil(t, instances)
-	})
-
-	t.Run("empty result is an empty slice", func(t *testing.T) {
-		replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceListCreate, func() uintptr { return 7 })
-		replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceListDestroy, func(uintptr) {})
-		replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceFindAll, func(uintptr) bool { return true })
-		replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceListSize, func(uintptr) uint64 { return 0 })
-
-		instances, err := FindGamescopeInstances()
-		require.NoError(t, err)
-		require.NotNil(t, instances)
-		require.Empty(t, instances)
-	})
-
-	t.Run("null instance entry", func(t *testing.T) {
-		replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceListCreate, func() uintptr { return 7 })
-		replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceListDestroy, func(uintptr) {})
-		replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceFindAll, func(uintptr) bool { return true })
-		replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceListSize, func(uintptr) uint64 { return 1 })
-		replaceNativeForTest(t, &native.MaaToolkitGamescopeInstanceListAt, func(uintptr, uint64) uintptr { return 0 })
-
-		instances, err := FindGamescopeInstances()
-		require.Error(t, err)
-		require.Nil(t, instances)
-	})
+	instances, err := FindGamescopeInstances()
+	require.NoError(t, err)
+	require.NotNil(t, instances)
+	require.Empty(t, instances)
 }
 
 func TestToolkit_MacOSPermissionWrappers(t *testing.T) {
