@@ -35,12 +35,12 @@
 
 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 的 Go 语言绑定。MaaFramework 是一个基于图像识别的跨平台自动化测试框架。
 
-> **🚀 无需 Cgo！** 基于 [purego](https://github.com/ebitengine/purego) 的纯 Go 实现。
+> **无需 Cgo！** 基于 [purego](https://github.com/ebitengine/purego) 的纯 Go 实现。
 >
 > Android 例外：purego 在 Android 上要借助 cgo 加载动态库，需要 `CGO_ENABLED=1` 并以 NDK 的 clang 作为 `CC`，例如
 > `GOOS=android GOARCH=arm64 CGO_ENABLED=1 CC=<ndk>/toolchains/llvm/prebuilt/<host>/bin/clang CGO_CFLAGS=--target=aarch64-linux-android24 CGO_LDFLAGS=--target=aarch64-linux-android24 go build`
 
-## ✨ 特性
+## 特性
 
 - **跨平台控制器** - ADB、Win32、Linux、macOS、PlayCover 与 Android Native
 - **录制与回放** - 将控制器操作记录为 JSONL，并用于调试与回归测试
@@ -52,7 +52,7 @@
 - **异步任务与事件** - 轮询 Job 状态与任务详情，或订阅 Resource、Controller、Tasker 事件
 - **Pipeline v2 模型与运行时 API** - 类型化的 `Pipeline`、`Node`、`Action` 和 `Recognition` 构造器生成嵌套 v2 JSON，并支持从 `Context` 运行任务、识别和动作。未知参数可通过 [`RawActionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawActionParam) 与 [`RawRecognitionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawRecognitionParam) 保留原始 JSON；这不会让原生库支持未知类型。
 
-## 📦 安装
+## 安装
 
 需要 Go 1.24 及以上。
 
@@ -77,7 +77,7 @@ go get github.com/MaaXYZ/maa-framework-go/v4
 | Android  | amd64       | `MAA-android-x86_64-*.zip` |
 | Android  | arm64       | `MAA-android-aarch64-*.zip` |
 
-## ⚙️ 运行时要求
+## 运行时要求
 
 使用 maa-framework-go 构建的程序需要 MaaFramework 动态库才能运行。可通过以下任一方式提供：
 
@@ -105,7 +105,7 @@ go get github.com/MaaXYZ/maa-framework-go/v4
 
 `Init` 和 `Release` 的调用会串行执行，但其他 MAA 操作不得与二者并发执行。若卸载失败，`IsInited` 会变为 false；请重试 `Release` 完成清理后，再调用 `Init`。
 
-## 🚀 快速开始
+## 快速开始
 
 ```go
 package main
@@ -219,7 +219,7 @@ func main() {
 
 `PostStop` 之后，旧 Job 的 `Wait` 可能因 ID 失效而返回，此时原生工作仍在执行，不能据此认定所有回调已经结束。`Destroy` 会保留这一未确认状态，直到 worker 静止。对于 Controller，它可能提交一个 inactive 动作、调用自定义 `Inactive` 处理函数，并在动作完成之前返回 `ErrInUse`。请在工作和回调结束后重试销毁。
 
-## 📖 示例
+## 示例
 
 更多示例请查看 [examples](examples) 目录：
 
@@ -229,22 +229,22 @@ func main() {
 - [agent-client](examples/agent-client) - Agent 客户端
 - [agent-server](examples/agent-server) - Agent 服务端
 
-## 📚 文档
+## 文档
 
 - [MaaFramework 快速开始](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md)
 - [任务流水线协议](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.1-%E4%BB%BB%E5%8A%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%8D%8F%E8%AE%AE.md)
 - [集成文档](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/2.1-%E9%9B%86%E6%88%90%E6%96%87%E6%A1%A3.md)
 - [Go 包文档](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4)
 
-## 🤝 贡献
+## 贡献
 
 欢迎提交 Issue 与 Pull Request。
 
-## 📄 许可证
+## 许可证
 
 本项目采用 [LGPL-3.0 许可证](LICENSE.md)。
 
-## 💬 社区
+## 社区
 
 - **QQ 群**: 595990173
 - **GitHub Discussions**: [MaaFramework Discussions](https://github.com/MaaXYZ/MaaFramework/discussions)

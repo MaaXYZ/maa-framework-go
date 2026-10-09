@@ -35,13 +35,13 @@
 
 Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-platform automation testing framework based on image recognition.
 
-> **🚀 No Cgo Required!** Pure Go implementation using [purego](https://github.com/ebitengine/purego).
+> **No Cgo Required!** Pure Go implementation using [purego](https://github.com/ebitengine/purego).
 >
 > Android is the exception: purego loads libraries through cgo there, so Android builds need
 > `CGO_ENABLED=1` and an NDK clang as `CC`, e.g.
 > `GOOS=android GOARCH=arm64 CGO_ENABLED=1 CC=<ndk>/toolchains/llvm/prebuilt/<host>/bin/clang CGO_CFLAGS=--target=aarch64-linux-android24 CGO_LDFLAGS=--target=aarch64-linux-android24 go build`
 
-## ✨ Features
+## Features
 
 - **Cross-platform Controllers** - ADB, Win32, Linux, macOS, PlayCover, and Android Native
 - **Recording and Replay** - Capture controller operations to JSONL, then replay them for debugging and regression testing
@@ -53,7 +53,7 @@ Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-p
 - **Async Jobs and Events** - Poll job status and task details, or subscribe to resource, controller, and tasker events
 - **Pipeline v2 model and runtime APIs** - Typed `Pipeline`, `Node`, `Action`, and `Recognition` builders emit nested v2 JSON and support runtime execution from a `Context`. Unknown parameters can be retained as raw JSON with [`RawActionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawActionParam) and [`RawRecognitionParam`](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4#RawRecognitionParam); this fallback does not add native support for unknown types.
 
-## 📦 Installation
+## Installation
 
 Requires Go 1.24 or later.
 
@@ -78,7 +78,7 @@ Download the [MaaFramework Release](https://github.com/MaaXYZ/MaaFramework/relea
 | Android  | amd64        | `MAA-android-x86_64-*.zip`  |
 | Android  | arm64        | `MAA-android-aarch64-*.zip` |
 
-## ⚙️ Runtime Requirements
+## Runtime Requirements
 
 Programs built with maa-framework-go require MaaFramework dynamic libraries at runtime. Provide them in one of these ways:
 
@@ -106,7 +106,7 @@ After `AgentServerDetach`, `Release` remains blocked for the rest of the process
 
 Calls to `Init` and `Release` are serialized, but other MAA operations must not run concurrently with either. If unloading fails, `IsInited` becomes false; retry `Release` to finish cleanup before calling `Init` again.
 
-## 🚀 Quick Start
+## Quick Start
 
 ```go
 package main
@@ -219,7 +219,7 @@ Callbacks execute synchronously on native calling threads and may overlap. Synch
 
 After `PostStop`, an earlier job's `Wait` can return because its ID was invalidated while native work is still executing. It is not proof that all callbacks have ended. `Destroy` retains this uncertainty until the worker is idle. For a controller it may post an inactive action, invoke the custom `Inactive` handler, and return `ErrInUse` until the action completes. Retry destruction after active work and callbacks finish.
 
-## 📖 Examples
+## Examples
 
 For more examples, see the [examples](examples) directory:
 
@@ -229,22 +229,22 @@ For more examples, see the [examples](examples) directory:
 - [agent-client](examples/agent-client) - Agent client
 - [agent-server](examples/agent-server) - Agent server
 
-## 📚 Documentation
+## Documentation
 
 - [MaaFramework Quick Start](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/1.1-QuickStarted.md)
 - [Pipeline Protocol](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md)
 - [Integration Guide](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/2.1-Integration.md)
 - [Go Package Documentation](https://pkg.go.dev/github.com/MaaXYZ/maa-framework-go/v4)
 
-## 🤝 Contributing
+## Contributing
 
 Bug reports, feature suggestions, and pull requests are welcome.
 
-## 📄 License
+## License
 
 This project is licensed under the [LGPL-3.0 License](LICENSE.md).
 
-## 💬 Community
+## Community
 
 - **QQ Group**: 595990173
 - **GitHub Discussions**: [MaaFramework Discussions](https://github.com/MaaXYZ/MaaFramework/discussions)
