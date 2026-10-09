@@ -40,7 +40,9 @@ A program built this way loads four MaaFramework libraries at runtime: `libMaaFr
 Download the archive for the target architecture from the [MaaFramework releases](https://github.com/MaaXYZ/MaaFramework/releases) — `MAA-android-aarch64-*.zip` for arm64 devices, `MAA-android-x86_64-*.zip` for x86_64 emulators — and point the program at the directory containing the four `.so` files:
 
 ```go
-maa.Init(maa.WithLibDir("path/to/MaaFramework/libs/android"))
+if err := maa.Init(maa.WithLibDir("path/to/MaaFramework/libs/android")); err != nil {
+	// Handle the error as appropriate, such as checking the library directory, device ABI, and library dependencies.
+}
 ```
 
 Without `WithLibDir`, `Init` uses the platform loader's current search configuration, for example `LD_LIBRARY_PATH` or the directories the app process already searches.

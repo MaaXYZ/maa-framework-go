@@ -40,7 +40,9 @@ GOOS=android GOARCH=amd64 CGO_ENABLED=1 CC=<ndk>/toolchains/llvm/prebuilt/<host>
 从 [MaaFramework releases](https://github.com/MaaXYZ/MaaFramework/releases) 下载目标架构的压缩包（arm64 设备用 `MAA-android-aarch64-*.zip`，x86_64 模拟器用 `MAA-android-x86_64-*.zip`），并通过 `WithLibDir` 把程序指向包含这四个 `.so` 文件的目录：
 
 ```go
-maa.Init(maa.WithLibDir("path/to/MaaFramework/libs/android"))
+if err := maa.Init(maa.WithLibDir("path/to/MaaFramework/libs/android")); err != nil {
+	// 根据需要处理该错误，例如检查库目录、设备 ABI 和动态库依赖。
+}
 ```
 
 不传 `WithLibDir` 时，`Init` 使用平台加载器当前的查找配置，例如 `LD_LIBRARY_PATH` 或应用进程默认搜索的目录。
