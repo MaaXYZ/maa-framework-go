@@ -13,6 +13,11 @@ import (
 // AgentClient is used to connect to AgentServer, delegating custom recognition and
 // action execution to a separate process. This allows separating MaaFW core from
 // custom logic into independent processes.
+//
+// The client retains its bound resource and registered event sources until
+// Destroy. Client lifecycle operations — binding, sink registration,
+// connection, and Destroy — are not serialized by this wrapper; callers must
+// serialize them.
 type AgentClient struct {
 	handle         uintptr
 	state          *handleState
@@ -151,7 +156,8 @@ func agentClientOpError(op string) error {
 	return fmt.Errorf("agent client %s failed", op)
 }
 
-// Destroy releases the client and its references to native objects once.
+// Destroy releases the client and its references to native objects once;
+// repeated successful calls are safe.
 // It returns ErrInUse while a client call is active; retry after the call ends.
 func (ac *AgentClient) Destroy() error {
 	if ac == nil {

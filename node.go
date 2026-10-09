@@ -17,6 +17,7 @@ import (
 // flat on the node) normalizes into this v2 model, matching the native
 // parser. Encoding always emits v2.
 // Omitted fields are resolved by MaaFramework using the existing node or its defaults.
+// Node values shared across goroutines require caller synchronization.
 type Node struct {
 	Name string `json:"-"`
 

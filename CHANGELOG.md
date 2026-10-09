@@ -65,7 +65,7 @@ Context 的运行方法（`RunTask` / `RunRecognition` / `RunAction`）与 `Wait
 - stop 使旧 Job ID 失效时，`Wait` 返回不代表原生工作已经结束。Controller 销毁可能提交 inactive 动作并暂时返回 `ErrInUse`，需等待后重试。
 - AgentServer 只允许在启动前配置；活动阶段的自定义注册和再次启动返回 `ErrInUse`，添加 sink 返回 0。未 detach 的服务关闭后不支持重启：启动和自定义注册返回 `ErrClosed`，添加 sink 返回 0，`Release` 后再次 `Init` 也不会恢复服务，但仍可 `Release`，重复关闭不再调用原生接口。自定义识别与动作共用名称，重名注册返回错误并保留已有注册。生命周期操作需由调用方串行协调。
 
-完整使用边界见 [并发与回调](README_zh.md#并发与回调)。
+完整使用边界见包文档(`go doc github.com/MaaXYZ/maa-framework-go/v4`)。
 
 #### TaskJob
 

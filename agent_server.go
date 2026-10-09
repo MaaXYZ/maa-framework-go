@@ -178,8 +178,10 @@ func addAgentServerSink(sink any, add func(native.MaaEventCallback, uintptr) int
 // it connect to 127.0.0.1 on that port instead; an AgentClient must be
 // listening there, see WithTcpPort. An empty identifier makes startup fail.
 //
-// Lifecycle operations are serialized. See [AgentServerJoin] for shutdown
-// ordering. Do not call lifecycle operations from server callbacks.
+// Lifecycle operations are serialized. Configuration functions (custom
+// registration and the sink functions) are serialized with each other and
+// with StartUp. See [AgentServerJoin] for shutdown ordering. Do not call
+// lifecycle operations from server callbacks.
 // After an attached server's ShutDown, StartUp returns ErrClosed for the rest
 // of the process, including after Release and Init. It returns ErrInUse while
 // the server is running, joined, or detached.

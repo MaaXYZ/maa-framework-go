@@ -1,9 +1,3 @@
-// Package maa provides Go bindings for the MaaFramework.
-// Typed pipeline builders use pipeline v2 JSON with nested action and recognition
-// objects. Decoding also accepts the legacy flat pipeline format and normalizes
-// it into the v2 model; encoding always emits v2.
-// For pipeline protocol details, see:
-// https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md
 package maa
 
 import (
@@ -16,7 +10,8 @@ import (
 // Pipeline represents a collection of nodes that define a task flow. A task
 // is a logical sequential structure of nodes connected in a specific order,
 // representing the entire process from start to finish; its first node is
-// the entry.
+// the entry. A Pipeline is not safe for concurrent modification; callers
+// must synchronize access.
 type Pipeline struct {
 	nodes map[string]*Node
 }

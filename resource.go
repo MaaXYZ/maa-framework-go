@@ -15,7 +15,10 @@ import (
 // It handles pipeline definitions, OCR models, images, and inference device settings.
 // Resource also provides registration of custom recognitions and actions.
 //
-// A Resource must be created with NewResource and should be destroyed with Destroy when no longer needed.
+// A Resource created with NewResource owns its native handle and should be
+// destroyed with Destroy when no longer needed. Resource changes such as
+// option changes and PostBundle, PostPipeline, PostOcrModel, and PostImage
+// loads are not serialized by this wrapper; callers must serialize them.
 type Resource struct {
 	handle uintptr
 	state  *handleState
@@ -65,10 +68,12 @@ func NewResource() (*Resource, error) {
 	return &Resource{handle: handle, state: state, owned: true}, nil
 }
 
-// Destroy closes the resource once. It returns ErrBound while a tasker uses it
-// or an AgentClient retains it, ErrInUse while a call or job is active,
-// ErrInCallback when called from one of its callbacks, and ErrBorrowed when
-// called on a getter or callback view.
+// Destroy closes the resource once; repeated successful calls are safe. It
+// returns ErrBound while a tasker uses it or an AgentClient retains it,
+// ErrInUse while a call or job is active — even if the returned Job was
+// discarded — ErrInCallback when called from one of its callbacks, and
+// ErrBorrowed when called on a getter or callback view. A successful Destroy
+// returns after native cleanup and prevents subsequent user callbacks.
 func (r *Resource) Destroy() error {
 	if r == nil || !r.owned {
 		return ErrBorrowed
@@ -259,7 +264,8 @@ func (r *Resource) UseAutoExecutionProvider() error {
 // runner, including a typed-nil CustomRecognitionFunc, is rejected before
 // reaching the native library.
 //
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (r *Resource) RegisterCustomRecognition(name string, recognition CustomRecognitionRunner) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -301,7 +307,8 @@ func (r *Resource) RegisterCustomRecognition(name string, recognition CustomReco
 // and returns nil. A name registered outside this wrapper returns an error
 // and remains registered. In particular, registrations added by AgentClient.Connect
 // are managed by the client and removed by AgentClient.Disconnect.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (r *Resource) UnregisterCustomRecognition(name string) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -348,7 +355,8 @@ func (r *Resource) UnregisterCustomRecognition(name string) error {
 }
 
 // ClearCustomRecognition clears all custom recognition runners registered on the resource.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (r *Resource) ClearCustomRecognition() error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -418,7 +426,8 @@ func (r *Resource) ClearCustomRecognition() error {
 // runner, including a typed-nil CustomActionFunc, is rejected before reaching
 // the native library.
 //
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -460,7 +469,8 @@ func (r *Resource) RegisterCustomAction(name string, action CustomActionRunner) 
 // and returns nil. A name registered outside this wrapper returns an error
 // and remains registered. In particular, registrations added by AgentClient.Connect
 // are managed by the client and removed by AgentClient.Disconnect.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (r *Resource) UnregisterCustomAction(name string) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -507,7 +517,8 @@ func (r *Resource) UnregisterCustomAction(name string) error {
 }
 
 // ClearCustomAction clears all custom action runners registered on the resource.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (r *Resource) ClearCustomAction() error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -947,7 +958,8 @@ func (r *Resource) GetDefaultActionParam(actionType ActionType) (ActionParam, er
 
 // AddSink adds an event callback sink and returns the sink ID.
 // The sink ID can be used to remove the sink later.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 // It returns 0 if registration fails or the object is closed.
 func (r *Resource) AddSink(sink ResourceEventSink) int64 {
 	_, done, useErr := r.state.begin()
@@ -980,8 +992,10 @@ func (r *Resource) AddSink(sink ResourceEventSink) int64 {
 	return sinkId
 }
 
-// RemoveSink removes an event callback sink by sink ID.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// RemoveSink removes an event callback sink by sink ID. Removing an unknown
+// or already-removed sink ID is a no-op.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (r *Resource) RemoveSink(sinkId int64) {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -1003,7 +1017,8 @@ func (r *Resource) RemoveSink(sinkId int64) {
 }
 
 // ClearSinks clears all event callback sinks.
-// The instance and associated taskers must be idle. Do not call this from a callback.
+// The instance and associated taskers must be idle: stop new submissions and
+// let their work and callbacks finish. Do not call this from a callback.
 func (r *Resource) ClearSinks() {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -1027,6 +1042,9 @@ func (r *Resource) ClearSinks() {
 }
 
 // ResourceEventSink is the interface for receiving resource-level events.
+// Handler methods run synchronously on native calling threads, may overlap
+// with other callbacks, and must not wait for work that requires them to
+// return.
 type ResourceEventSink interface {
 	// OnResourceLoading receives Resource.Loading events: status is
 	// EventStatusStarting before the load runs, then EventStatusSucceeded or
