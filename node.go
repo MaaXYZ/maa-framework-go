@@ -76,12 +76,7 @@ type Node struct {
 	Attach map[string]any `json:"attach,omitempty"`
 }
 
-// UnmarshalJSON decodes a node definition. Decoding accepts the v2 nested
-// form, the v1 flat form (string recognition/action with parameters flat on
-// the node), and the form without "param"; all of them normalize into this
-// v2 model, and encoding always emits v2. The next and on_error lists accept
-// the protocol's shorthand forms, matching the native parser: a single node
-// value in place of the list, and bare node-name strings in place of objects.
+// UnmarshalJSON decodes the formats described by [Node] and its fields.
 // Fields absent from the input, including Name, are reset to their zero
 // values; decoding replaces the node rather than merging into it. On error
 // the node is unchanged.

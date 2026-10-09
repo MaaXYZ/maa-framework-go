@@ -90,22 +90,13 @@ const (
 	ControllerFeatureNoScalingTouchPoints ControllerFeature = 1 << 2
 )
 
-// CustomController defines an interface for custom controller.
-// Implementers of this interface must provide implementations for the
-// following methods:
-// Connect, Connected, RequestUUID, GetFeature, StartApp, StopApp,
-// Screencap, Click, Swipe, TouchDown, TouchMove, TouchUp,
-// ClickKey, InputText, KeyDown, KeyUp, Scroll, RelativeMove,
-// Shell, Inactive and GetInfo.
+// CustomController defines the operations of a custom controller.
 // Methods can be called concurrently from native threads; implementations must
 // synchronize shared state. KeyUp and TouchUp can be called during destruction.
-//
-// Unlike the C API, which allows NULL callbacks (native then defaults
-// connected and inactive to true), this interface requires all 21 methods to
-// be implemented. When there is nothing to do, return the documented
-// defaults: Connected/Inactive → true, GetInfo → ("{}", true).
 type CustomController interface {
 	Connect() bool
+	// Connected reports whether the controller is ready. Return true when
+	// no connection check is needed.
 	Connected() bool
 	RequestUUID() (string, bool)
 	GetFeature() ControllerFeature
