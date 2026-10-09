@@ -35,11 +35,7 @@
 
 Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-platform automation testing framework based on image recognition.
 
-> **No Cgo Required!** Pure Go implementation using [purego](https://github.com/ebitengine/purego).
->
-> Android is the exception: purego loads libraries through cgo there, so Android builds need
-> `CGO_ENABLED=1` and an NDK clang as `CC`, e.g.
-> `GOOS=android GOARCH=arm64 CGO_ENABLED=1 CC=<ndk>/toolchains/llvm/prebuilt/<host>/bin/clang CGO_CFLAGS=--target=aarch64-linux-android24 CGO_LDFLAGS=--target=aarch64-linux-android24 go build`
+> **No Cgo Required!** Pure Go implementation using [purego](https://github.com/ebitengine/purego). Android builds are the exception; see the [Android build guide](docs/en/guides/android.md).
 
 ## Features
 
