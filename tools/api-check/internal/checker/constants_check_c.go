@@ -52,7 +52,8 @@ func evaluateCConstSources(sources []cConstSource) (*cConstEnv, error) {
 	rawTypes := map[string]string{}
 
 	for _, source := range sources {
-		stripped := removeCComments(source.content)
+		// C splices escaped newlines before recognizing comments or directives.
+		stripped := removeCComments(spliceCLineContinuations(source.content))
 		// Reduce preprocessor conditionals and C++ attributes first, so the
 		// define and enum parsers see the same view a C compiler does.
 		stripped, err := resolveCConditionals(stripped)
@@ -400,7 +401,7 @@ var cDefinedBareMacroRe = regexp.MustCompile(`\bdefined\s+([A-Za-z_][A-Za-z0-9_]
 // Unknown branches that can affect implicit enum sequencing are rejected:
 // concatenating mutually exclusive members would invent values.
 func resolveCConditionals(content string) (string, error) {
-	content = stripCppAttributes(content)
+	content = stripCppAttributes(spliceCLineContinuations(content))
 	lines := strings.Split(content, "\n")
 	var out strings.Builder
 	var unknownRanges []cConditionalRange
@@ -410,6 +411,13 @@ func resolveCConditionals(content string) (string, error) {
 		return "", err
 	}
 	return resolved, nil
+}
+
+// spliceCLineContinuations joins physical lines without inserting whitespace,
+// matching C's translation order even inside tokens and // comments.
+func spliceCLineContinuations(content string) string {
+	content = strings.ReplaceAll(content, "\\\r\n", "")
+	return strings.ReplaceAll(content, "\\\n", "")
 }
 
 // cConditionalRange identifies output from a conditional with multiple possible

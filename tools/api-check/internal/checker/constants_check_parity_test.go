@@ -133,7 +133,7 @@ func TestResolveCConditionals_MatchesCPreprocessor(t *testing.T) {
 
 func resolveCContentForParity(t *testing.T, content string) string {
 	t.Helper()
-	resolved, err := resolveCConditionals(removeCComments(content))
+	resolved, err := resolveCConditionals(removeCComments(spliceCLineContinuations(content)))
 	if err != nil {
 		t.Fatalf("resolve C conditionals: %v", err)
 	}
