@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"go/constant"
 	"strings"
 	"testing"
 )
@@ -309,12 +310,146 @@ func TestEvalCConstSources_DiagnosesFailures(t *testing.T) {
 
 func TestEvalCConstSources_RejectsUnparsedEnumMembers(t *testing.T) {
 	t.Parallel()
-	for _, entry := range []string{"MaaFixture_A [[deprecated]] = 1", "MaaFixture_A =", "MaaFixture_A; MaaFixture_B"} {
+	for _, entry := range []string{"MaaFixture_A =", "MaaFixture_A; MaaFixture_B"} {
 		t.Run(entry, func(t *testing.T) {
 			t.Parallel()
 			_, err := evaluateCConstSources([]cConstSource{{path: "fixture.h", content: "enum Fixture { " + entry + " };"}})
 			if err == nil {
 				t.Fatalf("expected unsupported member %q to fail parsing", entry)
+			}
+		})
+	}
+}
+
+func TestEvalCConstSources_StripsCppAttributes(t *testing.T) {
+	t.Parallel()
+	// A release header may attach a C++-only attribute, guarded by
+	// `#if defined(__cplusplus)`, to an enumerator. The C branch carries the
+	// value and must be the one that reaches the inventory.
+	env, err := evaluateCConstSources([]cConstSource{{
+		path: "fixture.h",
+		content: "enum Fixture {\n" +
+			"    MaaFixture_A [[deprecated]] = 1,\n" +
+			"    MaaFixture_B = 2,\n" +
+			"};\n",
+	}})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+	for name, want := range map[string]int64{"MaaFixture_A": 1, "MaaFixture_B": 2} {
+		value, ok := env.values[name]
+		if !ok {
+			t.Fatalf("missing value for %s; failures=%+v", name, env.failures)
+		}
+		if got, _ := constant.Int64Val(value); got != want {
+			t.Fatalf("%s = %d, want %d", name, got, want)
+		}
+	}
+}
+
+func TestEvalCConstSources_SelectsCConditionalBranch(t *testing.T) {
+	t.Parallel()
+	env, err := evaluateCConstSources([]cConstSource{{
+		path: "fixture.h",
+		content: "enum Fixture {\n" +
+			"    MaaFixture_A = 1,\n" +
+			"#if defined(__cplusplus)\n" +
+			"    MaaFixture_B [[deprecated]] = 2,\n" +
+			"#else\n" +
+			"    MaaFixture_B = 2,\n" +
+			"#endif\n" +
+			"    MaaFixture_C = 3,\n" +
+			"};\n",
+	}})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+	for name, want := range map[string]int64{"MaaFixture_A": 1, "MaaFixture_B": 2, "MaaFixture_C": 3} {
+		value, ok := env.values[name]
+		if !ok {
+			t.Fatalf("missing value for %s; failures=%+v", name, env.failures)
+		}
+		if got, _ := constant.Int64Val(value); got != want {
+			t.Fatalf("%s = %d, want %d", name, got, want)
+		}
+	}
+}
+
+func TestEvalCConstSources_KeepsUnknownGuardBranches(t *testing.T) {
+	t.Parallel()
+	// A guard over an unknown macro may select either value; keep both so the
+	// conflicting declaration is reported instead of silently resolved.
+	_, err := evaluateCConstSources([]cConstSource{{
+		path: "fixture.h",
+		content: "enum Fixture {\n" +
+			"#ifdef MAA_FIXTURE_PLATFORM\n" +
+			"    MaaFixture_A = 1,\n" +
+			"#else\n" +
+			"    MaaFixture_A = 2,\n" +
+			"#endif\n" +
+			"};\n",
+	}})
+	if err == nil {
+		t.Fatal("expected conflicting values under an unknown guard to be reported")
+	}
+	if !strings.Contains(err.Error(), "conflicting C constant MaaFixture_A") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestEvalCConstSources_KeepsDirectivesOutsideConditionals(t *testing.T) {
+	t.Parallel()
+	// `#define`, `#include`, and `#pragma` are ordinary content for the later
+	// parsers and must survive conditional resolution.
+	env, err := evaluateCConstSources([]cConstSource{{
+		path: "fixture.h",
+		content: "#pragma once\n" +
+			"#include <stdint.h>\n" +
+			"#define MaaFixture_Macro 4ULL\n" +
+			"enum Fixture { MaaFixture_A = 1 };\n",
+	}})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+	for name, want := range map[string]int64{"MaaFixture_Macro": 4, "MaaFixture_A": 1} {
+		value, ok := env.values[name]
+		if !ok {
+			t.Fatalf("missing value for %s; failures=%+v", name, env.failures)
+		}
+		if got, _ := constant.Int64Val(value); got != want {
+			t.Fatalf("%s = %d, want %d", name, got, want)
+		}
+	}
+}
+
+func TestResolveCConditionals_KeepsStrayDirectivesHarmless(t *testing.T) {
+	t.Parallel()
+	// resolveCConditionals only trims the final newline, so every expectation
+	// keeps the interior line breaks.
+	for name, tc := range map[string]struct{ in, want string }{
+		"stray endif": {"a\n#endif\nb\n", "a\nb\n"},
+		// __cplusplus is undefined for C consumers, so a negation of it is false
+		// and its branch is dropped.
+		"negated guard": {"a\n#if !defined(__cplusplus)\nb\n#endif\nc\n", "a\nc\n"},
+		// #ifdef and #ifndef reach the resolver as a bare macro name; the
+		// directive word itself is not part of the condition.
+		"ifdef macro":  {"a\n#ifdef __cplusplus\nb\n#else\nc\n#endif\nd\n", "a\nb\nd\n"},
+		"ifndef macro": {"a\n#ifndef __cplusplus\nb\n#else\nc\n#endif\nd\n", "a\nc\nd\n"},
+		// An unknown platform macro keeps every branch.
+		"unknown guard keeps both": {"a\n#ifdef MAA_PLATFORM_X\nb\n#else\nc\n#endif\nd\n", "a\nb\nc\nd\n"},
+		// The C++ guard is true, so its branch is taken and the whole else body
+		// -- including the nested conditional -- is dead.
+		"nested guard": {
+			"a\n#if defined(__cplusplus)\nb\n#else\n#if defined(__cplusplus)\nc\n#else\nd\n#endif\n#endif\ne\n",
+			"a\nb\ne\n",
+		},
+		// A true condition takes the first branch and drops the else body.
+		"taken branch drops else": {"a\n#if defined(__cplusplus)\nb\n#else\nc\n#endif\nd\n", "a\nb\nd\n"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := resolveCConditionals(tc.in); got != tc.want {
+				t.Fatalf("resolveCConditionals(%q) = %q, want %q", tc.in, got, tc.want)
 			}
 		})
 	}
