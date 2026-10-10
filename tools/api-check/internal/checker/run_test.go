@@ -203,6 +203,34 @@ enum MaaInferenceExecutionProviderEnum {
 	}
 }
 
+func TestRunUnknownConditionalMacroConflictExitsTwo(t *testing.T) {
+	files := repoFixtureFiles()
+	headerPath := "deps/include/" + maaDefHeaderRel
+	goPath := "internal/native/framework.go"
+	header := `#if MAA_REVIEW_UNKNOWN
+#define MaaInferenceExecutionProvider_CPU 1
+#else
+#define MaaInferenceExecutionProvider_CPU 1
+#endif
+`
+	dir := writeRepoFixtureWith(t, map[string]string{
+		headerPath: files[headerPath] + header,
+		goPath:     files[goPath] + "const MaaInferenceExecutionProvider_CPU = 1\n",
+	})
+	code, stdout, stderr := runChecker(t, dir)
+	if code != 0 || stderr != "" || !strings.Contains(stdout, "PASS: no inconsistencies found.") {
+		t.Fatalf("equivalent branch macros: exit=%d, stderr=%s, stdout=%s", code, stderr, stdout)
+	}
+	// Keep the last declaration matching Go, isolating the declaration that
+	// the old map extractor silently overwrote.
+	header = strings.Replace(header, "MaaInferenceExecutionProvider_CPU 1", "MaaInferenceExecutionProvider_CPU 2", 1)
+	writeFixtureFile(t, filepath.Join(dir, headerPath), files[headerPath]+header)
+	code, stdout, stderr = runChecker(t, dir)
+	if code != 2 || !strings.Contains(stderr, "conflicting C constant MaaInferenceExecutionProvider_CPU") || strings.Contains(stdout, "PASS:") {
+		t.Fatalf("conflicting branch macros: exit=%d, stderr=%s, stdout=%s", code, stderr, stdout)
+	}
+}
+
 func TestRunConfigPrecedence(t *testing.T) {
 	t.Run("cwd config wins over root fallback", func(t *testing.T) {
 		dir := writeRepoFixture(t)

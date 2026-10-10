@@ -140,6 +140,11 @@ func enumMemberValues(t *testing.T, content string) map[string]string {
 	if err != nil {
 		t.Fatalf("parse enum members: %v", err)
 	}
+	if len(decls) == 0 {
+		// Platform-specific export macros in headers without enums are outside
+		// this oracle's scope and need no numeric evaluation.
+		return map[string]string{}
+	}
 	env, err := evaluateCConstSources([]cConstSource{{path: "parity.h", content: content}})
 	if err != nil {
 		t.Fatalf("evaluate enum members: %v", err)

@@ -57,14 +57,14 @@ func evaluateCConstSources(sources []cConstSource) (*cConstEnv, error) {
 		// define and enum parsers see the same view a C compiler does.
 		stripped = resolveCConditionals(stripped)
 
-		for name, expr := range parseCDefineExprs(stripped) {
-			if prior, exists := env.decls[name]; exists {
-				if normalizeSpaces(prior.expr) != normalizeSpaces(expr) {
-					return nil, fmt.Errorf("conflicting C constant %s in %s", name, source.path)
+		for _, decl := range parseCDefineDecls(stripped) {
+			if prior, exists := env.decls[decl.name]; exists {
+				if normalizeSpaces(prior.expr) != normalizeSpaces(decl.expr) {
+					return nil, fmt.Errorf("conflicting C constant %s in %s", decl.name, source.path)
 				}
 				continue
 			}
-			env.decls[name] = cConstDecl{name: name, expr: expr}
+			env.decls[decl.name] = decl
 		}
 
 		enumDecls, err := parseCEnumDecls(stripped)
