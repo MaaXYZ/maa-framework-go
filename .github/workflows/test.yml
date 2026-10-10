@@ -162,10 +162,33 @@ jobs:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
     needs: [meta, test]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Validate Release Notes
+        env:
+          RELEASE_TAG: ${{ needs.meta.outputs.tag }}
+        run: |
+          if [[ ! -s RELEASE_NOTES.md ]]; then
+            echo "::error::RELEASE_NOTES.md is missing or empty"
+            exit 1
+          fi
+
+          notes_heading=$(head -n 1 RELEASE_NOTES.md)
+          if [[ "$notes_heading" != "# $RELEASE_TAG" ]]; then
+            echo "::error::RELEASE_NOTES.md must start with '# $RELEASE_TAG'"
+            exit 1
+          fi
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.meta.outputs.tag }}
+          body_path: RELEASE_NOTES.md
           prerelease: ${{ contains(needs.meta.outputs.tag, '-alpha') || contains(needs.meta.outputs.tag, '-beta') || contains(needs.meta.outputs.tag, '-rc') }}
