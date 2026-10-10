@@ -2,14 +2,14 @@
 
 English | [简体中文](../../zh/migration/from-v4.0.0-beta.19.md)
 
-This guide covers only the net changes from `v4.0.0-beta.19` to commit [`fb84de6`](https://github.com/MaaXYZ/maa-framework-go/tree/fb84de66f3db7514b15d0063d515cd1272d558ff). The `v4.0.0` tag has not been created. This file is named for the starting version, and its current content is a release preparation draft based on a fixed snapshot. The endpoint differences must be checked again when the final release is determined.
+This guide covers only the net changes from `v4.0.0-beta.19` to commit [`18e4d6a`](https://github.com/MaaXYZ/maa-framework-go/tree/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58). The `v4.0.0` tag has not been created. This file is named for the starting version, and its current content is a release preparation draft based on a fixed snapshot. The endpoint differences must be checked again when the final release is determined.
 
 If you use v3, follow the [v3 → v4 guide](from-v3.md). If you use beta.18, first follow the [beta.19 guide](from-v4.0.0-beta.18.md) for ownership changes. See the [CHANGELOG](../../../CHANGELOG.md) for the complete list.
 
 To try this snapshot, use Go 1.24 or newer and specify the fixed commit:
 
 ```sh
-go get github.com/MaaXYZ/maa-framework-go/v4@fb84de66f3db7514b15d0063d515cd1272d558ff
+go get github.com/MaaXYZ/maa-framework-go/v4@18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58
 ```
 
 Use a compatible set of MaaFramework shared libraries. Do not mix versions across the four libraries or use an installation command for the unreleased `@v4.0.0` tag.
@@ -56,7 +56,7 @@ func stopTask(tasker *maa.Tasker) error {
 }
 ```
 
-Stopping may invalidate earlier Job IDs. An old Job's `Wait` returning does not by itself prove that all work has ended. Keep owner references, handle `ErrInUse` returned by `Destroy`, and retry after work has settled. Destroy the Resource / Controller after successfully destroying the Tasker. See [Controller.Destroy](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/controller.go) and the [package documentation source](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/doc.go) at the fixed snapshot for the precise boundaries.
+Stopping may invalidate earlier Job IDs. An old Job's `Wait` returning does not by itself prove that all work has ended. Keep owner references, handle `ErrInUse` returned by `Destroy`, and retry after work has settled. Destroy the Resource / Controller after successfully destroying the Tasker. See [Controller.Destroy](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/controller.go) and the [package documentation source](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/doc.go) at the fixed snapshot for the precise boundaries.
 
 Parameter encoding failures in `Tasker.PostTask` and `Context.RunTask` / `RunRecognition` / `RunAction` / `WaitFreezes` now return an error and skip native execution, instead of falling back to `{}`. Check code and custom JSON codecs that relied on the silent fallback. Image inputs should also be non-nil and nonempty; failures to create or write image / rectangle buffers propagate to public calls.
 
@@ -168,14 +168,14 @@ err := res.UseWebgpu(maa.InferenceDeviceAuto)
 
 ## 6. Check registrations, Agent Server, and detail queries
 
-- Configure event sinks and custom runners while the instance and its associated Tasker are idle. The new serialization and callback protections do not replace caller coordination during native execution; see the [package documentation source](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/doc.go) for the precise contract. Do not pass a nil runner, including a typed nil function. Unregistering a nonexistent Resource runner name now succeeds; names registered outside the Go wrapper are preserved and return an error.
-- Configure Agent Server before `AgentServerStartUp`. Restarting or configuring it is no longer allowed after startup, Join, or detach. Without detach, `AgentServerShutDown` enters a permanently closed state; `Release` / `Init` cannot recreate the service. Restart the process if you need a new service. See the [API comments](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/agent_server.go) for how to arrange Join / ShutDown.
+- Configure event sinks and custom runners while the instance and its associated Tasker are idle. The new serialization and callback protections do not replace caller coordination during native execution; see the [package documentation source](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/doc.go) for the precise contract. Do not pass a nil runner, including a typed nil function. Unregistering a nonexistent Resource runner name now succeeds; names registered outside the Go wrapper are preserved and return an error.
+- Configure Agent Server before `AgentServerStartUp`. Restarting or configuring it is no longer allowed after startup, Join, or detach. Without detach, `AgentServerShutDown` enters a permanently closed state; `Release` / `Init` cannot recreate the service. Restart the process if you need a new service. See the [API comments](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/agent_server.go) for how to arrange Join / ShutDown.
 - `GetRecognitionDetail`, `GetActionDetail`, and `GetWaitFreezesDetail` now return errors when no detail is available. Handle `error` first instead of checking only `detail == nil`. `NodeDetail.Recognition` / `Action` can still be nil.
 - Custom controllers support `ControllerFeatureNoScalingTouchPoints`. To disable automatic scaling of touch points, set it in the bitmask returned by `GetFeature`. Native destruction may call `KeyUp` / `TouchUp`; do not tear down the state needed by your implementation before `Destroy` succeeds.
 - To subscribe to screen stabilization wait events, use `OnNodeWaitFreezesInContext` or the optional `ContextWaitFreezesEventSink`; existing `ContextEventSink` implementations do not need additional methods.
 - On Windows, initialization with the default / empty library directory now preserves the existing DLL search configuration. Settings from a nonempty `WithLibDir` are still not restored after failure or `Release`; programs that depend on this process setting must coordinate it themselves.
 
-If you use custom configuration for the API checker, check paths relative to the repository root and remove obsolete blacklist / exclusions entries. When enabling Pipeline schema checks, use the schema from the same MaaFramework release as the headers and native libraries. See the [tool documentation](../../../tools/api-check/README.md).
+If you use custom configuration for the API checker, check paths relative to the repository root and remove obsolete blacklist / exclusions entries. With MaaFramework v5.14.3 headers, add `MaaInferenceExecutionProvider_CoreML` to `constant_exclusions` with a nonempty reason for its intentional omission from Go; see the [CI configuration](../../../tools/api-check/config.ci.yaml). These exclusions use exact C constant names, suppress only missing Go constants, and fail when stale. When enabling Pipeline schema checks, use the schema from the same MaaFramework release as the headers and native libraries. See the [tool documentation](../../../tools/api-check/README.md).
 
 ## 7. Verify the migration
 

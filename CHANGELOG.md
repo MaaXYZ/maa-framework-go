@@ -2,7 +2,7 @@
 
 ## 变更总览（v3.6.0-beta.5 → v4.0.0，发布准备草稿）
 
-本总览及下一节以提交 [`fb84de6`](https://github.com/MaaXYZ/maa-framework-go/tree/fb84de66f3db7514b15d0063d515cd1272d558ff) 为固定核验终点。`v4.0.0` 尚未打 tag；正式版确定后需复核终点差异，再冻结这份里程碑记录。
+本总览及下一节以提交 [`18e4d6a`](https://github.com/MaaXYZ/maa-framework-go/tree/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58) 为固定核验终点。`v4.0.0` 尚未打 tag；正式版确定后需复核终点差异，再冻结这份里程碑记录。
 
 ### 破坏性变更与升级入口
 
@@ -19,7 +19,7 @@
 ### 所有权、生命周期与回调
 
 - 按对象依赖收束工作并销毁，再卸载动态库；借用对象、绑定关系、活动调用、Job 与回调均参与销毁保护。
-- 后续修复加强 Job 并发等待、停止后的空闲确认、回调清理与注册串行化。行为契约见固定快照的 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/doc.go)，区间详单见 beta.19 与发布准备节。
+- 后续修复加强 Job 并发等待、停止后的空闲确认、回调清理与注册串行化。行为契约见固定快照的 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/doc.go)，区间详单见 beta.19 与发布准备节。
 
 ### Pipeline 配置与详情
 
@@ -40,19 +40,19 @@
 
 ## v4.0.0（发布准备草稿）
 
-本节记录 `v4.0.0-beta.19` → `fb84de6` 的净变化，完整差异见 [固定提交对比](https://github.com/MaaXYZ/maa-framework-go/compare/v4.0.0-beta.19...fb84de66f3db7514b15d0063d515cd1272d558ff)。这不是已发布正式版记录。升级操作见 [迁移指南](docs/zh/migration/from-v4.0.0-beta.19.md)；API 契约链接固定快照源码，正式 tag 确定后再切换到对应 godoc。
+本节记录 `v4.0.0-beta.19` → `18e4d6a` 的净变化，完整差异见 [固定提交对比](https://github.com/MaaXYZ/maa-framework-go/compare/v4.0.0-beta.19...18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58)。这不是已发布正式版记录。升级操作见 [迁移指南](docs/zh/migration/from-v4.0.0-beta.19.md)；API 契约链接固定快照源码，正式 tag 确定后再切换到对应 godoc。
 
 ### 破坏性变更
 
 - Controller 的全部 `Post*` 与 Resource 的 `PostBundle`、`PostOcrModel`、`PostPipeline`、`PostImage` 由 `*Job` 改为 `(*Job, error)`；Tasker 的 `PostTask`、`PostRecognition`、`PostAction`、`PostStop` 由 `*TaskJob` 改为 `(*TaskJob, error)`。提交失败同时返回非 nil 的终态失败 Job 和 `error`，原生返回无效提交 ID 也立即报告错误。
 - `Tasker.PostTask` 及 `Context.RunTask`、`RunRecognition`、`RunAction`、`WaitFreezes` 不再把参数编码失败静默替换为 `{}`，改为返回错误并跳过原生执行。
 - `LongPressParam.Duration`、`LongPressKeyParam.Duration` 由 `time.Duration` 改为 `*time.Duration`；神经网络分类与检测的 `Expected` 由 `[]int` 改为 `ClassSelectors`。
-- TemplateMatch / FeatureMatch 的 `Template`、OCR 的 `Expected`、神经网络分类/检测的 `Labels` 由 `[]string` 改为 `StringList`。这些字段及神经网络 `Expected`、TemplateMatch `Threshold`、Swipe `End` 的非 nil 空列表现在写出 `[]`；`Node.Anchor` 的非 nil 空 map 写出 `{}`。
+- TemplateMatch / FeatureMatch 的 `Template`、OCR 的 `Expected`、神经网络分类/检测的 `Labels` 由 `[]string` 改为 `StringList`。这些字段及神经网络 `Expected`、TemplateMatch `Threshold` 的非 nil 空列表现在写出 `[]`；`Node.Anchor` 的非 nil 空 map 写出 `{}`。
 - 动作/识别的值类型 offset 与 `WaitFreezesParam.TargetOffset` 的零 `Rect` 现在省略，不再写出零数组；`Rect` 解码限定为 2 或 4 个整数，点简写扩展为 1×1 框。`Target` 编解码拒绝 false、null 与无效形状。
 - `Node.UnmarshalJSON` 替换整个节点，未出现字段及 `Name` 重置；`CustomActionParam.CustomActionParam` 中的数字解码为 `json.Number`，不再使用 `float64`。
 - `SetScreenshot` 从仅应用最后一项改为组合设置，拒绝重复/冲突选项、非正目标尺寸和无效插值方法。
 - `GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 无可用详情时由 `(nil, nil)` 改为返回错误。
-- Agent Server 增加生命周期与配置状态检查：运行、已 Join 或已 detach 时不允许重新启动或配置；未 detach 时关闭后进入永久关闭态，不能通过 `Release` / `Init` 重启。具体边界见 [Agent Server API](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/agent_server.go)。
+- Agent Server 增加生命周期与配置状态检查：运行、已 Join 或已 detach 时不允许重新启动或配置；未 detach 时关闭后进入永久关闭态，不能通过 `Release` / `Init` 重启。具体边界见 [Agent Server API](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/agent_server.go)。
 - `Resource.UseCoreml` 已移除。上游在 MaaFramework v5.14.3 弃用 `MaaInferenceExecutionProvider_CoreML`，MaaDeps 不再分发 CoreML 提供程序，Go 侧不再暴露该入口；需要 GPU 推理时改用 `Resource.UseWebgpu`。`MaaDef.h` 仍保留数值 3 供 C++ 调用方编译，因此该枚举的后续取值未重新编号。
 
 ### 新增
@@ -64,13 +64,13 @@
 - `Pipeline.UnmarshalJSON` 从节点名映射读取 Pipeline、补上 `Node.Name`、跳过 `$` 元数据并规范化锚点简写；Node 与参数解码兼容 v1 扁平格式及协议的单项/列表简写，编码统一为规范 v2。
 - `WithScreenshotTargetExpand` 按比例覆盖参考宽高；`Controller.SetBackgroundManagedKeys` 配置 Win32 后台托管键；`ControllerFeatureNoScalingTouchPoints` 禁用自定义控制器的触摸点自动缩放。
 - `EventNodeWaitFreezes`、`NodeWaitFreezesDetail`、可选 `ContextWaitFreezesEventSink` 与 `OnNodeWaitFreezesInContext`；`ResourceLoadingDetail.Type` 区分加载类型。
-- API 检查工具扩展回调 ABI、结构布局与 trampoline、更多常量组、事件分发及可选 Pipeline v2 类型/字段检查；新增 `--pipeline-schema` 与带理由的 exclusions，强化配置和输入验证。
-- `Resource.UseWebgpu(deviceID InferenceDevice)` 选择 WebGPU 执行提供程序，`deviceID` 为 WebGPU 设备 id，`InferenceDeviceAuto` 交由框架选择（设备 0）。该提供程序要求 MaaFramework v5.14.3 或更高；更低版本没有对应枚举值，设置后加载模型时不会选出该提供程序。
+- API 检查工具扩展回调 ABI、结构布局与 trampoline、更多常量组、事件分发及可选 Pipeline v2 类型/字段检查；新增 `--pipeline-schema` 与带理由的 exclusions，强化配置和输入验证。`constant_exclusions` 按精确 C 常量名声明 Go 未暴露的常量，要求非空理由并拒绝失效条目；常量条件解析按 C 语义处理 `__cplusplus`，未知复合条件保留分支并报告声明冲突。
+- `Resource.UseWebgpu(deviceID InferenceDevice)` 选择 WebGPU 执行提供程序，`deviceID` 为 WebGPU 设备 id，`InferenceDeviceAuto` 交由框架选择（设备 0）。该提供程序要求 MaaFramework v5.14.3 或更高；更低版本没有对应枚举值，设置仍成功，但加载模型时记录错误并回退 CPU。
 
 ### 修复
 
-- Job / TaskJob 的等待与状态查询增加并发保护，多个等待者共享完成结果；停止使 Job ID 无效后，销毁仍需确认原生工作空闲，避免提前释放。契约见 [Job](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/job.go) 与各对象的 Destroy 注释。
-- 事件与自定义控制器回调关联所有者，销毁等待已接纳回调结束并阻止后续用户回调；自定义控制器回调保留至原生销毁完成，使 KeyUp / TouchUp 可在清理阶段释放输入。
+- Job / TaskJob 的等待与状态查询增加并发保护，多个等待者共享完成结果；停止使 Job ID 无效后，销毁仍需确认原生工作空闲，避免提前释放。契约见 [Job](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/job.go) 与各对象的 Destroy 注释。
+- 事件与自定义控制器回调关联所有者，普通回调活动期间 `Destroy` 返回 `ErrInCallback`；销毁期间拒绝新增普通用户回调，并等待已接纳的清理回调结束。自定义控制器回调保留至原生销毁完成，使 KeyUp / TouchUp 可在清理阶段释放输入。
 - sink 与 Resource runner 注册操作串行化；原生注册失败时清理 Go 回调记录。Resource / AgentServer 拒绝 nil runner；Resource 注销未知名称成为成功空操作，外部注册的名称保留并返回错误。
 - 图像、矩形等缓冲区创建和写入失败传播到调用方；空图像返回错误，空 buffer 读取返回真正的 nil 图像。
 - Action / Recognition 缺少 `param` 时读取对象内平铺参数；And / Or 内联识别输出正确的 `recognition` 嵌套对象；补齐 `key_code`、OCR `text` 兼容及简写解码，修复复用参数对象时的旧值残留。Swipe 动作结果解析失败时不再部分修改接收值。
