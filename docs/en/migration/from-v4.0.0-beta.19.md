@@ -152,7 +152,21 @@ Remove repeated settings, avoid mixing long-side, short-side, and expand targets
 
 The new `WithScreenshotTargetExpand(width, height)` scales proportionally up or down to cover both reference dimensions, without cropping or stretching. If you persist or compare Win32 names using `ScreencapMethod.String()`, update them to `DXGI_DesktopDup` / `DXGI_DesktopDup_Window`; parsing still accepts the old spellings.
 
-## 5. Check registrations, Agent Server, and detail queries
+## 5. Switch the inference provider entry point
+
+`Resource.UseCoreml` has been removed. Upstream deprecated `MaaInferenceExecutionProvider_CoreML` in MaaFramework v5.14.3, and MaaDeps no longer ships the CoreML provider. Code that called it should use `Resource.UseWebgpu`, which takes a WebGPU device id (`InferenceDeviceAuto` lets the framework choose, which selects device 0):
+
+```go
+// beta.19
+err := res.UseCoreml(maa.InferenceDeviceAuto)
+
+// now
+err := res.UseWebgpu(maa.InferenceDeviceAuto)
+```
+
+`UseWebgpu` needs a native library at MaaFramework v5.14.3 or later. An earlier version does not recognize the value: the setter still succeeds, but loading a model logs an invalid inference execution provider and falls back to CPU. That matches the existing behavior of `UseDirectml`, `UseCPU`, and the other provider setters, so confirm which provider is actually selected at runtime.
+
+## 6. Check registrations, Agent Server, and detail queries
 
 - Configure event sinks and custom runners while the instance and its associated Tasker are idle. The new serialization and callback protections do not replace caller coordination during native execution; see the [package documentation source](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/doc.go) for the precise contract. Do not pass a nil runner, including a typed nil function. Unregistering a nonexistent Resource runner name now succeeds; names registered outside the Go wrapper are preserved and return an error.
 - Configure Agent Server before `AgentServerStartUp`. Restarting or configuring it is no longer allowed after startup, Join, or detach. Without detach, `AgentServerShutDown` enters a permanently closed state; `Release` / `Init` cannot recreate the service. Restart the process if you need a new service. See the [API comments](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/agent_server.go) for how to arrange Join / ShutDown.
@@ -163,12 +177,13 @@ The new `WithScreenshotTargetExpand(width, height)` scales proportionally up or 
 
 If you use custom configuration for the API checker, check paths relative to the repository root and remove obsolete blacklist / exclusions entries. When enabling Pipeline schema checks, use the schema from the same MaaFramework release as the headers and native libraries. See the [tool documentation](../../../tools/api-check/README.md).
 
-## 6. Verify the migration
+## 7. Verify the migration
 
 - [ ] Update all `Post*` signatures and check submission errors separately from asynchronous status.
 - [ ] Check pointers, class selection types, zero offsets, empty collections, and Node decoding replacement behavior.
 - [ ] Update code and tests that depend on the inline recognition JSON shape or `float64` type assertions.
 - [ ] Verify paths for parameter encoding failures, empty images, unavailable details, and conflicting screenshot options.
+- [ ] Replace `UseCoreml` calls with `UseWebgpu`, and confirm the native library version and the provider actually selected at runtime.
 - [ ] Verify stop and exit paths, handle `Destroy` / `Release` errors, and do not attempt to restart Agent Server after shutdown.
 - [ ] Run your project's `go build ./...`, `go vet ./...`, and relevant tests.
 - [ ] Once the final release tag is determined, check the additional changes from this snapshot to the final release against the updated guide.

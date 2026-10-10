@@ -152,7 +152,21 @@ func configureScreenshot(ctrl *maa.Controller) error {
 
 新增的 `WithScreenshotTargetExpand(width, height)` 按比例放大或缩小至同时覆盖参考宽高，不裁剪、不拉伸。Win32 使用 `ScreencapMethod.String()` 持久化或比较名称时，更新为 `DXGI_DesktopDup` / `DXGI_DesktopDup_Window`；解析仍接受旧拼写。
 
-## 5. 检查注册、Agent Server 和详情查询
+## 5. 更换推理提供程序入口
+
+`Resource.UseCoreml` 已移除：上游在 MaaFramework v5.14.3 弃用 `MaaInferenceExecutionProvider_CoreML`，MaaDeps 不再分发 CoreML 提供程序。调用该方法的代码改用 `Resource.UseWebgpu`，它接收 WebGPU 设备 id（`InferenceDeviceAuto` 交由框架选择，即设备 0）：
+
+```go
+// beta.19
+err := res.UseCoreml(maa.InferenceDeviceAuto)
+
+// 现在
+err := res.UseWebgpu(maa.InferenceDeviceAuto)
+```
+
+`UseWebgpu` 需要 MaaFramework v5.14.3 或更高的原生库。更低版本不认识该取值，设置本身仍返回成功，但加载模型时会记录 invalid inference execution provider 并回退到 CPU；这与 `UseDirectml`、`UseCPU` 等入口的既有行为一致，所以请同时确认运行时实际选中的提供程序。
+
+## 6. 检查注册、Agent Server 和详情查询
 
 - 把事件 sink 和自定义 runner 配置安排在实例及关联 Tasker 空闲时。新增串行化与回调保护不替代原生执行期间的调用方协调，具体契约见 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/doc.go)。不要传 nil runner，包括带类型的 nil 函数。注销不存在的 Resource runner 名称现在成功返回；由 Go wrapper 外部注册的名称会保留并返回错误。
 - 将 Agent Server 配置放在 `AgentServerStartUp` 之前。启动、已 Join 或已 detach 后不再允许重新启动或配置；未 detach 时，`AgentServerShutDown` 后进入永久关闭态，不能靠 `Release` / `Init` 重建服务，需要新服务时重启进程。Join / ShutDown 的安排见 [API 注释](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/agent_server.go)。
@@ -163,12 +177,13 @@ func configureScreenshot(ctrl *maa.Controller) error {
 
 如果使用 API 检查工具的自定义配置，核对仓库根目录相对路径，清理已失效的 blacklist / exclusions。启用 Pipeline schema 检查时，使用与头文件和原生库同一 MaaFramework release 的 schema，参见 [工具说明](../../../tools/api-check/README.md)。
 
-## 6. 验证迁移
+## 7. 验证迁移
 
 - [ ] 更新全部 `Post*` 签名，分别检查提交错误和异步状态。
 - [ ] 检查指针、类别选择类型，以及零 offset、空集合、Node 解码替换行为。
 - [ ] 更新依赖内联识别 JSON 形状或 `float64` 类型断言的代码和测试。
 - [ ] 验证参数编码失败、图像为空、详情不可用及截图选项冲突等路径。
+- [ ] 把 `UseCoreml` 调用改为 `UseWebgpu`，并确认原生库版本与运行时实际选中的提供程序。
 - [ ] 验证停止与退出路径，处理 `Destroy` / `Release` 错误，不在 Agent Server 关闭后尝试重启。
 - [ ] 运行项目的 `go build ./...`、`go vet ./...` 和相关测试。
 - [ ] 正式版 tag 确定后，对照更新后的指南核验从此快照到正式版的追加变化。

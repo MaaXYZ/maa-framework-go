@@ -53,6 +53,7 @@
 - `SetScreenshot` 从仅应用最后一项改为组合设置，拒绝重复/冲突选项、非正目标尺寸和无效插值方法。
 - `GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 无可用详情时由 `(nil, nil)` 改为返回错误。
 - Agent Server 增加生命周期与配置状态检查：运行、已 Join 或已 detach 时不允许重新启动或配置；未 detach 时关闭后进入永久关闭态，不能通过 `Release` / `Init` 重启。具体边界见 [Agent Server API](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/agent_server.go)。
+- `Resource.UseCoreml` 已移除。上游在 MaaFramework v5.14.3 弃用 `MaaInferenceExecutionProvider_CoreML`，MaaDeps 不再分发 CoreML 提供程序，Go 侧不再暴露该入口；需要 GPU 推理时改用 `Resource.UseWebgpu`。`MaaDef.h` 仍保留数值 3 供 C++ 调用方编译，因此该枚举的后续取值未重新编号。
 
 ### 新增
 
@@ -64,6 +65,7 @@
 - `WithScreenshotTargetExpand` 按比例覆盖参考宽高；`Controller.SetBackgroundManagedKeys` 配置 Win32 后台托管键；`ControllerFeatureNoScalingTouchPoints` 禁用自定义控制器的触摸点自动缩放。
 - `EventNodeWaitFreezes`、`NodeWaitFreezesDetail`、可选 `ContextWaitFreezesEventSink` 与 `OnNodeWaitFreezesInContext`；`ResourceLoadingDetail.Type` 区分加载类型。
 - API 检查工具扩展回调 ABI、结构布局与 trampoline、更多常量组、事件分发及可选 Pipeline v2 类型/字段检查；新增 `--pipeline-schema` 与带理由的 exclusions，强化配置和输入验证。
+- `Resource.UseWebgpu(deviceID InferenceDevice)` 选择 WebGPU 执行提供程序，`deviceID` 为 WebGPU 设备 id，`InferenceDeviceAuto` 交由框架选择（设备 0）。该提供程序要求 MaaFramework v5.14.3 或更高；更低版本没有对应枚举值，设置后加载模型时不会选出该提供程序。
 
 ### 修复
 
