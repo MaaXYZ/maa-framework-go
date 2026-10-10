@@ -12,7 +12,7 @@ Bug reports, feature suggestions, and pull requests are welcome.
 
 ## Build and test
 
-Use Go 1.24 or newer. Run the following commands from the repository root.
+Use Go 1.25 or newer. Run the following commands from the repository root.
 
 Initialize the test-assets submodule:
 

@@ -51,7 +51,7 @@ Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-p
 
 ## Requirements
 
-- **Go 1.24 or later**
+- **Go 1.25 or later**
 - **MaaFramework** - Tracks the latest MaaFramework release, including prereleases; compatibility with older releases is not guaranteed. The header badge records the MaaFramework release that passed unit tests before this binding's latest release; it is a tested baseline, not a version requirement.
 
 ## Installation
