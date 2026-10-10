@@ -14,3 +14,9 @@ blacklist: []
 # Exact reported paths only; every intentional difference needs a reason.
 # Stale entries fail the check so exceptions cannot silently accumulate.
 pipeline_exclusions: {}
+
+# Native constants the Go binding deliberately does not mirror, by exact C
+# constant name. Reasons must be nonempty, and an exclusion that suppresses
+# nothing is stale and fails the check.
+# constant_exclusions:
+#   MaaInferenceExecutionProvider_CoreML: "Deprecated upstream in v5.14.3; MaaDeps no longer ships the provider."

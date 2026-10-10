@@ -558,7 +558,7 @@ func TestCheckConstantCoverage_FixtureTree(t *testing.T) {
 	headerDir := t.TempDir()
 	writeConstantCoverageFixtureTree(t, repoRoot, headerDir)
 
-	issues, err := checkConstantCoverage(repoRoot, headerDir)
+	issues, err := checkConstantCoverage(repoRoot, headerDir, nil)
 	if err != nil {
 		t.Fatalf("checkConstantCoverage: %v", err)
 	}
@@ -574,18 +574,59 @@ func TestCheckConstantCoverage_FixtureTree(t *testing.T) {
 	mutated := removeConstantLine(t, string(content), "ScreencapScreenCaptureKit")
 	constantWriteFixtureFile(t, macosPath, mutated)
 
-	issues, err = checkConstantCoverage(repoRoot, headerDir)
+	issues, err = checkConstantCoverage(repoRoot, headerDir, nil)
 	if err != nil {
 		t.Fatalf("checkConstantCoverage after mutation: %v", err)
 	}
 	assertConstantIssueContaining(t, issues, "[macos.screencap] C constant not found in Go: ScreenCaptureKit")
 }
 
+func TestCheckConstantCoverage_Exclusions(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	headerDir := t.TempDir()
+	writeConstantCoverageFixtureTree(t, repoRoot, headerDir)
+
+	// Create a real difference: the C header declares the constant and removing
+	// the Go line leaves it missing.
+	macosPath := filepath.Join(repoRoot, "controller", "macos", "macos.go")
+	content, err := os.ReadFile(macosPath)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	constantWriteFixtureFile(t, macosPath, removeConstantLine(t, string(content), "ScreencapScreenCaptureKit"))
+
+	const native = "MaaMacOSScreencapMethod_ScreenCaptureKit"
+
+	// A declared exclusion suppresses the difference it names.
+	issues, err := checkConstantCoverage(repoRoot, headerDir, map[string]string{native: "Intentional fixture omission"})
+	if err != nil {
+		t.Fatalf("checkConstantCoverage with exclusion: %v", err)
+	}
+	if len(issues) != 0 {
+		t.Fatalf("expected the exclusion to suppress the difference, got %+v", issues)
+	}
+
+	// An exclusion whose constant does not differ is stale and must be reported,
+	// so deliberate gaps cannot accumulate unnoticed.
+	issues, err = checkConstantCoverage(repoRoot, headerDir, map[string]string{
+		native:                         "Intentional fixture omission",
+		"MaaMacOSScreencapMethod_None": "Not actually missing",
+	})
+	if err != nil {
+		t.Fatalf("checkConstantCoverage with stale exclusion: %v", err)
+	}
+	if !strings.Contains(issueText(issues), "stale constant_exclusion: MaaMacOSScreencapMethod_None") {
+		t.Fatalf("expected a stale exclusion report, got %+v", issues)
+	}
+}
+
 func TestCheckConstantCoverage_InputErrors(t *testing.T) {
 	t.Parallel()
 
 	t.Run("missing header", func(t *testing.T) {
-		if _, err := checkConstantCoverage(t.TempDir(), t.TempDir()); err == nil {
+		if _, err := checkConstantCoverage(t.TempDir(), t.TempDir(), nil); err == nil {
 			t.Fatal("expected an error for missing headers")
 		}
 	})
@@ -595,7 +636,7 @@ func TestCheckConstantCoverage_InputErrors(t *testing.T) {
 		headerDir := t.TempDir()
 		constantWriteFixtureFile(t, filepath.Join(headerDir, maaDefHeaderRel), "#define MaaMacOSScreencapMethod_None 0ULL\n")
 		constantWriteFixtureFile(t, filepath.Join(headerDir, maaToolkitDefHeaderRel), "")
-		if _, err := checkConstantCoverage(repoRoot, headerDir); err == nil {
+		if _, err := checkConstantCoverage(repoRoot, headerDir, nil); err == nil {
 			t.Fatal("expected an error for missing Go sources")
 		}
 	})
@@ -612,7 +653,7 @@ func compareConstantFixture(t *testing.T, spec constantFamilySpec, cContent stri
 	if err != nil {
 		t.Fatalf("evaluate Go fixture: %v", err)
 	}
-	return compareConstantFamily(spec, env, evaluation)
+	return compareConstantFamily(spec, env, evaluation, nil, map[string]bool{})
 }
 
 func removeConstantLine(t *testing.T, content string, needle string) string {

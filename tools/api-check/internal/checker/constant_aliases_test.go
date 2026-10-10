@@ -26,7 +26,7 @@ func TestPublicConstantAliases(t *testing.T) {
 				t.Fatal(err)
 			}
 			spec := constantFamilySpecs[0]
-			issues := compareConstantFamily(spec, env, evaluation)
+			issues := compareConstantFamily(spec, env, evaluation, nil, map[string]bool{})
 			if tt.want == "" && len(issues) != 0 || tt.want != "" && !strings.Contains(issueText(issues), tt.want) {
 				t.Fatalf("issues = %v, want %q", issues, tt.want)
 			}

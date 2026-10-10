@@ -140,6 +140,7 @@ Defaults:
 - `blacklist: []` (legacy symbol exclusions)
 - `pipeline_schema: ""` (pipeline checking disabled)
 - `pipeline_exclusions: {}`
+- `constant_exclusions: {}`
 
 YAML decoding is strict: unknown fields, duplicate keys, wrong scalar types, and multiple documents fail configuration. Positional command-line arguments are rejected. Each run uses an independent flag set.
 
@@ -163,6 +164,15 @@ pipeline_exclusions:
 ```
 
 An exclusion suppresses only the matching difference. Wildcards are not supported; stale exclusions are reported as failures. Exclusions require pipeline checking to be enabled and are listed with their reasons in the report.
+
+`constant_exclusions` accepts exact C constant names that the Go binding deliberately does not mirror, for example:
+
+```yaml
+constant_exclusions:
+  MaaInferenceExecutionProvider_CoreML: "Deprecated upstream in v5.14.3; MaaDeps no longer ships the provider."
+```
+
+An exclusion suppresses only the "C constant not found in Go" difference for that constant, and applies only while the constant actually differs; an entry that suppresses nothing is stale and fails the check. Value mismatches, name collisions, and Go constants absent from C are never suppressed. The supplied reasons are listed in the report.
 
 Exit status is `0` for a consistent implementation, `1` for reported differences or stale exclusions, and `2` for invalid configuration or inputs, including unsupported extraction shapes.
 

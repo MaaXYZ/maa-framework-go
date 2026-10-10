@@ -75,12 +75,12 @@ func TestResource_UseExecutionProviderOptionSequence(t *testing.T) {
 			},
 		},
 		{
-			name: "UseCoreml",
-			use:  func(r *Resource) error { return r.UseCoreml(InferenceDevice1) },
+			name: "UseWebgpu",
+			use:  func(r *Resource) error { return r.UseWebgpu(InferenceDevice1) },
 			want: []resourceOptionCall{
 				{
 					key:     native.MaaResOption_InferenceExecutionProvider,
-					value:   int32(native.MaaInferenceExecutionProvider_CoreML),
+					value:   int32(native.MaaInferenceExecutionProvider_WebGPU),
 					valSize: inferenceOptionValSize,
 				},
 				{
@@ -133,6 +133,19 @@ func TestInferenceDeviceConstantsABI(t *testing.T) {
 	require.Equal(t, uint64(4), inferenceOptionValSize, "MaaInferenceDevice must stay int32-sized")
 }
 
+// TestInferenceExecutionProviderConstantsABI pins the provider values to
+// MaaInferenceExecutionProviderEnum in MaaDef.h so a renumbered or dropped
+// wrapper value is caught here. Value 3 (CoreML) is intentionally absent: the
+// gap is declared in config.ci.yaml under constant_exclusions, so CUDA must
+// stay at 4 and WebGPU at 5.
+func TestInferenceExecutionProviderConstantsABI(t *testing.T) {
+	require.EqualValues(t, 0, native.MaaInferenceExecutionProvider_Auto)
+	require.EqualValues(t, 1, native.MaaInferenceExecutionProvider_CPU)
+	require.EqualValues(t, 2, native.MaaInferenceExecutionProvider_DirectML)
+	require.EqualValues(t, 4, native.MaaInferenceExecutionProvider_CUDA)
+	require.EqualValues(t, 5, native.MaaInferenceExecutionProvider_WebGPU)
+}
+
 func TestResource_UseExecutionProviderNativeFailure(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()
@@ -142,4 +155,35 @@ func TestResource_UseExecutionProviderNativeFailure(t *testing.T) {
 
 	require.Error(t, res.UseCPU())
 	require.NotEmpty(t, calls)
+}
+
+// TestResource_UseExecutionProviderAcceptsEveryProvider drives each provider
+// through the real library, covering the full handle/option/ABI path that the
+// stubbed sequence test bypasses. Selecting a provider does not require the
+// hardware to support it; loading a model is what falls back to CPU.
+//
+// This is not a value check: MaaResourceSetOption stores the provider without
+// validating it against MaaInferenceExecutionProviderEnum (setting WebGPU to a
+// bogus 9 still succeeds). The Go-to-MaaDef.h value correspondence is pinned by
+// TestInferenceExecutionProviderConstantsABI, and the header side by
+// tools/api-check.
+func TestResource_UseExecutionProviderAcceptsEveryProvider(t *testing.T) {
+	providers := []struct {
+		name string
+		use  func(*Resource) error
+	}{
+		{"Auto", func(r *Resource) error { return r.UseAutoExecutionProvider() }},
+		{"CPU", func(r *Resource) error { return r.UseCPU() }},
+		{"DirectML", func(r *Resource) error { return r.UseDirectml(InferenceDevice0) }},
+		{"WebGPU", func(r *Resource) error { return r.UseWebgpu(InferenceDevice0) }},
+	}
+
+	for _, provider := range providers {
+		t.Run(provider.name, func(t *testing.T) {
+			res := createResource(t)
+			defer res.Destroy()
+
+			require.NoError(t, provider.use(res))
+		})
+	}
 }

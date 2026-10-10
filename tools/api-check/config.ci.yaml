@@ -10,3 +10,5 @@ native_exclusions:
   MaaImageBufferSetEncoded: "The Go buffer API uses raw image buffers."
   MaaKWinControllerCreate: "The Go binding currently exposes the unified Linux controller."
   MaaWlRootsControllerCreate: "The Go binding currently exposes the unified Linux controller."
+constant_exclusions:
+  MaaInferenceExecutionProvider_CoreML: "Deprecated upstream in MaaFramework v5.14.3; MaaDeps no longer ships the provider, so the Go binding does not expose it. Value 3 stays reserved."
