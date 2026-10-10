@@ -453,6 +453,8 @@ func TestResolveCConditionals_KeepsStrayDirectivesHarmless(t *testing.T) {
 		"taken branch drops elif":  {"a\n#if !defined(__cplusplus)\nb\n#elif !defined(__cplusplus)\nc\n#else\nd\n#endif\ne\n", "a\nb\ne\n"},
 		"empty branch drops else":  {"a\n#if !defined(__cplusplus)\n#else\nb\n#endif\nc\n", "a\nc\n"},
 		"nested branch drops else": {"a\n#if !defined(__cplusplus)\n#if !defined(__cplusplus)\nb\n#endif\n#else\nc\n#endif\nd\n", "a\nb\nd\n"},
+		"unknown then false elif":  {"a\n#if PLATFORM\nb\n#elif defined(__cplusplus)\nc\n#else\nd\n#endif\ne\n", "a\nb\nd\ne\n"},
+		"unknown then true elif":   {"a\n#if PLATFORM\nb\n#elif !defined(__cplusplus)\nc\n#else\nd\n#endif\ne\n", "a\nb\nc\ne\n"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

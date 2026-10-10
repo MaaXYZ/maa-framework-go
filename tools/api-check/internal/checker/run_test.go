@@ -276,6 +276,65 @@ func TestRunUnknownConditionalEnumSequencingExitsTwo(t *testing.T) {
 	}
 }
 
+func TestRunUnknownCGuardElifReachability(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		header string
+	}{
+		{
+			name: "known true elif consumes fallthrough",
+			header: `enum MaaInferenceExecutionProviderEnum {
+#if MAA_REVIEW_UNKNOWN
+    MaaInferenceExecutionProvider_CPU = 1,
+#elif !defined(__cplusplus)
+    MaaInferenceExecutionProvider_CPU = 1,
+#else
+    MaaInferenceExecutionProvider_CPU = 99,
+#endif
+};
+`,
+		},
+		{
+			name: "known false elif is omitted",
+			header: `enum MaaInferenceExecutionProviderEnum {
+#if MAA_REVIEW_UNKNOWN
+    MaaInferenceExecutionProvider_CPU = 1,
+#elif defined(__cplusplus)
+    MaaInferenceExecutionProvider_CPU = 99,
+#else
+    MaaInferenceExecutionProvider_CPU = 1,
+#endif
+};
+`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := repoFixtureFiles()
+			headerPath := "deps/include/" + maaDefHeaderRel
+			goPath := "internal/native/framework.go"
+			dir := writeRepoFixtureWith(t, map[string]string{
+				headerPath: files[headerPath] + tc.header,
+				goPath:     files[goPath] + "const MaaInferenceExecutionProvider_CPU = 1\n",
+			})
+
+			code, stdout, stderr := runChecker(t, dir)
+			if code != 0 || !strings.Contains(stdout, "PASS: no inconsistencies found.") || stderr != "" {
+				t.Fatalf("run() with unreachable divergent branch = %d, want 0; stderr:\n%s\nstdout:\n%s", code, stderr, stdout)
+			}
+
+			conflictingHeader := strings.Replace(tc.header, "MaaInferenceExecutionProvider_CPU = 1", "MaaInferenceExecutionProvider_CPU = 2", 1)
+			writeFixtureFile(t, filepath.Join(dir, headerPath), files[headerPath]+conflictingHeader)
+			code, stdout, stderr = runChecker(t, dir)
+			if code != 2 || !strings.Contains(stderr, "conflicting C constant MaaInferenceExecutionProvider_CPU") {
+				t.Fatalf("run() with divergent reachable branches = %d, want conflict and exit 2; stderr:\n%s\nstdout:\n%s", code, stderr, stdout)
+			}
+			if strings.Contains(stdout, "PASS: no inconsistencies found.") {
+				t.Fatalf("run() passed despite conflicting reachable branches:\n%s", stdout)
+			}
+		})
+	}
+}
+
 func TestRunConfigPrecedence(t *testing.T) {
 	t.Run("cwd config wins over root fallback", func(t *testing.T) {
 		dir := writeRepoFixture(t)

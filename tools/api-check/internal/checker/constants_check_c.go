@@ -449,11 +449,11 @@ func parseConditional(lines []string, start, end int, out *strings.Builder, unkn
 // headerLine, writing the branches a C compiler would select. It returns the
 // line after the matching `#endif`, or end when the conditional is unterminated.
 //
-// When the guard depends on a macro the checker cannot decide, every branch is
-// written instead of one. A constant defined differently per branch then reaches
-// evaluateCConstSources twice, which reports the conflict rather than silently
-// picking one value. A branch that the checker can decide is still chosen
-// normally, including inside such a guard.
+// When a guard is unknown, each still-reachable branch is written. A constant
+// defined differently per branch reaches evaluateCConstSources twice, which
+// reports the conflict rather than silently picking one value. Known-false
+// branches and branches after a reachable known-true branch are omitted even
+// when earlier guards were unknown.
 func parseConditionalBody(lines []string, headerLine, end int, out *strings.Builder, unknownRanges *[]cConditionalRange) int {
 	directiveFields := cDirectiveFields(strings.TrimSpace(lines[headerLine]))
 	outcome := resolveCDirective(directiveFields)
@@ -464,19 +464,16 @@ func parseConditionalBody(lines []string, headerLine, end int, out *strings.Buil
 			*unknownRanges = append(*unknownRanges, cConditionalRange{start: start, end: out.Len()})
 		}
 	}()
-	// An unknown guard keeps every branch, so the first branch starts active.
-	keepAll := outcome == cConditionUnknown
 
 	// emitting reports whether this branch's body is written. A dead branch
 	// still has to be scanned, because it may contain the #elif / #else that
 	// follows it, so skipping is decided per directive rather than by leaving
 	// the loop.
 	//
-	// taken records that a known guard already selected a branch, even if its
-	// body is empty or only contains nested conditionals. Later branches are
-	// dead once that happens.
+	// remaining reports whether execution can still reach a later branch,
+	// independently of whether the current body contains any text.
 	emitting := outcome != cConditionFalse
-	taken := outcome == cConditionTrue
+	remaining := outcome != cConditionTrue
 
 	index := headerLine + 1
 	for index < end {
@@ -491,41 +488,17 @@ func parseConditionalBody(lines []string, headerLine, end int, out *strings.Buil
 				}
 				continue
 			case "elif":
-				if keepAll {
-					// Every branch is kept, so this one is emitted as well.
-					emitting = true
-					index++
-					continue
-				}
-				if taken {
-					emitting = false
-					index++
-					continue
-				}
-				switch resolveCCondition(strings.Join(fields[1:], " ")) {
-				case cConditionTrue:
-					emitting = true
-					taken = true
-				case cConditionFalse:
-					emitting = false
-				default:
-					// An unknown guard keeps this branch too.
-					emitting = true
-					keepAll = true
+				outcome = resolveCCondition(strings.Join(fields[1:], " "))
+				emitting = remaining && outcome != cConditionFalse
+				if emitting && outcome == cConditionUnknown {
 					uncertain = true
 				}
+				remaining = remaining && outcome != cConditionTrue
 				index++
 				continue
 			case "else":
-				if keepAll {
-					// Every branch is kept, so this one is emitted as well.
-					emitting = true
-					index++
-					continue
-				}
-				// A known guard selects this branch only when no other one was
-				// taken.
-				emitting = !taken
+				emitting = remaining
+				remaining = false
 				index++
 				continue
 			case "endif":
