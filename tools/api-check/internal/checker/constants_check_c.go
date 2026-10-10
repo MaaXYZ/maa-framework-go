@@ -55,7 +55,10 @@ func evaluateCConstSources(sources []cConstSource) (*cConstEnv, error) {
 		stripped := removeCComments(source.content)
 		// Reduce preprocessor conditionals and C++ attributes first, so the
 		// define and enum parsers see the same view a C compiler does.
-		stripped = resolveCConditionals(stripped)
+		stripped, err := resolveCConditionals(stripped)
+		if err != nil {
+			return nil, fmt.Errorf("resolve C conditionals in %s: %w", source.path, err)
+		}
 
 		for _, decl := range parseCDefineDecls(stripped) {
 			if prior, exists := env.decls[decl.name]; exists {
@@ -394,23 +397,38 @@ var cDefinedBareMacroRe = regexp.MustCompile(`\bdefined\s+([A-Za-z_][A-Za-z0-9_]
 // duplicate detection in evaluateCConstSources; a guard that selects
 // alternative values for one constant then reports a conflict instead of
 // silently picking a branch.
-func resolveCConditionals(content string) string {
+// Unknown branches that can affect implicit enum sequencing are rejected:
+// concatenating mutually exclusive members would invent values.
+func resolveCConditionals(content string) (string, error) {
+	content = stripCppAttributes(content)
 	lines := strings.Split(content, "\n")
 	var out strings.Builder
-	parseConditional(lines, 0, len(lines), &out)
-	return stripCppAttributes(strings.TrimSuffix(out.String(), "\n"))
+	var unknownRanges []cConditionalRange
+	parseConditional(lines, 0, len(lines), &out, &unknownRanges)
+	resolved := strings.TrimSuffix(out.String(), "\n")
+	if err := checkUnknownEnumSequencing(resolved, unknownRanges); err != nil {
+		return "", err
+	}
+	return resolved, nil
+}
+
+// cConditionalRange identifies output from a conditional with multiple possible
+// branches. Offsets refer to the resolved text before its final newline is trimmed.
+type cConditionalRange struct {
+	start int
+	end   int
 }
 
 // parseConditional writes the selected lines of lines[start:end] to out. A stray
 // `#else`, `#elif`, or `#endif` with no open conditional is dropped. Every other
 // directive is ordinary content for the later parsers, so it is kept.
-func parseConditional(lines []string, start, end int, out *strings.Builder) int {
+func parseConditional(lines []string, start, end int, out *strings.Builder, unknownRanges *[]cConditionalRange) int {
 	for index := start; index < end; index++ {
 		fields := cDirectiveFields(strings.TrimSpace(lines[index]))
 		if fields != nil {
 			switch fields[0] {
 			case "if", "ifdef", "ifndef":
-				next := parseConditionalBody(lines, index, end, out)
+				next := parseConditionalBody(lines, index, end, out, unknownRanges)
 				if next <= index {
 					return end
 				}
@@ -436,9 +454,16 @@ func parseConditional(lines []string, start, end int, out *strings.Builder) int 
 // evaluateCConstSources twice, which reports the conflict rather than silently
 // picking one value. A branch that the checker can decide is still chosen
 // normally, including inside such a guard.
-func parseConditionalBody(lines []string, headerLine, end int, out *strings.Builder) int {
+func parseConditionalBody(lines []string, headerLine, end int, out *strings.Builder, unknownRanges *[]cConditionalRange) int {
 	directiveFields := cDirectiveFields(strings.TrimSpace(lines[headerLine]))
 	outcome := resolveCDirective(directiveFields)
+	start := out.Len()
+	uncertain := outcome == cConditionUnknown
+	defer func() {
+		if uncertain && strings.TrimSpace(out.String()[start:]) != "" {
+			*unknownRanges = append(*unknownRanges, cConditionalRange{start: start, end: out.Len()})
+		}
+	}()
 	// An unknown guard keeps every branch, so the first branch starts active.
 	keepAll := outcome == cConditionUnknown
 
@@ -460,7 +485,7 @@ func parseConditionalBody(lines []string, headerLine, end int, out *strings.Buil
 			switch fields[0] {
 			case "if", "ifdef", "ifndef":
 				if emitting {
-					index = parseConditionalBody(lines, index, end, out)
+					index = parseConditionalBody(lines, index, end, out, unknownRanges)
 				} else {
 					index = skipConditionalBody(lines, index, end)
 				}
@@ -487,6 +512,7 @@ func parseConditionalBody(lines []string, headerLine, end int, out *strings.Buil
 					// An unknown guard keeps this branch too.
 					emitting = true
 					keepAll = true
+					uncertain = true
 				}
 				index++
 				continue
@@ -514,6 +540,66 @@ func parseConditionalBody(lines []string, headerLine, end int, out *strings.Buil
 		index++
 	}
 	return end
+}
+
+// checkUnknownEnumSequencing rejects implicit members whose predecessor can
+// depend on an unresolved conditional. An unconditional explicit initializer
+// restores a definite sequence; explicit values use ordinary duplicate checks.
+func checkUnknownEnumSequencing(content string, unknownRanges []cConditionalRange) error {
+	if len(unknownRanges) == 0 {
+		return nil
+	}
+	searchFrom := 0
+	for {
+		loc := cEnumKeywordRe.FindStringIndex(content[searchFrom:])
+		if loc == nil {
+			return nil
+		}
+		enumStart := searchFrom + loc[0]
+		rest := content[enumStart:]
+		bodyStart := strings.IndexByte(rest, '{')
+		semi := strings.IndexByte(rest, ';')
+		if bodyStart < 0 {
+			return nil
+		}
+		if semi >= 0 && semi < bodyStart {
+			searchFrom = enumStart + semi + 1
+			continue
+		}
+		openPos := enumStart + bodyStart
+		closePos := matchCBrace(content, openPos)
+		if closePos < 0 {
+			return errors.New("unterminated enum body")
+		}
+		entryFrom := openPos + 1
+		definiteFrom := entryFrom
+		for _, entry := range splitCEnumEntries(content, openPos+1, closePos) {
+			entryStart := entryFrom + strings.Index(content[entryFrom:closePos], entry)
+			entryFrom = entryStart + len(entry)
+			name, expr := splitCEnumEntry(entry)
+			if name == "" {
+				continue // The enum parser reports unsupported members separately.
+			}
+			inUnknownBranch := false
+			uncertainSequence := false
+			for _, span := range unknownRanges {
+				// A guard around the whole declaration only affects its presence;
+				// parseCEnumDecls resets the sequence for each enum independently.
+				if span.start <= enumStart && span.end > closePos {
+					continue
+				}
+				inUnknownBranch = inUnknownBranch || (span.start < entryFrom && span.end > entryStart)
+				uncertainSequence = uncertainSequence || (span.start < entryFrom && span.end > definiteFrom)
+			}
+			if expr != "" && !inUnknownBranch {
+				definiteFrom = entryFrom
+			}
+			if expr == "" && !strings.Contains(entry, "=") && uncertainSequence {
+				return fmt.Errorf("unknown conditional enum sequencing: implicit member %s requires a resolved branch", name)
+			}
+		}
+		searchFrom = closePos + 1
+	}
 }
 
 // skipConditionalBody returns the line after the `#endif` matching the opening

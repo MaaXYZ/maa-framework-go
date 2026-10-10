@@ -231,6 +231,51 @@ func TestRunUnknownConditionalMacroConflictExitsTwo(t *testing.T) {
 	}
 }
 
+func TestRunUnknownConditionalEnumSequencingExitsTwo(t *testing.T) {
+	files := repoFixtureFiles()
+	headerPath := "deps/include/" + maaDefHeaderRel
+	goPath := "internal/native/framework.go"
+	explicitEnum := `enum MaaInferenceExecutionProviderEnum {
+    MaaInferenceExecutionProvider_A = 0,
+#if MAA_REVIEW_UNKNOWN
+    MaaInferenceExecutionProvider_B = 1,
+#else
+    MaaInferenceExecutionProvider_C = 1,
+#endif
+    MaaInferenceExecutionProvider_Tail = 2,
+};
+`
+	dir := writeRepoFixtureWith(t, map[string]string{
+		headerPath: files[headerPath] + explicitEnum,
+		goPath: files[goPath] + `const (
+    MaaInferenceExecutionProvider_A = 0
+    MaaInferenceExecutionProvider_B = 1
+    MaaInferenceExecutionProvider_C = 1
+    MaaInferenceExecutionProvider_Tail = 2
+)
+`,
+	})
+
+	code, stdout, stderr := runChecker(t, dir)
+	if code != 0 || !strings.Contains(stdout, "PASS: no inconsistencies found.") || stderr != "" {
+		t.Fatalf("run() with explicit unknown branches = %d, want 0; stderr:\n%s\nstdout:\n%s", code, stderr, stdout)
+	}
+
+	implicitEnum := strings.NewReplacer(
+		"MaaInferenceExecutionProvider_B = 1", "MaaInferenceExecutionProvider_B",
+		"MaaInferenceExecutionProvider_C = 1", "MaaInferenceExecutionProvider_C",
+		"MaaInferenceExecutionProvider_Tail = 2", "MaaInferenceExecutionProvider_Tail",
+	).Replace(explicitEnum)
+	writeFixtureFile(t, filepath.Join(dir, headerPath), files[headerPath]+implicitEnum)
+	code, stdout, stderr = runChecker(t, dir)
+	if code != 2 || !strings.Contains(stderr, "unknown conditional enum sequencing") {
+		t.Fatalf("run() with implicit unknown branches = %d, want sequencing diagnostic and exit 2; stderr:\n%s\nstdout:\n%s", code, stderr, stdout)
+	}
+	if strings.Contains(stdout, "PASS: no inconsistencies found.") {
+		t.Fatalf("run() passed despite unsupported conditional enum sequencing:\n%s", stdout)
+	}
+}
+
 func TestRunConfigPrecedence(t *testing.T) {
 	t.Run("cwd config wins over root fallback", func(t *testing.T) {
 		dir := writeRepoFixture(t)

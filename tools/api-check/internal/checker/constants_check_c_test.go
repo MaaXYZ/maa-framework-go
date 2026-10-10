@@ -456,8 +456,108 @@ func TestResolveCConditionals_KeepsStrayDirectivesHarmless(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			if got := resolveCConditionals(tc.in); got != tc.want {
+			got, err := resolveCConditionals(tc.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
 				t.Fatalf("resolveCConditionals(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestEvalCConstSources_UnknownEnumSequencing(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		content string
+		wantErr string
+		want    map[string]string
+	}{
+		{
+			name:    "implicit alternative members",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\nA,\n#else\nB,\n#endif\nTail };",
+			wantErr: "unknown conditional enum sequencing",
+		},
+		{
+			name:    "implicit tail after explicit alternatives",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\nA = 11,\n#else\nB = 12,\n#endif\nTail };",
+			wantErr: "unknown conditional enum sequencing: implicit member Tail",
+		},
+		{
+			name:    "optional implicit member without else",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\nA,\n#endif\nTail };",
+			wantErr: "unknown conditional enum sequencing",
+		},
+		{
+			name:    "nested implicit alternatives",
+			content: "enum Fixture { Base = 10,\n#if !defined(__cplusplus)\n#if PLATFORM\nA,\n#else\nB,\n#endif\n#endif\nTail };",
+			wantErr: "unknown conditional enum sequencing",
+		},
+		{
+			name:    "unconditional initializer restores sequence",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\nA = 11,\n#else\nB = 12,\n#endif\nReset = 20, Tail };",
+			want:    map[string]string{"Base": "10", "A": "11", "B": "12", "Reset": "20", "Tail": "21"},
+		},
+		{
+			name:    "implicit member before conditional stays definite",
+			content: "enum Fixture { Base = 10, Before,\n#if PLATFORM\nA = 12,\n#else\nB = 13,\n#endif\n};",
+			want:    map[string]string{"Base": "10", "Before": "11", "A": "12", "B": "13"},
+		},
+		{
+			name:    "unrelated conditional outside enum",
+			content: "#if PLATFORM\n#define HELPER 10\n#else\n#define HELPER 10\n#endif\nenum Fixture { Base = HELPER, Tail };",
+			want:    map[string]string{"Base": "10", "Tail": "11"},
+		},
+		{
+			name:    "known guard selects one implicit sequence",
+			content: "enum Fixture { Base = 10,\n#if defined(__cplusplus)\nA, B,\n#else\nC,\n#endif\nTail };",
+			want:    map[string]string{"Base": "10", "C": "11", "Tail": "12"},
+		},
+		{
+			name:    "empty branches preserve sequence",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\n#else\n#endif\nTail };",
+			want:    map[string]string{"Base": "10", "Tail": "11"},
+		},
+		{
+			name:    "comment-only branches preserve sequence",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\n// comment\n#else\n/* comment */\n#endif\nTail };",
+			want:    map[string]string{"Base": "10", "Tail": "11"},
+		},
+		{
+			name:    "include guard around complete enum",
+			content: "#ifndef FIXTURE_H\n#define FIXTURE_H\nenum Fixture { Base = 10, Tail };\n#endif",
+			want:    map[string]string{"Base": "10", "Tail": "11"},
+		},
+		{
+			name:    "alternative complete declarations retain separate sequences",
+			content: "#if PLATFORM\nenum First { Base = 10, Tail };\n#else\nenum Second { Base = 10, Tail };\n#endif",
+			want:    map[string]string{"Base": "10", "Tail": "11"},
+		},
+		{
+			name:    "include guard does not hide nested ambiguity",
+			content: "#ifndef FIXTURE_H\nenum Fixture { Base = 10,\n#if PLATFORM\nA,\n#else\nB,\n#endif\nTail };\n#endif",
+			wantErr: "unknown conditional enum sequencing",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			env, err := evaluateCConstSources([]cConstSource{{path: "fixture.h", content: tc.content}})
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("error = %v, want %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			for name, want := range tc.want {
+				value, ok := env.values[name]
+				if !ok || value.ExactString() != want {
+					t.Fatalf("%s = %v, want %s; failures=%v", name, value, want, env.failures)
+				}
 			}
 		})
 	}

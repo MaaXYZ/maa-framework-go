@@ -47,7 +47,7 @@ func TestResolveCConditionals_MatchesCHeaders(t *testing.T) {
 			if readErr != nil {
 				t.Fatalf("read %s: %v", header, readErr)
 			}
-			mine := resolveCConditionals(removeCComments(string(data)))
+			mine := resolveCContentForParity(t, string(data))
 			mineMembers := enumMemberValues(t, mine)
 
 			expanded := filepath.Join(t.TempDir(), "expanded.c")
@@ -119,7 +119,7 @@ func TestResolveCConditionals_MatchesCPreprocessor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cc cannot preprocess fixture: %v: %s", err, expanded)
 	}
-	mine := enumMemberValues(t, resolveCConditionals(content))
+	mine := enumMemberValues(t, resolveCContentForParity(t, content))
 	want := enumMemberValues(t, string(expanded))
 	if len(mine) != len(want) {
 		t.Errorf("checker enum members = %v, C preprocessor enum members = %v", mine, want)
@@ -129,6 +129,15 @@ func TestResolveCConditionals_MatchesCPreprocessor(t *testing.T) {
 			t.Errorf("enum member %s: checker value %q, C preprocessor value %s", name, got, value)
 		}
 	}
+}
+
+func resolveCContentForParity(t *testing.T, content string) string {
+	t.Helper()
+	resolved, err := resolveCConditionals(removeCComments(content))
+	if err != nil {
+		t.Fatalf("resolve C conditionals: %v", err)
+	}
+	return resolved
 }
 
 // enumMemberValues returns the exact integer values of enum members in content.
