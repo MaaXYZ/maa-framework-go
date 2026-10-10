@@ -6,7 +6,7 @@ On desktop platforms this binding loads the MaaFramework dynamic libraries throu
 
 ## Prerequisites
 
-- Go 1.24 or later
+- Go 1.25 or later
 - [Android NDK](https://developer.android.com/ndk/downloads); the build uses its clang as `CC`
 - MaaFramework Android libraries for the target architecture, available to the program at runtime (see [Runtime libraries](#runtime-libraries))
 

@@ -2,11 +2,11 @@
 
 ## 变更总览（v3.6.0-beta.5 → v4.0.0，发布准备草稿）
 
-本总览及下一节以提交 [`18e4d6a`](https://github.com/MaaXYZ/maa-framework-go/tree/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58) 为固定核验终点。`v4.0.0` 尚未打 tag；正式版确定后需复核终点差异，再冻结这份里程碑记录。
+本总览及下一节以提交 [`2c24945`](https://github.com/MaaXYZ/maa-framework-go/tree/2c24945e7a9e23993f13743cc4962a2bd985641a) 为固定核验终点。`v4.0.0` 尚未打 tag；正式版确定后需复核终点差异，再冻结这份里程碑记录。
 
 ### 破坏性变更与升级入口
 
-- Go 模块由 `/v3` 升为 `/v4`；构造、配置、查询与运行接口采用 Go `error`，异步 `Post*` 也直接报告提交错误。升级时分别检查调用错误与 Job 的执行状态。
+- Go 模块由 `/v3` 升为 `/v4`，最低 Go 版本升至 1.25；构造、配置、查询与运行接口采用 Go `error`，异步 `Post*` 也直接报告提交错误。升级时分别检查调用错误与 Job 的执行状态。
 - 原生对象明确所有者与借用视图，`Destroy` 返回错误并保护仍被持有或使用的句柄；回调的 Context 仅在该次回调内有效。
 - Pipeline 构造器移除 `Node` 类型前缀与大量配置 option，改用参数结构及节点链式设置。时间、可选指针、类别选择、锚点与列表编码均有需要迁移的变化。
 - v3 用户见 [v3 → v4 迁移指南](docs/zh/migration/from-v3.md)；v4 用户按起点选择 [beta.18 → beta.19](docs/zh/migration/from-v4.0.0-beta.18.md) 或 [beta.19 → 发布准备快照](docs/zh/migration/from-v4.0.0-beta.19.md)。
@@ -19,7 +19,7 @@
 ### 所有权、生命周期与回调
 
 - 按对象依赖收束工作并销毁，再卸载动态库；借用对象、绑定关系、活动调用、Job 与回调均参与销毁保护。
-- 后续修复加强 Job 并发等待、停止后的空闲确认、回调清理与注册串行化。行为契约见固定快照的 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/doc.go)，区间详单见 beta.19 与发布准备节。
+- 后续修复加强 Job 并发等待、停止后的空闲确认、回调清理与注册串行化。行为契约见固定快照的 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/doc.go)，区间详单见 beta.19 与发布准备节。
 
 ### Pipeline 配置与详情
 
@@ -40,10 +40,11 @@
 
 ## v4.0.0（发布准备草稿）
 
-本节记录 `v4.0.0-beta.19` → `18e4d6a` 的净变化，完整差异见 [固定提交对比](https://github.com/MaaXYZ/maa-framework-go/compare/v4.0.0-beta.19...18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58)。这不是已发布正式版记录。升级操作见 [迁移指南](docs/zh/migration/from-v4.0.0-beta.19.md)；API 契约链接固定快照源码，正式 tag 确定后再切换到对应 godoc。
+本节记录 `v4.0.0-beta.19` → `2c24945` 的净变化，完整差异见 [固定提交对比](https://github.com/MaaXYZ/maa-framework-go/compare/v4.0.0-beta.19...2c24945e7a9e23993f13743cc4962a2bd985641a)。这不是已发布正式版记录。升级操作见 [迁移指南](docs/zh/migration/from-v4.0.0-beta.19.md)；API 契约链接固定快照源码，正式 tag 确定后再切换到对应 godoc。
 
 ### 破坏性变更
 
+- 主模块与 API 检查工具的最低 Go 版本由 1.24 提升到 1.25.0；purego v0.11.1 要求该版本，使用本地或 CI 工具链时需同步升级。
 - Controller 的全部 `Post*` 与 Resource 的 `PostBundle`、`PostOcrModel`、`PostPipeline`、`PostImage` 由 `*Job` 改为 `(*Job, error)`；Tasker 的 `PostTask`、`PostRecognition`、`PostAction`、`PostStop` 由 `*TaskJob` 改为 `(*TaskJob, error)`。提交失败同时返回非 nil 的终态失败 Job 和 `error`，原生返回无效提交 ID 也立即报告错误。
 - `Tasker.PostTask` 及 `Context.RunTask`、`RunRecognition`、`RunAction`、`WaitFreezes` 不再把参数编码失败静默替换为 `{}`，改为返回错误并跳过原生执行。
 - `LongPressParam.Duration`、`LongPressKeyParam.Duration` 由 `time.Duration` 改为 `*time.Duration`；神经网络分类与检测的 `Expected` 由 `[]int` 改为 `ClassSelectors`。
@@ -52,7 +53,7 @@
 - `Node.UnmarshalJSON` 替换整个节点，未出现字段及 `Name` 重置；`CustomActionParam.CustomActionParam` 中的数字解码为 `json.Number`，不再使用 `float64`。
 - `SetScreenshot` 从仅应用最后一项改为组合设置，拒绝重复/冲突选项、非正目标尺寸和无效插值方法。
 - `GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 无可用详情时由 `(nil, nil)` 改为返回错误。
-- Agent Server 增加生命周期与配置状态检查：运行、已 Join 或已 detach 时不允许重新启动或配置；未 detach 时关闭后进入永久关闭态，不能通过 `Release` / `Init` 重启。具体边界见 [Agent Server API](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/agent_server.go)。
+- Agent Server 增加生命周期与配置状态检查：运行、已 Join 或已 detach 时不允许重新启动或配置；未 detach 时关闭后进入永久关闭态，不能通过 `Release` / `Init` 重启。具体边界见 [Agent Server API](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/agent_server.go)。
 - `Resource.UseCoreml` 已移除。上游在 MaaFramework v5.14.3 弃用 `MaaInferenceExecutionProvider_CoreML`，MaaDeps 不再分发 CoreML 提供程序，Go 侧不再暴露该入口；需要 GPU 推理时改用 `Resource.UseWebgpu`。`MaaDef.h` 仍保留数值 3 供 C++ 调用方编译，因此该枚举的后续取值未重新编号。
 
 ### 新增
@@ -65,17 +66,23 @@
 - `WithScreenshotTargetExpand` 按比例覆盖参考宽高；`Controller.SetBackgroundManagedKeys` 配置 Win32 后台托管键；`ControllerFeatureNoScalingTouchPoints` 禁用自定义控制器的触摸点自动缩放。
 - `EventNodeWaitFreezes`、`NodeWaitFreezesDetail`、可选 `ContextWaitFreezesEventSink` 与 `OnNodeWaitFreezesInContext`；`ResourceLoadingDetail.Type` 区分加载类型。
 - API 检查工具扩展回调 ABI、结构布局与 trampoline、更多常量组、事件分发及可选 Pipeline v2 类型/字段检查；新增 `--pipeline-schema` 与带理由的 exclusions，强化配置和输入验证。`constant_exclusions` 按精确 C 常量名声明 Go 未暴露的常量，要求非空理由并拒绝失效条目；常量条件解析按 C 语义处理 `__cplusplus`，未知复合条件保留分支并报告声明冲突。
-- `Resource.UseWebgpu(deviceID InferenceDevice)` 选择 WebGPU 执行提供程序，`deviceID` 为 WebGPU 设备 id，`InferenceDeviceAuto` 交由框架选择（设备 0）。该提供程序要求 MaaFramework v5.14.3 或更高；更低版本没有对应枚举值，设置仍成功，但加载模型时记录错误并回退 CPU。
+- `Resource.UseWebgpu(deviceID InferenceDevice)` 选择 WebGPU 执行提供程序，`deviceID` 为 WebGPU 设备 id，`InferenceDeviceAuto` 交由框架选择（设备 0）。该提供程序要求 MaaFramework v5.14.3 或更高；更低版本没有对应枚举值，设置仍成功，但加载模型时记录错误并回退 CPU。在 v5.14.3 中，Auto 提供程序依次尝试 CUDA、DirectML、WebGPU，最后回退到 CPU，不再选择 CoreML。
 
 ### 修复
 
-- Job / TaskJob 的等待与状态查询增加并发保护，多个等待者共享完成结果；停止使 Job ID 无效后，销毁仍需确认原生工作空闲，避免提前释放。契约见 [Job](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/job.go) 与各对象的 Destroy 注释。
+- Job / TaskJob 的等待与状态查询增加并发保护，多个等待者共享完成结果；停止使 Job ID 无效后，销毁仍需确认原生工作空闲，避免提前释放。契约见 [Job](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/job.go) 与各对象的 Destroy 注释。
 - 事件与自定义控制器回调关联所有者，普通回调活动期间 `Destroy` 返回 `ErrInCallback`；销毁期间拒绝新增普通用户回调，并等待已接纳的清理回调结束。自定义控制器回调保留至原生销毁完成，使 KeyUp / TouchUp 可在清理阶段释放输入。
 - sink 与 Resource runner 注册操作串行化；原生注册失败时清理 Go 回调记录。Resource / AgentServer 拒绝 nil runner；Resource 注销未知名称成为成功空操作，外部注册的名称保留并返回错误。
 - 图像、矩形等缓冲区创建和写入失败传播到调用方；空图像返回错误，空 buffer 读取返回真正的 nil 图像。
 - Action / Recognition 缺少 `param` 时读取对象内平铺参数；And / Or 内联识别输出正确的 `recognition` 嵌套对象；补齐 `key_code`、OCR `text` 兼容及简写解码，修复复用参数对象时的旧值残留。Swipe 动作结果解析失败时不再部分修改接收值。
 - 无节点任务保留 Entry / Status，节点详情跳过 ID 为 0 的子详情；Shell 输出及自定义识别 detail 保留内嵌 NUL。
 - AgentClient 正的不足 1ms 通信超时向上取整为 1ms；Windows 空库目录初始化保留当前 DLL 搜索配置；Win32 截图方式输出对齐 `DXGI_DesktopDup` / `DXGI_DesktopDup_Window`，解析兼容旧名称。
+- API 检查工具检测冲突的常量宏定义与模糊的条件枚举编号，按 C 预处理语义忽略不可达分支并先拼接续行，避免误报或漏报；新增直接头文件的双向枚举对照测试。
+
+### 依赖与工具链
+
+- purego 由 v0.9.1 更新到 [v0.11.1](https://github.com/ebitengine/purego/releases/tag/v0.11.1)，testify 由 v1.11.1 更新到 [v1.12.1](https://github.com/stretchr/testify/releases/tag/v1.12.1)。
+- 主模块的测试依赖随 testify 改用 `go.yaml.in/yaml/v3 v3.0.5`，移除不再需要的 `go-spew`、`go-difflib` 与 `gopkg.in/yaml.v3` 间接依赖；API 检查工具仍使用独立模块中的 YAML 依赖。
 
 ## [v4.0.0-beta.19](https://github.com/MaaXYZ/maa-framework-go/compare/v4.0.0-beta.18...v4.0.0-beta.19)
 

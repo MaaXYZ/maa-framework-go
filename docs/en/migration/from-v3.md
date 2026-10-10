@@ -2,13 +2,13 @@
 
 English | [简体中文](../../zh/migration/from-v3.md)
 
-This guide starts from `v3.6.0-beta.5` and uses commit [`fb84de6`](https://github.com/MaaXYZ/maa-framework-go/tree/fb84de66f3db7514b15d0063d515cd1272d558ff) as its verified endpoint. `v4.0.0` has not been tagged. This document describes migration to that fixed snapshot; differences from the final release must be checked once its endpoint is determined.
+This guide starts from `v3.6.0-beta.5` and uses commit [`2c24945`](https://github.com/MaaXYZ/maa-framework-go/tree/2c24945e7a9e23993f13743cc4962a2bd985641a) as its verified endpoint. `v4.0.0` has not been tagged. This document describes migration to that fixed snapshot; differences from the final release must be checked once its endpoint is determined.
 
 Projects already using v4 should choose either [beta.18 → beta.19](from-v4.0.0-beta.18.md) or [beta.19 → release preparation snapshot](from-v4.0.0-beta.19.md) based on their starting version. See [CHANGELOG](../../../CHANGELOG.md) for the detailed changes. This guide follows the order of changes needed in application code.
 
 ## 1. Update module paths and native libraries
 
-Go 1.24 or later is required. Change the import paths for the main package and controller subpackages from `/v3` to `/v4`:
+Go 1.25 or later is required. Change the import paths for the main package and controller subpackages from `/v3` to `/v4`:
 
 ```go
 import (
@@ -20,7 +20,7 @@ import (
 Before the final tag is created, specify the commit in your project to try the fixed snapshot covered by this guide:
 
 ```sh
-go get github.com/MaaXYZ/maa-framework-go/v4@fb84de66f3db7514b15d0063d515cd1272d558ff
+go get github.com/MaaXYZ/maa-framework-go/v4@2c24945e7a9e23993f13743cc4962a2bd985641a
 go mod tidy
 ```
 
@@ -88,7 +88,7 @@ If your project stores `Destroy` in `[]func()` or requires a type to implement `
 
 Remove `Destroy` calls on borrowed objects returned by getters and event callbacks; their original owners clean them up. Do not keep a callback's `Context` or its `Clone` beyond the callback. Use across goroutines must also finish before that callback returns. Make configuration and registration changes when the instance and associated Tasker are idle, and avoid replacing, removing, or clearing registrations within callbacks.
 
-See the fixed snapshot's [package documentation source](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/doc.go) for the full ownership, concurrency, and callback contracts. The relevant API comments list retryable errors for each `Destroy` method.
+See the fixed snapshot's [package documentation source](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/doc.go) for the full ownership, concurrency, and callback contracts. The relevant API comments list retryable errors for each `Destroy` method.
 
 ## 4. Rewrite Pipeline construction code
 
@@ -138,7 +138,7 @@ Go builders encode to nested Pipeline v2 `type` / `param` JSON. Existing flat v1
 - `Node.Anchor` changes from `[]string` to `map[string]string`. Use `AddAnchor("name")` to point to the current node and `SetAnchorTarget("name", "TargetNode")` to point to a specified node. Use `SetAnchor(map[string]string{})` to clear all node anchor configuration and `RemoveAnchor("name")` to remove a specific anchor from the configuration. `ClearAnchor("name")` sets an empty target, arranging for that runtime anchor to be cleared after the node executes.
 - `Context.OverrideNext` / `Resource.OverrideNext` now takes `[]NextItem`. Use `NextItem{Name: "name", JumpBack: true}` or `Anchor: true` for attributes instead of passing `[]string`.
 - And / Or now uses `SubRecognitionItem`. Use the variadic arguments of `RecAnd(...)` / `RecOr(...)`, `Ref("NodeName")`, and `Inline(recognition)`. Use `Recognition.SetBoxIndex` when a box index is needed; remove uses of `NodeAndRecognitionItem`, `AndItem`, and the old configuration options.
-- `Context.WaitFreezes` now takes a fixed `*WaitFreezesParam` argument and returns `error`. See the [API comments](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/context.go) for call details.
+- `Context.WaitFreezes` now takes a fixed `*WaitFreezesParam` argument and returns `error`. See the [API comments](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/context.go) for call details.
 
 ## 5. Update detail access and custom extensions
 
@@ -161,16 +161,18 @@ Return `nil, false` when custom recognition misses and has no diagnostic informa
 
 ## 6. Update controllers, Agent, and initialization options
 
+- `Resource.UseCoreml` has been removed. Replace calls with `Resource.UseWebgpu(maa.InferenceDeviceAuto)` using MaaFramework v5.14.3 or later. The Auto provider now tries CUDA, DirectML, then WebGPU before falling back to CPU. See the [provider migration step](from-v4.0.0-beta.19.md#5-switch-the-inference-provider-entry-point) for device selection and older-library behavior.
 - The three previous screenshot methods, `SetScreenshotTarget*` / `SetScreenshotUseRawSize`, are replaced by `SetScreenshot(WithScreenshot*...) error`. Target size, interpolation, and disabling raw size can be configured together. Check mutually exclusive targets and duplicate options before use. See the [beta.19 → v4.0.0 guide](from-v4.0.0-beta.19.md#4-update-screenshot-options) for examples.
 - Win32 `InputSendMessageWithCursorPosAndBlockInput` / `InputPostMessageWithCursorPosAndBlockInput` become `InputSendMessageWithWindowPos` / `InputPostMessageWithWindowPos`; update string configuration as well. The spellings `InterenceDevice` / `InterenceDeviceAuto` are corrected to `InferenceDevice` / `InferenceDeviceAuto`.
 - `CarouselImageController` / `NewCarouselImageController` have been removed. Choose a custom controller or a recording/playback controller based on your use case. The new Linux entry point from v3 to this snapshot is `NewLinuxController(configJson)`; there is no need to use `NewWlRootsController`, which was added and then removed in intermediate versions.
 - Agent construction is unified as `NewAgentClient(opts ...AgentClientOption) (*AgentClient, error)`. Replace the positional argument with `WithIdentifier(id)` and replace `NewAgentClientTcp` with `WithTcpPort(port)`. Pair the actual value returned by `client.Identifier()` with `AgentServerStartUp`, and handle errors from both construction and startup.
 - `InitConfig` is no longer exported; use the provided `With*` initialization options. `Init` no longer implicitly sets global configuration such as the log directory or log level, so pass required options explicitly. Repeated `Init` calls after successful initialization are no-ops, and options passed later are not applied. Remove checks for the removed `ErrAlreadyInitialized` / `ErrNotInitialized` errors.
 
-Arrange Agent Server startup, Join, shutdown, and Detach according to the [API comments](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/agent_server.go). Programs that need to unload the libraries should keep the server thread undetached. On Windows, a nonempty `WithLibDir` affects the process DLL search configuration; failure rollback and `Release` do not restore this setting. See [WithLibDir](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/maa.go).
+Arrange Agent Server startup, Join, shutdown, and Detach according to the [API comments](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/agent_server.go). Programs that need to unload the libraries should keep the server thread undetached. On Windows, a nonempty `WithLibDir` affects the process DLL search configuration; failure rollback and `Release` do not restore this setting. See [WithLibDir](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/maa.go).
 
 ## 7. Verify the migration
 
+- [ ] Use Go 1.25 or later locally and in CI, and run `go mod tidy` after updating the dependency.
 - [ ] All package paths use `/v4`, and construction, binding, configuration, query, and submission errors are handled.
 - [ ] Asynchronous execution results are checked separately for connection, resource loading, and the final task.
 - [ ] Compare JSON and execution behavior for key nodes using real resources, checking omitted fields, explicit zeros, empty lists, and anchors.

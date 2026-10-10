@@ -6,7 +6,7 @@
 
 ## 前置条件
 
-- Go 1.24 及以上
+- Go 1.25 及以上
 - [Android NDK](https://developer.android.com/ndk/downloads)，构建使用其中的 clang 作为 `CC`
 - 目标架构的 MaaFramework Android 动态库，在运行时可供程序加载（见[运行时库](#运行时库)）
 
