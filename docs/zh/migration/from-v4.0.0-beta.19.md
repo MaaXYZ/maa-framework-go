@@ -2,14 +2,14 @@
 
 [English](../../en/migration/from-v4.0.0-beta.19.md) | 简体中文
 
-本文只覆盖 `v4.0.0-beta.19` → 提交 [`fb84de6`](https://github.com/MaaXYZ/maa-framework-go/tree/fb84de66f3db7514b15d0063d515cd1272d558ff) 的净变化。`v4.0.0` 尚未打 tag，此文件按起点版本命名，当前内容是固定快照的发布准备草稿。正式版确定后还需核验终点差异。
+本文只覆盖 `v4.0.0-beta.19` → 提交 [`18e4d6a`](https://github.com/MaaXYZ/maa-framework-go/tree/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58) 的净变化。`v4.0.0` 尚未打 tag，此文件按起点版本命名，当前内容是固定快照的发布准备草稿。正式版确定后还需核验终点差异。
 
 v3 用户请使用 [v3 → v4 指南](from-v3.md)，beta.18 用户先按 [beta.19 指南](from-v4.0.0-beta.18.md) 处理所有权变化。完整条目见 [CHANGELOG](../../../CHANGELOG.md)。
 
 试用本文快照需要 Go 1.24 或更新版本，并指定固定提交：
 
 ```sh
-go get github.com/MaaXYZ/maa-framework-go/v4@fb84de66f3db7514b15d0063d515cd1272d558ff
+go get github.com/MaaXYZ/maa-framework-go/v4@18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58
 ```
 
 同时使用一套与绑定兼容的 MaaFramework 动态库；不要把四个库混用不同版本，也不要使用尚未发布的 `@v4.0.0` 安装命令。
@@ -56,7 +56,7 @@ func stopTask(tasker *maa.Tasker) error {
 }
 ```
 
-停止可能使此前 Job ID 无效，旧 Job 的 `Wait` 返回不能单独证明所有工作已结束。保持所有者引用，处理 `Destroy` 返回的 `ErrInUse`，在工作收束后重试；成功销毁 Tasker 后再销毁其 Resource / Controller。具体边界见固定快照的 [Controller.Destroy](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/controller.go) 与 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/doc.go)。
+停止可能使此前 Job ID 无效，旧 Job 的 `Wait` 返回不能单独证明所有工作已结束。保持所有者引用，处理 `Destroy` 返回的 `ErrInUse`，在工作收束后重试；成功销毁 Tasker 后再销毁其 Resource / Controller。具体边界见固定快照的 [Controller.Destroy](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/controller.go) 与 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/doc.go)。
 
 `Tasker.PostTask`、`Context.RunTask` / `RunRecognition` / `RunAction` / `WaitFreezes` 的参数编码失败现在会返回错误并跳过原生执行，不再退回 `{}`。检查原来依赖静默回退的代码及自定义 JSON codec。图像输入也应提供非 nil、非空图像；图像/矩形缓冲区创建与写入失败会传播到公开调用。
 
@@ -152,23 +152,38 @@ func configureScreenshot(ctrl *maa.Controller) error {
 
 新增的 `WithScreenshotTargetExpand(width, height)` 按比例放大或缩小至同时覆盖参考宽高，不裁剪、不拉伸。Win32 使用 `ScreencapMethod.String()` 持久化或比较名称时，更新为 `DXGI_DesktopDup` / `DXGI_DesktopDup_Window`；解析仍接受旧拼写。
 
-## 5. 检查注册、Agent Server 和详情查询
+## 5. 更换推理提供程序入口
 
-- 把事件 sink 和自定义 runner 配置安排在实例及关联 Tasker 空闲时。新增串行化与回调保护不替代原生执行期间的调用方协调，具体契约见 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/doc.go)。不要传 nil runner，包括带类型的 nil 函数。注销不存在的 Resource runner 名称现在成功返回；由 Go wrapper 外部注册的名称会保留并返回错误。
-- 将 Agent Server 配置放在 `AgentServerStartUp` 之前。启动、已 Join 或已 detach 后不再允许重新启动或配置；未 detach 时，`AgentServerShutDown` 后进入永久关闭态，不能靠 `Release` / `Init` 重建服务，需要新服务时重启进程。Join / ShutDown 的安排见 [API 注释](https://github.com/MaaXYZ/maa-framework-go/blob/fb84de66f3db7514b15d0063d515cd1272d558ff/agent_server.go)。
+`Resource.UseCoreml` 已移除：上游在 MaaFramework v5.14.3 弃用 `MaaInferenceExecutionProvider_CoreML`，MaaDeps 不再分发 CoreML 提供程序。调用该方法的代码改用 `Resource.UseWebgpu`，它接收 WebGPU 设备 id（`InferenceDeviceAuto` 交由框架选择，即设备 0）：
+
+```go
+// beta.19
+err := res.UseCoreml(maa.InferenceDeviceAuto)
+
+// 现在
+err := res.UseWebgpu(maa.InferenceDeviceAuto)
+```
+
+`UseWebgpu` 需要 MaaFramework v5.14.3 或更高的原生库。更低版本不认识该取值，设置本身仍返回成功，但加载模型时会记录 invalid inference execution provider 并回退到 CPU；这与 `UseDirectml`、`UseCPU` 等入口的既有行为一致，所以请同时确认运行时实际选中的提供程序。
+
+## 6. 检查注册、Agent Server 和详情查询
+
+- 把事件 sink 和自定义 runner 配置安排在实例及关联 Tasker 空闲时。新增串行化与回调保护不替代原生执行期间的调用方协调，具体契约见 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/doc.go)。不要传 nil runner，包括带类型的 nil 函数。注销不存在的 Resource runner 名称现在成功返回；由 Go wrapper 外部注册的名称会保留并返回错误。
+- 将 Agent Server 配置放在 `AgentServerStartUp` 之前。启动、已 Join 或已 detach 后不再允许重新启动或配置；未 detach 时，`AgentServerShutDown` 后进入永久关闭态，不能靠 `Release` / `Init` 重建服务，需要新服务时重启进程。Join / ShutDown 的安排见 [API 注释](https://github.com/MaaXYZ/maa-framework-go/blob/18e4d6a5a29f8cf5c5a8b9cc9de353c97387ac58/agent_server.go)。
 - `GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 无可用详情时改为返回错误；调用方先处理 `error`，不再只判断 `detail == nil`。`NodeDetail.Recognition` / `Action` 仍可能为空。
 - 自定义控制器支持 `ControllerFeatureNoScalingTouchPoints`，如需禁用触摸点自动缩放，可在 `GetFeature` 返回的 bitmask 中设置。原生销毁期间可能调用 `KeyUp` / `TouchUp`，不要在 `Destroy` 成功之前拆除实现所需状态。
 - 订阅画面稳定等待事件可使用 `OnNodeWaitFreezesInContext` 或可选的 `ContextWaitFreezesEventSink`；已有 `ContextEventSink` 无需增加方法。
 - Windows 默认/空库目录初始化现在保留已有 DLL 搜索配置。非空 `WithLibDir` 的设置仍不会随失败或 `Release` 恢复，依赖该进程设置的程序应自行协调。
 
-如果使用 API 检查工具的自定义配置，核对仓库根目录相对路径，清理已失效的 blacklist / exclusions。启用 Pipeline schema 检查时，使用与头文件和原生库同一 MaaFramework release 的 schema，参见 [工具说明](../../../tools/api-check/README.md)。
+如果使用 API 检查工具的自定义配置，核对仓库根目录相对路径，清理已失效的 blacklist / exclusions。使用 MaaFramework v5.14.3 头文件时，在 `constant_exclusions` 中为 `MaaInferenceExecutionProvider_CoreML` 添加非空理由，声明 Go 有意不再暴露该常量，参见 [CI 配置](../../../tools/api-check/config.ci.yaml)。这些排除使用精确 C 常量名，只抑制 Go 中缺失的常量报告，失效条目会使检查失败。启用 Pipeline schema 检查时，使用与头文件和原生库同一 MaaFramework release 的 schema，参见 [工具说明](../../../tools/api-check/README.md)。
 
-## 6. 验证迁移
+## 7. 验证迁移
 
 - [ ] 更新全部 `Post*` 签名，分别检查提交错误和异步状态。
 - [ ] 检查指针、类别选择类型，以及零 offset、空集合、Node 解码替换行为。
 - [ ] 更新依赖内联识别 JSON 形状或 `float64` 类型断言的代码和测试。
 - [ ] 验证参数编码失败、图像为空、详情不可用及截图选项冲突等路径。
+- [ ] 把 `UseCoreml` 调用改为 `UseWebgpu`，并确认原生库版本与运行时实际选中的提供程序。
 - [ ] 验证停止与退出路径，处理 `Destroy` / `Release` 错误，不在 Agent Server 关闭后尝试重启。
 - [ ] 运行项目的 `go build ./...`、`go vet ./...` 和相关测试。
 - [ ] 正式版 tag 确定后，对照更新后的指南核验从此快照到正式版的追加变化。

@@ -104,7 +104,8 @@ const (
 
 	// MaaInferenceExecutionProvider_Auto lets MaaFramework choose the execution
 	// provider; MaaResOption_InferenceDevice is not recommended with it because
-	// the provider used varies across user devices.
+	// the provider used varies across user devices. The framework tries CUDA,
+	// then DirectML, then WebGPU, and falls back to CPU.
 	MaaInferenceExecutionProvider_Auto = 0
 
 	// MaaInferenceExecutionProvider_CPU selects the CPU execution provider;
@@ -116,15 +117,15 @@ const (
 	// EnumAdapters1.
 	MaaInferenceExecutionProvider_DirectML = 2
 
-	// MaaInferenceExecutionProvider_CoreML selects CoreML;
-	// MaaResOption_InferenceDevice sets the coreml_flag documented in the ONNX
-	// Runtime CoreML provider factory header; note that the ONNX Runtime version
-	// used by MaaFramework may not support the latest flags.
-	MaaInferenceExecutionProvider_CoreML = 3
-
 	// MaaInferenceExecutionProvider_CUDA selects CUDA; MaaResOption_InferenceDevice
 	// sets the NVIDIA GPU id.
 	MaaInferenceExecutionProvider_CUDA = 4
+
+	// MaaInferenceExecutionProvider_WebGPU selects WebGPU;
+	// MaaResOption_InferenceDevice sets the WebGPU device id
+	// (ep.webgpuexecutionprovider.deviceId). Auto uses device 0. The provider is
+	// shipped on Windows, Linux, and macOS.
+	MaaInferenceExecutionProvider_WebGPU = 5
 )
 
 // MaaResOption is a resource option key passed to MaaResourceSetOption.

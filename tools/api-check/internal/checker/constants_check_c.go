@@ -52,16 +52,23 @@ func evaluateCConstSources(sources []cConstSource) (*cConstEnv, error) {
 	rawTypes := map[string]string{}
 
 	for _, source := range sources {
-		stripped := removeCComments(source.content)
+		// C splices escaped newlines before recognizing comments or directives.
+		stripped := removeCComments(spliceCLineContinuations(source.content))
+		// Reduce preprocessor conditionals and C++ attributes first, so the
+		// define and enum parsers see the same view a C compiler does.
+		stripped, err := resolveCConditionals(stripped)
+		if err != nil {
+			return nil, fmt.Errorf("resolve C conditionals in %s: %w", source.path, err)
+		}
 
-		for name, expr := range parseCDefineExprs(stripped) {
-			if prior, exists := env.decls[name]; exists {
-				if normalizeSpaces(prior.expr) != normalizeSpaces(expr) {
-					return nil, fmt.Errorf("conflicting C constant %s in %s", name, source.path)
+		for _, decl := range parseCDefineDecls(stripped) {
+			if prior, exists := env.decls[decl.name]; exists {
+				if normalizeSpaces(prior.expr) != normalizeSpaces(decl.expr) {
+					return nil, fmt.Errorf("conflicting C constant %s in %s", decl.name, source.path)
 				}
 				continue
 			}
-			env.decls[name] = cConstDecl{name: name, expr: expr}
+			env.decls[decl.name] = decl
 		}
 
 		enumDecls, err := parseCEnumDecls(stripped)
@@ -373,6 +380,379 @@ func evalCConstCast(node *ast.CallExpr, env map[string]numericValue, typeEnv map
 var cEnumKeywordRe = regexp.MustCompile(`\benum\b`)
 var cConstTypedefRe = regexp.MustCompile(`(?m)\btypedef\s+([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*;`)
 var cConstIdentifierRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+var cDefinedBareMacroRe = regexp.MustCompile(`\bdefined\s+([A-Za-z_][A-Za-z0-9_]*)\b`)
+
+// resolveCConditionals reduces the preprocessor conditionals in a header to the
+// branches a C compiler would select, so later parsing sees the C view of the
+// API.
+//
+// The checker reads the headers that ship with a release directly, and those
+// headers may guard an enum member with `#if defined(__cplusplus)` to attach a
+// C++-only attribute such as `[[deprecated]]`. cgo and every other C consumer
+// take the other branch, so keeping the C++ branch would either misreport the
+// value or trip the enum parser. C++ attributes are dropped for the same
+// reason: they carry no numeric meaning.
+//
+// Only the C++ macro, its defined forms, and their negations are decided. Other
+// conditions keep both branches so their members stay visible to the
+// duplicate detection in evaluateCConstSources; a guard that selects
+// alternative values for one constant then reports a conflict instead of
+// silently picking a branch.
+// Unknown branches that can affect implicit enum sequencing are rejected:
+// concatenating mutually exclusive members would invent values.
+func resolveCConditionals(content string) (string, error) {
+	content = stripCppAttributes(spliceCLineContinuations(content))
+	lines := strings.Split(content, "\n")
+	var out strings.Builder
+	var unknownRanges []cConditionalRange
+	parseConditional(lines, 0, len(lines), &out, &unknownRanges)
+	resolved := strings.TrimSuffix(out.String(), "\n")
+	if err := checkUnknownEnumSequencing(resolved, unknownRanges); err != nil {
+		return "", err
+	}
+	return resolved, nil
+}
+
+// spliceCLineContinuations joins physical lines without inserting whitespace,
+// matching C's translation order even inside tokens and // comments.
+func spliceCLineContinuations(content string) string {
+	content = strings.ReplaceAll(content, "\\\r\n", "")
+	return strings.ReplaceAll(content, "\\\n", "")
+}
+
+// cConditionalRange identifies output from a conditional with multiple possible
+// branches. Offsets refer to the resolved text before its final newline is trimmed.
+type cConditionalRange struct {
+	start int
+	end   int
+}
+
+// parseConditional writes the selected lines of lines[start:end] to out. A stray
+// `#else`, `#elif`, or `#endif` with no open conditional is dropped. Every other
+// directive is ordinary content for the later parsers, so it is kept.
+func parseConditional(lines []string, start, end int, out *strings.Builder, unknownRanges *[]cConditionalRange) int {
+	for index := start; index < end; index++ {
+		fields := cDirectiveFields(strings.TrimSpace(lines[index]))
+		if fields != nil {
+			switch fields[0] {
+			case "if", "ifdef", "ifndef":
+				next := parseConditionalBody(lines, index, end, out, unknownRanges)
+				if next <= index {
+					return end
+				}
+				index = next - 1
+				continue
+			case "else", "elif", "endif":
+				// No open conditional at this level; drop it.
+				continue
+			}
+		}
+		out.WriteString(lines[index])
+		out.WriteByte('\n')
+	}
+	return end
+}
+
+// parseConditionalBody handles one conditional whose opening directive is on
+// headerLine, writing the branches a C compiler would select. It returns the
+// line after the matching `#endif`, or end when the conditional is unterminated.
+//
+// When a guard is unknown, each still-reachable branch is written. A constant
+// defined differently per branch reaches evaluateCConstSources twice, which
+// reports the conflict rather than silently picking one value. Known-false
+// branches and branches after a reachable known-true branch are omitted even
+// when earlier guards were unknown.
+func parseConditionalBody(lines []string, headerLine, end int, out *strings.Builder, unknownRanges *[]cConditionalRange) int {
+	directiveFields := cDirectiveFields(strings.TrimSpace(lines[headerLine]))
+	outcome := resolveCDirective(directiveFields)
+	start := out.Len()
+	uncertain := outcome == cConditionUnknown
+	defer func() {
+		if uncertain && strings.TrimSpace(out.String()[start:]) != "" {
+			*unknownRanges = append(*unknownRanges, cConditionalRange{start: start, end: out.Len()})
+		}
+	}()
+
+	// emitting reports whether this branch's body is written. A dead branch
+	// still has to be scanned, because it may contain the #elif / #else that
+	// follows it, so skipping is decided per directive rather than by leaving
+	// the loop.
+	//
+	// remaining reports whether execution can still reach a later branch,
+	// independently of whether the current body contains any text.
+	emitting := outcome != cConditionFalse
+	remaining := outcome != cConditionTrue
+
+	index := headerLine + 1
+	for index < end {
+		fields := cDirectiveFields(strings.TrimSpace(lines[index]))
+		if fields != nil {
+			switch fields[0] {
+			case "if", "ifdef", "ifndef":
+				if emitting {
+					index = parseConditionalBody(lines, index, end, out, unknownRanges)
+				} else {
+					index = skipConditionalBody(lines, index, end)
+				}
+				continue
+			case "elif":
+				outcome = resolveCCondition(strings.Join(fields[1:], " "))
+				emitting = remaining && outcome != cConditionFalse
+				if emitting && outcome == cConditionUnknown {
+					uncertain = true
+				}
+				remaining = remaining && outcome != cConditionTrue
+				index++
+				continue
+			case "else":
+				emitting = remaining
+				remaining = false
+				index++
+				continue
+			case "endif":
+				return index + 1
+			}
+		}
+		// Ordinary content, or a directive the later parsers treat as such.
+		if emitting {
+			out.WriteString(lines[index])
+			out.WriteByte('\n')
+		}
+		index++
+	}
+	return end
+}
+
+// checkUnknownEnumSequencing rejects implicit members whose predecessor can
+// depend on an unresolved conditional. An unconditional explicit initializer
+// restores a definite sequence; explicit values use ordinary duplicate checks.
+func checkUnknownEnumSequencing(content string, unknownRanges []cConditionalRange) error {
+	if len(unknownRanges) == 0 {
+		return nil
+	}
+	searchFrom := 0
+	for {
+		loc := cEnumKeywordRe.FindStringIndex(content[searchFrom:])
+		if loc == nil {
+			return nil
+		}
+		enumStart := searchFrom + loc[0]
+		rest := content[enumStart:]
+		bodyStart := strings.IndexByte(rest, '{')
+		semi := strings.IndexByte(rest, ';')
+		if bodyStart < 0 {
+			return nil
+		}
+		if semi >= 0 && semi < bodyStart {
+			searchFrom = enumStart + semi + 1
+			continue
+		}
+		openPos := enumStart + bodyStart
+		closePos := matchCBrace(content, openPos)
+		if closePos < 0 {
+			return errors.New("unterminated enum body")
+		}
+		entryFrom := openPos + 1
+		definiteFrom := entryFrom
+		for _, entry := range splitCEnumEntries(content, openPos+1, closePos) {
+			entryStart := entryFrom + strings.Index(content[entryFrom:closePos], entry)
+			entryFrom = entryStart + len(entry)
+			name, expr := splitCEnumEntry(entry)
+			if name == "" {
+				continue // The enum parser reports unsupported members separately.
+			}
+			inUnknownBranch := false
+			uncertainSequence := false
+			for _, span := range unknownRanges {
+				// A guard around the whole declaration only affects its presence;
+				// parseCEnumDecls resets the sequence for each enum independently.
+				if span.start <= enumStart && span.end > closePos {
+					continue
+				}
+				inUnknownBranch = inUnknownBranch || (span.start < entryFrom && span.end > entryStart)
+				uncertainSequence = uncertainSequence || (span.start < entryFrom && span.end > definiteFrom)
+			}
+			if expr != "" && !inUnknownBranch {
+				definiteFrom = entryFrom
+			}
+			if expr == "" && !strings.Contains(entry, "=") && uncertainSequence {
+				return fmt.Errorf("unknown conditional enum sequencing: implicit member %s requires a resolved branch", name)
+			}
+		}
+		searchFrom = closePos + 1
+	}
+}
+
+// skipConditionalBody returns the line after the `#endif` matching the opening
+// directive on headerLine, without writing anything.
+func skipConditionalBody(lines []string, headerLine, end int) int {
+	depth := 0
+	for index := headerLine; index < end; index++ {
+		fields := cDirectiveFields(strings.TrimSpace(lines[index]))
+		if fields == nil {
+			continue
+		}
+		switch fields[0] {
+		case "if", "ifdef", "ifndef":
+			depth++
+		case "endif":
+			depth--
+			if depth == 0 {
+				return index + 1
+			}
+		}
+	}
+	return end
+}
+
+// cDirectiveFields splits a preprocessor directive line into its fields. It
+// returns nil for anything that is not a directive.
+func cDirectiveFields(trimmed string) []string {
+	if !strings.HasPrefix(trimmed, "#") {
+		return nil
+	}
+	fields := strings.Fields(strings.TrimPrefix(trimmed, "#"))
+	if len(fields) == 0 {
+		return nil
+	}
+	return fields
+}
+
+// cConditionalOutcome is the three-valued result of a `#if` condition.
+// cConditionUnknown is deliberately not the zero value, so a resolver path that
+// forgets to set a result is visible instead of silently reading as "unknown".
+type cConditionalOutcome int
+
+const (
+	cConditionTrue cConditionalOutcome = iota + 1
+	cConditionFalse
+	cConditionUnknown
+)
+
+// resolveCDirective resolves the condition of a conditional directive, handling
+// the `#ifndef` inversion. A `nil` or unexpected directive resolves to unknown.
+func resolveCDirective(fields []string) cConditionalOutcome {
+	if len(fields) == 0 {
+		return cConditionUnknown
+	}
+	condition := strings.Join(fields[1:], " ")
+	switch fields[0] {
+	case "ifdef":
+		if condition == "__cplusplus" {
+			return cConditionFalse
+		}
+		return cConditionUnknown
+	case "ifndef":
+		if condition == "__cplusplus" {
+			return cConditionTrue
+		}
+		return cConditionUnknown
+	case "if":
+		return resolveCCondition(condition)
+	default:
+		return cConditionUnknown
+	}
+}
+
+// resolveCCondition resolves a `#if` style condition over the predefined C++
+// macro only. C consumers do not define it. Parentheses and unary negation are
+// supported; compound expressions and other macros remain unknown, so no
+// unsupported expression can silently discard a branch.
+func resolveCCondition(condition string) cConditionalOutcome {
+	// C permits both defined MACRO and defined(MACRO). Normalize only the
+	// former spelling, retaining every operand for the conservative AST walk.
+	condition = cDefinedBareMacroRe.ReplaceAllString(condition, "defined($1)")
+	node, err := parser.ParseExpr(condition)
+	if err != nil {
+		return cConditionUnknown
+	}
+	return resolveCConditionExpr(node)
+}
+
+func resolveCConditionExpr(node ast.Expr) cConditionalOutcome {
+	switch node := node.(type) {
+	case *ast.ParenExpr:
+		return resolveCConditionExpr(node.X)
+	case *ast.Ident:
+		if node.Name == "__cplusplus" {
+			return cConditionFalse
+		}
+	case *ast.CallExpr:
+		fun, ok := node.Fun.(*ast.Ident)
+		if ok && fun.Name == "defined" && len(node.Args) == 1 && !node.Ellipsis.IsValid() {
+			macro, ok := node.Args[0].(*ast.Ident)
+			if ok && macro.Name == "__cplusplus" {
+				return cConditionFalse
+			}
+		}
+	case *ast.UnaryExpr:
+		if node.Op == token.NOT {
+			switch resolveCConditionExpr(node.X) {
+			case cConditionTrue:
+				return cConditionFalse
+			case cConditionFalse:
+				return cConditionTrue
+			}
+		}
+	}
+	return cConditionUnknown
+}
+
+// stripCppAttributes removes balanced `[[...]]` attribute specifiers, which are
+// C++ only and carry no numeric value. String and character literals are copied
+// verbatim so their contents are never treated as attribute delimiters.
+func stripCppAttributes(content string) string {
+	var out strings.Builder
+	for i := 0; i < len(content); {
+		switch content[i] {
+		case '"', '\'':
+			quote := content[i]
+			out.WriteByte(quote)
+			i++
+			for i < len(content) && content[i] != quote {
+				if content[i] == '\\' && i+1 < len(content) {
+					out.WriteByte(content[i])
+					i++
+				}
+				out.WriteByte(content[i])
+				i++
+			}
+			if i < len(content) {
+				out.WriteByte(content[i])
+				i++
+			}
+		case '[':
+			if i+1 < len(content) && content[i+1] == '[' {
+				// Skip the balanced `[[...]]` specifier. Nested specifiers are
+				// tracked so an unbalanced one never swallows the rest of the
+				// header.
+				depth := 0
+				for i < len(content) {
+					switch {
+					case i+1 < len(content) && content[i] == '[' && content[i+1] == '[':
+						depth++
+						i += 2
+					case i+1 < len(content) && content[i] == ']' && content[i+1] == ']':
+						depth--
+						i += 2
+					default:
+						i++
+					}
+					if depth == 0 {
+						break
+					}
+				}
+				continue
+			}
+			out.WriteByte(content[i])
+			i++
+		default:
+			out.WriteByte(content[i])
+			i++
+		}
+	}
+	return out.String()
+}
 
 // parseCEnumDecls extracts C-style enum members. Members without an explicit
 // value inherit the previous member value.

@@ -116,6 +116,14 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		blacklistSet[name] = struct{}{}
 		exclusions = append(exclusions, fmt.Sprintf("native_exclusion: %s: %s", name, reason))
 	}
+	for _, name := range sortedPipelineKeys(cfg.ConstantExclusions) {
+		reason := strings.TrimSpace(cfg.ConstantExclusions[name])
+		if strings.TrimSpace(name) != name || name == "" || reason == "" {
+			fmt.Fprintln(stderr, "constant_exclusions requires exact nonempty constant names and a nonempty reason")
+			return 2
+		}
+		exclusions = append(exclusions, fmt.Sprintf("constant_exclusion: %s: %s", name, reason))
+	}
 
 	report := []string{
 		fmt.Sprintf("repo_root: %s", filepath.Clean(repoRoot)),
@@ -162,7 +170,7 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "failed to check callback ABI coverage: %v\n", err)
 		return 2
 	}
-	constantIssues, err := checkConstantCoverage(repoRoot, resolvedHeaderDir)
+	constantIssues, err := checkConstantCoverage(repoRoot, resolvedHeaderDir, cfg.ConstantExclusions)
 	if err != nil {
 		fmt.Fprintf(stderr, "failed to check constant coverage: %v\n", err)
 		return 2

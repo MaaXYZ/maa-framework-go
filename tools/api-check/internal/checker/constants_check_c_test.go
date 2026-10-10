@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"go/constant"
 	"strings"
 	"testing"
 )
@@ -309,12 +310,289 @@ func TestEvalCConstSources_DiagnosesFailures(t *testing.T) {
 
 func TestEvalCConstSources_RejectsUnparsedEnumMembers(t *testing.T) {
 	t.Parallel()
-	for _, entry := range []string{"MaaFixture_A [[deprecated]] = 1", "MaaFixture_A =", "MaaFixture_A; MaaFixture_B"} {
+	for _, entry := range []string{"MaaFixture_A =", "MaaFixture_A; MaaFixture_B"} {
 		t.Run(entry, func(t *testing.T) {
 			t.Parallel()
 			_, err := evaluateCConstSources([]cConstSource{{path: "fixture.h", content: "enum Fixture { " + entry + " };"}})
 			if err == nil {
 				t.Fatalf("expected unsupported member %q to fail parsing", entry)
+			}
+		})
+	}
+}
+
+func TestEvalCConstSources_StripsCppAttributes(t *testing.T) {
+	t.Parallel()
+	// A release header may attach a C++-only attribute, guarded by
+	// `#if defined(__cplusplus)`, to an enumerator. The C branch carries the
+	// value and must be the one that reaches the inventory.
+	env, err := evaluateCConstSources([]cConstSource{{
+		path: "fixture.h",
+		content: "enum Fixture {\n" +
+			"    MaaFixture_A [[deprecated]] = 1,\n" +
+			"    MaaFixture_B = 2,\n" +
+			"};\n",
+	}})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+	for name, want := range map[string]int64{"MaaFixture_A": 1, "MaaFixture_B": 2} {
+		value, ok := env.values[name]
+		if !ok {
+			t.Fatalf("missing value for %s; failures=%+v", name, env.failures)
+		}
+		if got, _ := constant.Int64Val(value); got != want {
+			t.Fatalf("%s = %d, want %d", name, got, want)
+		}
+	}
+}
+
+func TestEvalCConstSources_SelectsCConditionalBranch(t *testing.T) {
+	t.Parallel()
+	env, err := evaluateCConstSources([]cConstSource{{
+		path: "fixture.h",
+		content: "enum Fixture {\n" +
+			"    MaaFixture_A = 1,\n" +
+			"#if defined(__cplusplus)\n" +
+			"    MaaFixture_B [[deprecated]] = 99,\n" +
+			"#else\n" +
+			"    MaaFixture_B = 2,\n" +
+			"#endif\n" +
+			"    MaaFixture_C = 3,\n" +
+			"};\n",
+	}})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+	for name, want := range map[string]int64{"MaaFixture_A": 1, "MaaFixture_B": 2, "MaaFixture_C": 3} {
+		value, ok := env.values[name]
+		if !ok {
+			t.Fatalf("missing value for %s; failures=%+v", name, env.failures)
+		}
+		if got, _ := constant.Int64Val(value); got != want {
+			t.Fatalf("%s = %d, want %d", name, got, want)
+		}
+	}
+}
+
+func TestEvalCConstSources_KeepsUnknownGuardBranches(t *testing.T) {
+	t.Parallel()
+	// A guard over an unknown macro may select either value; keep both so the
+	// conflicting declaration is reported instead of silently resolved.
+	for _, directive := range []string{
+		"#ifdef MAA_FIXTURE_PLATFORM",
+		"#if !defined(__cplusplus) && defined(MAA_FIXTURE_PLATFORM)",
+		"#if defined(__cplusplus) || defined(MAA_FIXTURE_PLATFORM)",
+		"#if !defined(__cplusplus) && MAA_FIXTURE_PLATFORM",
+	} {
+		t.Run(directive, func(t *testing.T) {
+			t.Parallel()
+			_, err := evaluateCConstSources([]cConstSource{{
+				path: "fixture.h",
+				content: "#define MAA_FIXTURE_PLATFORM 1\n" +
+					"enum Fixture {\n" + directive + "\n" +
+					"    MaaFixture_A = 1,\n" +
+					"#else\n" +
+					"    MaaFixture_A = 2,\n" +
+					"#endif\n" +
+					"};\n",
+			}})
+			if err == nil || !strings.Contains(err.Error(), "conflicting C constant MaaFixture_A") {
+				t.Fatalf("expected conflicting values under an unknown guard, got %v", err)
+			}
+		})
+	}
+}
+
+func TestEvalCConstSources_KeepsDirectivesOutsideConditionals(t *testing.T) {
+	t.Parallel()
+	// `#define`, `#include`, and `#pragma` are ordinary content for the later
+	// parsers and must survive conditional resolution.
+	env, err := evaluateCConstSources([]cConstSource{{
+		path: "fixture.h",
+		content: "#pragma once\n" +
+			"#include <stdint.h>\n" +
+			"#define MaaFixture_Macro 4ULL\n" +
+			"enum Fixture { MaaFixture_A = 1 };\n",
+	}})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+	for name, want := range map[string]int64{"MaaFixture_Macro": 4, "MaaFixture_A": 1} {
+		value, ok := env.values[name]
+		if !ok {
+			t.Fatalf("missing value for %s; failures=%+v", name, env.failures)
+		}
+		if got, _ := constant.Int64Val(value); got != want {
+			t.Fatalf("%s = %d, want %d", name, got, want)
+		}
+	}
+}
+
+func TestResolveCConditionals_KeepsStrayDirectivesHarmless(t *testing.T) {
+	t.Parallel()
+	// resolveCConditionals only trims the final newline, so every expectation
+	// keeps the interior line breaks.
+	for name, tc := range map[string]struct{ in, want string }{
+		"stray endif": {"a\n#endif\nb\n", "a\nb\n"},
+		// __cplusplus is undefined for C consumers, so its negation is true.
+		"negated guard": {"a\n#if !defined(__cplusplus)\nb\n#endif\nc\n", "a\nb\nc\n"},
+		// #ifdef and #ifndef reach the resolver as a bare macro name; the
+		// directive word itself is not part of the condition.
+		"ifdef macro":  {"a\n#ifdef __cplusplus\nb\n#else\nc\n#endif\nd\n", "a\nc\nd\n"},
+		"ifndef macro": {"a\n#ifndef __cplusplus\nb\n#else\nc\n#endif\nd\n", "a\nb\nd\n"},
+		// An unknown platform macro keeps every branch.
+		"unknown guard keeps both": {"a\n#ifdef MAA_PLATFORM_X\nb\n#else\nc\n#endif\nd\n", "a\nb\nc\nd\n"},
+		// Both C++ guards are false, so each selects its else body.
+		"nested guard": {
+			"a\n#if defined(__cplusplus)\nb\n#else\n#if defined(__cplusplus)\nc\n#else\nd\n#endif\n#endif\ne\n",
+			"a\nd\ne\n",
+		},
+		// A true condition takes the first branch and drops the else body.
+		"taken branch drops else":  {"a\n#if !defined(__cplusplus)\nb\n#else\nc\n#endif\nd\n", "a\nb\nd\n"},
+		"taken branch drops elif":  {"a\n#if !defined(__cplusplus)\nb\n#elif !defined(__cplusplus)\nc\n#else\nd\n#endif\ne\n", "a\nb\ne\n"},
+		"empty branch drops else":  {"a\n#if !defined(__cplusplus)\n#else\nb\n#endif\nc\n", "a\nc\n"},
+		"nested branch drops else": {"a\n#if !defined(__cplusplus)\n#if !defined(__cplusplus)\nb\n#endif\n#else\nc\n#endif\nd\n", "a\nb\nd\n"},
+		"unknown then false elif":  {"a\n#if PLATFORM\nb\n#elif defined(__cplusplus)\nc\n#else\nd\n#endif\ne\n", "a\nb\nd\ne\n"},
+		"unknown then true elif":   {"a\n#if PLATFORM\nb\n#elif !defined(__cplusplus)\nc\n#else\nd\n#endif\ne\n", "a\nb\nc\ne\n"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got, err := resolveCConditionals(tc.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Fatalf("resolveCConditionals(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestEvalCConstSources_UnknownEnumSequencing(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		content string
+		wantErr string
+		want    map[string]string
+	}{
+		{
+			name:    "implicit alternative members",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\nA,\n#else\nB,\n#endif\nTail };",
+			wantErr: "unknown conditional enum sequencing",
+		},
+		{
+			name:    "implicit tail after explicit alternatives",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\nA = 11,\n#else\nB = 12,\n#endif\nTail };",
+			wantErr: "unknown conditional enum sequencing: implicit member Tail",
+		},
+		{
+			name:    "optional implicit member without else",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\nA,\n#endif\nTail };",
+			wantErr: "unknown conditional enum sequencing",
+		},
+		{
+			name:    "nested implicit alternatives",
+			content: "enum Fixture { Base = 10,\n#if !defined(__cplusplus)\n#if PLATFORM\nA,\n#else\nB,\n#endif\n#endif\nTail };",
+			wantErr: "unknown conditional enum sequencing",
+		},
+		{
+			name:    "unconditional initializer restores sequence",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\nA = 11,\n#else\nB = 12,\n#endif\nReset = 20, Tail };",
+			want:    map[string]string{"Base": "10", "A": "11", "B": "12", "Reset": "20", "Tail": "21"},
+		},
+		{
+			name:    "implicit member before conditional stays definite",
+			content: "enum Fixture { Base = 10, Before,\n#if PLATFORM\nA = 12,\n#else\nB = 13,\n#endif\n};",
+			want:    map[string]string{"Base": "10", "Before": "11", "A": "12", "B": "13"},
+		},
+		{
+			name:    "unrelated conditional outside enum",
+			content: "#if PLATFORM\n#define HELPER 10\n#else\n#define HELPER 10\n#endif\nenum Fixture { Base = HELPER, Tail };",
+			want:    map[string]string{"Base": "10", "Tail": "11"},
+		},
+		{
+			name:    "known guard selects one implicit sequence",
+			content: "enum Fixture { Base = 10,\n#if defined(__cplusplus)\nA, B,\n#else\nC,\n#endif\nTail };",
+			want:    map[string]string{"Base": "10", "C": "11", "Tail": "12"},
+		},
+		{
+			name:    "empty branches preserve sequence",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\n#else\n#endif\nTail };",
+			want:    map[string]string{"Base": "10", "Tail": "11"},
+		},
+		{
+			name:    "comment-only branches preserve sequence",
+			content: "enum Fixture { Base = 10,\n#if PLATFORM\n// comment\n#else\n/* comment */\n#endif\nTail };",
+			want:    map[string]string{"Base": "10", "Tail": "11"},
+		},
+		{
+			name:    "include guard around complete enum",
+			content: "#ifndef FIXTURE_H\n#define FIXTURE_H\nenum Fixture { Base = 10, Tail };\n#endif",
+			want:    map[string]string{"Base": "10", "Tail": "11"},
+		},
+		{
+			name:    "alternative complete declarations retain separate sequences",
+			content: "#if PLATFORM\nenum First { Base = 10, Tail };\n#else\nenum Second { Base = 10, Tail };\n#endif",
+			want:    map[string]string{"Base": "10", "Tail": "11"},
+		},
+		{
+			name:    "include guard does not hide nested ambiguity",
+			content: "#ifndef FIXTURE_H\nenum Fixture { Base = 10,\n#if PLATFORM\nA,\n#else\nB,\n#endif\nTail };\n#endif",
+			wantErr: "unknown conditional enum sequencing",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			env, err := evaluateCConstSources([]cConstSource{{path: "fixture.h", content: tc.content}})
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("error = %v, want %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			for name, want := range tc.want {
+				value, ok := env.values[name]
+				if !ok || value.ExactString() != want {
+					t.Fatalf("%s = %v, want %s; failures=%v", name, value, want, env.failures)
+				}
+			}
+		})
+	}
+}
+
+func TestResolveCCondition(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		condition string
+		want      cConditionalOutcome
+	}{
+		{"__cplusplus", cConditionFalse},
+		{"defined(__cplusplus)", cConditionFalse},
+		{"defined __cplusplus", cConditionFalse},
+		{"!defined(__cplusplus)", cConditionTrue},
+		{"!(defined (__cplusplus))", cConditionTrue},
+		{"((!defined __cplusplus))", cConditionTrue},
+		{"!!defined(__cplusplus)", cConditionFalse},
+		{"defined(MAA_PLATFORM)", cConditionUnknown},
+		{"defined(__cplusplus) || defined(MAA_PLATFORM)", cConditionUnknown},
+		{"!defined(__cplusplus) && defined(MAA_PLATFORM)", cConditionUnknown},
+		{"!defined(__cplusplus) && MAA_PLATFORM", cConditionUnknown},
+		{"defined(__cplusplus) || !defined(__cplusplus)", cConditionUnknown},
+		{"MAA_CHECK(__cplusplus)", cConditionUnknown},
+		{"__cplusplus_suffix", cConditionUnknown},
+		{"__cplusplus != 0", cConditionUnknown},
+		{"1", cConditionUnknown},
+		{"defined(", cConditionUnknown},
+	} {
+		t.Run(tc.condition, func(t *testing.T) {
+			t.Parallel()
+			if got := resolveCCondition(tc.condition); got != tc.want {
+				t.Fatalf("resolveCCondition(%q) = %v, want %v", tc.condition, got, tc.want)
 			}
 		})
 	}

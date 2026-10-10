@@ -341,8 +341,18 @@ func mergeMethodGroups(dst map[string]map[string]uint64, src map[string]map[stri
 }
 
 func parseCDefineExprs(content string) map[string]string {
-	lines := strings.Split(content, "\n")
 	out := map[string]string{}
+	for _, decl := range parseCDefineDecls(content) {
+		out[decl.name] = decl.expr
+	}
+	return out
+}
+
+// parseCDefineDecls extracts every object-like macro declaration in source
+// order, retaining duplicates for the constant evaluator's conflict checks.
+func parseCDefineDecls(content string) []cConstDecl {
+	lines := strings.Split(content, "\n")
+	out := make([]cConstDecl, 0)
 
 	var current strings.Builder
 	flush := func() {
@@ -355,7 +365,7 @@ func parseCDefineExprs(content string) map[string]string {
 		if !ok {
 			return
 		}
-		out[name] = expr
+		out = append(out, cConstDecl{name: name, expr: expr})
 	}
 
 	for _, rawLine := range lines {

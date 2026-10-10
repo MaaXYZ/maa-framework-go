@@ -279,7 +279,12 @@ var constantFamilySpecs = []constantFamilySpec{
 // checkConstantCoverage compares the C constant inventories in the configured
 // headers with the Go constants that expose them. Every family reports C
 // constants missing in Go, Go constants missing in C, and value mismatches.
-func checkConstantCoverage(repoRoot string, headerDir string) ([]issue, error) {
+//
+// exclusions names C constants the binding deliberately does not mirror; keys
+// are exact C constant names. A constant is only skipped while it actually
+// differs, and an exclusion that suppresses nothing is reported as stale so
+// deliberate gaps cannot accumulate unnoticed.
+func checkConstantCoverage(repoRoot string, headerDir string, exclusions map[string]string) ([]issue, error) {
 	sources := make([]cConstSource, 0, len(constantCHeaderRels))
 	for _, rel := range constantCHeaderRels {
 		path := resolveFromRepoRoot(repoRoot, filepath.Join(headerDir, rel))
@@ -320,23 +325,40 @@ func checkConstantCoverage(repoRoot string, headerDir string) ([]issue, error) {
 	}
 
 	issues := make([]issue, 0)
+	applied := map[string]bool{}
 	for _, spec := range constantFamilySpecs {
 		goEvaluation, err := loadGo(spec.goFile, spec.publicAliases)
 		if err != nil {
 			return nil, fmt.Errorf("evaluate %s constants: %w", spec.name, err)
 		}
-		issues = append(issues, compareConstantFamily(spec, cEnv, goEvaluation)...)
+		issues = append(issues, compareConstantFamily(spec, cEnv, goEvaluation, exclusions, applied)...)
+	}
+	for _, name := range sortedPipelineKeys(exclusions) {
+		if !applied[name] {
+			issues = append(issues, issue{
+				section: constantIssueSection,
+				message: fmt.Sprintf("stale constant_exclusion: %s: %s", name, exclusions[name]),
+			})
+		}
 	}
 	return issues, nil
 }
 
 type constantFamilyEntry struct {
 	logical string
-	value   numericValue
-	failed  string
+	// native is the full C constant name, used to match constant_exclusions.
+	native string
+	value  numericValue
+	failed string
 }
 
-func compareConstantFamily(spec constantFamilySpec, cEnv *cConstEnv, goEvaluation *goConstEvaluation) []issue {
+func compareConstantFamily(
+	spec constantFamilySpec,
+	cEnv *cConstEnv,
+	goEvaluation *goConstEvaluation,
+	exclusions map[string]string,
+	applied map[string]bool,
+) []issue {
 	issues := make([]issue, 0)
 
 	cEntries := map[string]constantFamilyEntry{}
@@ -346,7 +368,7 @@ func compareConstantFamily(spec constantFamilySpec, cEnv *cConstEnv, goEvaluatio
 		if !ok || logical == "" {
 			continue
 		}
-		entry := constantFamilyEntry{logical: logical}
+		entry := constantFamilyEntry{logical: logical, native: name}
 		switch {
 		case cEnv.failures[name] != "":
 			entry.failed = cEnv.failures[name]
@@ -428,6 +450,10 @@ func compareConstantFamily(spec constantFamilySpec, cEnv *cConstEnv, goEvaluatio
 		}
 		goEntry, ok := goByKey[goKey]
 		if !ok {
+			if _, excluded := exclusions[cEntry.native]; excluded {
+				applied[cEntry.native] = true
+				continue
+			}
 			issues = append(issues, issue{
 				section: constantIssueSection,
 				message: fmt.Sprintf("[%s] C constant not found in Go: %s (c=%s)", spec.name, cEntry.logical, constantEntryValueText(cEntry)),

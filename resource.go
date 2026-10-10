@@ -171,13 +171,13 @@ func (r *Resource) UseCPU() error {
 // an alias of the native MaaInferenceDevice (int32 in MaaDef.h).
 type InferenceDevice = native.MaaInferenceDevice
 
-// Inference device values accepted by UseDirectml and UseCoreml, mirroring
-// MaaInferenceDeviceEnum in MaaDef.h. InferenceDeviceAuto asks the provider
-// to select a device; UseDirectml interprets the other values as the
-// DirectML adapter id from Win32 EnumAdapters1, and UseCoreml as the
-// CoreML flag of the bundled onnxruntime. GPU ids beyond 1 are expressed
-// as plain integers. The upstream CPU value is not exported here; UseCPU
-// selects that combination.
+// Inference device values accepted by UseDirectml and UseWebgpu, mirroring
+// MaaInferenceDeviceEnum in MaaDef.h. InferenceDeviceAuto asks the provider to
+// select a device; UseDirectml interprets the other values as the DirectML
+// adapter id from Win32 EnumAdapters1, and UseWebgpu as the WebGPU device id
+// (ep.webgpuexecutionprovider.deviceId). GPU ids beyond 1 are expressed as
+// plain integers. The upstream CPU value is not exported here; UseCPU selects
+// that combination.
 const (
 	InferenceDeviceAuto InferenceDevice = -1
 	InferenceDevice0    InferenceDevice = 0
@@ -197,17 +197,23 @@ func (r *Resource) UseDirectml(deviceID InferenceDevice) error {
 	return r.setInference(native.MaaInferenceExecutionProvider_DirectML, deviceID)
 }
 
-// UseCoreml selects the CoreML execution provider. coremlFlag is the CoreML
-// flag accepted by the bundled onnxruntime; use InferenceDeviceAuto for auto
-// selection. See UseCPU for when the option takes effect.
-func (r *Resource) UseCoreml(coremlFlag InferenceDevice) error {
+// UseWebgpu selects the WebGPU execution provider. deviceID is the WebGPU
+// device id (ep.webgpuexecutionprovider.deviceId); use InferenceDeviceAuto to
+// let the framework choose, which selects device 0. The provider ships on
+// Windows, Linux, and macOS and needs MaaFramework v5.14.3 or later. See UseCPU
+// for when the option takes effect.
+//
+// With an earlier native library the value is not a known provider: loading
+// logs an invalid provider and falls back to CPU instead of failing the set,
+// matching how the other provider setters behave.
+func (r *Resource) UseWebgpu(deviceID InferenceDevice) error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
 		return useErr
 	}
 	defer done()
 
-	return r.setInference(native.MaaInferenceExecutionProvider_CoreML, coremlFlag)
+	return r.setInference(native.MaaInferenceExecutionProvider_WebGPU, deviceID)
 }
 
 // UseAutoExecutionProvider lets the native library select the execution

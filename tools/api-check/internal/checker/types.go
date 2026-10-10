@@ -57,6 +57,11 @@ type Config struct {
 	// PipelineExclusions maps exact reported paths to intentional differences.
 	// Each reason must be nonempty; exclusions without a difference are stale.
 	PipelineExclusions map[string]string `yaml:"pipeline_exclusions"`
+	// ConstantExclusions records native constants that the Go binding
+	// deliberately does not mirror. Keys are exact C constant names such as
+	// MaaInferenceExecutionProvider_CoreML, and reasons must be nonempty;
+	// entries without a current difference are stale.
+	ConstantExclusions map[string]string `yaml:"constant_exclusions"`
 }
 
 type stringSliceFlag []string

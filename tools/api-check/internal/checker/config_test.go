@@ -29,6 +29,8 @@ func TestLoadConfigFromPathValid(t *testing.T) {
 		"pipeline_schema: tools/pipeline.schema.json",
 		"pipeline_exclusions:",
 		"  action.Click.param.pressure: Intentional test omission",
+		"constant_exclusions:",
+		"  MaaInferenceExecutionProvider_CoreML: Deprecated upstream",
 		"",
 	}, "\n"))
 
@@ -50,6 +52,9 @@ func TestLoadConfigFromPathValid(t *testing.T) {
 	}
 	if got := cfg.PipelineExclusions["action.Click.param.pressure"]; got != "Intentional test omission" {
 		t.Errorf("PipelineExclusions = %v", cfg.PipelineExclusions)
+	}
+	if got := cfg.ConstantExclusions["MaaInferenceExecutionProvider_CoreML"]; got != "Deprecated upstream" {
+		t.Errorf("ConstantExclusions = %v, want the CoreML exclusion reason", cfg.ConstantExclusions)
 	}
 }
 

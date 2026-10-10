@@ -63,6 +63,8 @@ It checks both symbol coverage and function signatures.
 
 Pipeline coverage is limited to the v2 object format (`{"type": "Click", "param": {...}}`). It does not check v1 flat parameters, JSON value validation, default inheritance, omission behavior, units, scalar/list normalization, or runtime behavior. And/Or parameter field names and the available inline sub-recognition envelope are checked; value semantics still require JSON and native round-trip tests.
 
+Constant parsing splices backslash-continued lines before removing comments. It resolves `__cplusplus`, its `defined` forms, parentheses, and negation using C semantics; other guards retain only branches that remain reachable. Conflicting macro or enum declarations fail extraction. Unknown conditional enum sequencing is rejected instead of assigning implicit values across mutually exclusive branches; an unconditional explicit initializer can restore a definite sequence.
+
 Schema metadata (`jsonComments`, `jsonCode`, `jsonDocument`, `jsonKeywords`), deprecated node fields, the v2 default-field helper branches, and the `CustomActionSchema`/`CustomRecognitionSchema` extension hooks are outside this inventory. Intrinsic Custom parameter fields are checked; arbitrary custom payload contents stay open. Other external schema references are rejected. The checker reads source using Go AST and requires no native libraries. It supports the repository's declaration shapes; it does not preprocess arbitrary C conditional branches or prove general Go control flow.
 
 Supported custom codecs pass a struct, a defined type without methods, or a traced local variable to `marshalJSON`/`unmarshalJSON` or `json.Marshal`/`json.Unmarshal`. `MarshalJSON` must directly return the supported JSON helper call; unrelated calls and calls inside closures do not establish coverage. Returning encoded bytes through variables, wire types with their own or inherited custom codecs, anonymous embedding promoting custom codecs, and conflicting JSON field names are rejected as unsupported shapes. Local `type NoMethod Param` DTOs remain supported because they strip methods; `type NoMethod = Param` aliases preserve methods. Other shapes require extending the checker explicitly.
@@ -140,6 +142,7 @@ Defaults:
 - `blacklist: []` (legacy symbol exclusions)
 - `pipeline_schema: ""` (pipeline checking disabled)
 - `pipeline_exclusions: {}`
+- `constant_exclusions: {}`
 
 YAML decoding is strict: unknown fields, duplicate keys, wrong scalar types, and multiple documents fail configuration. Positional command-line arguments are rejected. Each run uses an independent flag set.
 
@@ -163,6 +166,15 @@ pipeline_exclusions:
 ```
 
 An exclusion suppresses only the matching difference. Wildcards are not supported; stale exclusions are reported as failures. Exclusions require pipeline checking to be enabled and are listed with their reasons in the report.
+
+`constant_exclusions` accepts exact C constant names that the Go binding deliberately does not mirror, for example:
+
+```yaml
+constant_exclusions:
+  MaaInferenceExecutionProvider_CoreML: "Deprecated upstream in v5.14.3; MaaDeps no longer ships the provider."
+```
+
+An exclusion suppresses only the "C constant not found in Go" difference for that constant, and applies only while the constant actually differs; an entry that suppresses nothing is stale and fails the check. Value mismatches, name collisions, and Go constants absent from C are never suppressed. The supplied reasons are listed in the report.
 
 Exit status is `0` for a consistent implementation, `1` for reported differences or stale exclusions, and `2` for invalid configuration or inputs, including unsupported extraction shapes.
 

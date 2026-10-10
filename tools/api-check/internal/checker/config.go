@@ -133,7 +133,7 @@ func validateConfigMappingStrings(root *yaml.Node) error {
 					return err
 				}
 			}
-		case "pipeline_exclusions", "native_exclusions":
+		case "pipeline_exclusions", "native_exclusions", "constant_exclusions":
 			value = resolveYAMLNode(value)
 			for j := 0; j < len(value.Content); j += 2 {
 				name, reason := value.Content[j], value.Content[j+1]
@@ -179,6 +179,9 @@ func mergeConfig(dst *Config, src Config) {
 	}
 	if src.PipelineExclusions != nil {
 		dst.PipelineExclusions = src.PipelineExclusions
+	}
+	if src.ConstantExclusions != nil {
+		dst.ConstantExclusions = src.ConstantExclusions
 	}
 }
 
