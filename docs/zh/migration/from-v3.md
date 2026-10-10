@@ -1,10 +1,10 @@
-# v3 → v4.0.0 迁移指南（发布准备草稿）
+# v3 → v4.0.0 迁移指南
 
 [English](../../en/migration/from-v3.md) | 简体中文
 
-本指南以 `v3.6.0-beta.5` 为起点，以提交 [`2c24945`](https://github.com/MaaXYZ/maa-framework-go/tree/2c24945e7a9e23993f13743cc4962a2bd985641a) 为核验终点。`v4.0.0` 尚未打 tag，本文描述的是该固定快照的升级方式；正式版确定后还需核验终点差异。
+本指南覆盖 `v3.6.0-beta.5` → `v4.0.0` 的迁移。
 
-已经使用 v4 的项目请按起点选择 [beta.18 → beta.19](from-v4.0.0-beta.18.md) 或 [beta.19 → 发布准备快照](from-v4.0.0-beta.19.md)。变更详单见 [CHANGELOG](../../../CHANGELOG.md)，本指南按实际修改顺序组织。
+已经使用 v4 的项目请按起点选择 [beta.18 → beta.19](from-v4.0.0-beta.18.md) 或 [beta.19 → v4.0.0](from-v4.0.0-beta.19.md)。变更详单见 [CHANGELOG](../../../CHANGELOG.md)，本指南按实际修改顺序组织。
 
 ## 1. 更新模块路径和原生库
 
@@ -17,14 +17,14 @@ import (
 )
 ```
 
-在正式 tag 创建前，如需试用本文的固定快照，可在项目中指定提交：
+更新 Go 依赖：
 
 ```sh
-go get github.com/MaaXYZ/maa-framework-go/v4@2c24945e7a9e23993f13743cc4962a2bd985641a
+go get github.com/MaaXYZ/maa-framework-go/v4@v4.0.0
 go mod tidy
 ```
 
-更新全部 import 后，检查 `go.mod` 是否还保留不再使用的 `/v3` 依赖。不要使用尚未发布的 `@v4.0.0` 安装命令。
+更新全部 import 后，检查 `go.mod` 是否还保留不再使用的 `/v3` 依赖。
 
 同时更新 MaaFramework 动态库。本绑定跟踪最新 MaaFramework（包括预发布版），不保证兼容较早版本；`MaaFramework`、`MaaToolkit`、`MaaAgentServer`、`MaaAgentClient` 四个库应来自同一兼容版本。缺库或缺符号时，检查 `LibraryLoadError` / `SymbolLookupError` 中的库路径与符号名，再更换整套库。
 
@@ -88,7 +88,7 @@ func closeOwned(client *maa.AgentClient, tasker *maa.Tasker, res *maa.Resource, 
 
 移除对 getter 和事件回调返回的借用对象的 `Destroy`；它们由原所有者清理。不要把回调收到的 `Context` 或 `Clone` 保存到回调之外，跨 goroutine 使用时也必须在本次回调返回前完成。配置和注册变更安排在实例及关联 Tasker 空闲时，避免在回调中替换、移除或清空注册。
 
-完整的所有权、并发与回调契约见固定快照的 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/doc.go)，各类 `Destroy` 的可重试错误见对应 API 注释。
+完整的所有权、并发与回调契约见 [包文档源码](../../../doc.go)，各类 `Destroy` 的可重试错误见对应 API 注释。
 
 ## 4. 改写 Pipeline 构造代码
 
@@ -138,7 +138,7 @@ Go 构造器编码为嵌套的 Pipeline v2 `type` / `param` JSON。现有 v1 扁
 - `Node.Anchor` 从 `[]string` 改为 `map[string]string`。用 `AddAnchor("name")` 指向本节点，用 `SetAnchorTarget("name", "TargetNode")` 指向指定节点；清空全部节点锚点配置使用 `SetAnchor(map[string]string{})`，从配置移除指定锚点使用 `RemoveAnchor("name")`。`ClearAnchor("name")` 设置空目标，安排节点执行后清除该运行时锚点。
 - `Context.OverrideNext` / `Resource.OverrideNext` 改收 `[]NextItem`。用 `NextItem{Name: "name", JumpBack: true}` 或 `Anchor: true` 表示属性，不再传 `[]string`。
 - And / Or 改用 `SubRecognitionItem`；使用 `RecAnd(...)` / `RecOr(...)` 的变参、`Ref("NodeName")` 和 `Inline(recognition)`。需要 box 索引时用 `Recognition.SetBoxIndex`，不再使用 `NodeAndRecognitionItem`、`AndItem` 或旧配置选项。
-- `Context.WaitFreezes` 的参数改为固定的 `*WaitFreezesParam`，结果改为 `error`；调用细节见 [API 注释](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/context.go)。
+- `Context.WaitFreezes` 的参数改为固定的 `*WaitFreezesParam`，结果改为 `error`；调用细节见 [API 注释](../../../context.go)。
 
 ## 5. 更新详情读取和自定义扩展
 
@@ -161,14 +161,14 @@ Go 构造器编码为嵌套的 Pipeline v2 `type` / `param` JSON。现有 v1 扁
 
 ## 6. 调整控制器、Agent 和初始化配置
 
-- `Resource.UseCoreml` 已移除，使用 MaaFramework v5.14.3 或更新版本时，将调用改为 `Resource.UseWebgpu(maa.InferenceDeviceAuto)`。Auto 提供程序现在依次尝试 CUDA、DirectML、WebGPU，最后回退到 CPU。设备选择与旧原生库的行为见[推理提供程序迁移步骤](from-v4.0.0-beta.19.md#5-更换推理提供程序入口)。
+- `Resource.UseCoreml` 已移除，使用 MaaFramework v5.14.3 或更新版本时，将调用改为 `Resource.UseWebgpu(maa.InferenceDeviceAuto)`。在 v5.14.3 的 MaaDeps 分发库中，Auto 按 CUDA、DirectML、WebGPU 的优先级选择可用提供程序；没有可用项或所选项初始化失败时回退 CPU。设备选择与旧原生库的行为见[推理提供程序迁移步骤](from-v4.0.0-beta.19.md#5-更换推理提供程序入口)。
 - 截图的三个旧 `SetScreenshotTarget*` / `SetScreenshotUseRawSize` 方法改为 `SetScreenshot(WithScreenshot*...) error`。目标尺寸、插值和关闭 raw-size 可合并设置；使用前检查目标互斥和重复选项。示例见 [beta.19 → v4.0.0 指南](from-v4.0.0-beta.19.md#4-调整截图选项)。
 - Win32 `InputSendMessageWithCursorPosAndBlockInput` / `InputPostMessageWithCursorPosAndBlockInput` 改为 `InputSendMessageWithWindowPos` / `InputPostMessageWithWindowPos`，字符串配置也要同步。`InterenceDevice` / `InterenceDeviceAuto` 拼写修正为 `InferenceDevice` / `InferenceDeviceAuto`。
-- `CarouselImageController` / `NewCarouselImageController` 已移除。按用途选择自定义控制器或录制/回放控制器。v3 到此快照的 Linux 新入口是 `NewLinuxController(configJson)`；无需经过已在中间版本新增后移除的 `NewWlRootsController`。
+- `CarouselImageController` / `NewCarouselImageController` 已移除。按用途选择自定义控制器或录制/回放控制器。v3 到 v4.0.0 的 Linux 新入口是 `NewLinuxController(configJson)`；无需经过已在中间版本新增后移除的 `NewWlRootsController`。
 - Agent 构造统一为 `NewAgentClient(opts ...AgentClientOption) (*AgentClient, error)`。用 `WithIdentifier(id)` 替代位置参数，用 `WithTcpPort(port)` 替代 `NewAgentClientTcp`；以 `client.Identifier()` 的实际返回值配对 `AgentServerStartUp`，并处理两处错误。
 - `InitConfig` 不再导出，使用提供的 `With*` 初始化选项。`Init` 不再隐式设置日志目录、日志级别等全局配置，需要的选项应显式传入；初始化成功后的重复 `Init` 是空操作，后来传入的选项不会应用。删除对已移除的 `ErrAlreadyInitialized` / `ErrNotInitialized` 的判断。
 
-Agent Server 的启动、Join、关闭、Detach 应按 [API 注释](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/agent_server.go) 安排；需要卸载库的程序应保持服务线程未 detach。Windows 使用非空 `WithLibDir` 会影响进程 DLL 搜索配置，失败回滚与 `Release` 不恢复此设置，见 [WithLibDir](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/maa.go)。
+Agent Server 的启动、Join、关闭、Detach 应按 [API 注释](../../../agent_server.go) 安排；需要卸载库的程序应保持服务线程未 detach。Windows 使用非空 `WithLibDir` 会影响进程 DLL 搜索配置，失败回滚与 `Release` 不恢复此设置，见 [WithLibDir](../../../maa.go)。
 
 ## 7. 验证迁移
 
@@ -178,4 +178,3 @@ Agent Server 的启动、Join、关闭、Detach 应按 [API 注释](https://gith
 - [ ] 用真实资源比较关键节点的 JSON 与执行行为，检查省略字段、显式零、空列表和锚点。
 - [ ] 检查回调内详情查询及 `Context` 使用，退出时等待工作结束并确认 `Destroy` / `Release` 成功。
 - [ ] 执行项目的 `go build ./...`、`go vet ./...` 和相关测试，验证正常完成、执行失败及提前退出路径。
-- [ ] 正式版 tag 确定后，对照更新后的指南核验从此快照到正式版的追加变化。

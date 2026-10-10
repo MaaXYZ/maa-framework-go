@@ -1,18 +1,18 @@
-# v4.0.0-beta.19 → v4.0.0 迁移指南（发布准备草稿）
+# v4.0.0-beta.19 → v4.0.0 迁移指南
 
 [English](../../en/migration/from-v4.0.0-beta.19.md) | 简体中文
 
-本文只覆盖 `v4.0.0-beta.19` → 提交 [`2c24945`](https://github.com/MaaXYZ/maa-framework-go/tree/2c24945e7a9e23993f13743cc4962a2bd985641a) 的净变化。`v4.0.0` 尚未打 tag，此文件按起点版本命名，当前内容是固定快照的发布准备草稿。正式版确定后还需核验终点差异。
+本文覆盖 `v4.0.0-beta.19` → `v4.0.0` 的净变化。
 
 v3 用户请使用 [v3 → v4 指南](from-v3.md)，beta.18 用户先按 [beta.19 指南](from-v4.0.0-beta.18.md) 处理所有权变化。完整条目见 [CHANGELOG](../../../CHANGELOG.md)。
 
-此快照将最低 Go 版本由 1.24 提升到 1.25。先更新本地与 CI 工具链，再指定固定提交：
+v4.0.0 将最低 Go 版本由 1.24 提升到 1.25。先更新本地与 CI 工具链，再更新 Go 依赖：
 
 ```sh
-go get github.com/MaaXYZ/maa-framework-go/v4@2c24945e7a9e23993f13743cc4962a2bd985641a
+go get github.com/MaaXYZ/maa-framework-go/v4@v4.0.0
 ```
 
-同时使用一套与绑定兼容的 MaaFramework 动态库；不要把四个库混用不同版本，也不要使用尚未发布的 `@v4.0.0` 安装命令。
+同时使用一套与绑定兼容的 MaaFramework 动态库；不要把四个库混用不同版本。
 
 ## 1. 修改 Post 调用
 
@@ -56,13 +56,13 @@ func stopTask(tasker *maa.Tasker) error {
 }
 ```
 
-停止可能使此前 Job ID 无效，旧 Job 的 `Wait` 返回不能单独证明所有工作已结束。保持所有者引用，处理 `Destroy` 返回的 `ErrInUse`，在工作收束后重试；成功销毁 Tasker 后再销毁其 Resource / Controller。具体边界见固定快照的 [Controller.Destroy](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/controller.go) 与 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/doc.go)。
+停止可能使此前 Job ID 无效，旧 Job 的 `Wait` 返回不能单独证明所有工作已结束。保持所有者引用，处理 `Destroy` 返回的 `ErrInUse`，在工作收束后重试；成功销毁 Tasker 后再销毁其 Resource / Controller。具体边界见 [Controller.Destroy](../../../controller.go) 与 [包文档源码](../../../doc.go)。
 
 `Tasker.PostTask`、`Context.RunTask` / `RunRecognition` / `RunAction` / `WaitFreezes` 的参数编码失败现在会返回错误并跳过原生执行，不再退回 `{}`。检查原来依赖静默回退的代码及自定义 JSON codec。图像输入也应提供非 nil、非空图像；图像/矩形缓冲区创建与写入失败会传播到公开调用。
 
 ## 2. 更新 Pipeline 参数类型
 
-| 字段 | beta.19 | 当前快照 |
+| 字段 | beta.19 | v4.0.0 |
 | --- | --- | --- |
 | `LongPressParam.Duration`、`LongPressKeyParam.Duration` | `time.Duration` | `*time.Duration` |
 | 神经网络分类/检测的 `Expected` | `[]int` | `ClassSelectors` |
@@ -166,12 +166,12 @@ err := res.UseWebgpu(maa.InferenceDeviceAuto)
 
 `UseWebgpu` 需要 MaaFramework v5.14.3 或更高的原生库。更低版本不认识该取值，设置本身仍返回成功，但加载模型时会记录 invalid inference execution provider 并回退到 CPU；这与 `UseDirectml`、`UseCPU` 等入口的既有行为一致，所以请同时确认运行时实际选中的提供程序。
 
-在 MaaFramework v5.14.3 中，`UseAutoExecutionProvider` 依次尝试 CUDA、DirectML、WebGPU，最后回退到 CPU，不再选择 CoreML；依赖自动选择结果的代码需要重新核对。
+在 MaaFramework v5.14.3 的 MaaDeps 分发库中，`UseAutoExecutionProvider` 按 CUDA、DirectML、WebGPU 的优先级选择可用提供程序；没有可用项或所选项初始化失败时回退 CPU。MaaDeps 不再分发 CoreML；依赖自动选择结果的代码需要重新核对。
 
 ## 6. 检查注册、Agent Server 和详情查询
 
-- 把事件 sink 和自定义 runner 配置安排在实例及关联 Tasker 空闲时。新增串行化与回调保护不替代原生执行期间的调用方协调，具体契约见 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/doc.go)。不要传 nil runner，包括带类型的 nil 函数。注销不存在的 Resource runner 名称现在成功返回；由 Go wrapper 外部注册的名称会保留并返回错误。
-- 将 Agent Server 配置放在 `AgentServerStartUp` 之前。启动、已 Join 或已 detach 后不再允许重新启动或配置；未 detach 时，`AgentServerShutDown` 后进入永久关闭态，不能靠 `Release` / `Init` 重建服务，需要新服务时重启进程。Join / ShutDown 的安排见 [API 注释](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/agent_server.go)。
+- 把事件 sink 和自定义 runner 配置安排在实例及关联 Tasker 空闲时。新增串行化与回调保护不替代原生执行期间的调用方协调，具体契约见 [包文档源码](../../../doc.go)。不要传 nil runner，包括带类型的 nil 函数。注销不存在的 Resource runner 名称现在成功返回；由 Go wrapper 外部注册的名称会保留并返回错误。
+- 将 Agent Server 配置放在 `AgentServerStartUp` 之前。启动、已 Join 或已 detach 后不再允许重新启动或配置；未 detach 时，`AgentServerShutDown` 后进入永久关闭态，不能靠 `Release` / `Init` 重建服务，需要新服务时重启进程。Join / ShutDown 的安排见 [API 注释](../../../agent_server.go)。
 - `GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 无可用详情时改为返回错误；调用方先处理 `error`，不再只判断 `detail == nil`。`NodeDetail.Recognition` / `Action` 仍可能为空。
 - 自定义控制器支持 `ControllerFeatureNoScalingTouchPoints`，如需禁用触摸点自动缩放，可在 `GetFeature` 返回的 bitmask 中设置。原生销毁期间可能调用 `KeyUp` / `TouchUp`，不要在 `Destroy` 成功之前拆除实现所需状态。
 - 订阅画面稳定等待事件可使用 `OnNodeWaitFreezesInContext` 或可选的 `ContextWaitFreezesEventSink`；已有 `ContextEventSink` 无需增加方法。
@@ -189,4 +189,3 @@ err := res.UseWebgpu(maa.InferenceDeviceAuto)
 - [ ] 把 `UseCoreml` 调用改为 `UseWebgpu`，并确认原生库版本与运行时实际选中的提供程序。
 - [ ] 验证停止与退出路径，处理 `Destroy` / `Release` 错误，不在 Agent Server 关闭后尝试重启。
 - [ ] 运行项目的 `go build ./...`、`go vet ./...` 和相关测试。
-- [ ] 正式版 tag 确定后，对照更新后的指南核验从此快照到正式版的追加变化。

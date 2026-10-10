@@ -160,7 +160,7 @@ For more examples, see the [examples](examples) directory:
 - [Runtime library loading](docs/en/guides/library-loading.md)
 - [Android build guide](docs/en/guides/android.md)
 - [Frequently asked questions](docs/en/guides/faq.md)
-- Migration guides: [v3 to v4](docs/en/migration/from-v3.md), [beta.18 to beta.19](docs/en/migration/from-v4.0.0-beta.18.md), [beta.19 to v4](docs/en/migration/from-v4.0.0-beta.19.md). The v4.0.0 guides are release preparation drafts based on a fixed commit; the final tag has not been created.
+- Migration guides: [v3 to v4](docs/en/migration/from-v3.md), [beta.18 to beta.19](docs/en/migration/from-v4.0.0-beta.18.md), [beta.19 to v4](docs/en/migration/from-v4.0.0-beta.19.md).
 - [Changelog](CHANGELOG.md)
 - [MaaFramework Quick Start](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/1.1-QuickStarted.md)
 - [Pipeline Protocol](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/en_us/3.1-PipelineProtocol.md)

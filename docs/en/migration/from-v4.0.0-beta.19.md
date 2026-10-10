@@ -1,18 +1,18 @@
-# v4.0.0-beta.19 → v4.0.0 migration guide (release preparation draft)
+# v4.0.0-beta.19 → v4.0.0 migration guide
 
 English | [简体中文](../../zh/migration/from-v4.0.0-beta.19.md)
 
-This guide covers only the net changes from `v4.0.0-beta.19` to commit [`2c24945`](https://github.com/MaaXYZ/maa-framework-go/tree/2c24945e7a9e23993f13743cc4962a2bd985641a). The `v4.0.0` tag has not been created. This file is named for the starting version, and its current content is a release preparation draft based on a fixed snapshot. The endpoint differences must be checked again when the final release is determined.
+This guide covers the net changes from `v4.0.0-beta.19` to `v4.0.0`.
 
 If you use v3, follow the [v3 → v4 guide](from-v3.md). If you use beta.18, first follow the [beta.19 guide](from-v4.0.0-beta.18.md) for ownership changes. See the [CHANGELOG](../../../CHANGELOG.md) for the complete list.
 
-This snapshot raises the minimum Go version from 1.24 to 1.25. Update your local and CI toolchains, then specify the fixed commit:
+v4.0.0 raises the minimum Go version from 1.24 to 1.25. Update your local and CI toolchains, then update the Go dependency:
 
 ```sh
-go get github.com/MaaXYZ/maa-framework-go/v4@2c24945e7a9e23993f13743cc4962a2bd985641a
+go get github.com/MaaXYZ/maa-framework-go/v4@v4.0.0
 ```
 
-Use a compatible set of MaaFramework shared libraries. Do not mix versions across the four libraries or use an installation command for the unreleased `@v4.0.0` tag.
+Use a compatible set of MaaFramework shared libraries. Do not mix versions across the four libraries.
 
 ## 1. Update Post calls
 
@@ -56,13 +56,13 @@ func stopTask(tasker *maa.Tasker) error {
 }
 ```
 
-Stopping may invalidate earlier Job IDs. An old Job's `Wait` returning does not by itself prove that all work has ended. Keep owner references, handle `ErrInUse` returned by `Destroy`, and retry after work has settled. Destroy the Resource / Controller after successfully destroying the Tasker. See [Controller.Destroy](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/controller.go) and the [package documentation source](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/doc.go) at the fixed snapshot for the precise boundaries.
+Stopping may invalidate earlier Job IDs. An old Job's `Wait` returning does not by itself prove that all work has ended. Keep owner references, handle `ErrInUse` returned by `Destroy`, and retry after work has settled. Destroy the Resource / Controller after successfully destroying the Tasker. See [Controller.Destroy](../../../controller.go) and the [package documentation source](../../../doc.go) for the precise boundaries.
 
 Parameter encoding failures in `Tasker.PostTask` and `Context.RunTask` / `RunRecognition` / `RunAction` / `WaitFreezes` now return an error and skip native execution, instead of falling back to `{}`. Check code and custom JSON codecs that relied on the silent fallback. Image inputs should also be non-nil and nonempty; failures to create or write image / rectangle buffers propagate to public calls.
 
 ## 2. Update Pipeline parameter types
 
-| Field | beta.19 | Current snapshot |
+| Field | beta.19 | v4.0.0 |
 | --- | --- | --- |
 | `LongPressParam.Duration`, `LongPressKeyParam.Duration` | `time.Duration` | `*time.Duration` |
 | Neural network classification / detection `Expected` | `[]int` | `ClassSelectors` |
@@ -166,12 +166,12 @@ err := res.UseWebgpu(maa.InferenceDeviceAuto)
 
 `UseWebgpu` needs a native library at MaaFramework v5.14.3 or later. An earlier version does not recognize the value: the setter still succeeds, but loading a model logs an invalid inference execution provider and falls back to CPU. That matches the existing behavior of `UseDirectml`, `UseCPU`, and the other provider setters, so confirm which provider is actually selected at runtime.
 
-With MaaFramework v5.14.3, `UseAutoExecutionProvider` tries CUDA, DirectML, then WebGPU before falling back to CPU. It no longer selects CoreML; check code that depends on the automatically selected provider.
+With the MaaFramework v5.14.3 libraries distributed by MaaDeps, `UseAutoExecutionProvider` selects an available provider in CUDA, DirectML, then WebGPU priority order. It falls back to CPU if none is available or the selected provider fails to initialize. MaaDeps no longer ships CoreML; check code that depends on the automatically selected provider.
 
 ## 6. Check registrations, Agent Server, and detail queries
 
-- Configure event sinks and custom runners while the instance and its associated Tasker are idle. The new serialization and callback protections do not replace caller coordination during native execution; see the [package documentation source](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/doc.go) for the precise contract. Do not pass a nil runner, including a typed nil function. Unregistering a nonexistent Resource runner name now succeeds; names registered outside the Go wrapper are preserved and return an error.
-- Configure Agent Server before `AgentServerStartUp`. Restarting or configuring it is no longer allowed after startup, Join, or detach. Without detach, `AgentServerShutDown` enters a permanently closed state; `Release` / `Init` cannot recreate the service. Restart the process if you need a new service. See the [API comments](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/agent_server.go) for how to arrange Join / ShutDown.
+- Configure event sinks and custom runners while the instance and its associated Tasker are idle. The new serialization and callback protections do not replace caller coordination during native execution; see the [package documentation source](../../../doc.go) for the precise contract. Do not pass a nil runner, including a typed nil function. Unregistering a nonexistent Resource runner name now succeeds; names registered outside the Go wrapper are preserved and return an error.
+- Configure Agent Server before `AgentServerStartUp`. Restarting or configuring it is no longer allowed after startup, Join, or detach. Without detach, `AgentServerShutDown` enters a permanently closed state; `Release` / `Init` cannot recreate the service. Restart the process if you need a new service. See the [API comments](../../../agent_server.go) for how to arrange Join / ShutDown.
 - `GetRecognitionDetail`, `GetActionDetail`, and `GetWaitFreezesDetail` now return errors when no detail is available. Handle `error` first instead of checking only `detail == nil`. `NodeDetail.Recognition` / `Action` can still be nil.
 - Custom controllers support `ControllerFeatureNoScalingTouchPoints`. To disable automatic scaling of touch points, set it in the bitmask returned by `GetFeature`. Native destruction may call `KeyUp` / `TouchUp`; do not tear down the state needed by your implementation before `Destroy` succeeds.
 - To subscribe to screen stabilization wait events, use `OnNodeWaitFreezesInContext` or the optional `ContextWaitFreezesEventSink`; existing `ContextEventSink` implementations do not need additional methods.
@@ -189,4 +189,3 @@ If you use custom configuration for the API checker, check paths relative to the
 - [ ] Replace `UseCoreml` calls with `UseWebgpu`, and confirm the native library version and the provider actually selected at runtime.
 - [ ] Verify stop and exit paths, handle `Destroy` / `Release` errors, and do not attempt to restart Agent Server after shutdown.
 - [ ] Run your project's `go build ./...`, `go vet ./...`, and relevant tests.
-- [ ] Once the final release tag is determined, check the additional changes from this snapshot to the final release against the updated guide.

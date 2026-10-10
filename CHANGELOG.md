@@ -1,25 +1,23 @@
 # Changelog
 
-## 变更总览（v3.6.0-beta.5 → v4.0.0，发布准备草稿）
-
-本总览及下一节以提交 [`2c24945`](https://github.com/MaaXYZ/maa-framework-go/tree/2c24945e7a9e23993f13743cc4962a2bd985641a) 为固定核验终点。`v4.0.0` 尚未打 tag；正式版确定后需复核终点差异，再冻结这份里程碑记录。
+## 变更总览（v3.6.0-beta.5 → v4.0.0）
 
 ### 破坏性变更与升级入口
 
 - Go 模块由 `/v3` 升为 `/v4`，最低 Go 版本升至 1.25；构造、配置、查询与运行接口采用 Go `error`，异步 `Post*` 也直接报告提交错误。升级时分别检查调用错误与 Job 的执行状态。
 - 原生对象明确所有者与借用视图，`Destroy` 返回错误并保护仍被持有或使用的句柄；回调的 Context 仅在该次回调内有效。
 - Pipeline 构造器移除 `Node` 类型前缀与大量配置 option，改用参数结构及节点链式设置。时间、可选指针、类别选择、锚点与列表编码均有需要迁移的变化。
-- v3 用户见 [v3 → v4 迁移指南](docs/zh/migration/from-v3.md)；v4 用户按起点选择 [beta.18 → beta.19](docs/zh/migration/from-v4.0.0-beta.18.md) 或 [beta.19 → 发布准备快照](docs/zh/migration/from-v4.0.0-beta.19.md)。
+- v3 用户见 [v3 → v4 迁移指南](docs/zh/migration/from-v3.md)；v4 用户按起点选择 [beta.18 → beta.19](docs/zh/migration/from-v4.0.0-beta.18.md) 或 [beta.19 → v4.0.0](docs/zh/migration/from-v4.0.0-beta.19.md)。
 
 ### 错误处理模型
 
 - 构造失败、参数编码失败、原生提交失败及详情不可用通过 `error` 报告；`Job.Error` 保留提交和生命周期诊断，异步执行结果仍由状态表示。
-- 初始化提供库加载与符号缺失诊断，失败时尝试清理，卸载失败可重试。详单见下方「模块路径与错误返回」、beta.19 节及发布准备节的破坏性变更与修复。
+- 初始化提供库加载与符号缺失诊断，失败时尝试清理，卸载失败可重试。详单见下方「模块路径与错误返回」、beta.19 节及 v4.0.0 节的破坏性变更与修复。
 
 ### 所有权、生命周期与回调
 
 - 按对象依赖收束工作并销毁，再卸载动态库；借用对象、绑定关系、活动调用、Job 与回调均参与销毁保护。
-- 后续修复加强 Job 并发等待、停止后的空闲确认、回调清理与注册串行化。行为契约见固定快照的 [包文档源码](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/doc.go)，区间详单见 beta.19 与发布准备节。
+- 后续修复加强 Job 并发等待、停止后的空闲确认、回调清理与注册串行化。行为契约见 [包文档源码](doc.go)，区间详单见 beta.19 与 v4.0.0 节。
 
 ### Pipeline 配置与详情
 
@@ -31,16 +29,16 @@
 
 - 增加 macOS、Android Native、Linux、录制与回放控制器及权限、gamescope、portal 工具；Linux 的终点入口为 `NewLinuxController`，中途新增的 `NewWlRootsController` 已移除。
 - 扩展相对移动、窗口恢复、控制器信息与 Win32 输入能力；截图设置支持组合、验证与覆盖参考宽高。Android 增加动态库加载分支。
-- 图像使用 RGBA，提供可复用截图内存与像素转换快速路径。详单见早期区间的控制器与性能、beta.19 的平台条目及发布准备节。
+- 图像使用 RGBA，提供可复用截图内存与像素转换快速路径。详单见早期区间的控制器与性能、beta.19 的平台条目及 v4.0.0 节。
 
 ### 命名对齐与开发工具
 
 - 修正节点、图像覆盖、推理设备与 Win32 枚举命名，任务和识别结果结构对齐原生 API；详单见早期区间的「详情、回调与命名」。
-- API 检查工具覆盖原生符号与签名、回调 ABI、常量、事件和可选 Pipeline schema，使用同一原生版本的输入核验绑定；详单见早期区间的开发工具及发布准备节。
+- API 检查工具覆盖原生符号与签名、回调 ABI、常量、事件和可选 Pipeline schema，使用同一原生版本的输入核验绑定；详单见早期区间的开发工具及 v4.0.0 节。
 
-## v4.0.0（发布准备草稿）
+## v4.0.0
 
-本节记录 `v4.0.0-beta.19` → `2c24945` 的净变化，完整差异见 [固定提交对比](https://github.com/MaaXYZ/maa-framework-go/compare/v4.0.0-beta.19...2c24945e7a9e23993f13743cc4962a2bd985641a)。这不是已发布正式版记录。升级操作见 [迁移指南](docs/zh/migration/from-v4.0.0-beta.19.md)；API 契约链接固定快照源码，正式 tag 确定后再切换到对应 godoc。
+本节记录 `v4.0.0-beta.19` → `v4.0.0` 的净变化。升级操作见 [迁移指南](docs/zh/migration/from-v4.0.0-beta.19.md)。
 
 ### 破坏性变更
 
@@ -53,7 +51,7 @@
 - `Node.UnmarshalJSON` 替换整个节点，未出现字段及 `Name` 重置；`CustomActionParam.CustomActionParam` 中的数字解码为 `json.Number`，不再使用 `float64`。
 - `SetScreenshot` 从仅应用最后一项改为组合设置，拒绝重复/冲突选项、非正目标尺寸和无效插值方法。
 - `GetRecognitionDetail`、`GetActionDetail`、`GetWaitFreezesDetail` 无可用详情时由 `(nil, nil)` 改为返回错误。
-- Agent Server 增加生命周期与配置状态检查：运行、已 Join 或已 detach 时不允许重新启动或配置；未 detach 时关闭后进入永久关闭态，不能通过 `Release` / `Init` 重启。具体边界见 [Agent Server API](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/agent_server.go)。
+- Agent Server 增加生命周期与配置状态检查：运行、已 Join 或已 detach 时不允许重新启动或配置；未 detach 时关闭后进入永久关闭态，不能通过 `Release` / `Init` 重启。具体边界见 [Agent Server API](agent_server.go)。
 - `Resource.UseCoreml` 已移除。上游在 MaaFramework v5.14.3 弃用 `MaaInferenceExecutionProvider_CoreML`，MaaDeps 不再分发 CoreML 提供程序，Go 侧不再暴露该入口；需要 GPU 推理时改用 `Resource.UseWebgpu`。`MaaDef.h` 仍保留数值 3 供 C++ 调用方编译，因此该枚举的后续取值未重新编号。
 
 ### 新增
@@ -66,11 +64,11 @@
 - `WithScreenshotTargetExpand` 按比例覆盖参考宽高；`Controller.SetBackgroundManagedKeys` 配置 Win32 后台托管键；`ControllerFeatureNoScalingTouchPoints` 禁用自定义控制器的触摸点自动缩放。
 - `EventNodeWaitFreezes`、`NodeWaitFreezesDetail`、可选 `ContextWaitFreezesEventSink` 与 `OnNodeWaitFreezesInContext`；`ResourceLoadingDetail.Type` 区分加载类型。
 - API 检查工具扩展回调 ABI、结构布局与 trampoline、更多常量组、事件分发及可选 Pipeline v2 类型/字段检查；新增 `--pipeline-schema` 与带理由的 exclusions，强化配置和输入验证。`constant_exclusions` 按精确 C 常量名声明 Go 未暴露的常量，要求非空理由并拒绝失效条目；常量条件解析按 C 语义处理 `__cplusplus`，未知复合条件保留分支并报告声明冲突。
-- `Resource.UseWebgpu(deviceID InferenceDevice)` 选择 WebGPU 执行提供程序，`deviceID` 为 WebGPU 设备 id，`InferenceDeviceAuto` 交由框架选择（设备 0）。该提供程序要求 MaaFramework v5.14.3 或更高；更低版本没有对应枚举值，设置仍成功，但加载模型时记录错误并回退 CPU。在 v5.14.3 中，Auto 提供程序依次尝试 CUDA、DirectML、WebGPU，最后回退到 CPU，不再选择 CoreML。
+- `Resource.UseWebgpu(deviceID InferenceDevice)` 选择 WebGPU 执行提供程序，`deviceID` 为 WebGPU 设备 id，`InferenceDeviceAuto` 交由框架选择（设备 0）。该提供程序要求 MaaFramework v5.14.3 或更高；更低版本没有对应枚举值，设置仍成功，但加载模型时记录错误并回退 CPU。在 v5.14.3 的 MaaDeps 分发库中，Auto 按 CUDA、DirectML、WebGPU 的优先级选择可用提供程序；没有可用项或所选项初始化失败时回退 CPU。MaaDeps 不再分发 CoreML。
 
 ### 修复
 
-- Job / TaskJob 的等待与状态查询增加并发保护，多个等待者共享完成结果；停止使 Job ID 无效后，销毁仍需确认原生工作空闲，避免提前释放。契约见 [Job](https://github.com/MaaXYZ/maa-framework-go/blob/2c24945e7a9e23993f13743cc4962a2bd985641a/job.go) 与各对象的 Destroy 注释。
+- Job / TaskJob 的等待与状态查询增加并发保护，多个等待者共享完成结果；停止使 Job ID 无效后，销毁仍需确认原生工作空闲，避免提前释放。契约见 [Job](job.go) 与各对象的 Destroy 注释。
 - 事件与自定义控制器回调关联所有者，普通回调活动期间 `Destroy` 返回 `ErrInCallback`；销毁期间拒绝新增普通用户回调，并等待已接纳的清理回调结束。自定义控制器回调保留至原生销毁完成，使 KeyUp / TouchUp 可在清理阶段释放输入。
 - sink 与 Resource runner 注册操作串行化；原生注册失败时清理 Go 回调记录。Resource / AgentServer 拒绝 nil runner；Resource 注销未知名称成为成功空操作，外部注册的名称保留并返回错误。
 - 图像、矩形等缓冲区创建和写入失败传播到调用方；空图像返回错误，空 buffer 读取返回真正的 nil 图像。
