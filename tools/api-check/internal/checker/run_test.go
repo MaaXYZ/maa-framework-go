@@ -132,6 +132,77 @@ func TestRunCleanRepoExitsZero(t *testing.T) {
 	}
 }
 
+func TestRunCPlusPlusGuardUsesCConstantValue(t *testing.T) {
+	files := repoFixtureFiles()
+	headerPath := "deps/include/" + maaDefHeaderRel
+	goPath := "internal/native/framework.go"
+	goContent := files[goPath] + "const MaaInferenceExecutionProvider_CPU = 99\n"
+	dir := writeRepoFixtureWith(t, map[string]string{
+		headerPath: files[headerPath] + `enum MaaInferenceExecutionProviderEnum {
+#if defined(__cplusplus)
+    MaaInferenceExecutionProvider_CPU = 1,
+#else
+    MaaInferenceExecutionProvider_CPU = 99,
+#endif
+};
+`,
+		goPath: goContent,
+	})
+
+	code, stdout, stderr := runChecker(t, dir)
+	if code != 0 || !strings.Contains(stdout, "PASS: no inconsistencies found.") || stderr != "" {
+		t.Errorf("run() with the C value = %d, want 0; stderr:\n%s\nstdout:\n%s", code, stderr, stdout)
+	}
+
+	writeFixtureFile(t, filepath.Join(dir, goPath), strings.Replace(goContent, "MaaInferenceExecutionProvider_CPU = 99", "MaaInferenceExecutionProvider_CPU = 1", 1))
+	code, stdout, stderr = runChecker(t, dir)
+	if code != 1 || !strings.Contains(stdout, "[native.execution_provider] constant value mismatch: CPU (go=1 c=99)") || stderr != "" {
+		t.Fatalf("run() with the C++ value = %d, want constant mismatch and exit 1; stderr:\n%s\nstdout:\n%s", code, stderr, stdout)
+	}
+	if strings.Contains(stdout, "PASS: no inconsistencies found.") {
+		t.Fatalf("run() passed despite the C value mismatch:\n%s", stdout)
+	}
+}
+
+func TestRunMixedUnknownCGuardsExitTwo(t *testing.T) {
+	tests := []struct {
+		name      string
+		condition string
+		goValue   int
+	}{
+		{"defined AND", "!defined(__cplusplus) && defined(MAA_REVIEW_UNKNOWN)", 1},
+		{"defined OR", "defined(__cplusplus) || defined(MAA_REVIEW_UNKNOWN)", 99},
+		{"bare unknown operand", "!defined(__cplusplus) && MAA_REVIEW_UNKNOWN", 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files := repoFixtureFiles()
+			headerPath := "deps/include/" + maaDefHeaderRel
+			goPath := "internal/native/framework.go"
+			dir := writeRepoFixtureWith(t, map[string]string{
+				headerPath: files[headerPath] + fmt.Sprintf(`#define MAA_REVIEW_UNKNOWN 1
+enum MaaInferenceExecutionProviderEnum {
+#if %s
+    MaaInferenceExecutionProvider_CPU = 99,
+#else
+    MaaInferenceExecutionProvider_CPU = 1,
+#endif
+};
+`, tt.condition),
+				goPath: files[goPath] + fmt.Sprintf("const MaaInferenceExecutionProvider_CPU = %d\n", tt.goValue),
+			})
+
+			code, stdout, stderr := runChecker(t, dir)
+			if code != 2 || !strings.Contains(stderr, "conflicting C constant MaaInferenceExecutionProvider_CPU") {
+				t.Fatalf("run() = %d, want conflicting C constant and exit 2; stderr:\n%s\nstdout:\n%s", code, stderr, stdout)
+			}
+			if strings.Contains(stdout, "PASS: no inconsistencies found.") {
+				t.Fatalf("run() passed despite conflicting C constant values:\n%s", stdout)
+			}
+		})
+	}
+}
+
 func TestRunConfigPrecedence(t *testing.T) {
 	t.Run("cwd config wins over root fallback", func(t *testing.T) {
 		dir := writeRepoFixture(t)

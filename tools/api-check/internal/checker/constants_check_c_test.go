@@ -354,7 +354,7 @@ func TestEvalCConstSources_SelectsCConditionalBranch(t *testing.T) {
 		content: "enum Fixture {\n" +
 			"    MaaFixture_A = 1,\n" +
 			"#if defined(__cplusplus)\n" +
-			"    MaaFixture_B [[deprecated]] = 2,\n" +
+			"    MaaFixture_B [[deprecated]] = 99,\n" +
 			"#else\n" +
 			"    MaaFixture_B = 2,\n" +
 			"#endif\n" +
@@ -379,21 +379,28 @@ func TestEvalCConstSources_KeepsUnknownGuardBranches(t *testing.T) {
 	t.Parallel()
 	// A guard over an unknown macro may select either value; keep both so the
 	// conflicting declaration is reported instead of silently resolved.
-	_, err := evaluateCConstSources([]cConstSource{{
-		path: "fixture.h",
-		content: "enum Fixture {\n" +
-			"#ifdef MAA_FIXTURE_PLATFORM\n" +
-			"    MaaFixture_A = 1,\n" +
-			"#else\n" +
-			"    MaaFixture_A = 2,\n" +
-			"#endif\n" +
-			"};\n",
-	}})
-	if err == nil {
-		t.Fatal("expected conflicting values under an unknown guard to be reported")
-	}
-	if !strings.Contains(err.Error(), "conflicting C constant MaaFixture_A") {
-		t.Fatalf("unexpected error: %v", err)
+	for _, directive := range []string{
+		"#ifdef MAA_FIXTURE_PLATFORM",
+		"#if !defined(__cplusplus) && defined(MAA_FIXTURE_PLATFORM)",
+		"#if defined(__cplusplus) || defined(MAA_FIXTURE_PLATFORM)",
+		"#if !defined(__cplusplus) && MAA_FIXTURE_PLATFORM",
+	} {
+		t.Run(directive, func(t *testing.T) {
+			t.Parallel()
+			_, err := evaluateCConstSources([]cConstSource{{
+				path: "fixture.h",
+				content: "#define MAA_FIXTURE_PLATFORM 1\n" +
+					"enum Fixture {\n" + directive + "\n" +
+					"    MaaFixture_A = 1,\n" +
+					"#else\n" +
+					"    MaaFixture_A = 2,\n" +
+					"#endif\n" +
+					"};\n",
+			}})
+			if err == nil || !strings.Contains(err.Error(), "conflicting C constant MaaFixture_A") {
+				t.Fatalf("expected conflicting values under an unknown guard, got %v", err)
+			}
+		})
 	}
 }
 
@@ -428,28 +435,62 @@ func TestResolveCConditionals_KeepsStrayDirectivesHarmless(t *testing.T) {
 	// keeps the interior line breaks.
 	for name, tc := range map[string]struct{ in, want string }{
 		"stray endif": {"a\n#endif\nb\n", "a\nb\n"},
-		// __cplusplus is undefined for C consumers, so a negation of it is false
-		// and its branch is dropped.
-		"negated guard": {"a\n#if !defined(__cplusplus)\nb\n#endif\nc\n", "a\nc\n"},
+		// __cplusplus is undefined for C consumers, so its negation is true.
+		"negated guard": {"a\n#if !defined(__cplusplus)\nb\n#endif\nc\n", "a\nb\nc\n"},
 		// #ifdef and #ifndef reach the resolver as a bare macro name; the
 		// directive word itself is not part of the condition.
-		"ifdef macro":  {"a\n#ifdef __cplusplus\nb\n#else\nc\n#endif\nd\n", "a\nb\nd\n"},
-		"ifndef macro": {"a\n#ifndef __cplusplus\nb\n#else\nc\n#endif\nd\n", "a\nc\nd\n"},
+		"ifdef macro":  {"a\n#ifdef __cplusplus\nb\n#else\nc\n#endif\nd\n", "a\nc\nd\n"},
+		"ifndef macro": {"a\n#ifndef __cplusplus\nb\n#else\nc\n#endif\nd\n", "a\nb\nd\n"},
 		// An unknown platform macro keeps every branch.
 		"unknown guard keeps both": {"a\n#ifdef MAA_PLATFORM_X\nb\n#else\nc\n#endif\nd\n", "a\nb\nc\nd\n"},
-		// The C++ guard is true, so its branch is taken and the whole else body
-		// -- including the nested conditional -- is dead.
+		// Both C++ guards are false, so each selects its else body.
 		"nested guard": {
 			"a\n#if defined(__cplusplus)\nb\n#else\n#if defined(__cplusplus)\nc\n#else\nd\n#endif\n#endif\ne\n",
-			"a\nb\ne\n",
+			"a\nd\ne\n",
 		},
 		// A true condition takes the first branch and drops the else body.
-		"taken branch drops else": {"a\n#if defined(__cplusplus)\nb\n#else\nc\n#endif\nd\n", "a\nb\nd\n"},
+		"taken branch drops else":  {"a\n#if !defined(__cplusplus)\nb\n#else\nc\n#endif\nd\n", "a\nb\nd\n"},
+		"taken branch drops elif":  {"a\n#if !defined(__cplusplus)\nb\n#elif !defined(__cplusplus)\nc\n#else\nd\n#endif\ne\n", "a\nb\ne\n"},
+		"empty branch drops else":  {"a\n#if !defined(__cplusplus)\n#else\nb\n#endif\nc\n", "a\nc\n"},
+		"nested branch drops else": {"a\n#if !defined(__cplusplus)\n#if !defined(__cplusplus)\nb\n#endif\n#else\nc\n#endif\nd\n", "a\nb\nd\n"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			if got := resolveCConditionals(tc.in); got != tc.want {
 				t.Fatalf("resolveCConditionals(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestResolveCCondition(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		condition string
+		want      cConditionalOutcome
+	}{
+		{"__cplusplus", cConditionFalse},
+		{"defined(__cplusplus)", cConditionFalse},
+		{"defined __cplusplus", cConditionFalse},
+		{"!defined(__cplusplus)", cConditionTrue},
+		{"!(defined (__cplusplus))", cConditionTrue},
+		{"((!defined __cplusplus))", cConditionTrue},
+		{"!!defined(__cplusplus)", cConditionFalse},
+		{"defined(MAA_PLATFORM)", cConditionUnknown},
+		{"defined(__cplusplus) || defined(MAA_PLATFORM)", cConditionUnknown},
+		{"!defined(__cplusplus) && defined(MAA_PLATFORM)", cConditionUnknown},
+		{"!defined(__cplusplus) && MAA_PLATFORM", cConditionUnknown},
+		{"defined(__cplusplus) || !defined(__cplusplus)", cConditionUnknown},
+		{"MAA_CHECK(__cplusplus)", cConditionUnknown},
+		{"__cplusplus_suffix", cConditionUnknown},
+		{"__cplusplus != 0", cConditionUnknown},
+		{"1", cConditionUnknown},
+		{"defined(", cConditionUnknown},
+	} {
+		t.Run(tc.condition, func(t *testing.T) {
+			t.Parallel()
+			if got := resolveCCondition(tc.condition); got != tc.want {
+				t.Fatalf("resolveCCondition(%q) = %v, want %v", tc.condition, got, tc.want)
 			}
 		})
 	}

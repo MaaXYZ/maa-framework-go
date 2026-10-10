@@ -15,7 +15,7 @@ import (
 // resolveCConditionals exists because the release headers guard an enum member
 // with `#if defined(__cplusplus)` to attach a C++-only attribute. Reducing that
 // guard by hand is easy to get wrong, so the parity check is the contract: every
-// enum member the checker keeps must also survive a real `cc -E`.
+// enum member the checker keeps must have the same value after a real `cc -E`.
 //
 // Only enum members are compared. Object-like macros are expanded away by the
 // preprocessor, so their identifiers are not a meaningful oracle here.
@@ -48,7 +48,7 @@ func TestResolveCConditionals_MatchesCHeaders(t *testing.T) {
 				t.Fatalf("read %s: %v", header, readErr)
 			}
 			mine := resolveCConditionals(removeCComments(string(data)))
-			mineMembers := enumMemberNames(t, mine)
+			mineMembers := enumMemberValues(t, mine)
 
 			expanded := filepath.Join(t.TempDir(), "expanded.c")
 			cmd := exec.Command("cc", "-E", "-P", "-x", "c", header, "-I", headerRoot, "-o", expanded)
@@ -59,29 +59,98 @@ func TestResolveCConditionals_MatchesCHeaders(t *testing.T) {
 			if readErr != nil {
 				t.Fatalf("read preprocessed %s: %v", header, readErr)
 			}
-			cMembers := enumMemberNames(t, string(preprocessed))
+			cMembers := enumMemberValues(t, string(preprocessed))
 
-			for name := range mineMembers {
-				if !cMembers[name] {
+			for name, value := range mineMembers {
+				if cValue, ok := cMembers[name]; !ok {
 					t.Errorf("checker keeps enum member %s, but the C preprocessor does not define it", name)
+				} else if value != cValue {
+					t.Errorf("enum member %s: checker value %s, C preprocessor value %s", name, value, cValue)
 				}
 			}
 		})
 	}
 }
 
-// enumMemberNames returns the enum member names declared in content.
-func enumMemberNames(t *testing.T, content string) map[string]bool {
+// TestResolveCConditionals_MatchesCPreprocessor does not depend on release
+// headers. Its C and C++ branches deliberately differ in both names and values,
+// so selecting the wrong branch cannot pass a name-only comparison.
+func TestResolveCConditionals_MatchesCPreprocessor(t *testing.T) {
+	t.Parallel()
+	if _, err := exec.LookPath("cc"); err != nil {
+		t.Skip("cc is required to compare against the C preprocessor")
+	}
+	content := `enum Fixture {
+    MaaFixture_Start = 1,
+#if defined(__cplusplus)
+    MaaFixture_Provider = 99,
+    MaaFixture_CppOnly = 100,
+#else
+    MaaFixture_Provider = 2,
+    MaaFixture_COnly,
+#endif
+#if !defined __cplusplus
+    MaaFixture_Negated,
+#elif !defined(__cplusplus)
+    MaaFixture_Unreachable = 99,
+#else
+    MaaFixture_Unreachable = 100,
+#endif
+#ifndef __cplusplus
+#if !defined(__cplusplus)
+    MaaFixture_Nested,
+#endif
+#else
+    MaaFixture_Nested = 99,
+#endif
+#ifdef __cplusplus
+    MaaFixture_Last = 99,
+#else
+    MaaFixture_Last,
+#endif
+};
+`
+	header := filepath.Join(t.TempDir(), "fixture.h")
+	if err := os.WriteFile(header, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("cc", "-E", "-P", "-x", "c", header)
+	expanded, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("cc cannot preprocess fixture: %v: %s", err, expanded)
+	}
+	mine := enumMemberValues(t, resolveCConditionals(content))
+	want := enumMemberValues(t, string(expanded))
+	if len(mine) != len(want) {
+		t.Errorf("checker enum members = %v, C preprocessor enum members = %v", mine, want)
+	}
+	for name, value := range want {
+		if got := mine[name]; got != value {
+			t.Errorf("enum member %s: checker value %q, C preprocessor value %s", name, got, value)
+		}
+	}
+}
+
+// enumMemberValues returns the exact integer values of enum members in content.
+// A parsing or evaluation failure must fail the oracle instead of comparing a
+// partial inventory.
+func enumMemberValues(t *testing.T, content string) map[string]string {
 	t.Helper()
 	decls, err := parseCEnumDecls(content)
 	if err != nil {
-		// The parser stops at its first unsupported member, so an error only
-		// means the comparison is partial; do not fail the parity check on it.
-		t.Logf("partial enum parse: %v", err)
+		t.Fatalf("parse enum members: %v", err)
 	}
-	names := make(map[string]bool, len(decls))
+	env, err := evaluateCConstSources([]cConstSource{{path: "parity.h", content: content}})
+	if err != nil {
+		t.Fatalf("evaluate enum members: %v", err)
+	}
+	values := make(map[string]string, len(decls))
 	for _, decl := range decls {
-		names[decl.name] = true
+		value, ok := env.values[decl.name]
+		if !ok {
+			t.Fatalf("enum member %s has no value: %s", decl.name, env.failures[decl.name])
+		}
+		values[decl.name] = value.ExactString()
 	}
-	return names
+	return values
 }

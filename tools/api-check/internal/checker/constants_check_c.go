@@ -376,8 +376,7 @@ func evalCConstCast(node *ast.CallExpr, env map[string]numericValue, typeEnv map
 var cEnumKeywordRe = regexp.MustCompile(`\benum\b`)
 var cConstTypedefRe = regexp.MustCompile(`(?m)\btypedef\s+([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*;`)
 var cConstIdentifierRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
-var cCallLikeRe = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*\s*\([^()]*\)`)
-var cIdentRe = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*`)
+var cDefinedBareMacroRe = regexp.MustCompile(`\bdefined\s+([A-Za-z_][A-Za-z0-9_]*)\b`)
 
 // resolveCConditionals reduces the preprocessor conditionals in a header to the
 // branches a C compiler would select, so later parsing sees the C view of the
@@ -390,8 +389,8 @@ var cIdentRe = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*`)
 // value or trip the enum parser. C++ attributes are dropped for the same
 // reason: they carry no numeric meaning.
 //
-// Only `defined(__cplusplus)` is decided. When a guard depends on an unknown
-// macro, both of its branches are kept so their members stay visible to the
+// Only the C++ macro, its defined forms, and their negations are decided. Other
+// conditions keep both branches so their members stay visible to the
 // duplicate detection in evaluateCConstSources; a guard that selects
 // alternative values for one constant then reports a conflict instead of
 // silently picking a branch.
@@ -403,8 +402,7 @@ func resolveCConditionals(content string) string {
 }
 
 // parseConditional writes the selected lines of lines[start:end] to out. A stray
-// `#else`, `#elif`, or `#endif` with no open conditional is dropped, which
-// matches how a preprocessor treats an unmatched directive. Every other
+// `#else`, `#elif`, or `#endif` with no open conditional is dropped. Every other
 // directive is ordinary content for the later parsers, so it is kept.
 func parseConditional(lines []string, start, end int, out *strings.Builder) int {
 	for index := start; index < end; index++ {
@@ -449,10 +447,11 @@ func parseConditionalBody(lines []string, headerLine, end int, out *strings.Buil
 	// follows it, so skipping is decided per directive rather than by leaving
 	// the loop.
 	//
-	// emitted records that some branch already wrote content; a known guard
-	// selects exactly one branch, so a later #else is dead once that happens.
+	// taken records that a known guard already selected a branch, even if its
+	// body is empty or only contains nested conditionals. Later branches are
+	// dead once that happens.
 	emitting := outcome != cConditionFalse
-	emitted := false
+	taken := outcome == cConditionTrue
 
 	index := headerLine + 1
 	for index < end {
@@ -473,9 +472,15 @@ func parseConditionalBody(lines []string, headerLine, end int, out *strings.Buil
 					index++
 					continue
 				}
+				if taken {
+					emitting = false
+					index++
+					continue
+				}
 				switch resolveCCondition(strings.Join(fields[1:], " ")) {
 				case cConditionTrue:
 					emitting = true
+					taken = true
 				case cConditionFalse:
 					emitting = false
 				default:
@@ -494,7 +499,7 @@ func parseConditionalBody(lines []string, headerLine, end int, out *strings.Buil
 				}
 				// A known guard selects this branch only when no other one was
 				// taken.
-				emitting = !emitted
+				emitting = !taken
 				index++
 				continue
 			case "endif":
@@ -505,7 +510,6 @@ func parseConditionalBody(lines []string, headerLine, end int, out *strings.Buil
 		if emitting {
 			out.WriteString(lines[index])
 			out.WriteByte('\n')
-			emitted = true
 		}
 		index++
 	}
@@ -558,9 +562,6 @@ const (
 	cConditionUnknown
 )
 
-// cCppMacroToken marks the C++ macro while a condition is inspected.
-const cCppMacroToken = "MaaCheckCppMacro"
-
 // resolveCDirective resolves the condition of a conditional directive, handling
 // the `#ifndef` inversion. A `nil` or unexpected directive resolves to unknown.
 func resolveCDirective(fields []string) cConditionalOutcome {
@@ -570,16 +571,15 @@ func resolveCDirective(fields []string) cConditionalOutcome {
 	condition := strings.Join(fields[1:], " ")
 	switch fields[0] {
 	case "ifdef":
-		return resolveCCondition(condition)
-	case "ifndef":
-		switch resolveCCondition(condition) {
-		case cConditionTrue:
+		if condition == "__cplusplus" {
 			return cConditionFalse
-		case cConditionFalse:
-			return cConditionTrue
-		default:
-			return cConditionUnknown
 		}
+		return cConditionUnknown
+	case "ifndef":
+		if condition == "__cplusplus" {
+			return cConditionTrue
+		}
+		return cConditionUnknown
 	case "if":
 		return resolveCCondition(condition)
 	default:
@@ -588,33 +588,47 @@ func resolveCDirective(fields []string) cConditionalOutcome {
 }
 
 // resolveCCondition resolves a `#if` style condition over the predefined C++
-// macro only. C++ consumers define it and C consumers do not, so the checker
-// reads every condition as a C compiler would. Any other identifier makes the
-// condition unknown to the checker.
+// macro only. C consumers do not define it. Parentheses and unary negation are
+// supported; compound expressions and other macros remain unknown, so no
+// unsupported expression can silently discard a branch.
 func resolveCCondition(condition string) cConditionalOutcome {
-	// Detect the macro in the original text: `defined(X)` and `X` both reduce to
-	// the same decision, and stripping the operator would remove the macro name
-	// with it.
-	if !strings.Contains(condition, "__cplusplus") {
-		// The condition mentions no macro the checker can decide, for example
-		// `#if 1` or an unknown platform macro.
+	// C permits both defined MACRO and defined(MACRO). Normalize only the
+	// former spelling, retaining every operand for the conservative AST walk.
+	condition = cDefinedBareMacroRe.ReplaceAllString(condition, "defined($1)")
+	node, err := parser.ParseExpr(condition)
+	if err != nil {
 		return cConditionUnknown
 	}
-	// Mark the macro, then blank out `defined(...)` and any other call-like
-	// operator. Function-like calls are dropped because this resolver does not
-	// evaluate them, and dropping them first would delete the marker.
-	rest := strings.ReplaceAll(condition, "__cplusplus", cCppMacroToken)
-	rest = cCallLikeRe.ReplaceAllString(rest, " ")
-	for _, ident := range cIdentRe.FindAllString(rest, -1) {
-		if ident != cCppMacroToken {
-			// Another macro participates, so the checker cannot decide it.
-			return cConditionUnknown
+	return resolveCConditionExpr(node)
+}
+
+func resolveCConditionExpr(node ast.Expr) cConditionalOutcome {
+	switch node := node.(type) {
+	case *ast.ParenExpr:
+		return resolveCConditionExpr(node.X)
+	case *ast.Ident:
+		if node.Name == "__cplusplus" {
+			return cConditionFalse
+		}
+	case *ast.CallExpr:
+		fun, ok := node.Fun.(*ast.Ident)
+		if ok && fun.Name == "defined" && len(node.Args) == 1 && !node.Ellipsis.IsValid() {
+			macro, ok := node.Args[0].(*ast.Ident)
+			if ok && macro.Name == "__cplusplus" {
+				return cConditionFalse
+			}
+		}
+	case *ast.UnaryExpr:
+		if node.Op == token.NOT {
+			switch resolveCConditionExpr(node.X) {
+			case cConditionTrue:
+				return cConditionFalse
+			case cConditionFalse:
+				return cConditionTrue
+			}
 		}
 	}
-	if strings.Contains(condition, "!") {
-		return cConditionFalse
-	}
-	return cConditionTrue
+	return cConditionUnknown
 }
 
 // stripCppAttributes removes balanced `[[...]]` attribute specifiers, which are
