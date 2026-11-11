@@ -46,3 +46,9 @@ if err := maa.Init(maa.WithLibDir("path/to/MaaFramework/libs/android")); err != 
 ```
 
 不传 `WithLibDir` 时，`Init` 使用平台加载器当前的查找配置，例如 `LD_LIBRARY_PATH` 或应用进程默认搜索的目录。
+
+## NCNN 推理
+
+在 MaaFramework v5.16.0 中，`Resource.UseNcnn()` 显式选择 NCNN CPU 推理。它要求启用了 NCNN 的 Android 原生构建及对应的 NCNN 模型；桌面构建会拒绝该设置，必须检查返回的错误。`UseAutoExecutionProvider()` 不会选择 NCNN，NCNN 模型加载失败时也不会回退到 ONNX Runtime。
+
+请在提交任何资源加载之前选择推理引擎。加载开始后，切换到或离开 NCNN 前必须调用 `Clear()` 或重新创建资源。绑定会返回原生推理引擎及设备设置失败的错误，不会静默切换到其他引擎。详见[原生推理引擎契约](https://github.com/MaaXYZ/MaaFramework/blob/v5.16.0/include/MaaFramework/MaaDef.h)。

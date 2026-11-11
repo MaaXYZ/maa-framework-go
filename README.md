@@ -39,10 +39,10 @@ Go binding for [MaaFramework](https://github.com/MaaXYZ/MaaFramework), a cross-p
 
 ## Features
 
-- **Cross-platform Controllers** - ADB, Win32, Linux, macOS, PlayCover, and Android Native
+- **Cross-platform Controllers** - ADB, iOS, Win32, Linux, macOS, PlayCover, and Android Native
 - **Recording and Replay** - Capture controller operations to JSONL, then replay them for debugging and regression testing
 - **Virtual Gamepad Controller** (Windows only) - Gamepad automation via ViGEm
-- **Toolkit Utilities** - Find ADB devices and desktop windows; manage macOS automation permissions
+- **Toolkit Utilities** - Find ADB and iOS devices and desktop windows; manage macOS automation permissions
 - **Image Recognition** - Template matching, OCR, and feature detection
 - **Custom Extensions** - Custom recognitions, actions, and controllers in pure Go
 - **Agent Support** - Run custom recognition and action logic from an external process
@@ -159,6 +159,7 @@ For more examples, see the [examples](examples) directory:
 
 - [Runtime library loading](docs/en/guides/library-loading.md)
 - [Android build guide](docs/en/guides/android.md)
+- [iOS device discovery and control](docs/en/guides/ios.md)
 - [Frequently asked questions](docs/en/guides/faq.md)
 - Migration guides: [v3 to v4](docs/en/migration/from-v3.md), [beta.18 to beta.19](docs/en/migration/from-v4.0.0-beta.18.md), [beta.19 to v4](docs/en/migration/from-v4.0.0-beta.19.md).
 - [Changelog](CHANGELOG.md)

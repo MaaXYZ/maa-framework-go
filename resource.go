@@ -154,8 +154,9 @@ func (r *Resource) setInference(ep native.MaaInferenceExecutionProvider, deviceI
 // Inference options are applied when a Post* load runs, so set them before
 // loading a model. A later change takes effect at the next load for model
 // sessions created afterwards; already created sessions keep their provider.
-// When the selected provider cannot be initialized, loading falls back to
-// CPU.
+// Switching to or from NCNN after any Post* load starts requires Clear first,
+// including switching back to CPU. ONNX Runtime providers fall back to CPU
+// when they cannot be initialized; NCNN has no ONNX Runtime fallback.
 func (r *Resource) UseCPU() error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {
@@ -216,9 +217,27 @@ func (r *Resource) UseWebgpu(deviceID InferenceDevice) error {
 	return r.setInference(native.MaaInferenceExecutionProvider_WebGPU, deviceID)
 }
 
+// UseNcnn selects NCNN CPU inference with MaaFramework v5.16 or later.
+// It requires an Android library built with NCNN; other builds return an error.
+// Call it before loading resources. After any Post* load starts, switching to
+// or from NCNN requires Clear first.
+//
+// NCNN requires its packaged neural-network and OCR models and does not fall
+// back to ONNX Runtime when those models are missing or cannot be loaded.
+func (r *Resource) UseNcnn() error {
+	_, done, useErr := r.state.begin()
+	if useErr != nil {
+		return useErr
+	}
+	defer done()
+
+	return r.setInference(native.MaaInferenceExecutionProvider_NCNN, native.MaaInferenceDevice_CPU)
+}
+
 // UseAutoExecutionProvider lets the native library select the execution
-// provider from the available hardware providers, falling back to CPU when
-// none can be initialized. See UseCPU for when the option takes effect.
+// provider from the available ONNX Runtime hardware providers, falling back
+// to CPU when none can be initialized. It never selects NCNN. See UseCPU for
+// when the option takes effect and restrictions on switching away from NCNN.
 func (r *Resource) UseAutoExecutionProvider() error {
 	_, done, useErr := r.state.begin()
 	if useErr != nil {

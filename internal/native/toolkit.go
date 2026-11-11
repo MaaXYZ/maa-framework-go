@@ -54,6 +54,34 @@ var (
 	MaaToolkitAdbDeviceGetConfig           func(device uintptr) string
 )
 
+// MaaToolkitIOSDeviceCancelCallback is the callback ABI. A nonzero pointer-sized
+// result cancels discovery; the C MaaBool result reads its low byte.
+type MaaToolkitIOSDeviceCancelCallback func(userdata uintptr) uintptr
+
+// MaaToolkitIOSDeviceCancelCallbackPtr holds a precompiled callback pointer, or
+// zero for NULL. Passing a Go function directly would allocate a permanent
+// purego callback on every discovery call and cannot represent NULL.
+type MaaToolkitIOSDeviceCancelCallbackPtr uintptr
+
+// iOS discovery lists own their device records and NUL-terminated field strings.
+// Records and strings are borrowed until the next find or list destruction.
+// FindWithOptions borrows its cancellation callback and userdata only until it
+// returns, including callbacks made by its joined worker thread.
+var (
+	MaaToolkitIOSDeviceListCreate          func() uintptr
+	MaaToolkitIOSDeviceListDestroy         func(list uintptr)
+	MaaToolkitIOSDeviceFind                func(list uintptr) bool
+	MaaToolkitIOSDeviceFindWithOptions     func(connectionMethod int32, optionsJson string, cancel MaaToolkitIOSDeviceCancelCallbackPtr, userdata, list uintptr) bool
+	MaaToolkitIOSDeviceListSize            func(list uintptr) uint64
+	MaaToolkitIOSDeviceListAt              func(list uintptr, index uint64) uintptr
+	MaaToolkitIOSDeviceGetName             func(device uintptr) string
+	MaaToolkitIOSDeviceGetUdid             func(device uintptr) string
+	MaaToolkitIOSDeviceGetState            func(device uintptr) string
+	MaaToolkitIOSDeviceGetConnections      func(device uintptr) string
+	MaaToolkitIOSDeviceGetScreencapMethods func(device uintptr) uint64
+	MaaToolkitIOSDeviceListGetWarnings     func(list uintptr) string
+)
+
 // Desktop window discovery functions. MaaToolkitDesktopWindowListCreate
 // creates an empty window list and MaaToolkitDesktopWindowListDestroy frees
 // it; MaaToolkitDesktopWindowFindAll fills the list buffer with the windows
@@ -147,6 +175,18 @@ var toolkitEntries = []Entry{
 	{&MaaToolkitAdbDeviceGetScreencapMethods, "MaaToolkitAdbDeviceGetScreencapMethods"},
 	{&MaaToolkitAdbDeviceGetInputMethods, "MaaToolkitAdbDeviceGetInputMethods"},
 	{&MaaToolkitAdbDeviceGetConfig, "MaaToolkitAdbDeviceGetConfig"},
+	{&MaaToolkitIOSDeviceListCreate, "MaaToolkitIOSDeviceListCreate"},
+	{&MaaToolkitIOSDeviceListDestroy, "MaaToolkitIOSDeviceListDestroy"},
+	{&MaaToolkitIOSDeviceFind, "MaaToolkitIOSDeviceFind"},
+	{&MaaToolkitIOSDeviceFindWithOptions, "MaaToolkitIOSDeviceFindWithOptions"},
+	{&MaaToolkitIOSDeviceListSize, "MaaToolkitIOSDeviceListSize"},
+	{&MaaToolkitIOSDeviceListAt, "MaaToolkitIOSDeviceListAt"},
+	{&MaaToolkitIOSDeviceGetName, "MaaToolkitIOSDeviceGetName"},
+	{&MaaToolkitIOSDeviceGetUdid, "MaaToolkitIOSDeviceGetUdid"},
+	{&MaaToolkitIOSDeviceGetState, "MaaToolkitIOSDeviceGetState"},
+	{&MaaToolkitIOSDeviceGetConnections, "MaaToolkitIOSDeviceGetConnections"},
+	{&MaaToolkitIOSDeviceGetScreencapMethods, "MaaToolkitIOSDeviceGetScreencapMethods"},
+	{&MaaToolkitIOSDeviceListGetWarnings, "MaaToolkitIOSDeviceListGetWarnings"},
 	{&MaaToolkitDesktopWindowListCreate, "MaaToolkitDesktopWindowListCreate"},
 	{&MaaToolkitDesktopWindowListDestroy, "MaaToolkitDesktopWindowListDestroy"},
 	{&MaaToolkitDesktopWindowFindAll, "MaaToolkitDesktopWindowFindAll"},

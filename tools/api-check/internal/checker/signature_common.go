@@ -164,6 +164,13 @@ func normalizeGoTypeExprCanonical(expr ast.Expr, typeDefs map[string]ast.Expr, s
 }
 
 func normalizeGoIdentType(name string, typeDefs map[string]ast.Expr, seen map[string]struct{}) string {
+	if name == iosDeviceCancelCallbackPtrType {
+		underlying, ok := typeDefs[name].(*ast.Ident)
+		if len(seen) == 0 && ok && underlying.Name == "uintptr" {
+			return iosDeviceCancelCallbackMarker
+		}
+		return "named:" + name
+	}
 	switch name {
 	case "bool":
 		return "bool"

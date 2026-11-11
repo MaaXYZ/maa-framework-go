@@ -28,7 +28,7 @@ func fixtureLibraries(t *testing.T) []fixtureLibrary {
 		ext = ".dylib"
 	}
 	file := func(name string) string {
-		return "libMaaBindingFixture_" + t.Name() + "_" + name + ext
+		return "libMaaBindingFixture_" + strings.ReplaceAll(t.Name(), "/", "_") + "_" + name + ext
 	}
 	return []fixtureLibrary{
 		{name: maaFrameworkName, file: file(maaFrameworkName), handle: &maaFramework, entries: frameworkEntries},
@@ -95,7 +95,7 @@ func buildFixtureLibraries(t *testing.T, dir string, fixtures []fixtureLibrary, 
 
 		output, err := exec.Command(cc, args...).CombinedOutput()
 		if err != nil {
-			t.Skipf("skipping fixture tests: failed to build %s: %v\n%s", lib.file, err, output)
+			t.Fatalf("failed to build %s: %v\n%s", lib.file, err, output)
 		}
 	}
 }
@@ -159,6 +159,35 @@ func TestFixtureMissingSymbolRollsBackEarlierLibraries(t *testing.T) {
 	assertAllHandlesCleared(t)
 	if len(loadedLibs) != 0 {
 		t.Errorf("loadedLibs = %d, want 0", len(loadedLibs))
+	}
+}
+
+func TestFixtureMissingIOSSymbolRollsBack(t *testing.T) {
+	for _, tc := range []struct{ library, symbol string }{
+		{maaFrameworkName, "MaaIOSControllerCreate"},
+		{maaToolkitName, "MaaToolkitIOSDeviceFindWithOptions"},
+	} {
+		t.Run(tc.symbol, func(t *testing.T) {
+			dir := t.TempDir()
+			fixtures := fixtureLibraries(t)
+			buildFixtureLibraries(t, dir, fixtures, map[string]string{tc.library: tc.symbol})
+			installFixtureLibraries(t, fixtures)
+
+			err := Initialize(dir)
+			var symbolErr *SymbolLookupError
+			if !errors.As(err, &symbolErr) {
+				t.Fatalf("Initialize returned %v, want a missing iOS symbol error", err)
+			}
+			if symbolErr.LibraryName != tc.library || symbolErr.SymbolName != tc.symbol {
+				t.Fatalf("wrong missing symbol: %+v", symbolErr)
+			}
+			assertAllHandlesCleared(t)
+			assertFuncVarsNil(t, frameworkEntries)
+			assertFuncVarsNil(t, toolkitEntries)
+			if len(loadedLibs) != 0 {
+				t.Fatalf("failed initialization retained %d libraries", len(loadedLibs))
+			}
+		})
 	}
 }
 

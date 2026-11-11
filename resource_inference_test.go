@@ -1,6 +1,7 @@
 package maa
 
 import (
+	"runtime"
 	"testing"
 	"unsafe"
 
@@ -91,6 +92,22 @@ func TestResource_UseExecutionProviderOptionSequence(t *testing.T) {
 			},
 		},
 		{
+			name: "UseNcnn",
+			use:  func(r *Resource) error { return r.UseNcnn() },
+			want: []resourceOptionCall{
+				{
+					key:     native.MaaResOption_InferenceExecutionProvider,
+					value:   int32(native.MaaInferenceExecutionProvider_NCNN),
+					valSize: inferenceOptionValSize,
+				},
+				{
+					key:     native.MaaResOption_InferenceDevice,
+					value:   int32(native.MaaInferenceDevice_CPU),
+					valSize: inferenceOptionValSize,
+				},
+			},
+		},
+		{
 			name: "UseAutoExecutionProvider",
 			use:  func(r *Resource) error { return r.UseAutoExecutionProvider() },
 			want: []resourceOptionCall{
@@ -144,6 +161,40 @@ func TestInferenceExecutionProviderConstantsABI(t *testing.T) {
 	require.EqualValues(t, 2, native.MaaInferenceExecutionProvider_DirectML)
 	require.EqualValues(t, 4, native.MaaInferenceExecutionProvider_CUDA)
 	require.EqualValues(t, 5, native.MaaInferenceExecutionProvider_WebGPU)
+	require.EqualValues(t, 6, native.MaaInferenceExecutionProvider_NCNN)
+}
+
+func TestResource_UseNcnnOptionFailures(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		key   native.MaaResOption
+		calls int
+	}{
+		{name: "provider", key: native.MaaResOption_InferenceExecutionProvider, calls: 1},
+		{name: "device", key: native.MaaResOption_InferenceDevice, calls: 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resource := createResource(t)
+			defer destroyEventually(t, resource)
+			var calls []native.MaaResOption
+			replaceNativeForTest(t, &native.MaaResourceSetOption, func(_ uintptr, key native.MaaResOption, _ unsafe.Pointer, _ uint64) bool {
+				calls = append(calls, key)
+				return key != tc.key
+			})
+			require.Error(t, resource.UseNcnn())
+			require.Len(t, calls, tc.calls)
+			require.Equal(t, tc.key, calls[len(calls)-1])
+		})
+	}
+}
+
+func TestResource_UseNcnnUnsupportedDesktopBuild(t *testing.T) {
+	if runtime.GOOS == "android" {
+		t.Skip("NCNN support depends on the Android library build")
+	}
+	resource := createResource(t)
+	defer destroyEventually(t, resource)
+	require.Error(t, resource.UseNcnn())
 }
 
 func TestResource_UseExecutionProviderNativeFailure(t *testing.T) {
@@ -161,6 +212,7 @@ func TestResource_UseExecutionProviderNativeFailure(t *testing.T) {
 // through the real library, covering the full handle/option/ABI path that the
 // stubbed sequence test bypasses. Selecting a provider does not require the
 // hardware to support it; loading a model is what falls back to CPU.
+// NCNN is excluded here because desktop libraries reject it at option setting.
 //
 // This is not a value check: MaaResourceSetOption stores the provider without
 // validating it against MaaInferenceExecutionProviderEnum (setting WebGPU to a

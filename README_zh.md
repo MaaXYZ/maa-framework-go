@@ -39,10 +39,10 @@
 
 ## 特性
 
-- **跨平台控制器** - ADB、Win32、Linux、macOS、PlayCover 与 Android Native
+- **跨平台控制器** - ADB、iOS、Win32、Linux、macOS、PlayCover 与 Android Native
 - **录制与回放** - 将控制器操作记录为 JSONL，并用于调试与回归测试
 - **虚拟手柄控制器**（仅 Windows）- 通过 ViGEm 实现手柄自动化
-- **Toolkit 工具能力** - 发现 ADB 设备和桌面窗口，管理 macOS 自动化权限
+- **Toolkit 工具能力** - 发现 ADB、iOS 设备和桌面窗口，管理 macOS 自动化权限
 - **图像识别** - 模板匹配、OCR、特征检测
 - **自定义扩展** - 以纯 Go 编写自定义识别、动作和控制器
 - **Agent 支持** - 从外部进程执行自定义识别与动作逻辑
@@ -159,6 +159,7 @@ fmt.Println(detail)
 
 - [运行时库加载](docs/zh/guides/library-loading.md)
 - [Android 构建指南](docs/zh/guides/android.md)
+- [iOS 设备发现与控制](docs/zh/guides/ios.md)
 - [常见问题](docs/zh/guides/faq.md)
 - 迁移指南：[v3 → v4](docs/zh/migration/from-v3.md)、[beta.18 → beta.19](docs/zh/migration/from-v4.0.0-beta.18.md)、[beta.19 → v4](docs/zh/migration/from-v4.0.0-beta.19.md)。
 - [变更记录](CHANGELOG.md)
