@@ -180,6 +180,9 @@ func WithJSONDecoder(decoder JSONDecoder) InitOption {
 // Init loads MaaFramework, MaaToolkit, MaaAgentServer, and MaaAgentClient and
 // registers their functions. All four libraries must come from the same
 // MaaFramework release compatible with this binding.
+// Required symbols include the iOS device APIs on every host platform, even
+// when the application does not use iOS devices. Libraries without those
+// symbols fail initialization and are rolled back like any other missing API.
 //
 // It must be called before invoking any other MAA-related functions.
 // Once Init has succeeded, later calls to Init are no-ops and any options

@@ -101,6 +101,7 @@ func checkCallbackABICoverage(repoRoot, headerDir string, nativeFiles map[string
 	}
 	fset := token.NewFileSet()
 	types := map[string]ast.Expr{}
+	issues := []issue{}
 	for _, module := range moduleOrder {
 		for _, path := range nativeFiles[module] {
 			f, err := parser.ParseFile(fset, path, nil, 0)
@@ -110,9 +111,9 @@ func checkCallbackABICoverage(repoRoot, headerDir string, nativeFiles map[string
 			for name, t := range collectGoTypeDefs(f) {
 				types[name] = t
 			}
+			issues = append(issues, checkIOSDeviceCancelCallbackPointerDeclaration(f)...)
 		}
 	}
-	issues := []issue{}
 	for _, name := range sortedPipelineKeys(types) {
 		fn, ok := types[name].(*ast.FuncType)
 		if !ok || !strings.HasSuffix(name, "Callback") {
@@ -128,7 +129,12 @@ func checkCallbackABICoverage(repoRoot, headerDir string, nativeFiles map[string
 			issues = append(issues, issue{section: sectionController, message: fmt.Sprintf("callback ABI mismatch for %s: go=%v -> %v c=%v -> %v", name, g.params, g.returns, c.params, c.returns)})
 		}
 		// The named callback declaration and the actual root trampoline must agree.
-		path := map[string]string{"MaaEventCallback": "event.go", "MaaCustomActionCallback": "custom_action.go", "MaaCustomRecognitionCallback": "custom_recognition.go"}[name]
+		path := map[string]string{
+			"MaaEventCallback":             "event.go",
+			"MaaCustomActionCallback":      "custom_action.go",
+			"MaaCustomRecognitionCallback": "custom_recognition.go",
+			iosDeviceCancelCallbackName:    "toolkit_ios_device.go",
+		}[name]
 		if path != "" {
 			source, err := parser.ParseFile(fset, filepath.Join(repoRoot, path), nil, 0)
 			if err != nil {
@@ -137,7 +143,7 @@ func checkCallbackABICoverage(repoRoot, headerDir string, nativeFiles map[string
 			rootTypes := collectGoTypeDefs(source)
 			found := false
 			for _, decl := range source.Decls {
-				if agent, ok := decl.(*ast.FuncDecl); ok && agent.Name.Name == "_"+name+"Agent" {
+				if agent, ok := decl.(*ast.FuncDecl); ok && agent.Recv == nil && agent.Body != nil && agent.Name.Name == "_"+name+"Agent" {
 					found = true
 					sig := methodSig{params: parseGoFieldTypesCanonical(agent.Type.Params, rootTypes), returns: parseGoFieldTypesCanonical(agent.Type.Results, rootTypes)}
 					if !callbackABIMatches(sig, c) {
@@ -147,6 +153,9 @@ func checkCallbackABICoverage(repoRoot, headerDir string, nativeFiles map[string
 			}
 			if !found {
 				issues = append(issues, issue{section: sectionController, message: "missing callback trampoline for " + name})
+			}
+			if name == iosDeviceCancelCallbackName {
+				issues = append(issues, checkIOSDeviceCancelCallbackBinding(source)...)
 			}
 		}
 	}
@@ -330,7 +339,7 @@ func exportedCallbackTypes(headerDir string, callbacks map[string]methodSig) (ma
 			return err
 		}
 		for _, stmt := range strings.Split(removeCPreprocessorLines(removeCComments(string(data))), ";") {
-			match := cAPIMacroInStmtRe.FindStringSubmatch(stmt)
+			match := cAPIMacroInStmtRe.FindStringSubmatch(normalizeSpaces(stmt))
 			if match == nil {
 				continue
 			}

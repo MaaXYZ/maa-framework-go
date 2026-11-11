@@ -87,7 +87,7 @@ func checkNativeAPICoverage(headerDir string, nativeFiles map[string][]string, b
 				})
 				continue
 			}
-			if !sameStringSlice(goSig.params, cSig.params) || !nativeReturnTypesMatch(goSig.returns, cSig.returns) {
+			if !nativeParamTypesMatch(module, fn, goSig.params, cSig.params) || !nativeReturnTypesMatch(goSig.returns, cSig.returns) {
 				locLine := formatLocationLine(goDeclLocs[module][fn], goRegisterLocs[module][fn])
 				issues = append(issues, issue{
 					section: sectionNativeAPI,

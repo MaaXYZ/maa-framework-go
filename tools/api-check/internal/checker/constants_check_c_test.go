@@ -206,6 +206,71 @@ func TestEvalCConstSources_UnsignedWrapsAllOnes(t *testing.T) {
 	}
 }
 
+func TestEvalCConstSources_IgnoresQuotedEnumKeywords(t *testing.T) {
+	t.Parallel()
+	warning := `#define MAA_SUPPRESS_WARNINGS MAA_DO_PRAGMA(GCC diagnostic ignored "-Wdeprecated-enum-enum-conversion")
+#define MAA_NS_BEGIN namespace MaaNS {
+#define MAA_NS_END }
+`
+	for name, prefix := range map[string]string{
+		"warning and namespace macros": warning,
+		"warning under unknown guard":  "#if PLATFORM\n" + warning + "#endif\n",
+		"quoted declaration":           `const char* text = "enum Fake { MaaFixture_Fake = 99 };";`,
+		"escaped quote and backslash":  `const char* text = "escaped \"enum Fake { MaaFixture_Fake = 99 }; \\ end";`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			env, err := evaluateCConstSources([]cConstSource{{
+				path:    "fixture.h",
+				content: prefix + "\nenum Fixture { MaaFixture_First = 7, MaaFixture_Next };\n",
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(env.values) != 2 {
+				t.Fatalf("expected only the real enum values, got %v", env.values)
+			}
+			for name, want := range map[string]string{"MaaFixture_First": "7", "MaaFixture_Next": "8"} {
+				value, ok := env.values[name]
+				if !ok || value.ExactString() != want {
+					t.Errorf("%s = %v, want %s; failures=%v", name, value, want, env.failures)
+				}
+			}
+		})
+	}
+}
+
+func TestEvalCConstSources_EnumCharacterLiterals(t *testing.T) {
+	t.Parallel()
+	for literal, want := range map[string]int64{
+		`'{'`: 123, `'}'`: 125, `','`: 44, `'('`: 40, `')'`: 41,
+		`'['`: 91, `']'`: 93, `'\''`: 39, `'\\'`: 92, `'"'`: 34, `';'`: 59, `'='`: 61,
+	} {
+		t.Run(literal, func(t *testing.T) {
+			t.Parallel()
+			env, err := evaluateCConstSources([]cConstSource{{
+				path:    "fixture.h",
+				content: "enum Fixture { MaaFixture_Char = " + literal + ", MaaFixture_Next };",
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(env.failures) != 0 {
+				t.Fatalf("unexpected failures: %v", env.failures)
+			}
+			for name, want := range map[string]int64{"MaaFixture_Char": want, "MaaFixture_Next": want + 1} {
+				value, ok := env.values[name]
+				if !ok {
+					t.Fatalf("missing enum value %s", name)
+				}
+				if got, ok := constant.Int64Val(value); !ok || got != want {
+					t.Errorf("%s = %v, want %d", name, value, want)
+				}
+			}
+		})
+	}
+}
+
 func TestEvalCConstSources_DiagnosesFailures(t *testing.T) {
 	t.Parallel()
 
@@ -485,6 +550,11 @@ func TestEvalCConstSources_UnknownEnumSequencing(t *testing.T) {
 		{
 			name:    "implicit tail after explicit alternatives",
 			content: "enum Fixture { Base = 10,\n#if PLATFORM\nA = 11,\n#else\nB = 12,\n#endif\nTail };",
+			wantErr: "unknown conditional enum sequencing: implicit member Tail",
+		},
+		{
+			name:    "character punctuation does not hide ambiguous sequence",
+			content: "enum Fixture { Base = ',',\n#if PLATFORM\nA = '}',\n#else\nB = '{',\n#endif\nTail };",
 			wantErr: "unknown conditional enum sequencing: implicit member Tail",
 		},
 		{

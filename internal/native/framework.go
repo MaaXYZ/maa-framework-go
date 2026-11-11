@@ -125,7 +125,8 @@ const (
 	// MaaResOption_InferenceDevice sets the WebGPU device id
 	// (ep.webgpuexecutionprovider.deviceId). Auto uses device 0. The provider is
 	// shipped on Windows, Linux, and macOS.
-	MaaInferenceExecutionProvider_WebGPU = 5
+	MaaInferenceExecutionProvider_WebGPU                               = 5
+	MaaInferenceExecutionProvider_NCNN   MaaInferenceExecutionProvider = 6
 )
 
 // MaaResOption is a resource option key passed to MaaResourceSetOption.
@@ -288,6 +289,7 @@ const (
 var (
 	MaaAdbControllerCreate           func(adbPath, address string, screencapMethods uint64, inputMethods uint64, config, agentPath string) uintptr
 	MaaPlayCoverControllerCreate     func(address, uuid string) uintptr
+	MaaIOSControllerCreate           func(udid string, screencapMethods uint64, connectionMethod int32, configJson string) uintptr
 	MaaWin32ControllerCreate         func(hWnd unsafe.Pointer, screencapMethods uint64, mouseMethod, keyboardMethod uint64) uintptr
 	MaaLinuxControllerCreate         func(configJson string) uintptr
 	MaaCustomControllerCreate        func(controller unsafe.Pointer, controllerArg uintptr) uintptr
@@ -543,6 +545,7 @@ var frameworkEntries = []Entry{
 	{&MaaResourceGetDefaultActionParam, "MaaResourceGetDefaultActionParam"},
 	{&MaaAdbControllerCreate, "MaaAdbControllerCreate"},
 	{&MaaPlayCoverControllerCreate, "MaaPlayCoverControllerCreate"},
+	{&MaaIOSControllerCreate, "MaaIOSControllerCreate"},
 	{&MaaWin32ControllerCreate, "MaaWin32ControllerCreate"},
 	{&MaaLinuxControllerCreate, "MaaLinuxControllerCreate"},
 	{&MaaCustomControllerCreate, "MaaCustomControllerCreate"},

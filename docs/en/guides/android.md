@@ -46,3 +46,9 @@ if err := maa.Init(maa.WithLibDir("path/to/MaaFramework/libs/android")); err != 
 ```
 
 Without `WithLibDir`, `Init` uses the platform loader's current search configuration, for example `LD_LIBRARY_PATH` or the directories the app process already searches.
+
+## NCNN inference
+
+With MaaFramework v5.16.0, `Resource.UseNcnn()` explicitly selects NCNN on the CPU. It requires a native Android build with NCNN enabled and the corresponding NCNN models; desktop builds reject the selection. Check the returned error. `UseAutoExecutionProvider()` does not select NCNN, and NCNN does not fall back to ONNX Runtime when a model cannot load.
+
+Select the provider before posting any resource load. Once loading has started, call `Clear()` or recreate the resource before switching to or from NCNN. The binding forwards the native provider and device failures instead of silently selecting a different engine. See the [native provider contract](https://github.com/MaaXYZ/MaaFramework/blob/v5.16.0/include/MaaFramework/MaaDef.h).

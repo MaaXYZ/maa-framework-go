@@ -1066,6 +1066,11 @@ type CustomRecognitionParam struct {
 	CustomRecognition string `json:"custom_recognition,omitempty"`
 	// CustomRecognitionParam specifies custom parameters passed to the recognition callback.
 	CustomRecognitionParam any `json:"custom_recognition_param,omitempty"`
+	// Index selects a result from the callback's filtered results, in callback order.
+	// Negative indices count from the end; out-of-range indices produce no match.
+	// Zero is omitted to inherit the existing/default index (normally zero), so
+	// this field cannot reset an inherited nonzero index to zero.
+	Index int `json:"index,omitempty"`
 }
 
 func (n CustomRecognitionParam) isRecognitionParam() {}
