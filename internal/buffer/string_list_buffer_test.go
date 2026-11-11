@@ -133,12 +133,35 @@ func TestStringListBuffer_AppendDeepCopyOwnership(t *testing.T) {
 	defer stringListBuffer.Destroy()
 
 	stringBuffer := createStringBuffer(t)
-	require.True(t, stringBuffer.Set("owned by list"))
+	const content = "owned\x00by list"
+	require.True(t, stringBuffer.SetWithSize(content, uint64(len(content))))
 	require.True(t, stringListBuffer.Append(stringBuffer))
 
 	stringBuffer.Destroy()
 
-	require.Equal(t, "owned by list", stringListBuffer.Get(0))
+	require.Equal(t, content, stringListBuffer.Get(0))
+}
+
+func TestStringListBuffer_GetPreservesBytes(t *testing.T) {
+	list := createStringListBuffer(t)
+	defer list.Destroy()
+	source := createStringBuffer(t)
+	defer source.Destroy()
+	want := []string{"", "plain", "before\x00after", "before\x00other", "\x00leading", "中文\x00内容"}
+	for _, content := range want {
+		require.True(t, source.SetWithSize(content, uint64(len(content))))
+		require.True(t, list.Append(source))
+	}
+	require.True(t, source.Clear())
+
+	got := list.GetAll()
+	require.Equal(t, want, got)
+	for i, content := range want {
+		require.Equal(t, content, list.Get(uint64(i)))
+	}
+
+	require.True(t, list.Clear())
+	require.Equal(t, want, got, "returned strings must remain valid after the native list is cleared")
 }
 
 // TestStringListBuffer_OutOfRange pins the out-of-range degradation: upstream
