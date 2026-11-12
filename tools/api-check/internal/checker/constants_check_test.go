@@ -110,6 +110,59 @@ const (
 		goMissingInCLogical: "PostToPid",
 		mismatchName:        "PostToPid",
 	},
+	"ios.screencap": {
+		cHeader: maaDefHeaderRel,
+		cSource: `typedef uint64_t MaaIOSScreencapMethod;
+#define MaaIOSScreencapMethod_None 0ULL
+#define MaaIOSScreencapMethod_Stream 1ULL
+#define MaaIOSScreencapMethod_ScreenshotService (1ULL << 1)
+#define MaaIOSScreencapMethod_All (~MaaIOSScreencapMethod_None)
+#define MaaIOSScreencapMethod_Default MaaIOSScreencapMethod_All
+`,
+		goSource: `type ScreencapMethod uint64
+
+const (
+	ScreencapNone              ScreencapMethod = 0
+	ScreencapStream            ScreencapMethod = 1
+	ScreencapScreenshotService ScreencapMethod = 1 << 1
+	ScreencapAll = ^ScreencapNone
+	ScreencapDefault = ScreencapAll
+)
+`,
+		goRemove:            "ScreencapScreenshotService",
+		cRemove:             "#define MaaIOSScreencapMethod_ScreenshotService",
+		cMismatchFrom:       "#define MaaIOSScreencapMethod_Stream 1ULL",
+		cMismatchTo:         "#define MaaIOSScreencapMethod_Stream 4ULL",
+		cMissingInGoLogical: "ScreenshotService",
+		goMissingInCLogical: "ScreenshotService",
+		mismatchName:        "Stream",
+	},
+	"ios.connection": {
+		cHeader: maaDefHeaderRel,
+		cSource: `typedef int32_t MaaIOSConnectionMethod;
+enum MaaIOSConnectionMethodEnum
+{
+    MaaIOSConnectionMethod_Auto = 0,
+    MaaIOSConnectionMethod_USB = 1,
+    MaaIOSConnectionMethod_WiFi = 2,
+};
+`,
+		goSource: `type ConnectionMethod int32
+
+const (
+	ConnectionAuto ConnectionMethod = 0
+	ConnectionUSB  ConnectionMethod = 1
+	ConnectionWiFi ConnectionMethod = 2
+)
+`,
+		goRemove:            "ConnectionWiFi",
+		cRemove:             "MaaIOSConnectionMethod_WiFi = 2",
+		cMismatchFrom:       "MaaIOSConnectionMethod_USB = 1",
+		cMismatchTo:         "MaaIOSConnectionMethod_USB = 3",
+		cMissingInGoLogical: "WiFi",
+		goMissingInCLogical: "WiFi",
+		mismatchName:        "USB",
+	},
 	"native.gamepad_type": {
 		cHeader: maaDefHeaderRel,
 		cSource: "#define MaaGamepadType_Xbox360 0ULL\n" +
@@ -475,6 +528,83 @@ func TestCheckConstantCoverage_FamilyMutations(t *testing.T) {
 				issues := compareConstantFixture(t, spec, cSource, fixture.goSource)
 				assertConstantIssueContaining(t, issues, "[%s] constant value mismatch: %s", spec.name, fixture.mismatchName)
 			})
+		})
+	}
+}
+
+func TestCheckConstantCoverage_IOSWidths(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name, family string
+		goOld, goNew string
+		cOld, cNew   string
+		wantIssue    string
+	}{
+		{
+			name:      "All is the full uint64 mask rather than known flags",
+			family:    "ios.screencap",
+			goOld:     "ScreencapAll = ^ScreencapNone",
+			goNew:     "ScreencapAll ScreencapMethod = 3",
+			wantIssue: "[ios.screencap] constant value mismatch: All (go=3 c=18446744073709551615)",
+		},
+		{
+			name:      "32-bit masks do not match the C uint64 mask",
+			family:    "ios.screencap",
+			goOld:     "type ScreencapMethod uint64",
+			goNew:     "type ScreencapMethod uint32",
+			wantIssue: "[ios.screencap] constant value mismatch: All (go=4294967295 c=18446744073709551615)",
+		},
+		{
+			name:      "signed complements do not match the C uint64 mask",
+			family:    "ios.screencap",
+			goOld:     "type ScreencapMethod uint64",
+			goNew:     "type ScreencapMethod int64",
+			wantIssue: "[ios.screencap] constant value mismatch: All (go=-1 c=18446744073709551615)",
+		},
+		{
+			name:      "Go connection values must fit int32",
+			family:    "ios.connection",
+			goOld:     "ConnectionWiFi ConnectionMethod = 2",
+			goNew:     "ConnectionWiFi ConnectionMethod = 1 << 31",
+			wantIssue: "[ios.connection] failed to evaluate Go constant: WiFi",
+		},
+		{
+			name:      "C connection values must fit the positive int32 bound",
+			family:    "ios.connection",
+			cOld:      "MaaIOSConnectionMethod_WiFi = 2",
+			cNew:      "MaaIOSConnectionMethod_WiFi = 2147483648",
+			wantIssue: "[ios.connection] invalid C constant value: WiFi (value 2147483648 does not fit signed 32-bit range)",
+		},
+		{
+			name:      "C connection values must fit the negative int32 bound",
+			family:    "ios.connection",
+			cOld:      "MaaIOSConnectionMethod_WiFi = 2",
+			cNew:      "MaaIOSConnectionMethod_WiFi = -2147483649",
+			wantIssue: "[ios.connection] invalid C constant value: WiFi (value -2147483649 does not fit signed 32-bit range)",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var spec constantFamilySpec
+			for _, candidate := range constantFamilySpecs {
+				if candidate.name == tt.family {
+					spec = candidate
+					break
+				}
+			}
+			if spec.name == "" {
+				t.Fatalf("missing constant inventory family %s", tt.family)
+			}
+			fixture := constantFamilyFixtures[tt.family]
+			if tt.goOld != "" {
+				fixture.goSource = replaceConstantOnce(t, fixture.goSource, tt.goOld, tt.goNew)
+			}
+			if tt.cOld != "" {
+				fixture.cSource = replaceConstantOnce(t, fixture.cSource, tt.cOld, tt.cNew)
+			}
+			issues := compareConstantFixture(t, spec, fixture.cSource, fixture.goSource)
+			assertConstantIssueContaining(t, issues, "%s", tt.wantIssue)
 		})
 	}
 }

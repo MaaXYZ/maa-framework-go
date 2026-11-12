@@ -530,14 +530,15 @@ func checkUnknownEnumSequencing(content string, unknownRanges []cConditionalRang
 	if len(unknownRanges) == 0 {
 		return nil
 	}
+	syntax := maskCQuotedLiterals(content)
 	searchFrom := 0
 	for {
-		loc := cEnumKeywordRe.FindStringIndex(content[searchFrom:])
+		loc := cEnumKeywordRe.FindStringIndex(syntax[searchFrom:])
 		if loc == nil {
 			return nil
 		}
 		enumStart := searchFrom + loc[0]
-		rest := content[enumStart:]
+		rest := syntax[enumStart:]
 		bodyStart := strings.IndexByte(rest, '{')
 		semi := strings.IndexByte(rest, ';')
 		if bodyStart < 0 {
@@ -548,13 +549,13 @@ func checkUnknownEnumSequencing(content string, unknownRanges []cConditionalRang
 			continue
 		}
 		openPos := enumStart + bodyStart
-		closePos := matchCBrace(content, openPos)
+		closePos := matchCBrace(syntax, openPos)
 		if closePos < 0 {
 			return errors.New("unterminated enum body")
 		}
 		entryFrom := openPos + 1
 		definiteFrom := entryFrom
-		for _, entry := range splitCEnumEntries(content, openPos+1, closePos) {
+		for _, entry := range splitCEnumEntries(content, syntax, openPos+1, closePos) {
 			entryStart := entryFrom + strings.Index(content[entryFrom:closePos], entry)
 			entryFrom = entryStart + len(entry)
 			name, expr := splitCEnumEntry(entry)
@@ -754,18 +755,44 @@ func stripCppAttributes(content string) string {
 	return out.String()
 }
 
+// maskCQuotedLiterals keeps source offsets intact while hiding keywords and
+// punctuation inside literals from structural scans. Initializers still come
+// from the original content so character constants retain their numeric values.
+func maskCQuotedLiterals(content string) string {
+	syntax := []byte(content)
+	var quote byte
+	for i := 0; i < len(content); i++ {
+		if quote == 0 {
+			if content[i] != '"' && content[i] != '\'' {
+				continue
+			}
+			quote = content[i]
+		} else if content[i] == '\\' && i+1 < len(content) {
+			syntax[i] = ' '
+			i++
+		} else if content[i] == quote {
+			quote = 0
+		}
+		if syntax[i] != '\n' && syntax[i] != '\r' {
+			syntax[i] = ' '
+		}
+	}
+	return string(syntax)
+}
+
 // parseCEnumDecls extracts C-style enum members. Members without an explicit
 // value inherit the previous member value.
 func parseCEnumDecls(content string) ([]cConstDecl, error) {
 	decls := make([]cConstDecl, 0)
+	syntax := maskCQuotedLiterals(content)
 	searchFrom := 0
 	for {
-		loc := cEnumKeywordRe.FindStringIndex(content[searchFrom:])
+		loc := cEnumKeywordRe.FindStringIndex(syntax[searchFrom:])
 		if loc == nil {
 			break
 		}
 		enumStart := searchFrom + loc[0]
-		rest := content[enumStart:]
+		rest := syntax[enumStart:]
 		bodyStart := strings.IndexByte(rest, '{')
 		semi := strings.IndexByte(rest, ';')
 		if bodyStart < 0 {
@@ -777,13 +804,13 @@ func parseCEnumDecls(content string) ([]cConstDecl, error) {
 			continue
 		}
 		openPos := enumStart + bodyStart
-		closePos := matchCBrace(content, openPos)
+		closePos := matchCBrace(syntax, openPos)
 		if closePos < 0 {
 			return nil, errors.New("unterminated enum body")
 		}
 
 		previous := ""
-		for _, entry := range splitCEnumEntries(content, openPos+1, closePos) {
+		for _, entry := range splitCEnumEntries(content, syntax, openPos+1, closePos) {
 			name, expr := splitCEnumEntry(entry)
 			if name == "" {
 				return nil, fmt.Errorf("unsupported enum member: %q", entry)
@@ -806,10 +833,10 @@ func parseCEnumDecls(content string) ([]cConstDecl, error) {
 	return decls, nil
 }
 
-func matchCBrace(content string, openPos int) int {
+func matchCBrace(syntax string, openPos int) int {
 	depth := 0
-	for i := openPos; i < len(content); i++ {
-		switch content[i] {
+	for i := openPos; i < len(syntax); i++ {
+		switch syntax[i] {
 		case '{':
 			depth++
 		case '}':
@@ -822,7 +849,7 @@ func matchCBrace(content string, openPos int) int {
 	return -1
 }
 
-func splitCEnumEntries(content string, start int, end int) []string {
+func splitCEnumEntries(content, syntax string, start int, end int) []string {
 	entries := make([]string, 0)
 	depth := 0
 	segmentStart := start
@@ -834,7 +861,7 @@ func splitCEnumEntries(content string, start int, end int) []string {
 		entries = append(entries, trimmed)
 	}
 	for i := start; i < end; i++ {
-		switch content[i] {
+		switch syntax[i] {
 		case '(', '[':
 			depth++
 		case ')', ']':

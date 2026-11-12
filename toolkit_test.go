@@ -224,9 +224,20 @@ func TestToolkit_MacOSPermissionWrappers(t *testing.T) {
 }
 
 func TestToolkit_FindAdbDevices(t *testing.T) {
-	adbDevices, err := FindAdbDevices()
+	// Use the real native finder with a controlled executable instead of
+	// scanning the host and potentially starting its long-lived adb server.
+	adbPath, recordPath := setupAdbFixture(t)
+	adbDevices, err := FindAdbDevices(adbPath)
 	require.NoError(t, err)
-	require.NotNil(t, adbDevices)
+	require.Len(t, adbDevices, 1)
+	device := adbDevices[0]
+	require.Equal(t, adbFixtureSerial, device.Address)
+	require.Equal(t, adbPath, device.AdbPath)
+	require.Equal(t, adbFixtureSerial+"-"+adbPath, device.Name)
+	require.Equal(t, adb.ScreencapDefault, device.ScreencapMethod)
+	require.Equal(t, adb.InputDefault, device.InputMethod)
+	require.JSONEq(t, "{}", device.Config)
+	assertAdbFixtureCalls(t, recordPath)
 }
 
 func TestToolkit_FindDesktopWindows(t *testing.T) {

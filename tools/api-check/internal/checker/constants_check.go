@@ -165,6 +165,22 @@ var constantFamilySpecs = []constantFamilySpec{
 		bits:     64,
 	},
 	{
+		name:     "ios.screencap",
+		goFile:   "controller/ios/ios.go",
+		goPrefix: "Screencap",
+		cPrefix:  "MaaIOSScreencapMethod_",
+		kind:     numericUnsigned,
+		bits:     64,
+	},
+	{
+		name:     "ios.connection",
+		goFile:   "controller/ios/ios.go",
+		goPrefix: "Connection",
+		cPrefix:  "MaaIOSConnectionMethod_",
+		kind:     numericSigned,
+		bits:     32,
+	},
+	{
 		name:     "native.gamepad_type",
 		goFile:   "internal/native/framework.go",
 		goPrefix: "MaaGamepadType_",
