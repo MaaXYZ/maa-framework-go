@@ -205,6 +205,20 @@ func TestResource_OverrideImage(t *testing.T) {
 	require.Error(t, res.OverrideImage("OverrideImageEmpty", image.NewRGBA(image.Rect(0, 0, 0, 0))))
 }
 
+func TestResource_GetNodeList_PreservesEmbeddedNUL(t *testing.T) {
+	res := createResource(t)
+	t.Cleanup(func() { require.NoError(t, res.Destroy()) })
+	require.NoError(t, res.OverridePipeline(`{
+		"node": {"recognition": "DirectHit"},
+		"node\u0000first": {"recognition": "DirectHit"},
+		"node\u0000second": {"recognition": "DirectHit"}
+	}`))
+
+	names, err := res.GetNodeList()
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"node", "node\x00first", "node\x00second"}, names)
+}
+
 func TestResource_OverridePipelineInputForms(t *testing.T) {
 	res := createResource(t)
 	defer res.Destroy()

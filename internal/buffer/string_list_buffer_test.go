@@ -1,8 +1,11 @@
 package buffer
 
 import (
+	"strings"
 	"testing"
+	"unsafe"
 
+	"github.com/MaaXYZ/maa-framework-go/v4/internal/native"
 	"github.com/stretchr/testify/require"
 )
 
@@ -126,19 +129,60 @@ func TestStringListBuffer_AppendNilReturnsFalse(t *testing.T) {
 }
 
 // TestStringListBuffer_AppendDeepCopyOwnership pins the Append ownership
-// contract: the list stores a deep copy, so destroying the source buffer
-// afterwards must not affect the stored element.
+// contract: the list stores a deep copy, so overwriting the live source buffer
+// must not affect the stored element.
 func TestStringListBuffer_AppendDeepCopyOwnership(t *testing.T) {
 	stringListBuffer := createStringListBuffer(t)
 	defer stringListBuffer.Destroy()
 
 	stringBuffer := createStringBuffer(t)
-	require.True(t, stringBuffer.Set("owned by list"))
+	defer stringBuffer.Destroy()
+	const content = "owned\x00by list"
+	require.True(t, stringBuffer.SetWithSize(content, uint64(len(content))))
 	require.True(t, stringListBuffer.Append(stringBuffer))
 
-	stringBuffer.Destroy()
+	elementHandle := native.MaaStringListBufferAt(stringListBuffer.Handle(), 0)
+	require.NotEqual(t, native.MaaStringBufferGet(stringBuffer.Handle()), native.MaaStringBufferGet(elementHandle))
+	replacement := strings.Repeat("x", len(content))
+	require.True(t, stringBuffer.SetWithSize(replacement, uint64(len(replacement))))
+	require.Equal(t, replacement, stringBuffer.GetWithSize())
 
-	require.Equal(t, "owned by list", stringListBuffer.Get(0))
+	require.Equal(t, content, stringListBuffer.Get(0))
+}
+
+func TestStringListBuffer_GetPreservesBytes(t *testing.T) {
+	list := createStringListBuffer(t)
+	defer list.Destroy()
+	source := createStringBuffer(t)
+	defer source.Destroy()
+	want := []string{"", "plain", "before\x00after", "before\x00other", "\x00leading", "中文\x00内容"}
+	for _, content := range want {
+		require.True(t, source.SetWithSize(content, uint64(len(content))))
+		require.True(t, list.Append(source))
+	}
+	require.True(t, source.Clear())
+
+	got := list.GetAll()
+	require.Equal(t, want, got)
+	gotIndividual := make([]string, len(want))
+	for i, content := range want {
+		gotIndividual[i] = list.Get(uint64(i))
+		require.Equal(t, content, gotIndividual[i])
+	}
+
+	for i, content := range want {
+		if len(content) == 0 {
+			continue
+		}
+		elementHandle := native.MaaStringListBufferAt(list.Handle(), uint64(i))
+		data := native.MaaStringBufferGet(elementHandle)
+		// Compare while native storage is live; freed bytes may remain unchanged.
+		require.NotEqual(t, data, unsafe.Pointer(unsafe.StringData(got[i])), "GetAll must not alias native storage")
+		require.NotEqual(t, data, unsafe.Pointer(unsafe.StringData(gotIndividual[i])), "Get must not alias native storage")
+	}
+
+	require.True(t, list.Clear())
+	require.Equal(t, want, got, "returned strings must remain valid after the native list is cleared")
 }
 
 // TestStringListBuffer_OutOfRange pins the out-of-range degradation: upstream

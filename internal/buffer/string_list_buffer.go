@@ -56,12 +56,12 @@ func (sl *StringListBuffer) Size() uint64 {
 	return native.MaaStringListBufferSize(sl.handle)
 }
 
-// Get returns the string at index. It returns an empty string when index is
-// out of range, indistinguishable from an empty element.
+// Get returns a copy of the string at index, preserving embedded NULs. It returns
+// an empty string when index is out of range, indistinguishable from an empty element.
 func (sl *StringListBuffer) Get(index uint64) string {
 	handle := native.MaaStringListBufferAt(sl.handle, index)
 	str := &StringBuffer{handle: handle}
-	return str.Get()
+	return str.GetWithSize()
 }
 
 // GetAll returns all strings in list order. It returns a non-nil empty slice
